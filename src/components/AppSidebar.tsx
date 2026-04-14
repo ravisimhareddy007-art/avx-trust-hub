@@ -9,12 +9,7 @@ import {
 
 const navItems = [
   { id: 'dashboards', label: 'Dashboards', icon: LayoutDashboard },
-  {
-    id: 'discovery', label: 'Discovery', icon: Search, children: [
-      { id: 'discovery-profiles', label: 'Discovery Profiles' },
-      { id: 'discovery-runs', label: 'Discovery Runs' },
-    ]
-  },
+  { id: 'discovery', label: 'Discovery', icon: Search },
   { id: 'inventory', label: 'Inventory', icon: Package },
   { id: 'policy-builder', label: 'Policy Builder', icon: Shield },
   { id: 'trustops', label: 'TrustOps Center', icon: Activity },
