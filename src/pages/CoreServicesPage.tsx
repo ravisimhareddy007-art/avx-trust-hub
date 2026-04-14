@@ -26,7 +26,7 @@ export default function CoreServicesPage({ initialTab = 'automation' }: { initia
       {tab === 'automation' && (
         <div className="space-y-4">
           <h3 className="text-sm font-semibold">Workflow Templates</h3>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {['Certificate Renewal Workflow', 'SSH Key Rotation Workflow', 'Onboarding New Application', 'PQC Migration Batch Workflow'].map(name => (
               <div key={name} className="bg-card rounded-lg border border-border p-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => toast.info(`Loading ${name} into canvas`)}>
                 <div className="flex items-center gap-2 mb-2"><Zap className="w-4 h-4 text-teal" /><h4 className="text-xs font-semibold">{name}</h4></div>
@@ -45,7 +45,7 @@ export default function CoreServicesPage({ initialTab = 'automation' }: { initia
           {Object.entries({ 'Certificate Authorities': connectors.ca, 'Cloud / KMS': connectors.cloud, 'ITSM / Ticketing': connectors.itsm, 'Infrastructure / ADC': connectors.infrastructure, 'DevOps / CI-CD': connectors.devops, 'HSM': connectors.hsm }).map(([category, items]) => (
             <div key={category}>
               <h3 className="text-sm font-semibold mb-3">{category}</h3>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {items.map(item => (
                   <div key={item.name} className="bg-card rounded-lg border border-border p-3 flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -67,7 +67,7 @@ export default function CoreServicesPage({ initialTab = 'automation' }: { initia
       )}
 
       {tab === 'reporting' && (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {['Certificate Posture Report', 'SSH Key Audit Report', 'Compliance Evidence Package', 'PQC Readiness Report', 'Executive Summary'].map(name => (
             <div key={name} className="bg-card rounded-lg border border-border p-4">
               <div className="flex items-center gap-2 mb-2"><FileText className="w-4 h-4 text-teal" /><h4 className="text-xs font-semibold">{name}</h4></div>
@@ -84,7 +84,7 @@ export default function CoreServicesPage({ initialTab = 'automation' }: { initia
       {tab === 'self-service' && (
         <div className="space-y-4">
           <div className="flex justify-end"><button onClick={() => toast.info('New portal wizard opened')} className="flex items-center gap-1 px-3 py-2 rounded-lg bg-teal text-primary-foreground text-xs hover:bg-teal-light"><Plus className="w-3 h-3" /> New Portal</button></div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {['Certificate Request Portal — Dev Team', 'SSH Key Request — Engineering', 'Application Onboarding'].map(name => (
               <div key={name} className="bg-card rounded-lg border border-border p-4">
                 <h4 className="text-xs font-semibold mb-2">{name}</h4>
