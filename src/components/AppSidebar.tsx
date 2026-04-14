@@ -62,12 +62,7 @@ export default function AppSidebar() {
   const handleNavClick = (id: string, page?: string, type?: string) => {
     setActiveNavId(id);
     setCurrentPage(page || id);
-
-    if (page === 'inventory' || page === 'remediation') {
-      setFilters(type && type !== 'All' ? { type } : {});
-    } else {
-      setFilters({});
-    }
+    setFilters(type && type !== 'All' ? { type } : {});
   };
 
   const isActive = (id: string) => activeNavId === id;
