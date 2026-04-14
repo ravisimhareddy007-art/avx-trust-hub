@@ -197,19 +197,10 @@ export default function InventoryPage() {
         </div>
       </div>
 
-      {/* Bulk actions */}
+      {/* Selection indicator */}
       {selectedRows.size > 0 && (
-        <div className="bg-teal/5 border border-teal/20 rounded-lg px-4 py-2 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-medium text-teal">{selectedRows.size} selected</span>
-            {['Bulk Renew', 'Bulk Rotate', 'Bulk Revoke', 'Assign Owner', 'Add to Workflow'].map(action => (
-              <button key={action} onClick={() => {
-                const actionWord = action.replace('Bulk ', '');
-                toast.success(`${actionWord} initiated for ${selectedRows.size} assets`, { description: 'Workflow created — track progress in TrustOps.' });
-                setSelectedRows(new Set());
-              }} className={`text-[10px] px-2.5 py-1 rounded font-medium transition-colors ${action === 'Bulk Revoke' ? 'bg-coral/10 text-coral hover:bg-coral/20' : 'bg-teal/10 text-teal hover:bg-teal/20'}`}>{action}</button>
-            ))}
-          </div>
+        <div className="bg-teal/5 border border-teal/20 rounded-lg px-4 py-1.5 flex items-center justify-between">
+          <span className="text-xs font-medium text-teal">{selectedRows.size} selected — use Actions menu for bulk operations</span>
           <button onClick={() => setSelectedRows(new Set())} className="text-[10px] text-muted-foreground hover:text-foreground">Clear</button>
         </div>
       )}
