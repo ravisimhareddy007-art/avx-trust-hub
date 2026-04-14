@@ -4,8 +4,8 @@ import { StatusBadge } from '@/components/shared/UIComponents';
 import { toast } from 'sonner';
 import { Plus, Download, Search } from 'lucide-react';
 
-export default function SettingsPage() {
-  const [tab, setTab] = useState<'users' | 'licenses' | 'audit'>('users');
+export default function SettingsPage({ initialTab = 'users' }: { initialTab?: 'users' | 'licenses' | 'audit' }) {
+  const [tab, setTab] = useState<'users' | 'licenses' | 'audit'>(initialTab);
 
   return (
     <div className="space-y-4">
