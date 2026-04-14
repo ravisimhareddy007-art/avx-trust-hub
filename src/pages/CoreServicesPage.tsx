@@ -91,7 +91,7 @@ export default function CoreServicesPage({ initialTab = 'automation' }: { initia
                 <p className="text-[10px] text-muted-foreground mb-3">Published · 124 requests this month</p>
                 <div className="flex gap-2">
                   <button onClick={() => toast.info('Opening portal editor')} className="text-[10px] px-2 py-1 rounded bg-muted text-muted-foreground hover:bg-muted/80">Edit</button>
-                  <button onClick={() => { navigator.clipboard.writeText('https://portal.avxone.com/' + name.split(' ')[0].toLowerCase()); toast.success('Portal URL copied'); }} className="text-[10px] px-2 py-1 rounded bg-teal/10 text-teal hover:bg-teal/20">Copy URL</button>
+                  <button onClick={() => { navigator.clipboard.writeText('https://portal.avxtrust.com/' + name.split(' ')[0].toLowerCase()); toast.success('Portal URL copied'); }} className="text-[10px] px-2 py-1 rounded bg-teal/10 text-teal hover:bg-teal/20">Copy URL</button>
                 </div>
               </div>
             ))}

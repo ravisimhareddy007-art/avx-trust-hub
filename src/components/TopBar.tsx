@@ -65,7 +65,7 @@ export default function TopBar() {
             value={searchValue}
             onChange={e => setSearchValue(e.target.value)}
             onKeyDown={handleSearch}
-            placeholder='Ask AVX ONE anything... e.g. "show me all RSA-2048 certs expiring in production this quarter"'
+            placeholder='Ask AVX Trust anything... e.g. "show me all RSA-2048 certs expiring in production this quarter"'
             className="w-full pl-9 pr-4 py-2 bg-muted rounded-lg text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-teal"
           />
         </div>

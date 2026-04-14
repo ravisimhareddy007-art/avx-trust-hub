@@ -62,7 +62,7 @@ export default function AppSidebar() {
           </div>
           <div>
             <span className="text-primary-foreground font-bold text-sm">AVX</span>
-            <span className="text-sidebar-foreground font-light text-sm ml-1">ONE</span>
+            <span className="text-sidebar-foreground font-light text-sm ml-1">Trust</span>
           </div>
         </div>
       </div>
