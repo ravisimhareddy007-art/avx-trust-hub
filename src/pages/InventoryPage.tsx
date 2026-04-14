@@ -299,7 +299,7 @@ export default function InventoryPage() {
             </thead>
             <tbody>
               {filtered.map(asset => {
-                const quickActions = getQuickActions(asset);
+                
                 const agentRiskColors: Record<string, string> = {
                   'Over-privileged': 'bg-coral/10 text-coral',
                   'Right-sized': 'bg-teal/10 text-teal',
