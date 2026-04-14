@@ -1,3 +1,11 @@
+export interface SSHEndpoint {
+  host: string;
+  ip: string;
+  port: number;
+  role: 'client' | 'host';
+  lastSeen: string;
+}
+
 export interface CryptoAsset {
   id: string;
   name: string;
@@ -24,6 +32,7 @@ export interface CryptoAsset {
   policyViolations: number;
   dependencyCount: number;
   tags: string[];
+  sshEndpoints?: SSHEndpoint[];
 }
 
 export const mockAssets: CryptoAsset[] = [
