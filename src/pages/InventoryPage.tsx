@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useNav } from '@/context/NavigationContext';
 import { mockAssets, CryptoAsset } from '@/data/mockData';
 import { StatusBadge, EnvBadge, PQCBadge, DaysToExpiry, Drawer, SeverityBadge, Modal } from '@/components/shared/UIComponents';
-import { Download, Search, Sparkles, Settings, RefreshCw, RotateCcw, XCircle, Shield, User, Workflow, Key, ExternalLink, Monitor, Server, ChevronDown, BarChart3 } from 'lucide-react';
+import { Download, Search, Sparkles, Settings, RefreshCw, RotateCcw, XCircle, Shield, User, Workflow, Key, ExternalLink, Monitor, Server, ChevronDown, BarChart3, Bot, Zap, Lock, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
 const typeFilters = ['All', 'TLS Certificate', 'SSH Key', 'SSH Certificate', 'Code-Signing Certificate', 'K8s Workload Cert', 'AI Agent Token'];
@@ -63,6 +63,7 @@ export default function InventoryPage() {
   };
 
   const isSSHType = (type: string) => type === 'SSH Key' || type === 'SSH Certificate';
+  const isAgentView = typeFilter === 'AI Agent Token';
 
   const [showColumns, setShowColumns] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set(['name','type','caIssuer','algorithm','owner','env','expiry','days','status','pqcRisk','actions']));
@@ -222,44 +223,57 @@ export default function InventoryPage() {
       <div className="bg-card rounded-lg border border-border overflow-hidden">
         <div className="overflow-x-auto scrollbar-thin">
           <table className="w-full text-xs">
-            <thead className="bg-secondary/50">
+             <thead className="bg-secondary/50">
               <tr className="border-b border-border">
                 <th className="w-8 py-2 px-2"><input type="checkbox" onChange={e => setSelectedRows(e.target.checked ? new Set(filtered.map(a => a.id)) : new Set())} className="rounded" /></th>
                 <th className="w-6 py-2 px-1"></th>
                 {visibleColumns.has('name') && <th className="text-left py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground">Common Name ↕</th>}
-                {visibleColumns.has('type') && <th className="text-left py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground">Type ↕</th>}
-                {visibleColumns.has('caIssuer') && <th className="text-left py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground">Issuer Common Name ↕</th>}
-                {visibleColumns.has('algorithm') && <th className="text-left py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground">Algorithm ↕</th>}
+                {!isAgentView && visibleColumns.has('type') && <th className="text-left py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground">Type ↕</th>}
+                {isAgentView && <th className="text-left py-2 px-2 font-medium text-muted-foreground">Agent Type</th>}
+                {isAgentView && <th className="text-left py-2 px-2 font-medium text-muted-foreground">Framework</th>}
+                {!isAgentView && visibleColumns.has('caIssuer') && <th className="text-left py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground">Issuer Common Name ↕</th>}
+                {!isAgentView && visibleColumns.has('algorithm') && <th className="text-left py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground">Algorithm ↕</th>}
                 {visibleColumns.has('owner') && <th className="text-left py-2 px-2 font-medium text-muted-foreground">Owner</th>}
-                {visibleColumns.has('team') && <th className="text-left py-2 px-2 font-medium text-muted-foreground">Team</th>}
+                {isAgentView && <th className="text-left py-2 px-2 font-medium text-muted-foreground">Permission Risk</th>}
+                {isAgentView && <th className="text-left py-2 px-2 font-medium text-muted-foreground">Services</th>}
+                {isAgentView && <th className="text-left py-2 px-2 font-medium text-muted-foreground">Actions/Day</th>}
+                {!isAgentView && visibleColumns.has('team') && <th className="text-left py-2 px-2 font-medium text-muted-foreground">Team</th>}
                 {visibleColumns.has('env') && <th className="text-left py-2 px-2 font-medium text-muted-foreground">Env</th>}
                 {visibleColumns.has('expiry') && <th className="text-left py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground">Valid To (GMT) ↕</th>}
                 {visibleColumns.has('days') && <th className="text-left py-2 px-2 font-medium text-muted-foreground">Days</th>}
                 {visibleColumns.has('status') && <th className="text-left py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground">Status ↕</th>}
-                {visibleColumns.has('pqcRisk') && <th className="text-left py-2 px-2 font-medium text-muted-foreground">PQC Risk</th>}
                 {visibleColumns.has('actions') && <th className="text-left py-2 px-2 font-medium text-muted-foreground">Actions</th>}
               </tr>
             </thead>
             <tbody>
               {filtered.map(asset => {
                 const quickActions = getQuickActions(asset);
+                const agentRiskColors: Record<string, string> = {
+                  'Over-privileged': 'bg-coral/10 text-coral',
+                  'Right-sized': 'bg-teal/10 text-teal',
+                  'Minimal': 'bg-muted text-muted-foreground',
+                };
                 return (
                   <tr key={asset.id} className="border-b border-border hover:bg-secondary/30 cursor-pointer transition-colors" onClick={() => { setSelectedAsset(asset); setDrawerTab('overview'); }}>
                     <td className="py-2 px-2" onClick={e => e.stopPropagation()}>
                       <input type="checkbox" checked={selectedRows.has(asset.id)} onChange={() => toggleRow(asset.id)} className="rounded" />
                     </td>
-                    <td className="py-2 px-1 text-muted-foreground">▸</td>
+                    <td className="py-2 px-1 text-muted-foreground">{isAgentView ? <Bot className="w-3 h-3 text-teal" /> : '▸'}</td>
                     {visibleColumns.has('name') && <td className="py-2 px-2 font-medium text-foreground max-w-[200px] truncate">{asset.name}</td>}
-                    {visibleColumns.has('type') && <td className="py-2 px-2 text-muted-foreground">{asset.type}</td>}
-                    {visibleColumns.has('caIssuer') && <td className="py-2 px-2 text-muted-foreground truncate max-w-[140px]">{asset.caIssuer}</td>}
-                    {visibleColumns.has('algorithm') && <td className="py-2 px-2 text-muted-foreground">{asset.algorithm}</td>}
+                    {!isAgentView && visibleColumns.has('type') && <td className="py-2 px-2 text-muted-foreground">{asset.type}</td>}
+                    {isAgentView && <td className="py-2 px-2"><span className="inline-flex items-center gap-1 text-xs text-foreground"><Bot className="w-3 h-3 text-muted-foreground" />{asset.agentMeta?.agentType || 'Unknown'}</span></td>}
+                    {isAgentView && <td className="py-2 px-2 text-muted-foreground text-[10px]">{asset.agentMeta?.framework || '—'}</td>}
+                    {!isAgentView && visibleColumns.has('caIssuer') && <td className="py-2 px-2 text-muted-foreground truncate max-w-[140px]">{asset.caIssuer}</td>}
+                    {!isAgentView && visibleColumns.has('algorithm') && <td className="py-2 px-2 text-muted-foreground">{asset.algorithm}</td>}
                     {visibleColumns.has('owner') && <td className="py-2 px-2 text-muted-foreground">{asset.owner}</td>}
-                    {visibleColumns.has('team') && <td className="py-2 px-2 text-muted-foreground truncate max-w-[120px]">{asset.team}</td>}
+                    {isAgentView && <td className="py-2 px-2"><span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${agentRiskColors[asset.agentMeta?.permissionRisk || ''] || 'bg-muted text-muted-foreground'}`}>{asset.agentMeta?.permissionRisk || '—'}</span></td>}
+                    {isAgentView && <td className="py-2 px-2 text-muted-foreground text-[10px]">{asset.agentMeta?.servicesAccessed?.length || 0} services</td>}
+                    {isAgentView && <td className="py-2 px-2 text-muted-foreground text-[10px]">{asset.agentMeta?.actionsPerDay?.toLocaleString() || '—'}</td>}
+                    {!isAgentView && visibleColumns.has('team') && <td className="py-2 px-2 text-muted-foreground truncate max-w-[120px]">{asset.team}</td>}
                     {visibleColumns.has('env') && <td className="py-2 px-2"><EnvBadge env={asset.environment} /></td>}
                     {visibleColumns.has('expiry') && <td className="py-2 px-2 text-muted-foreground">{asset.expiryDate}</td>}
                     {visibleColumns.has('days') && <td className="py-2 px-2"><DaysToExpiry days={asset.daysToExpiry} /></td>}
                     {visibleColumns.has('status') && <td className="py-2 px-2"><StatusBadge status={asset.status} /></td>}
-                    {visibleColumns.has('pqcRisk') && <td className="py-2 px-2"><PQCBadge risk={asset.pqcRisk} /></td>}
                     {visibleColumns.has('actions') && (
                       <td className="py-2 px-2" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center gap-1">
@@ -342,6 +356,77 @@ export default function InventoryPage() {
                       ))}
                     </div>
                   </div>
+                )}
+
+                {/* AI Agent Identity — Token Security style */}
+                {selectedAsset.type === 'AI Agent Token' && selectedAsset.agentMeta && (
+                  <>
+                    <div className="bg-secondary/50 rounded-lg p-4">
+                      <h4 className="text-xs font-semibold mb-3 flex items-center gap-2">
+                        <Bot className="w-4 h-4 text-teal" /> Agent Identity
+                      </h4>
+                      <div className="grid grid-cols-2 gap-3 text-xs">
+                        <div><p className="text-muted-foreground mb-0.5">Agent Type</p><p className="font-medium">{selectedAsset.agentMeta.agentType}</p></div>
+                        <div><p className="text-muted-foreground mb-0.5">Framework</p><p className="font-medium">{selectedAsset.agentMeta.framework}</p></div>
+                        <div><p className="text-muted-foreground mb-0.5">Last Activity</p><p className="font-medium">{selectedAsset.agentMeta.lastActivity}</p></div>
+                        <div><p className="text-muted-foreground mb-0.5">Actions / Day</p><p className="font-medium">{selectedAsset.agentMeta.actionsPerDay.toLocaleString()}</p></div>
+                      </div>
+                    </div>
+
+                    <div className="bg-secondary/50 rounded-lg p-4">
+                      <h4 className="text-xs font-semibold mb-3 flex items-center gap-2">
+                        <Lock className="w-4 h-4 text-teal" /> Permissions & Access
+                        <span className={`ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                          selectedAsset.agentMeta.permissionRisk === 'Over-privileged' ? 'bg-coral/10 text-coral' :
+                          selectedAsset.agentMeta.permissionRisk === 'Right-sized' ? 'bg-teal/10 text-teal' : 'bg-muted text-muted-foreground'
+                        }`}>
+                          {selectedAsset.agentMeta.permissionRisk === 'Over-privileged' && <AlertTriangle className="w-3 h-3 mr-1" />}
+                          {selectedAsset.agentMeta.permissionRisk}
+                        </span>
+                      </h4>
+                      <div className="space-y-2">
+                        <div>
+                          <p className="text-[10px] text-muted-foreground mb-1">Services Accessed ({selectedAsset.agentMeta.servicesAccessed.length})</p>
+                          <div className="flex flex-wrap gap-1">
+                            {selectedAsset.agentMeta.servicesAccessed.map(s => (
+                              <span key={s} className="px-2 py-0.5 rounded bg-muted text-[10px] text-foreground">{s}</span>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-muted-foreground mb-1">Permissions ({selectedAsset.agentMeta.permissions.length})</p>
+                          <div className="flex flex-wrap gap-1">
+                            {selectedAsset.agentMeta.permissions.map(p => (
+                              <span key={p} className="px-2 py-0.5 rounded bg-muted text-[10px] font-mono text-foreground">{p}</span>
+                            ))}
+                          </div>
+                        </div>
+                        {selectedAsset.agentMeta.mcpTools && (
+                          <div>
+                            <p className="text-[10px] text-muted-foreground mb-1">MCP Tools ({selectedAsset.agentMeta.mcpTools.length})</p>
+                            <div className="flex flex-wrap gap-1">
+                              {selectedAsset.agentMeta.mcpTools.map(t => (
+                                <span key={t} className="px-2 py-0.5 rounded bg-teal/10 text-[10px] font-mono text-teal">{t}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {selectedAsset.agentMeta.permissionRisk === 'Over-privileged' && (
+                      <div className="bg-coral/5 border border-coral/20 rounded-lg p-3">
+                        <p className="text-xs font-semibold text-coral mb-1 flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" /> Over-Privileged Agent</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          This agent has {selectedAsset.agentMeta.permissions.length} permissions across {selectedAsset.agentMeta.servicesAccessed.length} services.
+                          Recommend right-sizing to least-privilege access based on observed behavior patterns.
+                        </p>
+                        <button onClick={() => toast.success('Right-size permissions workflow created')} className="text-[10px] text-teal font-medium mt-2 hover:underline">
+                          Right-size permissions →
+                        </button>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {/* Dependency map */}
