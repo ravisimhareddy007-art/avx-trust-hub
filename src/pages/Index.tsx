@@ -46,10 +46,6 @@ function PageRouter() {
     'core-services': <CoreServicesPage />,
     'trustops': <TrustOpsPage />,
     'quantum': <QuantumPosturePage />,
-    'user-management': <SettingsPage initialTab="users" />,
-    'licenses': <SettingsPage initialTab="licenses" />,
-    'audit-log': <SettingsPage initialTab="audit" />,
-    'reporting': <SettingsPage initialTab="audit" />,
   };
 
   return (

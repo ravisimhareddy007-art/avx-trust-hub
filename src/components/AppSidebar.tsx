@@ -29,15 +29,7 @@ const navItems: NavItem[] = [
   { id: 'policy-builder', label: 'POLICIES', icon: ScrollText, page: 'policy-builder' },
   { id: 'remediation', label: 'REMEDIATION', icon: Wrench, page: 'remediation' },
   { id: 'integrations', label: 'INTEGRATIONS', icon: Link2, page: 'integrations' },
-  { id: 'core-services', label: 'CORE SERVICES', icon: Cog, page: 'core-services' },
-  {
-    id: 'admin-section', label: 'ADMINISTRATION', icon: Shield, children: [
-      { id: 'user-management', label: 'User Management' },
-      { id: 'licenses', label: 'Licenses' },
-      { id: 'audit-log', label: 'Audit Log' },
-      { id: 'reporting', label: 'Reports' },
-    ]
-  },
+  { id: 'core-services', label: 'PLATFORM CORE', icon: Cog, page: 'core-services' },
 ];
 
 const personaOptions: { value: Persona; label: string }[] = [
