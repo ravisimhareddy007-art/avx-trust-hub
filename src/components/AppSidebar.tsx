@@ -2,16 +2,16 @@ import React, { useState } from 'react';
 import { usePersona, Persona } from '@/context/PersonaContext';
 import { useNav } from '@/context/NavigationContext';
 import {
-  LayoutDashboard, Search, Package, Shield, Activity,
-  ChevronDown, ChevronRight, Users, Eye,
-  Link2, Lock, Bell, ScrollText, Cog, Wrench
+  LayoutDashboard, Search, Package, Shield,
+  ChevronDown, ChevronRight, Users,
+  Link2, Lock, ScrollText, Cog, Wrench
 } from 'lucide-react';
 
 interface NavItem {
   id: string;
   label: string;
   icon: React.ElementType;
-  children?: { id: string; label: string }[];
+  children?: { id: string; label: string; page?: string }[];
   page?: string;
 }
 
@@ -20,23 +20,23 @@ const navItems: NavItem[] = [
   { id: 'discovery', label: 'DISCOVERY', icon: Search, page: 'discovery' },
   {
     id: 'inventory-section', label: 'INVENTORY', icon: Package, children: [
-      { id: 'inventory', label: 'All Assets' },
-      { id: 'inventory-tls', label: 'TLS Certificates' },
-      { id: 'inventory-ssh', label: 'SSH Keys' },
-      { id: 'inventory-codesign', label: 'Code Signing' },
-      { id: 'inventory-k8s', label: 'K8s Workload Certs' },
-      { id: 'inventory-keys', label: 'Encryption Keys' },
-      { id: 'inventory-ai', label: 'AI Agent Tokens' },
+      { id: 'inventory-all', label: 'All Assets', page: 'inventory' },
+      { id: 'inventory-tls', label: 'TLS Certificates', page: 'inventory' },
+      { id: 'inventory-ssh', label: 'SSH Keys', page: 'inventory' },
+      { id: 'inventory-sshcert', label: 'SSH Certificates', page: 'inventory' },
+      { id: 'inventory-codesign', label: 'Code Signing', page: 'inventory' },
+      { id: 'inventory-k8s', label: 'K8s Workload Certs', page: 'inventory' },
+      { id: 'inventory-ai', label: 'AI Agent Tokens', page: 'inventory' },
     ]
   },
   { id: 'policy-builder', label: 'POLICIES', icon: ScrollText, page: 'policy-builder' },
   {
     id: 'remediation-section', label: 'REMEDIATION', icon: Wrench, children: [
-      { id: 'remediation', label: 'All Remediation' },
-      { id: 'remediation-tls', label: 'TLS Certificates' },
-      { id: 'remediation-ssh', label: 'SSH Keys' },
-      { id: 'remediation-codesign', label: 'Code Signing' },
-      { id: 'remediation-keys', label: 'Encryption Keys' },
+      { id: 'remediation-all', label: 'All Remediation', page: 'remediation' },
+      { id: 'remediation-tls', label: 'TLS Certificates', page: 'remediation' },
+      { id: 'remediation-ssh', label: 'SSH Keys', page: 'remediation' },
+      { id: 'remediation-sshcert', label: 'SSH Certificates', page: 'remediation' },
+      { id: 'remediation-codesign', label: 'Code Signing', page: 'remediation' },
     ]
   },
   { id: 'integrations', label: 'INTEGRATIONS', icon: Link2, page: 'integrations' },
@@ -62,6 +62,7 @@ export default function AppSidebar() {
   const { currentPage, setCurrentPage } = useNav();
   const [expandedGroups, setExpandedGroups] = useState<string[]>(['inventory-section']);
   const [personaOpen, setPersonaOpen] = useState(false);
+  const [activeNavId, setActiveNavId] = useState<string>('dashboard');
 
   const toggleGroup = (id: string) => {
     setExpandedGroups(prev =>
@@ -69,36 +70,14 @@ export default function AppSidebar() {
     );
   };
 
-  const handleNavClick = (id: string) => {
-    // Inventory sub-filters
-    const inventoryMap: Record<string, string> = {
-      'inventory-tls': 'TLS Certificate',
-      'inventory-ssh': 'SSH Key',
-      'inventory-codesign': 'Code-Signing Certificate',
-      'inventory-k8s': 'K8s Workload Cert',
-      'inventory-keys': 'Encryption Key',
-      'inventory-ai': 'AI Agent Token',
-    };
-    if (inventoryMap[id]) {
-      setCurrentPage('inventory');
-      return;
-    }
-    // Remediation sub-filters
-    const remediationMap: Record<string, string> = {
-      'remediation-tls': 'TLS Certificate',
-      'remediation-ssh': 'SSH Key',
-      'remediation-codesign': 'Code-Signing Certificate',
-      'remediation-keys': 'Encryption Key',
-    };
-    if (remediationMap[id]) {
-      setCurrentPage('remediation');
-      return;
-    }
-    setCurrentPage(id);
+  const handleNavClick = (id: string, page?: string) => {
+    setActiveNavId(id);
+    const targetPage = page || id;
+    setCurrentPage(targetPage);
   };
 
-  const isActive = (id: string) => currentPage === id;
-  const isChildActive = (section: NavItem) => section.children?.some(c => isActive(c.id));
+  const isActive = (id: string) => activeNavId === id;
+  const isChildActive = (section: NavItem) => section.children?.some(c => activeNavId === c.id);
 
   return (
     <div className="w-56 min-h-screen bg-navy flex flex-col border-r border-navy-lighter flex-shrink-0">
@@ -164,7 +143,7 @@ export default function AppSidebar() {
                 {expandedGroups.includes(item.id) && (
                   <div className="ml-4 mt-0.5 space-y-0.5 border-l border-navy-lighter pl-3">
                     {item.children.map(child => (
-                      <button key={child.id} onClick={() => handleNavClick(child.id)}
+                      <button key={child.id} onClick={() => handleNavClick(child.id, child.page)}
                         className={`w-full text-left px-3 py-1.5 rounded-md text-xs transition-colors ${
                           isActive(child.id) ? 'bg-teal/10 text-teal font-medium' : 'text-sidebar-foreground hover:bg-navy-light hover:text-primary-foreground'
                         }`}>
@@ -175,9 +154,9 @@ export default function AppSidebar() {
                 )}
               </>
             ) : (
-              <button onClick={() => handleNavClick(item.page || item.id)}
+              <button onClick={() => handleNavClick(item.id, item.page)}
                 className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-[11px] font-semibold uppercase tracking-wide transition-colors ${
-                  currentPage === (item.page || item.id) ? 'text-teal' : 'text-sidebar-foreground hover:text-primary-foreground'
+                  isActive(item.id) ? 'text-teal' : 'text-sidebar-foreground hover:text-primary-foreground'
                 }`}>
                 <item.icon className="w-4 h-4" />
                 <span>{item.label}</span>
