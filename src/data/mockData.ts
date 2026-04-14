@@ -85,13 +85,12 @@ export const violationData = [
 ];
 
 export const assetTypeDistribution = [
-  { name: 'TLS Certificates', value: 18420, color: 'hsl(160, 70%, 37%)' },
-  { name: 'SSH Keys', value: 12350, color: 'hsl(225, 40%, 50%)' },
-  { name: 'SSH Certificates', value: 3200, color: 'hsl(245, 38%, 50%)' },
-  { name: 'Code-Signing', value: 890, color: 'hsl(15, 72%, 52%)' },
-  { name: 'K8s Workload Certs', value: 8100, color: 'hsl(38, 78%, 41%)' },
-  { name: 'Encryption Keys', value: 2800, color: 'hsl(280, 50%, 50%)' },
-  { name: 'AI Agent Tokens', value: 1622, color: 'hsl(200, 70%, 50%)' },
+  { name: 'TLS Certificates', value: 1842000, color: 'hsl(160, 70%, 37%)' },
+  { name: 'SSH Keys', value: 1235000, color: 'hsl(225, 40%, 50%)' },
+  { name: 'SSH Certificates', value: 320000, color: 'hsl(245, 38%, 50%)' },
+  { name: 'Code-Signing', value: 18420, color: 'hsl(15, 72%, 52%)' },
+  { name: 'K8s Workload Certs', value: 810000, color: 'hsl(38, 78%, 41%)' },
+  { name: 'AI Agent Tokens', value: 472000, color: 'hsl(200, 70%, 50%)' },
 ];
 
 export const compliancePosture = [
@@ -196,18 +195,18 @@ export const customPolicies = [
 
 export const connectors = {
   ca: [
-    { name: 'DigiCert', status: 'connected', lastSync: '15 min ago', assets: 8420, color: 'hsl(160, 70%, 37%)' },
-    { name: 'Entrust', status: 'connected', lastSync: '30 min ago', assets: 3200, color: 'hsl(160, 70%, 37%)' },
-    { name: 'MSCA Enterprise', status: 'connected', lastSync: '1 hour ago', assets: 2100, color: 'hsl(160, 70%, 37%)' },
-    { name: "Let's Encrypt", status: 'connected', lastSync: '5 min ago', assets: 12400, color: 'hsl(160, 70%, 37%)' },
+    { name: 'DigiCert', status: 'connected', lastSync: '15 min ago', assets: 842000, color: 'hsl(160, 70%, 37%)' },
+    { name: 'Entrust', status: 'connected', lastSync: '30 min ago', assets: 320000, color: 'hsl(160, 70%, 37%)' },
+    { name: 'MSCA Enterprise', status: 'connected', lastSync: '1 hour ago', assets: 210000, color: 'hsl(160, 70%, 37%)' },
+    { name: "Let's Encrypt", status: 'connected', lastSync: '5 min ago', assets: 1240000, color: 'hsl(160, 70%, 37%)' },
     { name: 'GlobalSign', status: 'disconnected', lastSync: 'Never', assets: 0, color: 'hsl(220, 9%, 46%)' },
   ],
   cloud: [
-    { name: 'AWS ACM', status: 'connected', lastSync: '10 min ago', assets: 4200 },
-    { name: 'Azure Key Vault', status: 'connected', lastSync: '20 min ago', assets: 2800 },
-    { name: 'GCP CAS', status: 'connected', lastSync: '45 min ago', assets: 1500 },
-    { name: 'HashiCorp Vault', status: 'connected', lastSync: '5 min ago', assets: 890 },
-    { name: 'AWS CloudHSM', status: 'connected', lastSync: '1 hour ago', assets: 340 },
+    { name: 'AWS ACM', status: 'connected', lastSync: '10 min ago', assets: 420000 },
+    { name: 'Azure Key Vault', status: 'connected', lastSync: '20 min ago', assets: 280000 },
+    { name: 'GCP CAS', status: 'connected', lastSync: '45 min ago', assets: 150000 },
+    { name: 'HashiCorp Vault', status: 'connected', lastSync: '5 min ago', assets: 89000 },
+    { name: 'AWS CloudHSM', status: 'connected', lastSync: '1 hour ago', assets: 34000 },
     { name: 'Thales CipherTrust', status: 'disconnected', lastSync: 'Never', assets: 0 },
   ],
   itsm: [
@@ -217,8 +216,8 @@ export const connectors = {
     { name: 'Slack', status: 'connected', lastSync: '1 min ago', assets: 0 },
   ],
   infrastructure: [
-    { name: 'F5 BIG-IP', status: 'connected', lastSync: '30 min ago', assets: 1200 },
-    { name: 'NGINX', status: 'connected', lastSync: '15 min ago', assets: 890 },
+    { name: 'F5 BIG-IP', status: 'connected', lastSync: '30 min ago', assets: 120000 },
+    { name: 'NGINX', status: 'connected', lastSync: '15 min ago', assets: 89000 },
     { name: 'Citrix ADC', status: 'disconnected', lastSync: 'Never', assets: 0 },
     { name: 'DNS/DDI', status: 'connected', lastSync: '1 hour ago', assets: 0 },
     { name: 'WAF', status: 'connected', lastSync: '20 min ago', assets: 0 },
@@ -227,11 +226,11 @@ export const connectors = {
     { name: 'Jenkins', status: 'connected', lastSync: '10 min ago', assets: 0 },
     { name: 'GitHub Actions', status: 'connected', lastSync: '5 min ago', assets: 0 },
     { name: 'GitLab', status: 'disconnected', lastSync: 'Never', assets: 0 },
-    { name: 'Kubernetes API', status: 'connected', lastSync: '1 min ago', assets: 8100 },
+    { name: 'Kubernetes API', status: 'connected', lastSync: '1 min ago', assets: 810000 },
   ],
   hsm: [
-    { name: 'Thales Luna', status: 'connected', lastSync: '2 hours ago', assets: 220 },
-    { name: 'AWS CloudHSM', status: 'connected', lastSync: '1 hour ago', assets: 340 },
+    { name: 'Thales Luna', status: 'connected', lastSync: '2 hours ago', assets: 22000 },
+    { name: 'AWS CloudHSM', status: 'connected', lastSync: '1 hour ago', assets: 34000 },
   ],
 };
 
