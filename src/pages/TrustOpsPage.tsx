@@ -95,7 +95,7 @@ export default function TrustOpsPage() {
                     {action.assignee}
                   </div>
                   <span>·</span>
-                  <span className={action.dueDate <= '2026-04-15' ? 'text-coral font-medium' : ''}}>Due: {action.dueDate}</span>
+                  <span className={action.dueDate <= '2026-04-15' ? 'text-coral font-medium' : ''}>Due: {action.dueDate}</span>
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => toast.info(`Reassigning ${action.asset}`)} className="text-[10px] px-2 py-1 rounded border border-border text-muted-foreground hover:bg-muted">Reassign</button>
