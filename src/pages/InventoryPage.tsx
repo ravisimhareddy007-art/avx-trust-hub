@@ -2,10 +2,19 @@ import React, { useState, useMemo } from 'react';
 import { useNav } from '@/context/NavigationContext';
 import { mockAssets, CryptoAsset } from '@/data/mockData';
 import { StatusBadge, EnvBadge, PQCBadge, DaysToExpiry, Drawer, SeverityBadge, Modal } from '@/components/shared/UIComponents';
-import { Download, Search, Sparkles, Settings, RefreshCw, RotateCcw, XCircle, Shield, User, Workflow, Key, ExternalLink } from 'lucide-react';
+import { Download, Search, Sparkles, Settings, RefreshCw, RotateCcw, XCircle, Shield, User, Workflow, Key, ExternalLink, Monitor, Server } from 'lucide-react';
 import { toast } from 'sonner';
 
 const typeFilters = ['All', 'TLS Certificate', 'SSH Key', 'SSH Certificate', 'Code-Signing Certificate', 'K8s Workload Cert', 'Encryption Key', 'AI Agent Token'];
+
+function getQuickActions(asset: CryptoAsset) {
+  const isSSH = asset.type === 'SSH Key' || asset.type === 'SSH Certificate';
+  const isTLS = asset.type === 'TLS Certificate' || asset.type === 'Code-Signing Certificate';
+  const isKey = asset.type === 'Encryption Key' || asset.type === 'AI Agent Token';
+  if (isTLS) return [{ label: 'Renew', icon: RefreshCw }, { label: 'Revoke', icon: XCircle }];
+  if (isSSH || isKey) return [{ label: 'Rotate', icon: RotateCcw }, { label: 'Revoke', icon: XCircle }];
+  return [{ label: 'Renew', icon: RefreshCw }, { label: 'Revoke', icon: XCircle }];
+}
 
 export default function InventoryPage() {
   const { filters, setFilters } = useNav();
@@ -49,6 +58,8 @@ export default function InventoryPage() {
     }
   };
 
+  const isSSHType = (type: string) => type === 'SSH Key' || type === 'SSH Certificate';
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -57,7 +68,7 @@ export default function InventoryPage() {
           {Object.keys(filters).length > 0 && (
             <button onClick={() => setFilters({})} className="text-xs text-coral hover:underline">Clear filters</button>
           )}
-          <button onClick={() => toast.success('Exporting CSV...')} className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-muted text-xs text-foreground hover:bg-muted/80">
+          <button onClick={() => toast.success('Exporting CSV...')} className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-secondary text-xs text-foreground hover:bg-secondary/80">
             <Download className="w-3 h-3" /> Export
           </button>
         </div>
@@ -66,13 +77,13 @@ export default function InventoryPage() {
       {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search assets... (Tab for AI mode)" className="w-full pl-9 pr-4 py-2 bg-card border border-border rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-teal" />
+        <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search assets... (Tab for AI mode)" className="w-full pl-9 pr-4 py-2 bg-card border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal" />
       </div>
 
       {/* Type filter chips */}
       <div className="flex gap-1.5 overflow-x-auto scrollbar-thin pb-1">
         {typeFilters.map(t => (
-          <button key={t} onClick={() => { setTypeFilter(t); if (t === 'All') setFilters({}); }} className={`px-3 py-1 rounded-full text-[10px] font-medium whitespace-nowrap transition-colors ${typeFilter === t ? 'bg-teal text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}>
+          <button key={t} onClick={() => { setTypeFilter(t); if (t === 'All') setFilters({}); }} className={`px-3 py-1 rounded-full text-[10px] font-medium whitespace-nowrap transition-colors ${typeFilter === t ? 'bg-teal text-primary-foreground' : 'bg-secondary text-muted-foreground hover:bg-secondary/80'}`}>
             {t === 'All' ? 'All' : t} {t !== 'All' && `(${mockAssets.filter(a => a.type === t).length})`}
           </button>
         ))}
@@ -91,8 +102,8 @@ export default function InventoryPage() {
       {/* Table */}
       <div className="bg-card rounded-lg border border-border overflow-hidden">
         <div className="overflow-x-auto scrollbar-thin">
-          <table className="w-full text-xs min-w-[1400px]">
-            <thead className="bg-muted/50">
+          <table className="w-full text-xs min-w-[1500px]">
+            <thead className="bg-secondary/50">
               <tr className="border-b border-border">
                 <th className="w-8 py-2 px-2"><input type="checkbox" onChange={e => setSelectedRows(e.target.checked ? new Set(filtered.map(a => a.id)) : new Set())} className="rounded" /></th>
                 <th className="text-left py-2 px-2 font-medium text-muted-foreground">Asset Name</th>
@@ -104,43 +115,43 @@ export default function InventoryPage() {
                 <th className="text-left py-2 px-2 font-medium text-muted-foreground">Env</th>
                 <th className="text-left py-2 px-2 font-medium text-muted-foreground">Expiry</th>
                 <th className="text-left py-2 px-2 font-medium text-muted-foreground">Days</th>
-                <th className="text-left py-2 px-2 font-medium text-muted-foreground">Auto</th>
                 <th className="text-left py-2 px-2 font-medium text-muted-foreground">Status</th>
                 <th className="text-left py-2 px-2 font-medium text-muted-foreground">PQC Risk</th>
-                <th className="text-left py-2 px-2 font-medium text-muted-foreground">Violations</th>
-                <th className="text-left py-2 px-2 font-medium text-muted-foreground">Deps</th>
+                <th className="text-left py-2 px-2 font-medium text-muted-foreground">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map(asset => (
-                <tr key={asset.id} className="border-b border-border hover:bg-muted/30 cursor-pointer transition-colors" onClick={() => { setSelectedAsset(asset); setDrawerTab('overview'); }}>
-                  <td className="py-2 px-2" onClick={e => e.stopPropagation()}>
-                    <input type="checkbox" checked={selectedRows.has(asset.id)} onChange={() => toggleRow(asset.id)} className="rounded" />
-                  </td>
-                  <td className="py-2 px-2 font-medium text-foreground max-w-[200px] truncate">{asset.name}</td>
-                  <td className="py-2 px-2 text-muted-foreground">{asset.type}</td>
-                  <td className="py-2 px-2 text-muted-foreground truncate max-w-[120px]">{asset.caIssuer}</td>
-                  <td className="py-2 px-2 text-muted-foreground">{asset.algorithm}</td>
-                  <td className="py-2 px-2 text-muted-foreground">{asset.owner}</td>
-                  <td className="py-2 px-2 text-muted-foreground truncate max-w-[120px]">{asset.team}</td>
-                  <td className="py-2 px-2"><EnvBadge env={asset.environment} /></td>
-                  <td className="py-2 px-2 text-muted-foreground">{asset.expiryDate}</td>
-                  <td className="py-2 px-2"><DaysToExpiry days={asset.daysToExpiry} /></td>
-                  <td className="py-2 px-2" onClick={e => e.stopPropagation()}>
-                    <button onClick={() => toast.success(`Auto-renewal ${asset.autoRenewal ? 'disabled' : 'enabled'}`)} className={`text-[10px] px-1.5 py-0.5 rounded ${asset.autoRenewal ? 'bg-teal/10 text-teal' : 'bg-muted text-muted-foreground'}`}>
-                      {asset.autoRenewal ? 'Yes' : 'No'}
-                    </button>
-                  </td>
-                  <td className="py-2 px-2"><StatusBadge status={asset.status} /></td>
-                  <td className="py-2 px-2"><PQCBadge risk={asset.pqcRisk} /></td>
-                  <td className="py-2 px-2">
-                    {asset.policyViolations > 0 ? (
-                      <span className="text-coral font-medium">{asset.policyViolations}</span>
-                    ) : <span className="text-muted-foreground">0</span>}
-                  </td>
-                  <td className="py-2 px-2 text-muted-foreground">{asset.dependencyCount}</td>
-                </tr>
-              ))}
+              {filtered.map(asset => {
+                const quickActions = getQuickActions(asset);
+                return (
+                  <tr key={asset.id} className="border-b border-border hover:bg-secondary/30 cursor-pointer transition-colors" onClick={() => { setSelectedAsset(asset); setDrawerTab('overview'); }}>
+                    <td className="py-2 px-2" onClick={e => e.stopPropagation()}>
+                      <input type="checkbox" checked={selectedRows.has(asset.id)} onChange={() => toggleRow(asset.id)} className="rounded" />
+                    </td>
+                    <td className="py-2 px-2 font-medium text-foreground max-w-[200px] truncate">{asset.name}</td>
+                    <td className="py-2 px-2 text-muted-foreground">{asset.type}</td>
+                    <td className="py-2 px-2 text-muted-foreground truncate max-w-[120px]">{asset.caIssuer}</td>
+                    <td className="py-2 px-2 text-muted-foreground">{asset.algorithm}</td>
+                    <td className="py-2 px-2 text-muted-foreground">{asset.owner}</td>
+                    <td className="py-2 px-2 text-muted-foreground truncate max-w-[120px]">{asset.team}</td>
+                    <td className="py-2 px-2"><EnvBadge env={asset.environment} /></td>
+                    <td className="py-2 px-2 text-muted-foreground">{asset.expiryDate}</td>
+                    <td className="py-2 px-2"><DaysToExpiry days={asset.daysToExpiry} /></td>
+                    <td className="py-2 px-2"><StatusBadge status={asset.status} /></td>
+                    <td className="py-2 px-2"><PQCBadge risk={asset.pqcRisk} /></td>
+                    <td className="py-2 px-2" onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center gap-1">
+                        {quickActions.map(({ label, icon: Icon }) => (
+                          <button key={label} onClick={() => handleAction(label, asset)} className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium bg-teal/10 text-teal hover:bg-teal/20 transition-colors" title={label}>
+                            <Icon className="w-3 h-3" />
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -183,8 +194,35 @@ export default function InventoryPage() {
                     </div>
                   ))}
                 </div>
+
+                {/* SSH Endpoints — only for SSH keys/certs */}
+                {isSSHType(selectedAsset.type) && selectedAsset.sshEndpoints && selectedAsset.sshEndpoints.length > 0 && (
+                  <div className="bg-secondary/50 rounded-lg p-4">
+                    <h4 className="text-xs font-semibold mb-3 flex items-center gap-2">
+                      <Server className="w-4 h-4 text-teal" /> SSH Endpoints
+                    </h4>
+                    <div className="space-y-1">
+                      <div className="grid grid-cols-[80px_1fr_120px_50px_130px] gap-2 text-[10px] font-medium text-muted-foreground pb-1 border-b border-border">
+                        <span>Role</span><span>Host</span><span>IP</span><span>Port</span><span>Last Seen</span>
+                      </div>
+                      {selectedAsset.sshEndpoints.map((ep, i) => (
+                        <div key={i} className="grid grid-cols-[80px_1fr_120px_50px_130px] gap-2 text-[10px] py-1.5 border-b border-border/50">
+                          <span className={`inline-flex items-center gap-1 font-medium ${ep.role === 'client' ? 'text-teal' : 'text-amber'}`}>
+                            {ep.role === 'client' ? <Monitor className="w-3 h-3" /> : <Server className="w-3 h-3" />}
+                            {ep.role === 'client' ? 'Client' : 'Host'}
+                          </span>
+                          <span className="text-foreground font-mono">{ep.host}</span>
+                          <span className="text-muted-foreground font-mono">{ep.ip}</span>
+                          <span className="text-muted-foreground">{ep.port}</span>
+                          <span className="text-muted-foreground">{ep.lastSeen}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Dependency map */}
-                <div className="bg-muted/50 rounded-lg p-4">
+                <div className="bg-secondary/50 rounded-lg p-4">
                   <h4 className="text-xs font-semibold mb-3">Dependency Map</h4>
                   <div className="flex items-center justify-center gap-4">
                     <div className="text-center">
@@ -201,7 +239,7 @@ export default function InventoryPage() {
                     <div className="space-y-2">
                       {['App Server', 'Load Balancer', 'CDN Edge'].slice(0, Math.min(3, selectedAsset.dependencyCount)).map((dep, i) => (
                         <div key={i} className="flex items-center gap-2 cursor-pointer hover:text-teal">
-                          <div className="w-8 h-8 rounded bg-muted border border-border flex items-center justify-center">
+                          <div className="w-8 h-8 rounded bg-secondary border border-border flex items-center justify-center">
                             <ExternalLink className="w-3 h-3 text-muted-foreground" />
                           </div>
                           <span className="text-[10px]">{dep}</span>
@@ -274,14 +312,14 @@ export default function InventoryPage() {
             {drawerTab === 'actions' && (
               <div className="space-y-2">
                 {[
-                  { icon: RefreshCw, label: 'Renew', desc: 'Request renewal from CA', show: ['TLS Certificate', 'Code-Signing Certificate'].includes(selectedAsset.type) },
-                  { icon: RotateCcw, label: 'Rotate', desc: 'Generate new key pair', show: ['SSH Key', 'Encryption Key', 'AI Agent Token'].includes(selectedAsset.type) },
+                  { icon: RefreshCw, label: 'Renew', desc: 'Request renewal from CA', show: ['TLS Certificate', 'Code-Signing Certificate', 'K8s Workload Cert'].includes(selectedAsset.type) },
+                  { icon: RotateCcw, label: 'Rotate', desc: 'Generate new key pair', show: ['SSH Key', 'SSH Certificate', 'Encryption Key', 'AI Agent Token'].includes(selectedAsset.type) },
                   { icon: XCircle, label: 'Revoke', desc: 'Revoke this credential', show: true },
                   { icon: Shield, label: 'Re-issue with PQC', desc: 'Migrate to ML-DSA algorithm', show: selectedAsset.pqcRisk === 'Critical' || selectedAsset.pqcRisk === 'High' },
                   { icon: User, label: 'Assign Owner', desc: 'Assign or change owner', show: true },
                   { icon: Workflow, label: 'Add to Workflow', desc: 'Include in automation workflow', show: true },
                 ].filter(a => a.show).map((action, i) => (
-                  <button key={i} onClick={() => handleAction(action.label, selectedAsset)} className="w-full flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors text-left">
+                  <button key={i} onClick={() => handleAction(action.label, selectedAsset)} className="w-full flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-secondary/50 transition-colors text-left">
                     <action.icon className="w-4 h-4 text-teal" />
                     <div>
                       <p className="text-xs font-medium">{action.label}</p>
@@ -330,7 +368,7 @@ export default function InventoryPage() {
       <Modal open={!!actionModal} onClose={() => setActionModal(null)} title={`Confirm: ${actionModal?.action}`}>
         {actionModal && (
           <div className="space-y-4">
-            <div className="bg-muted rounded-lg p-3">
+            <div className="bg-secondary rounded-lg p-3">
               <p className="text-xs font-medium mb-2">Impact Preview</p>
               <p className="text-[10px] text-muted-foreground">
                 This will affect {actionModal.asset.dependencyCount} applications and services.
@@ -346,7 +384,7 @@ export default function InventoryPage() {
               <p><span className="text-muted-foreground">Dependencies:</span> {actionModal.asset.dependencyCount}</p>
             </div>
             <div className="flex gap-2 justify-end">
-              <button onClick={() => setActionModal(null)} className="px-4 py-2 text-xs rounded-lg border border-border hover:bg-muted">Cancel</button>
+              <button onClick={() => setActionModal(null)} className="px-4 py-2 text-xs rounded-lg border border-border hover:bg-secondary">Cancel</button>
               <button onClick={confirmAction} className="px-4 py-2 text-xs rounded-lg bg-teal text-primary-foreground hover:bg-teal-light">Confirm {actionModal.action}</button>
             </div>
           </div>
