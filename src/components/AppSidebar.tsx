@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Search, Package, Shield, Activity,
   Atom, ChevronDown, ChevronRight, Users, Eye,
   Zap, Link2, BarChart3, ExternalLink, Lock, Bell, FileText,
-  RefreshCw, RotateCcw, PushPin, Key, Settings, ClipboardList,
+  RefreshCw, RotateCcw, Key, Settings, ClipboardList,
   BookOpen, AlertTriangle, Group, ScrollText, Cog
 } from 'lucide-react';
 
