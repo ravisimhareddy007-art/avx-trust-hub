@@ -11,8 +11,7 @@ import InventoryPage from '@/pages/InventoryPage';
 import PolicyBuilderPage from '@/pages/PolicyBuilderPage';
 import TrustOpsPage from '@/pages/TrustOpsPage';
 import QuantumPosturePage from '@/pages/QuantumPosturePage';
-import DiscoveryProfilesPage from '@/pages/DiscoveryProfilesPage';
-import DiscoveryRunsPage from '@/pages/DiscoveryRunsPage';
+import DiscoveryPage from '@/pages/DiscoveryPage';
 import CoreServicesPage from '@/pages/CoreServicesPage';
 import SettingsPage from '@/pages/SettingsPage';
 
@@ -37,8 +36,7 @@ function PageRouter() {
 
   const pages: Record<string, React.ReactNode> = {
     'dashboards': <DashboardPage />,
-    'discovery-profiles': <DiscoveryProfilesPage />,
-    'discovery-runs': <DiscoveryRunsPage />,
+    'discovery': <DiscoveryPage />,
     'inventory': <InventoryPage />,
     'policy-builder': <PolicyBuilderPage />,
     'trustops': <TrustOpsPage />,
