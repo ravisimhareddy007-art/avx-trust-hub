@@ -96,7 +96,9 @@ export default function InventoryPage() {
     <div className="space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">Inventory</h1>
+        <div>
+          <span className="text-sm text-muted-foreground">{filtered.length} of {mockAssets.length} assets</span>
+        </div>
         <div className="flex items-center gap-2 text-xs">
           {Object.keys(filters).length > 0 && (
             <button onClick={() => setFilters({})} className="text-xs text-coral hover:underline">Clear filters</button>
@@ -104,30 +106,40 @@ export default function InventoryPage() {
         </div>
       </div>
 
-      {/* CERT+ style toolbar */}
+      {/* Tabs like reference image */}
+      <div className="flex items-center gap-0 border-b border-border">
+        {typeFilters.map(t => {
+          const count = t === 'All' ? mockAssets.length : mockAssets.filter(a => a.type === t).length;
+          const shortLabel = t === 'All' ? 'All' : t === 'TLS Certificate' ? 'Certificates' : t === 'SSH Key' ? 'SSH Keys' : t === 'SSH Certificate' ? 'SSH Certs' : t === 'Code-Signing Certificate' ? 'Code Signing' : t === 'K8s Workload Cert' ? 'K8s Certs' : t === 'AI Agent Token' ? 'AI Agents' : t;
+          return (
+            <button
+              key={t}
+              onClick={() => {
+                setTypeFilter(t);
+                if (t === 'All') {
+                  const { type, ...restFilters } = filters;
+                  setFilters(restFilters);
+                } else {
+                  setFilters({ ...filters, type: t });
+                }
+              }}
+              className={`px-4 py-2.5 text-xs font-medium border-b-2 transition-colors whitespace-nowrap flex items-center gap-2 ${
+                typeFilter === t
+                  ? 'border-teal text-teal'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {shortLabel}
+              <span className={`inline-flex items-center justify-center min-w-[20px] px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                typeFilter === t ? 'bg-teal/10 text-teal' : 'bg-muted text-muted-foreground'
+              }`}>{count}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Toolbar */}
       <div className="bg-card rounded-lg border border-border px-3 py-2 flex items-center gap-2 flex-wrap">
-        {/* Groups / Type filter */}
-        <div className="flex items-center gap-1">
-          <span className="text-[10px] font-medium text-teal">Groups</span>
-          <select
-            value={typeFilter}
-            onChange={e => {
-              const nextType = e.target.value;
-              setTypeFilter(nextType);
-              if (nextType === 'All') {
-                const { type, ...restFilters } = filters;
-                setFilters(restFilters);
-              } else {
-                setFilters({ ...filters, type: nextType });
-              }
-            }}
-            className="bg-muted border border-border rounded px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal min-w-[140px]"
-          >
-            {typeFilters.map(t => (
-              <option key={t} value={t}>{t === 'All' ? 'All Assets' : t} {t !== 'All' ? `(${mockAssets.filter(a => a.type === t).length})` : ''}</option>
-            ))}
-          </select>
-        </div>
 
         <div className="w-px h-6 bg-border" />
 
