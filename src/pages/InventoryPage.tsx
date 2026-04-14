@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useNav } from '@/context/NavigationContext';
 import { mockAssets, CryptoAsset } from '@/data/mockData';
 import { StatusBadge, EnvBadge, PQCBadge, DaysToExpiry, Drawer, SeverityBadge, Modal } from '@/components/shared/UIComponents';
-import { Download, Search, Sparkles, Settings, RefreshCw, RotateCcw, XCircle, Shield, User, Workflow, Key, ExternalLink, Monitor, Server } from 'lucide-react';
+import { Download, Search, Sparkles, Settings, RefreshCw, RotateCcw, XCircle, Shield, User, Workflow, Key, ExternalLink, Monitor, Server, ChevronDown, BarChart3 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const typeFilters = ['All', 'TLS Certificate', 'SSH Key', 'SSH Certificate', 'Code-Signing Certificate', 'K8s Workload Cert', 'Encryption Key', 'AI Agent Token'];
@@ -60,48 +60,147 @@ export default function InventoryPage() {
 
   const isSSHType = (type: string) => type === 'SSH Key' || type === 'SSH Certificate';
 
+  const [showColumns, setShowColumns] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set(['name','type','caIssuer','algorithm','owner','env','expiry','days','status','pqcRisk','actions']));
+  const [actionsOpen, setActionsOpen] = useState(false);
+
+  const allColumns = [
+    { id: 'name', label: 'Common Name' },
+    { id: 'type', label: 'Type' },
+    { id: 'caIssuer', label: 'CA / Issuer' },
+    { id: 'algorithm', label: 'Algorithm' },
+    { id: 'owner', label: 'Owner' },
+    { id: 'team', label: 'Team' },
+    { id: 'env', label: 'Environment' },
+    { id: 'expiry', label: 'Valid To' },
+    { id: 'days', label: 'Days' },
+    { id: 'status', label: 'Status' },
+    { id: 'pqcRisk', label: 'PQC Risk' },
+    { id: 'actions', label: 'Actions' },
+  ];
+
+  const toggleColumn = (id: string) => {
+    setVisibleColumns(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">Central Inventory</h1>
-        <div className="flex items-center gap-2">
+        <h1 className="text-xl font-bold">Inventory</h1>
+        <div className="flex items-center gap-2 text-xs">
           {Object.keys(filters).length > 0 && (
             <button onClick={() => setFilters({})} className="text-xs text-coral hover:underline">Clear filters</button>
           )}
-          <button onClick={() => toast.success('Exporting CSV...')} className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-secondary text-xs text-foreground hover:bg-secondary/80">
-            <Download className="w-3 h-3" /> Export
-          </button>
         </div>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search assets... (Tab for AI mode)" className="w-full pl-9 pr-4 py-2 bg-card border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal" />
-      </div>
-
-      {/* Type filter chips */}
-      <div className="flex gap-1.5 overflow-x-auto scrollbar-thin pb-1">
-        {typeFilters.map(t => (
-          <button key={t} onClick={() => { setTypeFilter(t); if (t === 'All') setFilters({}); }} className={`px-3 py-1 rounded-full text-[10px] font-medium whitespace-nowrap transition-colors ${typeFilter === t ? 'bg-teal text-primary-foreground' : 'bg-secondary text-muted-foreground hover:bg-secondary/80'}`}>
-            {t === 'All' ? 'All' : t} {t !== 'All' && `(${mockAssets.filter(a => a.type === t).length})`}
-          </button>
-        ))}
-      </div>
-
-      {/* Bulk actions */}
-      {selectedRows.size > 0 && (
-        <div className="bg-teal/5 border border-teal/20 rounded-lg px-4 py-2 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-medium text-teal">{selectedRows.size} selected</span>
-            {['Bulk Renew', 'Bulk Rotate', 'Bulk Revoke', 'Assign Owner', 'Add to Workflow'].map(action => (
-              <button key={action} onClick={() => {
-                const actionWord = action.replace('Bulk ', '');
-                toast.success(`${actionWord} initiated for ${selectedRows.size} assets`, { description: 'Workflow created — track progress in TrustOps.' });
-                setSelectedRows(new Set());
-              }} className={`text-[10px] px-2.5 py-1 rounded font-medium transition-colors ${action === 'Bulk Revoke' ? 'bg-coral/10 text-coral hover:bg-coral/20' : 'bg-teal/10 text-teal hover:bg-teal/20'}`}>{action}</button>
+      {/* CERT+ style toolbar */}
+      <div className="bg-card rounded-lg border border-border px-3 py-2 flex items-center gap-2 flex-wrap">
+        {/* Groups / Type filter */}
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] font-medium text-teal">Groups</span>
+          <select
+            value={typeFilter}
+            onChange={e => { setTypeFilter(e.target.value); if (e.target.value === 'All') setFilters({}); }}
+            className="bg-muted border border-border rounded px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal min-w-[140px]"
+          >
+            {typeFilters.map(t => (
+              <option key={t} value={t}>{t === 'All' ? 'All Certificates' : t} {t !== 'All' ? `(${mockAssets.filter(a => a.type === t).length})` : ''}</option>
             ))}
-          </div>
+          </select>
+        </div>
+
+        <div className="w-px h-6 bg-border" />
+
+        {/* Search */}
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Type your search and press enter"
+            className="w-full pl-7 pr-3 py-1 bg-muted border border-border rounded text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal"
+          />
+        </div>
+
+        <div className="w-px h-6 bg-border" />
+
+        {/* Actions dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => setActionsOpen(!actionsOpen)}
+            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-foreground hover:bg-secondary rounded transition-colors"
+          >
+            <Settings className="w-3.5 h-3.5" /> Actions <ChevronDown className="w-3 h-3" />
+          </button>
+          {actionsOpen && (
+            <div className="absolute top-full left-0 mt-1 bg-card border border-border rounded-lg shadow-lg z-50 min-w-[160px]">
+              {['Export CSV', 'Bulk Renew', 'Bulk Rotate', 'Bulk Revoke', 'Assign Owner'].map(action => (
+                <button
+                  key={action}
+                  onClick={() => {
+                    setActionsOpen(false);
+                    if (action === 'Export CSV') {
+                      toast.success('Exporting CSV...');
+                    } else if (selectedRows.size > 0) {
+                      toast.success(`${action} initiated for ${selectedRows.size} assets`, { description: 'Workflow created — track in TrustOps.' });
+                      setSelectedRows(new Set());
+                    } else {
+                      toast.info('Select assets first to perform bulk actions');
+                    }
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs hover:bg-secondary transition-colors"
+                >
+                  {action}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="w-px h-6 bg-border" />
+
+        {/* Columns toggle */}
+        <div className="relative">
+          <button
+            onClick={() => setShowColumns(!showColumns)}
+            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-foreground hover:bg-secondary rounded transition-colors"
+          >
+            <BarChart3 className="w-3.5 h-3.5" /> Columns
+          </button>
+          {showColumns && (
+            <div className="absolute top-full right-0 mt-1 bg-card border border-border rounded-lg shadow-lg z-50 p-2 min-w-[160px]">
+              {allColumns.map(col => (
+                <label key={col.id} className="flex items-center gap-2 px-2 py-1.5 text-xs cursor-pointer hover:bg-secondary rounded">
+                  <input type="checkbox" checked={visibleColumns.has(col.id)} onChange={() => toggleColumn(col.id)} className="rounded" />
+                  {col.label}
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="w-px h-6 bg-border" />
+
+        {/* Entry count + pagination */}
+        <span className="text-xs text-muted-foreground">{filtered.length} Entries</span>
+        <div className="flex items-center gap-1 ml-auto">
+          <button className="p-1 text-muted-foreground hover:text-foreground">‹</button>
+          <button className="p-1 text-muted-foreground hover:text-foreground">›</button>
+          <button onClick={() => {}} className="p-1 text-muted-foreground hover:text-foreground"><RefreshCw className="w-3.5 h-3.5" /></button>
+        </div>
+      </div>
+
+      {/* Selection indicator */}
+      {selectedRows.size > 0 && (
+        <div className="bg-teal/5 border border-teal/20 rounded-lg px-4 py-1.5 flex items-center justify-between">
+          <span className="text-xs font-medium text-teal">{selectedRows.size} selected — use Actions menu for bulk operations</span>
           <button onClick={() => setSelectedRows(new Set())} className="text-[10px] text-muted-foreground hover:text-foreground">Clear</button>
         </div>
       )}
@@ -109,22 +208,23 @@ export default function InventoryPage() {
       {/* Table */}
       <div className="bg-card rounded-lg border border-border overflow-hidden">
         <div className="overflow-x-auto scrollbar-thin">
-          <table className="w-full text-xs min-w-[1500px]">
+          <table className="w-full text-xs">
             <thead className="bg-secondary/50">
               <tr className="border-b border-border">
                 <th className="w-8 py-2 px-2"><input type="checkbox" onChange={e => setSelectedRows(e.target.checked ? new Set(filtered.map(a => a.id)) : new Set())} className="rounded" /></th>
-                <th className="text-left py-2 px-2 font-medium text-muted-foreground">Asset Name</th>
-                <th className="text-left py-2 px-2 font-medium text-muted-foreground">Type</th>
-                <th className="text-left py-2 px-2 font-medium text-muted-foreground">CA / Issuer</th>
-                <th className="text-left py-2 px-2 font-medium text-muted-foreground">Algorithm</th>
-                <th className="text-left py-2 px-2 font-medium text-muted-foreground">Owner</th>
-                <th className="text-left py-2 px-2 font-medium text-muted-foreground">Team</th>
-                <th className="text-left py-2 px-2 font-medium text-muted-foreground">Env</th>
-                <th className="text-left py-2 px-2 font-medium text-muted-foreground">Expiry</th>
-                <th className="text-left py-2 px-2 font-medium text-muted-foreground">Days</th>
-                <th className="text-left py-2 px-2 font-medium text-muted-foreground">Status</th>
-                <th className="text-left py-2 px-2 font-medium text-muted-foreground">PQC Risk</th>
-                <th className="text-left py-2 px-2 font-medium text-muted-foreground">Actions</th>
+                <th className="w-6 py-2 px-1"></th>
+                {visibleColumns.has('name') && <th className="text-left py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground">Common Name ↕</th>}
+                {visibleColumns.has('type') && <th className="text-left py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground">Type ↕</th>}
+                {visibleColumns.has('caIssuer') && <th className="text-left py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground">Issuer Common Name ↕</th>}
+                {visibleColumns.has('algorithm') && <th className="text-left py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground">Algorithm ↕</th>}
+                {visibleColumns.has('owner') && <th className="text-left py-2 px-2 font-medium text-muted-foreground">Owner</th>}
+                {visibleColumns.has('team') && <th className="text-left py-2 px-2 font-medium text-muted-foreground">Team</th>}
+                {visibleColumns.has('env') && <th className="text-left py-2 px-2 font-medium text-muted-foreground">Env</th>}
+                {visibleColumns.has('expiry') && <th className="text-left py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground">Valid To (GMT) ↕</th>}
+                {visibleColumns.has('days') && <th className="text-left py-2 px-2 font-medium text-muted-foreground">Days</th>}
+                {visibleColumns.has('status') && <th className="text-left py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground">Status ↕</th>}
+                {visibleColumns.has('pqcRisk') && <th className="text-left py-2 px-2 font-medium text-muted-foreground">PQC Risk</th>}
+                {visibleColumns.has('actions') && <th className="text-left py-2 px-2 font-medium text-muted-foreground">Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -135,27 +235,30 @@ export default function InventoryPage() {
                     <td className="py-2 px-2" onClick={e => e.stopPropagation()}>
                       <input type="checkbox" checked={selectedRows.has(asset.id)} onChange={() => toggleRow(asset.id)} className="rounded" />
                     </td>
-                    <td className="py-2 px-2 font-medium text-foreground max-w-[200px] truncate">{asset.name}</td>
-                    <td className="py-2 px-2 text-muted-foreground">{asset.type}</td>
-                    <td className="py-2 px-2 text-muted-foreground truncate max-w-[120px]">{asset.caIssuer}</td>
-                    <td className="py-2 px-2 text-muted-foreground">{asset.algorithm}</td>
-                    <td className="py-2 px-2 text-muted-foreground">{asset.owner}</td>
-                    <td className="py-2 px-2 text-muted-foreground truncate max-w-[120px]">{asset.team}</td>
-                    <td className="py-2 px-2"><EnvBadge env={asset.environment} /></td>
-                    <td className="py-2 px-2 text-muted-foreground">{asset.expiryDate}</td>
-                    <td className="py-2 px-2"><DaysToExpiry days={asset.daysToExpiry} /></td>
-                    <td className="py-2 px-2"><StatusBadge status={asset.status} /></td>
-                    <td className="py-2 px-2"><PQCBadge risk={asset.pqcRisk} /></td>
-                    <td className="py-2 px-2" onClick={e => e.stopPropagation()}>
-                      <div className="flex items-center gap-1">
-                        {quickActions.map(({ label, icon: Icon }) => (
-                          <button key={label} onClick={() => handleAction(label, asset)} className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium bg-teal/10 text-teal hover:bg-teal/20 transition-colors" title={label}>
-                            <Icon className="w-3 h-3" />
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-                    </td>
+                    <td className="py-2 px-1 text-muted-foreground">▸</td>
+                    {visibleColumns.has('name') && <td className="py-2 px-2 font-medium text-foreground max-w-[200px] truncate">{asset.name}</td>}
+                    {visibleColumns.has('type') && <td className="py-2 px-2 text-muted-foreground">{asset.type}</td>}
+                    {visibleColumns.has('caIssuer') && <td className="py-2 px-2 text-muted-foreground truncate max-w-[140px]">{asset.caIssuer}</td>}
+                    {visibleColumns.has('algorithm') && <td className="py-2 px-2 text-muted-foreground">{asset.algorithm}</td>}
+                    {visibleColumns.has('owner') && <td className="py-2 px-2 text-muted-foreground">{asset.owner}</td>}
+                    {visibleColumns.has('team') && <td className="py-2 px-2 text-muted-foreground truncate max-w-[120px]">{asset.team}</td>}
+                    {visibleColumns.has('env') && <td className="py-2 px-2"><EnvBadge env={asset.environment} /></td>}
+                    {visibleColumns.has('expiry') && <td className="py-2 px-2 text-muted-foreground">{asset.expiryDate}</td>}
+                    {visibleColumns.has('days') && <td className="py-2 px-2"><DaysToExpiry days={asset.daysToExpiry} /></td>}
+                    {visibleColumns.has('status') && <td className="py-2 px-2"><StatusBadge status={asset.status} /></td>}
+                    {visibleColumns.has('pqcRisk') && <td className="py-2 px-2"><PQCBadge risk={asset.pqcRisk} /></td>}
+                    {visibleColumns.has('actions') && (
+                      <td className="py-2 px-2" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center gap-1">
+                          {quickActions.map(({ label, icon: Icon }) => (
+                            <button key={label} onClick={() => handleAction(label, asset)} className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium bg-teal/10 text-teal hover:bg-teal/20 transition-colors" title={label}>
+                              <Icon className="w-3 h-3" />
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 );
               })}

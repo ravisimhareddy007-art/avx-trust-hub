@@ -12,20 +12,19 @@ const aiQueries: Record<string, { filters: Record<string, string>; description: 
 };
 
 const breadcrumbMap: Record<string, string> = {
-  'dashboards': 'Dashboards',
-  'discovery-profiles': 'Discovery > Profiles',
-  'discovery-runs': 'Discovery > Runs',
-  'inventory': 'Inventory',
-  'policy-builder': 'Policy Builder',
-  'trustops': 'TrustOps Center',
-  'quantum': 'Quantum Posture',
-  'automation': 'Core Services > Automation Engine',
-  'integrations': 'Core Services > Integration Hub',
-  'reporting': 'Core Services > Reporting & Insights',
-  'self-service': 'Core Services > Self-Service Portals',
-  'user-management': 'Settings > User Management',
-  'licenses': 'Settings > Licenses',
-  'audit-log': 'Settings > Audit Log',
+  'dashboards': 'Insights',
+  'discovery': 'Discovery > Add Discovery',
+  'inventory': 'Inventory > All Assets',
+  'policy-builder': 'Policies > Policy Builder',
+  'trustops': 'Alerts & Logs > TrustOps Center',
+  'quantum': 'Policies > Quantum Posture',
+  'automation': 'Automation > Workflows',
+  'integrations': 'Automation > Integrations',
+  'reporting': 'Administration > Reports',
+  'self-service': 'Administration > Self-Service Portal',
+  'user-management': 'Administration > User Management',
+  'licenses': 'Administration > Licenses',
+  'audit-log': 'Alerts & Logs > Audit Log',
 };
 
 export default function TopBar() {
