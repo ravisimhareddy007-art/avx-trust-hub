@@ -23,10 +23,10 @@ export default function ComplianceDashboard() {
     <div className="space-y-4">
       <div className="grid grid-cols-5 gap-3">
         <KPICard label="Frameworks Active" value="4" color="teal" subtitle="DORA, PCI-DSS, HIPAA, FIPS" onClick={() => setCurrentPage('policy-builder')} />
-        <KPICard label="Open Violations" value={284} color="coral" onClick={() => { setFilters({ type: 'compliance' }); setCurrentPage('trustops'); }} />
-        <KPICard label="Evidence Packages Ready" value={2} color="teal" onClick={() => toast.success('Downloading evidence packages...')} />
-        <KPICard label="Audit Items Due" value={17} color="amber" onClick={() => { setFilters({ type: 'audit' }); setCurrentPage('trustops'); }} />
-        <KPICard label="PQC Compliance Gap" value="94%" color="coral" subtitle="Assets non-compliant" onClick={() => setCurrentPage('quantum')} />
+        <KPICard label="Open Violations" value="28,412" color="coral" onClick={() => { setFilters({ type: 'compliance' }); setCurrentPage('trustops'); }} />
+        <KPICard label="Evidence Packages Ready" value={12} color="teal" onClick={() => toast.success('Downloading evidence packages...')} />
+        <KPICard label="Audit Items Due" value={847} color="amber" onClick={() => { setFilters({ type: 'audit' }); setCurrentPage('trustops'); }} />
+        <KPICard label="PQC Compliance Gap" value="94%" color="coral" subtitle="4.4M assets non-compliant" onClick={() => setCurrentPage('quantum')} />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
