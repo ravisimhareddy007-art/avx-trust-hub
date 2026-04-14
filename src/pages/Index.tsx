@@ -43,13 +43,13 @@ function PageRouter() {
     'policy-builder': <PolicyBuilderPage />,
     'trustops': <TrustOpsPage />,
     'quantum': <QuantumPosturePage />,
-    'automation': <CoreServicesPage />,
-    'integrations': <CoreServicesPage />,
-    'reporting': <CoreServicesPage />,
-    'self-service': <CoreServicesPage />,
-    'user-management': <SettingsPage />,
-    'licenses': <SettingsPage />,
-    'audit-log': <SettingsPage />,
+    'automation': <CoreServicesPage initialTab="automation" />,
+    'integrations': <CoreServicesPage initialTab="integrations" />,
+    'reporting': <CoreServicesPage initialTab="reporting" />,
+    'self-service': <CoreServicesPage initialTab="self-service" />,
+    'user-management': <SettingsPage initialTab="users" />,
+    'licenses': <SettingsPage initialTab="licenses" />,
+    'audit-log': <SettingsPage initialTab="audit" />,
   };
 
   return (
