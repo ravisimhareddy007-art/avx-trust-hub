@@ -121,7 +121,7 @@ export default function InventoryPage() {
     { id: 'days', label: 'Days' },
     { id: 'status', label: 'Status' },
     { id: 'pqcRisk', label: 'PQC Risk' },
-    { id: 'actions', label: 'Actions' },
+    { id: 'actions', label: '' },
   ];
 
   const toggleColumn = (id: string) => {
@@ -294,7 +294,7 @@ export default function InventoryPage() {
                 {visibleColumns.has('expiry') && <th className="text-left py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground">Valid To (GMT) ↕</th>}
                 {visibleColumns.has('days') && <th className="text-left py-2 px-2 font-medium text-muted-foreground">Days</th>}
                 {visibleColumns.has('status') && <th className="text-left py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground">Status ↕</th>}
-                {visibleColumns.has('actions') && <th className="text-left py-2 px-2 font-medium text-muted-foreground">Actions</th>}
+                {visibleColumns.has('actions') && <th className="w-10 py-2 px-2"></th>}
               </tr>
             </thead>
             <tbody>
@@ -328,14 +328,7 @@ export default function InventoryPage() {
                     {visibleColumns.has('status') && <td className="py-2 px-2"><StatusBadge status={asset.status} /></td>}
                     {visibleColumns.has('actions') && (
                       <td className="py-2 px-2" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center gap-1">
-                          {quickActions.map(({ label, icon: Icon }) => (
-                            <button key={label} onClick={() => handleAction(label, asset)} className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium bg-teal/10 text-teal hover:bg-teal/20 transition-colors" title={label}>
-                              <Icon className="w-3 h-3" />
-                              {label}
-                            </button>
-                          ))}
-                        </div>
+                        <AssetRowMenu asset={asset} onAction={handleAction} />
                       </td>
                     )}
                   </tr>
