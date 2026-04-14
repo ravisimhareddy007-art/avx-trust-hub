@@ -6,6 +6,17 @@ export interface SSHEndpoint {
   lastSeen: string;
 }
 
+export interface AgentMeta {
+  agentType: 'Autonomous Agent' | 'Copilot' | 'Service Bot' | 'MCP Server' | 'Orchestrator' | 'Pipeline Agent';
+  framework: string;
+  servicesAccessed: string[];
+  permissions: string[];
+  permissionRisk: 'Over-privileged' | 'Right-sized' | 'Minimal';
+  lastActivity: string;
+  actionsPerDay: number;
+  mcpTools?: string[];
+}
+
 export interface CryptoAsset {
   id: string;
   name: string;
@@ -33,6 +44,7 @@ export interface CryptoAsset {
   dependencyCount: number;
   tags: string[];
   sshEndpoints?: SSHEndpoint[];
+  agentMeta?: AgentMeta;
 }
 
 export const mockAssets: CryptoAsset[] = [
