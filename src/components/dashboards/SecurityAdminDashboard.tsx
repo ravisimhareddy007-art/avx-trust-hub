@@ -96,11 +96,11 @@ export default function SecurityAdminDashboard() {
             </div>
             <div className="grid grid-cols-5 gap-3">
               {[
-                { label: 'Total Certificates', value: '47,382', color: 'hsl(var(--teal))', page: 'inventory' },
-                { label: 'Cert Manager', value: '12,847', color: 'hsl(var(--purple))', page: 'inventory' },
-                { label: 'Total Issuing CAs', value: '23', color: 'hsl(var(--teal))', page: 'inventory' },
-                { label: 'Code Signing Certificates', value: '156', color: 'hsl(var(--amber))', page: 'inventory' },
-                { label: 'Total Devices', value: '2,847', color: 'hsl(var(--coral))', page: 'inventory' },
+                { label: 'Total Certificates', value: '4.7M', color: 'hsl(var(--teal))', page: 'inventory' },
+                { label: 'Cert Manager', value: '1.2M', color: 'hsl(var(--purple))', page: 'inventory' },
+                { label: 'Total Issuing CAs', value: '142', color: 'hsl(var(--teal))', page: 'inventory' },
+                { label: 'Code Signing Certificates', value: '18,420', color: 'hsl(var(--amber))', page: 'inventory' },
+                { label: 'Total Devices', value: '284,700', color: 'hsl(var(--coral))', page: 'inventory' },
               ].map(item => (
                 <button
                   key={item.label}
@@ -226,10 +226,10 @@ export default function SecurityAdminDashboard() {
       {activeTab === 'operations' && (
         <div className="space-y-4">
           <div className="grid grid-cols-4 gap-3">
-            <KPICard label="Enrolled Today" value={12} color="teal" />
-            <KPICard label="Renewed Today" value={8} color="teal" />
-            <KPICard label="Revoked Today" value={2} color="coral" />
-            <KPICard label="Failed Operations" value={1} color="coral" />
+            <KPICard label="Enrolled Today" value="4,218" color="teal" />
+            <KPICard label="Renewed Today" value="3,842" color="teal" />
+            <KPICard label="Revoked Today" value={187} color="coral" />
+            <KPICard label="Failed Operations" value={23} color="coral" />
           </div>
           <div className="bg-card rounded-lg border border-border p-4">
             <h3 className="text-sm font-semibold mb-3">Operations — Last 14 Days</h3>
@@ -250,11 +250,11 @@ export default function SecurityAdminDashboard() {
       {activeTab === 'risk' && (
         <div className="space-y-4">
           <div className="grid grid-cols-5 gap-3">
-            <KPICard label="Critical PQC Risk" value={47} color="coral" onClick={() => { setFilters({ pqcRisk: 'Critical' }); setCurrentPage('inventory'); }} />
-            <KPICard label="High PQC Risk" value={156} color="amber" onClick={() => { setFilters({ pqcRisk: 'High' }); setCurrentPage('inventory'); }} />
-            <KPICard label="Medium Risk" value={89} color="amber" />
-            <KPICard label="Low Risk" value={234} color="teal" />
-            <KPICard label="Safe / Compliant" value={512} color="teal" />
+            <KPICard label="Critical PQC Risk" value="247K" color="coral" onClick={() => { setFilters({ pqcRisk: 'Critical' }); setCurrentPage('inventory'); }} />
+            <KPICard label="High PQC Risk" value="812K" color="amber" onClick={() => { setFilters({ pqcRisk: 'High' }); setCurrentPage('inventory'); }} />
+            <KPICard label="Medium Risk" value="1.4M" color="amber" />
+            <KPICard label="Low Risk" value="1.1M" color="teal" />
+            <KPICard label="Safe / Compliant" value="1.2M" color="teal" />
           </div>
           <div className="bg-card rounded-lg border border-border p-4">
             <h3 className="text-sm font-semibold mb-3">Asset Type Distribution</h3>
@@ -283,9 +283,9 @@ export default function SecurityAdminDashboard() {
       {activeTab === 'shortlived' && (
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-3">
-            <KPICard label="Short-Lived Certs (≤24h)" value={45} color="teal" />
-            <KPICard label="Auto-Renewed (24h)" value={42} color="teal" />
-            <KPICard label="Failed Renewals" value={3} color="coral" />
+            <KPICard label="Short-Lived Certs (≤24h)" value="342K" color="teal" />
+            <KPICard label="Auto-Renewed (24h)" value="339K" color="teal" />
+            <KPICard label="Failed Renewals" value="1,247" color="coral" />
           </div>
           <div className="bg-card rounded-lg border border-border p-4">
             <h3 className="text-sm font-semibold mb-3">Short-Lived Certificate Activity</h3>

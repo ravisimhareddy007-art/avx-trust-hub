@@ -10,11 +10,11 @@ export default function PKIEngineerDashboard() {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-5 gap-3">
-        <KPICard label="Discovery Sources Active" value={12} color="teal" onClick={() => setCurrentPage('discovery-profiles')} />
-        <KPICard label="Last Discovery Run" value="2h ago" color="teal" subtitle="312 assets found" onClick={() => setCurrentPage('discovery-runs')} />
-        <KPICard label="Automation Workflows" value={8} color="teal" onClick={() => setCurrentPage('automation')} />
-        <KPICard label="Failed Renewals (24h)" value={3} color="coral" onClick={() => setCurrentPage('trustops')} />
-        <KPICard label="CA Capacity: DigiCert" value="84%" color="amber" subtitle="used" onClick={() => setCurrentPage('integrations')} />
+        <KPICard label="Discovery Sources Active" value={48} color="teal" onClick={() => setCurrentPage('discovery-profiles')} />
+        <KPICard label="Last Discovery Run" value="2h ago" color="teal" subtitle="142,800 assets found" onClick={() => setCurrentPage('discovery-runs')} />
+        <KPICard label="Automation Workflows" value={34} color="teal" onClick={() => setCurrentPage('automation')} />
+        <KPICard label="Failed Renewals (24h)" value={127} color="coral" onClick={() => setCurrentPage('trustops')} />
+        <KPICard label="CA Capacity: DigiCert" value="84%" color="amber" subtitle="3.2M of 3.8M used" onClick={() => setCurrentPage('integrations')} />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
