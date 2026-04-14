@@ -4,8 +4,8 @@ import { StatusBadge } from '@/components/shared/UIComponents';
 import { toast } from 'sonner';
 import { Zap, Link2, BarChart3, ExternalLink, Plus, Play, Download, FileText, Settings } from 'lucide-react';
 
-export default function CoreServicesPage() {
-  const [tab, setTab] = useState<'automation' | 'integrations' | 'reporting' | 'self-service'>('automation');
+export default function CoreServicesPage({ initialTab = 'automation' }: { initialTab?: 'automation' | 'integrations' | 'reporting' | 'self-service' }) {
+  const [tab, setTab] = useState<'automation' | 'integrations' | 'reporting' | 'self-service'>(initialTab);
 
   return (
     <div className="space-y-4">
