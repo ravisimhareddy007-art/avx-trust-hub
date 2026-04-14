@@ -217,22 +217,23 @@ export default function InventoryPage() {
       {/* Table */}
       <div className="bg-card rounded-lg border border-border overflow-hidden">
         <div className="overflow-x-auto scrollbar-thin">
-          <table className="w-full text-xs min-w-[1500px]">
+          <table className="w-full text-xs">
             <thead className="bg-secondary/50">
               <tr className="border-b border-border">
                 <th className="w-8 py-2 px-2"><input type="checkbox" onChange={e => setSelectedRows(e.target.checked ? new Set(filtered.map(a => a.id)) : new Set())} className="rounded" /></th>
-                <th className="text-left py-2 px-2 font-medium text-muted-foreground">Asset Name</th>
-                <th className="text-left py-2 px-2 font-medium text-muted-foreground">Type</th>
-                <th className="text-left py-2 px-2 font-medium text-muted-foreground">CA / Issuer</th>
-                <th className="text-left py-2 px-2 font-medium text-muted-foreground">Algorithm</th>
-                <th className="text-left py-2 px-2 font-medium text-muted-foreground">Owner</th>
-                <th className="text-left py-2 px-2 font-medium text-muted-foreground">Team</th>
-                <th className="text-left py-2 px-2 font-medium text-muted-foreground">Env</th>
-                <th className="text-left py-2 px-2 font-medium text-muted-foreground">Expiry</th>
-                <th className="text-left py-2 px-2 font-medium text-muted-foreground">Days</th>
-                <th className="text-left py-2 px-2 font-medium text-muted-foreground">Status</th>
-                <th className="text-left py-2 px-2 font-medium text-muted-foreground">PQC Risk</th>
-                <th className="text-left py-2 px-2 font-medium text-muted-foreground">Actions</th>
+                <th className="w-6 py-2 px-1"></th>
+                {visibleColumns.has('name') && <th className="text-left py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground">Common Name ↕</th>}
+                {visibleColumns.has('type') && <th className="text-left py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground">Type ↕</th>}
+                {visibleColumns.has('caIssuer') && <th className="text-left py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground">Issuer Common Name ↕</th>}
+                {visibleColumns.has('algorithm') && <th className="text-left py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground">Algorithm ↕</th>}
+                {visibleColumns.has('owner') && <th className="text-left py-2 px-2 font-medium text-muted-foreground">Owner</th>}
+                {visibleColumns.has('team') && <th className="text-left py-2 px-2 font-medium text-muted-foreground">Team</th>}
+                {visibleColumns.has('env') && <th className="text-left py-2 px-2 font-medium text-muted-foreground">Env</th>}
+                {visibleColumns.has('expiry') && <th className="text-left py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground">Valid To (GMT) ↕</th>}
+                {visibleColumns.has('days') && <th className="text-left py-2 px-2 font-medium text-muted-foreground">Days</th>}
+                {visibleColumns.has('status') && <th className="text-left py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground">Status ↕</th>}
+                {visibleColumns.has('pqcRisk') && <th className="text-left py-2 px-2 font-medium text-muted-foreground">PQC Risk</th>}
+                {visibleColumns.has('actions') && <th className="text-left py-2 px-2 font-medium text-muted-foreground">Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -243,27 +244,30 @@ export default function InventoryPage() {
                     <td className="py-2 px-2" onClick={e => e.stopPropagation()}>
                       <input type="checkbox" checked={selectedRows.has(asset.id)} onChange={() => toggleRow(asset.id)} className="rounded" />
                     </td>
-                    <td className="py-2 px-2 font-medium text-foreground max-w-[200px] truncate">{asset.name}</td>
-                    <td className="py-2 px-2 text-muted-foreground">{asset.type}</td>
-                    <td className="py-2 px-2 text-muted-foreground truncate max-w-[120px]">{asset.caIssuer}</td>
-                    <td className="py-2 px-2 text-muted-foreground">{asset.algorithm}</td>
-                    <td className="py-2 px-2 text-muted-foreground">{asset.owner}</td>
-                    <td className="py-2 px-2 text-muted-foreground truncate max-w-[120px]">{asset.team}</td>
-                    <td className="py-2 px-2"><EnvBadge env={asset.environment} /></td>
-                    <td className="py-2 px-2 text-muted-foreground">{asset.expiryDate}</td>
-                    <td className="py-2 px-2"><DaysToExpiry days={asset.daysToExpiry} /></td>
-                    <td className="py-2 px-2"><StatusBadge status={asset.status} /></td>
-                    <td className="py-2 px-2"><PQCBadge risk={asset.pqcRisk} /></td>
-                    <td className="py-2 px-2" onClick={e => e.stopPropagation()}>
-                      <div className="flex items-center gap-1">
-                        {quickActions.map(({ label, icon: Icon }) => (
-                          <button key={label} onClick={() => handleAction(label, asset)} className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium bg-teal/10 text-teal hover:bg-teal/20 transition-colors" title={label}>
-                            <Icon className="w-3 h-3" />
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-                    </td>
+                    <td className="py-2 px-1 text-muted-foreground">▸</td>
+                    {visibleColumns.has('name') && <td className="py-2 px-2 font-medium text-foreground max-w-[200px] truncate">{asset.name}</td>}
+                    {visibleColumns.has('type') && <td className="py-2 px-2 text-muted-foreground">{asset.type}</td>}
+                    {visibleColumns.has('caIssuer') && <td className="py-2 px-2 text-muted-foreground truncate max-w-[140px]">{asset.caIssuer}</td>}
+                    {visibleColumns.has('algorithm') && <td className="py-2 px-2 text-muted-foreground">{asset.algorithm}</td>}
+                    {visibleColumns.has('owner') && <td className="py-2 px-2 text-muted-foreground">{asset.owner}</td>}
+                    {visibleColumns.has('team') && <td className="py-2 px-2 text-muted-foreground truncate max-w-[120px]">{asset.team}</td>}
+                    {visibleColumns.has('env') && <td className="py-2 px-2"><EnvBadge env={asset.environment} /></td>}
+                    {visibleColumns.has('expiry') && <td className="py-2 px-2 text-muted-foreground">{asset.expiryDate}</td>}
+                    {visibleColumns.has('days') && <td className="py-2 px-2"><DaysToExpiry days={asset.daysToExpiry} /></td>}
+                    {visibleColumns.has('status') && <td className="py-2 px-2"><StatusBadge status={asset.status} /></td>}
+                    {visibleColumns.has('pqcRisk') && <td className="py-2 px-2"><PQCBadge risk={asset.pqcRisk} /></td>}
+                    {visibleColumns.has('actions') && (
+                      <td className="py-2 px-2" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center gap-1">
+                          {quickActions.map(({ label, icon: Icon }) => (
+                            <button key={label} onClick={() => handleAction(label, asset)} className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium bg-teal/10 text-teal hover:bg-teal/20 transition-colors" title={label}>
+                              <Icon className="w-3 h-3" />
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 );
               })}
