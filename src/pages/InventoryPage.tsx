@@ -113,7 +113,12 @@ export default function InventoryPage() {
             onChange={e => {
               const nextType = e.target.value;
               setTypeFilter(nextType);
-              setFilters(current => ({ ...current, ...(nextType === 'All' ? { type: undefined } : { type: nextType }) }) as Record<string, string>);
+              if (nextType === 'All') {
+                const { type, ...restFilters } = filters;
+                setFilters(restFilters);
+              } else {
+                setFilters({ ...filters, type: nextType });
+              }
             }}
             className="bg-muted border border-border rounded px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal min-w-[140px]"
           >
