@@ -25,27 +25,9 @@ interface NavItem {
 const navItems: NavItem[] = [
   { id: 'dashboard', label: 'DASHBOARD', icon: LayoutDashboard, page: 'dashboards' },
   { id: 'discovery', label: 'DISCOVERY', icon: Search, page: 'discovery' },
-  {
-    id: 'inventory-section', label: 'INVENTORY', icon: Package, children: [
-      { id: 'inventory-all', label: 'All Assets', page: 'inventory', type: 'All' },
-      { id: 'inventory-tls', label: 'TLS Certificates', page: 'inventory', type: 'TLS Certificate' },
-      { id: 'inventory-ssh', label: 'SSH Keys', page: 'inventory', type: 'SSH Key' },
-      { id: 'inventory-sshcert', label: 'SSH Certificates', page: 'inventory', type: 'SSH Certificate' },
-      { id: 'inventory-codesign', label: 'Code Signing', page: 'inventory', type: 'Code-Signing Certificate' },
-      { id: 'inventory-k8s', label: 'K8s Workload Certs', page: 'inventory', type: 'K8s Workload Cert' },
-      { id: 'inventory-ai', label: 'AI Agent Tokens', page: 'inventory', type: 'AI Agent Token' },
-    ]
-  },
+  { id: 'inventory', label: 'INVENTORY', icon: Package, page: 'inventory' },
   { id: 'policy-builder', label: 'POLICIES', icon: ScrollText, page: 'policy-builder' },
-  {
-    id: 'remediation-section', label: 'REMEDIATION', icon: Wrench, children: [
-      { id: 'remediation-all', label: 'All Remediation', page: 'remediation', type: 'All' },
-      { id: 'remediation-tls', label: 'TLS Certificates', page: 'remediation', type: 'TLS Certificate' },
-      { id: 'remediation-ssh', label: 'SSH Keys', page: 'remediation', type: 'SSH Key' },
-      { id: 'remediation-sshcert', label: 'SSH Certificates', page: 'remediation', type: 'SSH Certificate' },
-      { id: 'remediation-codesign', label: 'Code Signing', page: 'remediation', type: 'Code-Signing Certificate' },
-    ]
-  },
+  { id: 'remediation', label: 'REMEDIATION', icon: Wrench, page: 'remediation' },
   { id: 'integrations', label: 'INTEGRATIONS', icon: Link2, page: 'integrations' },
   { id: 'core-services', label: 'CORE SERVICES', icon: Cog, page: 'core-services' },
   {
