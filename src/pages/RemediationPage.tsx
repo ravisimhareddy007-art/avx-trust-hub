@@ -3,17 +3,75 @@ import { useNav } from '@/context/NavigationContext';
 import { mockAssets, CryptoAsset } from '@/data/mockData';
 import { StatusBadge, SeverityBadge, Modal } from '@/components/shared/UIComponents';
 import { toast } from 'sonner';
-import { RefreshCw, RotateCcw, XCircle, Shield, Search, Download, ChevronDown, CheckCircle2 } from 'lucide-react';
+import { RefreshCw, RotateCcw, XCircle, Shield, Search, Download, CheckCircle2 } from 'lucide-react';
 
 const typeFilters = ['All', 'TLS Certificate', 'SSH Key', 'SSH Certificate', 'Code-Signing Certificate'];
-...
+
+interface RemediationItem {
+  asset: CryptoAsset;
+  issue: string;
+  severity: string;
+  recommendedAction: string;
+  actionType: 'Renew' | 'Rotate' | 'Revoke' | 'Migrate' | 'Assign Owner';
+}
+
+function getRemediationItems(assets: CryptoAsset[]): RemediationItem[] {
+  const items: RemediationItem[] = [];
+  assets.forEach(asset => {
+    if (asset.status === 'Expired' || (asset.status === 'Expiring' && asset.daysToExpiry <= 7)) {
+      const isSSH = asset.type === 'SSH Key' || asset.type === 'SSH Certificate';
+      items.push({
+        asset,
+        issue: asset.status === 'Expired' ? 'Certificate expired' : `Expires in ${asset.daysToExpiry} days`,
+        severity: asset.daysToExpiry <= 3 ? 'Critical' : 'High',
+        recommendedAction: isSSH ? 'Rotate key immediately' : 'Renew certificate',
+        actionType: isSSH ? 'Rotate' : 'Renew',
+      });
+    }
+
+    if (asset.pqcRisk === 'Critical') {
+      items.push({
+        asset,
+        issue: `PQC vulnerable: ${asset.algorithm}`,
+        severity: 'Critical',
+        recommendedAction: 'Migrate to post-quantum algorithm (ML-DSA)',
+        actionType: 'Migrate',
+      });
+    }
+
+    if (asset.status === 'Orphaned') {
+      items.push({
+        asset,
+        issue: 'No owner assigned — orphaned credential',
+        severity: 'High',
+        recommendedAction: 'Assign owner or revoke',
+        actionType: 'Assign Owner',
+      });
+    }
+
+    if (asset.policyViolations > 0 && asset.status !== 'Expired' && asset.pqcRisk !== 'Critical') {
+      items.push({
+        asset,
+        issue: `${asset.policyViolations} policy violation(s)`,
+        severity: asset.policyViolations >= 2 ? 'High' : 'Medium',
+        recommendedAction: 'Review and remediate violations',
+        actionType: 'Renew',
+      });
+    }
+  });
+
+  return items.sort((a, b) => {
+    const order: Record<string, number> = { Critical: 0, High: 1, Medium: 2, Low: 3 };
+    return (order[a.severity] ?? 4) - (order[b.severity] ?? 4);
+  });
+}
+
 export default function RemediationPage() {
   const { filters, setFilters } = useNav();
   const [typeFilter, setTypeFilter] = useState(filters.type || 'All');
   const [search, setSearch] = useState('');
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [actionModal, setActionModal] = useState<RemediationItem | null>(null);
-  const [bulkAction, setBulkAction] = useState(false);
 
   useEffect(() => {
     setTypeFilter(filters.type || 'All');
