@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useNav } from '@/context/NavigationContext';
 import { mockAssets, CryptoAsset } from '@/data/mockData';
 import { StatusBadge, EnvBadge, PQCBadge, DaysToExpiry, Drawer, SeverityBadge, Modal } from '@/components/shared/UIComponents';
-import { Download, Search, Sparkles, Settings, RefreshCw, RotateCcw, XCircle, Shield, User, Workflow, Key, ExternalLink, Monitor, Server, ChevronDown, BarChart3, Bot, Zap, Lock, AlertTriangle } from 'lucide-react';
+import { Download, Search, Sparkles, Settings, RefreshCw, RotateCcw, XCircle, Shield, User, Workflow, Key, ExternalLink, Monitor, Server, ChevronDown, BarChart3, Bot, Zap, Lock, AlertTriangle, MoreVertical } from 'lucide-react';
 import { toast } from 'sonner';
 
 const typeFilters = ['All', 'TLS Certificate', 'SSH Key', 'SSH Certificate', 'Code-Signing Certificate', 'K8s Workload Cert', 'AI Agent Token'];
@@ -10,10 +10,50 @@ const typeFilters = ['All', 'TLS Certificate', 'SSH Key', 'SSH Certificate', 'Co
 function getQuickActions(asset: CryptoAsset) {
   const isSSH = asset.type === 'SSH Key' || asset.type === 'SSH Certificate';
   const isTLS = asset.type === 'TLS Certificate' || asset.type === 'Code-Signing Certificate';
-  const isKey = asset.type === 'AI Agent Token';
+  const isAI = asset.type === 'AI Agent Token';
   if (isTLS) return [{ label: 'Renew', icon: RefreshCw }, { label: 'Revoke', icon: XCircle }];
-  if (isSSH || isKey) return [{ label: 'Rotate', icon: RotateCcw }, { label: 'Revoke', icon: XCircle }];
+  if (isSSH || isAI) return [{ label: 'Rotate', icon: RotateCcw }, { label: 'Revoke', icon: XCircle }];
   return [{ label: 'Renew', icon: RefreshCw }, { label: 'Revoke', icon: XCircle }];
+}
+
+function AssetRowMenu({ asset, onAction }: { asset: CryptoAsset; onAction: (action: string, asset: CryptoAsset) => void }) {
+  const [open, setOpen] = useState(false);
+  const actions = getQuickActions(asset);
+  const allActions = [
+    ...actions,
+    { label: 'Assign Owner', icon: User },
+    { label: 'Add to Workflow', icon: Workflow },
+  ];
+
+  return (
+    <div className="relative">
+      <button onClick={(e) => { e.stopPropagation(); setOpen(!open); }} className="p-1 rounded hover:bg-secondary transition-colors">
+        <MoreVertical className="w-3.5 h-3.5 text-muted-foreground" />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setOpen(false); }} />
+          <div className="absolute right-0 top-full mt-1 bg-card border border-border rounded-lg shadow-lg z-50 min-w-[160px] py-1">
+            {allActions.map((a) => (
+              <button
+                key={a.label}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpen(false);
+                  onAction(a.label, asset);
+                }}
+                className={`w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-secondary transition-colors ${
+                  a.label === 'Revoke' ? 'text-coral' : 'text-foreground'
+                }`}
+              >
+                <a.icon className="w-3.5 h-3.5" /> {a.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
 
 export default function InventoryPage() {
@@ -81,7 +121,7 @@ export default function InventoryPage() {
     { id: 'days', label: 'Days' },
     { id: 'status', label: 'Status' },
     { id: 'pqcRisk', label: 'PQC Risk' },
-    { id: 'actions', label: 'Actions' },
+    { id: 'actions', label: '' },
   ];
 
   const toggleColumn = (id: string) => {
@@ -254,12 +294,12 @@ export default function InventoryPage() {
                 {visibleColumns.has('expiry') && <th className="text-left py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground">Valid To (GMT) ↕</th>}
                 {visibleColumns.has('days') && <th className="text-left py-2 px-2 font-medium text-muted-foreground">Days</th>}
                 {visibleColumns.has('status') && <th className="text-left py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground">Status ↕</th>}
-                {visibleColumns.has('actions') && <th className="text-left py-2 px-2 font-medium text-muted-foreground">Actions</th>}
+                {visibleColumns.has('actions') && <th className="w-10 py-2 px-2"></th>}
               </tr>
             </thead>
             <tbody>
               {filtered.map(asset => {
-                const quickActions = getQuickActions(asset);
+                
                 const agentRiskColors: Record<string, string> = {
                   'Over-privileged': 'bg-coral/10 text-coral',
                   'Right-sized': 'bg-teal/10 text-teal',
@@ -288,14 +328,7 @@ export default function InventoryPage() {
                     {visibleColumns.has('status') && <td className="py-2 px-2"><StatusBadge status={asset.status} /></td>}
                     {visibleColumns.has('actions') && (
                       <td className="py-2 px-2" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center gap-1">
-                          {quickActions.map(({ label, icon: Icon }) => (
-                            <button key={label} onClick={() => handleAction(label, asset)} className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium bg-teal/10 text-teal hover:bg-teal/20 transition-colors" title={label}>
-                              <Icon className="w-3 h-3" />
-                              {label}
-                            </button>
-                          ))}
-                        </div>
+                        <AssetRowMenu asset={asset} onAction={handleAction} />
                       </td>
                     )}
                   </tr>
