@@ -1,16 +1,16 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useNav } from '@/context/NavigationContext';
 import { mockAssets, CryptoAsset } from '@/data/mockData';
 import { StatusBadge, EnvBadge, PQCBadge, DaysToExpiry, Drawer, SeverityBadge, Modal } from '@/components/shared/UIComponents';
 import { Download, Search, Sparkles, Settings, RefreshCw, RotateCcw, XCircle, Shield, User, Workflow, Key, ExternalLink, Monitor, Server, ChevronDown, BarChart3 } from 'lucide-react';
 import { toast } from 'sonner';
 
-const typeFilters = ['All', 'TLS Certificate', 'SSH Key', 'SSH Certificate', 'Code-Signing Certificate', 'K8s Workload Cert', 'Encryption Key', 'AI Agent Token'];
+const typeFilters = ['All', 'TLS Certificate', 'SSH Key', 'SSH Certificate', 'Code-Signing Certificate', 'K8s Workload Cert', 'AI Agent Token'];
 
 function getQuickActions(asset: CryptoAsset) {
   const isSSH = asset.type === 'SSH Key' || asset.type === 'SSH Certificate';
   const isTLS = asset.type === 'TLS Certificate' || asset.type === 'Code-Signing Certificate';
-  const isKey = asset.type === 'Encryption Key' || asset.type === 'AI Agent Token';
+  const isKey = asset.type === 'AI Agent Token';
   if (isTLS) return [{ label: 'Renew', icon: RefreshCw }, { label: 'Revoke', icon: XCircle }];
   if (isSSH || isKey) return [{ label: 'Rotate', icon: RotateCcw }, { label: 'Revoke', icon: XCircle }];
   return [{ label: 'Renew', icon: RefreshCw }, { label: 'Revoke', icon: XCircle }];
@@ -24,6 +24,10 @@ export default function InventoryPage() {
   const [drawerTab, setDrawerTab] = useState('overview');
   const [actionModal, setActionModal] = useState<{ action: string; asset: CryptoAsset } | null>(null);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setTypeFilter(filters.type || 'All');
+  }, [filters.type]);
 
   const filtered = useMemo(() => {
     let result = [...mockAssets];
@@ -106,11 +110,20 @@ export default function InventoryPage() {
           <span className="text-[10px] font-medium text-teal">Groups</span>
           <select
             value={typeFilter}
-            onChange={e => { setTypeFilter(e.target.value); if (e.target.value === 'All') setFilters({}); }}
+            onChange={e => {
+              const nextType = e.target.value;
+              setTypeFilter(nextType);
+              if (nextType === 'All') {
+                const { type, ...restFilters } = filters;
+                setFilters(restFilters);
+              } else {
+                setFilters({ ...filters, type: nextType });
+              }
+            }}
             className="bg-muted border border-border rounded px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal min-w-[140px]"
           >
             {typeFilters.map(t => (
-              <option key={t} value={t}>{t === 'All' ? 'All Certificates' : t} {t !== 'All' ? `(${mockAssets.filter(a => a.type === t).length})` : ''}</option>
+              <option key={t} value={t}>{t === 'All' ? 'All Assets' : t} {t !== 'All' ? `(${mockAssets.filter(a => a.type === t).length})` : ''}</option>
             ))}
           </select>
         </div>
