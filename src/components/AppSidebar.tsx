@@ -74,10 +74,6 @@ export default function AppSidebar() {
         </div>
       </div>
 
-      <div className="px-4 py-2 border-b border-navy-lighter">
-        <span className="text-xs font-bold text-primary-foreground tracking-wider">CERT+</span>
-        <span className="text-[10px] text-muted-foreground ml-2">Module</span>
-      </div>
 
       <div className="px-3 py-2 border-b border-navy-lighter">
         <div className="relative">
