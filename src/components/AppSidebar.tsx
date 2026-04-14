@@ -3,36 +3,21 @@ import { usePersona, Persona } from '@/context/PersonaContext';
 import { useNav } from '@/context/NavigationContext';
 import {
   LayoutDashboard, Search, Package, Shield, Activity,
-  Atom, ChevronDown, ChevronRight, Users, Eye,
-  Zap, Link2, BarChart3, ExternalLink, Lock, Bell, FileText,
-  RefreshCw, RotateCcw, Key, Settings, ClipboardList,
-  BookOpen, AlertTriangle, Group, ScrollText, Cog
+  ChevronDown, ChevronRight, Users, Eye,
+  Link2, Lock, Bell, ScrollText, Cog, Wrench
 } from 'lucide-react';
 
-interface NavChild {
-  id: string;
-  label: string;
-}
-
-interface NavSection {
+interface NavItem {
   id: string;
   label: string;
   icon: React.ElementType;
-  children?: NavChild[];
-  page?: string; // direct page link (no children)
+  children?: { id: string; label: string }[];
+  page?: string;
 }
 
-const navSections: NavSection[] = [
-  { id: 'insights', label: 'INSIGHTS', icon: Eye, page: 'dashboards' },
+const navItems: NavItem[] = [
   { id: 'dashboard', label: 'DASHBOARD', icon: LayoutDashboard, page: 'dashboards' },
-  {
-    id: 'asset-actions', label: 'ASSET ACTIONS', icon: Shield, children: [
-      { id: 'enroll', label: 'Enroll Certificate' },
-      { id: 'renew', label: 'Renew Certificate' },
-      { id: 'rotate', label: 'Rotate Keys' },
-      { id: 'revoke', label: 'Revoke' },
-    ]
-  },
+  { id: 'discovery', label: 'DISCOVERY', icon: Search, page: 'discovery' },
   {
     id: 'inventory-section', label: 'INVENTORY', icon: Package, children: [
       { id: 'inventory', label: 'All Assets' },
@@ -41,38 +26,27 @@ const navSections: NavSection[] = [
       { id: 'inventory-codesign', label: 'Code Signing' },
       { id: 'inventory-k8s', label: 'K8s Workload Certs' },
       { id: 'inventory-keys', label: 'Encryption Keys' },
+      { id: 'inventory-ai', label: 'AI Agent Tokens' },
     ]
   },
+  { id: 'policy-builder', label: 'POLICIES', icon: ScrollText, page: 'policy-builder' },
   {
-    id: 'automation-section', label: 'AUTOMATION', icon: Zap, children: [
-      { id: 'automation', label: 'Workflows' },
-      { id: 'integrations', label: 'Integrations' },
+    id: 'remediation-section', label: 'REMEDIATION', icon: Wrench, children: [
+      { id: 'remediation', label: 'All Remediation' },
+      { id: 'remediation-tls', label: 'TLS Certificates' },
+      { id: 'remediation-ssh', label: 'SSH Keys' },
+      { id: 'remediation-codesign', label: 'Code Signing' },
+      { id: 'remediation-keys', label: 'Encryption Keys' },
     ]
   },
+  { id: 'integrations', label: 'INTEGRATIONS', icon: Link2, page: 'integrations' },
+  { id: 'core-services', label: 'CORE SERVICES', icon: Cog, page: 'core-services' },
   {
-    id: 'discovery-section', label: 'DISCOVERY', icon: Search, children: [
-      { id: 'discovery', label: 'Discovery' },
-      { id: 'discovery-rules', label: 'Rules' },
-    ]
-  },
-  {
-    id: 'alerts-section', label: 'ALERTS & LOGS', icon: Bell, children: [
-      { id: 'trustops', label: 'TrustOps Center' },
-      { id: 'audit-log', label: 'Audit Log' },
-    ]
-  },
-  {
-    id: 'policies-section', label: 'POLICIES', icon: ScrollText, children: [
-      { id: 'policy-builder', label: 'Policy Builder' },
-      { id: 'quantum', label: 'Quantum Posture' },
-    ]
-  },
-  {
-    id: 'admin-section', label: 'ADMINISTRATION', icon: Cog, children: [
+    id: 'admin-section', label: 'ADMINISTRATION', icon: Shield, children: [
       { id: 'user-management', label: 'User Management' },
       { id: 'licenses', label: 'Licenses' },
+      { id: 'audit-log', label: 'Audit Log' },
       { id: 'reporting', label: 'Reports' },
-      { id: 'self-service', label: 'Self-Service Portal' },
     ]
   },
 ];
@@ -86,7 +60,7 @@ const personaOptions: { value: Persona; label: string }[] = [
 export default function AppSidebar() {
   const { persona, setPersona } = usePersona();
   const { currentPage, setCurrentPage } = useNav();
-  const [expandedGroups, setExpandedGroups] = useState<string[]>(['inventory-section', 'discovery-section']);
+  const [expandedGroups, setExpandedGroups] = useState<string[]>(['inventory-section']);
   const [personaOpen, setPersonaOpen] = useState(false);
 
   const toggleGroup = (id: string) => {
@@ -95,45 +69,39 @@ export default function AppSidebar() {
     );
   };
 
-  const isActive = (id: string) => {
-    if (id.startsWith('inventory-') && id !== 'inventory-section') {
-      return currentPage === id || currentPage === 'inventory';
-    }
-    return currentPage === id;
-  };
-
   const handleNavClick = (id: string) => {
-    // Map inventory sub-items to inventory page with type filter
+    // Inventory sub-filters
     const inventoryMap: Record<string, string> = {
       'inventory-tls': 'TLS Certificate',
       'inventory-ssh': 'SSH Key',
       'inventory-codesign': 'Code-Signing Certificate',
       'inventory-k8s': 'K8s Workload Cert',
       'inventory-keys': 'Encryption Key',
+      'inventory-ai': 'AI Agent Token',
     };
     if (inventoryMap[id]) {
       setCurrentPage('inventory');
-      // Type filter will be handled by InventoryPage
       return;
     }
-    // Enroll/Renew/Rotate/Revoke actions go to inventory with action context
-    if (['enroll', 'renew', 'rotate', 'revoke'].includes(id)) {
-      setCurrentPage('inventory');
-      return;
-    }
-    if (id === 'discovery-rules') {
-      setCurrentPage('discovery');
+    // Remediation sub-filters
+    const remediationMap: Record<string, string> = {
+      'remediation-tls': 'TLS Certificate',
+      'remediation-ssh': 'SSH Key',
+      'remediation-codesign': 'Code-Signing Certificate',
+      'remediation-keys': 'Encryption Key',
+    };
+    if (remediationMap[id]) {
+      setCurrentPage('remediation');
       return;
     }
     setCurrentPage(id);
   };
 
-  const isChildActive = (section: NavSection) => {
-    return section.children?.some(c => isActive(c.id));
-  };
+  const isActive = (id: string) => currentPage === id;
+  const isChildActive = (section: NavItem) => section.children?.some(c => isActive(c.id));
 
   return (
-    <div className="w-60 min-h-screen bg-navy flex flex-col border-r border-navy-lighter flex-shrink-0">
+    <div className="w-56 min-h-screen bg-navy flex flex-col border-r border-navy-lighter flex-shrink-0">
       {/* Logo */}
       <div className="h-14 flex items-center px-4 border-b border-navy-lighter">
         <div className="flex items-center gap-2">
@@ -147,19 +115,17 @@ export default function AppSidebar() {
         </div>
       </div>
 
-      {/* Module label */}
-      <div className="px-4 py-2.5 border-b border-navy-lighter">
+      {/* Module */}
+      <div className="px-4 py-2 border-b border-navy-lighter">
         <span className="text-xs font-bold text-primary-foreground tracking-wider">CERT+</span>
         <span className="text-[10px] text-muted-foreground ml-2">Module</span>
       </div>
 
-      {/* Persona Switcher */}
+      {/* Persona */}
       <div className="px-3 py-2 border-b border-navy-lighter">
         <div className="relative">
-          <button
-            onClick={() => setPersonaOpen(!personaOpen)}
-            className="w-full flex items-center justify-between px-3 py-1.5 rounded-md bg-navy-light text-sidebar-foreground text-xs hover:bg-navy-lighter transition-colors"
-          >
+          <button onClick={() => setPersonaOpen(!personaOpen)}
+            className="w-full flex items-center justify-between px-3 py-1.5 rounded-md bg-navy-light text-sidebar-foreground text-xs hover:bg-navy-lighter transition-colors">
             <div className="flex items-center gap-2">
               <div className="w-5 h-5 rounded-full bg-amber/20 flex items-center justify-center">
                 <Users className="w-3 h-3 text-amber" />
@@ -171,11 +137,8 @@ export default function AppSidebar() {
           {personaOpen && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-navy-light border border-navy-lighter rounded-md shadow-lg z-50">
               {personaOptions.map(opt => (
-                <button
-                  key={opt.value}
-                  onClick={() => { setPersona(opt.value); setPersonaOpen(false); }}
-                  className={`w-full text-left px-3 py-2 text-xs hover:bg-navy-lighter transition-colors ${persona === opt.value ? 'text-teal' : 'text-sidebar-foreground'}`}
-                >
+                <button key={opt.value} onClick={() => { setPersona(opt.value); setPersonaOpen(false); }}
+                  className={`w-full text-left px-3 py-2 text-xs hover:bg-navy-lighter transition-colors ${persona === opt.value ? 'text-teal' : 'text-sidebar-foreground'}`}>
                   {opt.label}
                 </button>
               ))}
@@ -184,56 +147,40 @@ export default function AppSidebar() {
         </div>
       </div>
 
-      {/* Navigation */}
+      {/* Nav */}
       <nav className="flex-1 px-2 py-2 overflow-y-auto scrollbar-thin">
-        {navSections.map(section => (
-          <div key={section.id} className="mb-0.5">
-            {section.children ? (
+        {navItems.map(item => (
+          <div key={item.id} className="mb-0.5">
+            {item.children ? (
               <>
-                <button
-                  onClick={() => toggleGroup(section.id)}
+                <button onClick={() => toggleGroup(item.id)}
                   className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-[11px] font-semibold uppercase tracking-wide transition-colors ${
-                    isChildActive(section) ? 'text-primary-foreground' : 'text-sidebar-foreground hover:text-primary-foreground'
-                  }`}
-                >
-                  <section.icon className="w-4 h-4" />
-                  <span className="flex-1 text-left">{section.label}</span>
-                  {expandedGroups.includes(section.id) ? (
-                    <span className="text-muted-foreground">—</span>
-                  ) : (
-                    <ChevronRight className="w-3 h-3 text-muted-foreground" />
-                  )}
+                    isChildActive(item) ? 'text-primary-foreground' : 'text-sidebar-foreground hover:text-primary-foreground'
+                  }`}>
+                  <item.icon className="w-4 h-4" />
+                  <span className="flex-1 text-left">{item.label}</span>
+                  {expandedGroups.includes(item.id) ? <span className="text-muted-foreground">—</span> : <ChevronRight className="w-3 h-3 text-muted-foreground" />}
                 </button>
-                {expandedGroups.includes(section.id) && (
+                {expandedGroups.includes(item.id) && (
                   <div className="ml-4 mt-0.5 space-y-0.5 border-l border-navy-lighter pl-3">
-                    {section.children.map(child => (
-                      <button
-                        key={child.id}
-                        onClick={() => handleNavClick(child.id)}
-                        className={`w-full text-left px-3 py-1.5 rounded-md text-xs transition-colors flex items-center gap-1 ${
-                          isActive(child.id)
-                            ? 'bg-teal/10 text-teal font-medium'
-                            : 'text-sidebar-foreground hover:bg-navy-light hover:text-primary-foreground'
-                        }`}
-                      >
+                    {item.children.map(child => (
+                      <button key={child.id} onClick={() => handleNavClick(child.id)}
+                        className={`w-full text-left px-3 py-1.5 rounded-md text-xs transition-colors ${
+                          isActive(child.id) ? 'bg-teal/10 text-teal font-medium' : 'text-sidebar-foreground hover:bg-navy-light hover:text-primary-foreground'
+                        }`}>
                         {child.label}
-                        {child.id !== child.label && <ChevronRight className="w-3 h-3 ml-auto opacity-0 group-hover:opacity-100" />}
                       </button>
                     ))}
                   </div>
                 )}
               </>
             ) : (
-              <button
-                onClick={() => handleNavClick(section.page || section.id)}
+              <button onClick={() => handleNavClick(item.page || item.id)}
                 className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-[11px] font-semibold uppercase tracking-wide transition-colors ${
-                  currentPage === (section.page || section.id)
-                    ? 'text-teal'
-                    : 'text-sidebar-foreground hover:text-primary-foreground'
-                }`}
-              >
-                <section.icon className="w-4 h-4" />
-                <span>{section.label}</span>
+                  currentPage === (item.page || item.id) ? 'text-teal' : 'text-sidebar-foreground hover:text-primary-foreground'
+                }`}>
+                <item.icon className="w-4 h-4" />
+                <span>{item.label}</span>
               </button>
             )}
           </div>

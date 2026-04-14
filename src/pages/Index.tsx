@@ -14,6 +14,8 @@ import QuantumPosturePage from '@/pages/QuantumPosturePage';
 import DiscoveryPage from '@/pages/DiscoveryPage';
 import CoreServicesPage from '@/pages/CoreServicesPage';
 import SettingsPage from '@/pages/SettingsPage';
+import RemediationPage from '@/pages/RemediationPage';
+import IntegrationsPage from '@/pages/IntegrationsPage';
 
 function DashboardPage() {
   const { persona } = usePersona();
@@ -39,15 +41,15 @@ function PageRouter() {
     'discovery': <DiscoveryPage />,
     'inventory': <InventoryPage />,
     'policy-builder': <PolicyBuilderPage />,
+    'remediation': <RemediationPage />,
+    'integrations': <IntegrationsPage />,
+    'core-services': <CoreServicesPage />,
     'trustops': <TrustOpsPage />,
     'quantum': <QuantumPosturePage />,
-    'automation': <CoreServicesPage key="automation" initialTab="automation" />,
-    'integrations': <CoreServicesPage key="integrations" initialTab="integrations" />,
-    'reporting': <CoreServicesPage key="reporting" initialTab="reporting" />,
-    'self-service': <CoreServicesPage key="self-service" initialTab="self-service" />,
     'user-management': <SettingsPage initialTab="users" />,
     'licenses': <SettingsPage initialTab="licenses" />,
     'audit-log': <SettingsPage initialTab="audit" />,
+    'reporting': <SettingsPage initialTab="audit" />,
   };
 
   return (
