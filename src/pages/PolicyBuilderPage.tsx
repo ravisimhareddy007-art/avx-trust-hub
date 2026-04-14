@@ -1,9 +1,24 @@
 import React, { useState } from 'react';
 import { useNav } from '@/context/NavigationContext';
-import { policyRules, customPolicies } from '@/data/mockData';
+import { policyRules, customPolicies as initialCustomPolicies } from '@/data/mockData';
 import { SeverityBadge, Modal } from '@/components/shared/UIComponents';
 import { toast } from 'sonner';
-import { Plus, Download, Search, Sparkles } from 'lucide-react';
+import { Plus, Download, Search, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
+
+interface CustomPolicy {
+  id: string;
+  name: string;
+  description: string;
+  status: string;
+  violations: number;
+  assetType?: string;
+  condition?: string;
+  value?: string;
+  severity?: string;
+  environments?: string[];
+  teams?: string;
+  actions?: string[];
+}
 
 export default function PolicyBuilderPage() {
   const { setCurrentPage, setFilters } = useNav();
@@ -12,8 +27,11 @@ export default function PolicyBuilderPage() {
   const [configModal, setConfigModal] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [userPolicies, setUserPolicies] = useState<CustomPolicy[]>(initialCustomPolicies.map(p => ({ ...p })));
+  const [expandedPolicy, setExpandedPolicy] = useState<string | null>(null);
+  const [editingPolicy, setEditingPolicy] = useState<string | null>(null);
 
-  // Create policy form state — single page, all fields visible
+  // Create policy form state
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formAssetType, setFormAssetType] = useState('TLS Certificate');
@@ -23,6 +41,7 @@ export default function PolicyBuilderPage() {
   const [formEnvironments, setFormEnvironments] = useState<string[]>(['All']);
   const [formTeams, setFormTeams] = useState('');
   const [formActions, setFormActions] = useState<string[]>(['Alert only']);
+  const [aiLoading, setAiLoading] = useState(false);
 
   const toggleEnv = (e: string) => setFormEnvironments(prev => prev.includes(e) ? prev.filter(x => x !== e) : [...prev, e]);
   const toggleAction = (a: string) => setFormActions(prev => prev.includes(a) ? prev.filter(x => x !== a) : [...prev, a]);
@@ -31,6 +50,18 @@ export default function PolicyBuilderPage() {
     setFormName(''); setFormDescription(''); setFormAssetType('TLS Certificate');
     setFormCondition('Expiry less than'); setFormValue('30 days'); setFormSeverity('High');
     setFormEnvironments(['All']); setFormTeams(''); setFormActions(['Alert only']);
+    setEditingPolicy(null);
+  };
+
+  const aiTemplates: Record<string, { name: string; assetType: string; condition: string; value: string; severity: string; envs: string[]; actions: string[] }> = {
+    'expir': { name: '', assetType: 'TLS Certificate', condition: 'Expiry less than', value: '30 days', severity: 'High', envs: ['Production'], actions: ['Alert only', 'Create TrustOps ticket'] },
+    'rsa': { name: '', assetType: 'TLS Certificate', condition: 'Algorithm equals', value: 'RSA-2048', severity: 'Critical', envs: ['All'], actions: ['Alert only', 'Escalate to owner'] },
+    'rotat': { name: '', assetType: 'SSH Key', condition: 'No rotation in', value: '90 days', severity: 'High', envs: ['Production'], actions: ['Alert only', 'Auto-remediate'] },
+    'ca': { name: '', assetType: 'TLS Certificate', condition: 'CA not in list', value: 'DigiCert, Entrust, GlobalSign', severity: 'Medium', envs: ['Production'], actions: ['Block issuance'] },
+    'key': { name: '', assetType: 'Encryption Key', condition: 'Key length less than', value: '256 bits', severity: 'Critical', envs: ['All'], actions: ['Alert only', 'Escalate to owner'] },
+    'pci': { name: '', assetType: 'TLS Certificate', condition: 'Algorithm equals', value: 'RSA-2048', severity: 'Critical', envs: ['Production'], actions: ['Alert only', 'Block issuance', 'Create TrustOps ticket'] },
+    'dora': { name: '', assetType: 'TLS Certificate', condition: 'Expiry less than', value: '90 days', severity: 'High', envs: ['Production'], actions: ['Alert only', 'Create TrustOps ticket'] },
+    'ssh': { name: '', assetType: 'SSH Key', condition: 'No rotation in', value: '60 days', severity: 'High', envs: ['All'], actions: ['Alert only', 'Auto-remediate'] },
   };
 
   const handleAIDraft = () => {
@@ -38,22 +69,87 @@ export default function PolicyBuilderPage() {
       toast.error('Enter a description first so AI can parse your intent');
       return;
     }
-    // Simulate AI parsing the description
-    toast.success('AI parsed your policy description');
-    setFormName(formDescription.slice(0, 60));
-    setFormAssetType('TLS Certificate');
-    setFormCondition('Expiry less than');
-    setFormValue('30 days');
-    setFormSeverity('High');
-    setFormEnvironments(['Production']);
-    setFormActions(['Alert only', 'Create TrustOps ticket']);
+    setAiLoading(true);
+    // Simulate AI delay
+    setTimeout(() => {
+      const desc = formDescription.toLowerCase();
+      // Find best matching template
+      let matched = false;
+      for (const [keyword, template] of Object.entries(aiTemplates)) {
+        if (desc.includes(keyword)) {
+          setFormName(formDescription.length > 60 ? formDescription.slice(0, 57) + '...' : formDescription);
+          setFormAssetType(template.assetType);
+          setFormCondition(template.condition);
+          setFormValue(template.value);
+          setFormSeverity(template.severity);
+          setFormEnvironments(template.envs);
+          setFormActions(template.actions);
+          matched = true;
+          break;
+        }
+      }
+      if (!matched) {
+        setFormName(formDescription.length > 60 ? formDescription.slice(0, 57) + '...' : formDescription);
+        setFormAssetType('TLS Certificate');
+        setFormCondition('Expiry less than');
+        setFormValue('30 days');
+        setFormSeverity('High');
+        setFormEnvironments(['Production']);
+        setFormActions(['Alert only', 'Create TrustOps ticket']);
+      }
+      setAiLoading(false);
+      toast.success('AI parsed your policy — review and adjust fields below');
+    }, 800);
   };
 
   const handleSave = (activate: boolean) => {
     if (!formName) { toast.error('Policy name is required'); return; }
-    toast.success(activate ? `Policy "${formName}" activated` : `Policy "${formName}" saved as draft`);
+    const newPolicy: CustomPolicy = {
+      id: editingPolicy || `cpol-${Date.now()}`,
+      name: formName,
+      description: formDescription || `${formCondition} ${formValue} on ${formAssetType}`,
+      status: activate ? 'Active' : 'Draft',
+      violations: 0,
+      assetType: formAssetType,
+      condition: formCondition,
+      value: formValue,
+      severity: formSeverity,
+      environments: formEnvironments,
+      teams: formTeams,
+      actions: formActions,
+    };
+    if (editingPolicy) {
+      setUserPolicies(prev => prev.map(p => p.id === editingPolicy ? newPolicy : p));
+      toast.success(`Policy "${formName}" updated`);
+    } else {
+      setUserPolicies(prev => [newPolicy, ...prev]);
+      toast.success(activate ? `Policy "${formName}" created & activated` : `Policy "${formName}" saved as draft`);
+    }
     setCreateOpen(false);
     resetForm();
+  };
+
+  const loadPolicyForEdit = (p: CustomPolicy) => {
+    setFormName(p.name);
+    setFormDescription(p.description);
+    setFormAssetType(p.assetType || 'TLS Certificate');
+    setFormCondition(p.condition || 'Expiry less than');
+    setFormValue(p.value || '30 days');
+    setFormSeverity(p.severity || 'High');
+    setFormEnvironments(p.environments || ['All']);
+    setFormTeams(p.teams || '');
+    setFormActions(p.actions || ['Alert only']);
+    setEditingPolicy(p.id);
+    setCreateOpen(true);
+  };
+
+  const deletePolicy = (id: string) => {
+    setUserPolicies(prev => prev.filter(p => p.id !== id));
+    toast.success('Policy deleted');
+  };
+
+  const togglePolicyStatus = (id: string) => {
+    setUserPolicies(prev => prev.map(p => p.id === id ? { ...p, status: p.status === 'Active' ? 'Draft' : 'Active' } : p));
   };
 
   const filteredPolicies = policyRules.filter(p =>
@@ -136,40 +232,75 @@ export default function PolicyBuilderPage() {
             </button>
           </div>
 
-          {/* Existing custom policies */}
-          <div className="bg-card rounded-lg border border-border overflow-hidden">
-            <table className="w-full text-xs">
-              <thead className="bg-muted/50">
-                <tr className="border-b border-border">
-                  {['Policy', 'Status', 'Violations'].map(h => (
-                    <th key={h} className="text-left py-2.5 px-3 font-medium text-muted-foreground">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {customPolicies.map(p => (
-                  <tr key={p.id} className="border-b border-border hover:bg-muted/30 cursor-pointer" onClick={() => toast.info(`Editing ${p.name}`)}>
-                    <td className="py-2.5 px-3">
-                      <div className="font-semibold">{p.name}</div>
-                      <div className="text-[10px] text-muted-foreground">{p.description}</div>
-                    </td>
-                    <td className="py-2.5 px-3"><span className="text-[10px] px-2 py-0.5 rounded-full bg-teal/10 text-teal">{p.status}</span></td>
-                    <td className="py-2.5 px-3"><span className={`font-medium ${p.violations > 0 ? 'text-coral' : 'text-teal'}`}>{p.violations}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {userPolicies.length === 0 ? (
+            <div className="bg-card rounded-lg border border-border p-8 text-center">
+              <p className="text-sm text-muted-foreground mb-2">No custom policies yet</p>
+              <button onClick={() => { setCreateOpen(true); resetForm(); }} className="text-xs text-teal hover:underline">Create your first policy</button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {userPolicies.map(p => (
+                <div key={p.id} className="bg-card rounded-lg border border-border overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-muted/30" onClick={() => setExpandedPolicy(expandedPolicy === p.id ? null : p.id)}>
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${p.status === 'Active' ? 'bg-teal/10 text-teal' : 'bg-muted text-muted-foreground'}`}>{p.status}</span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold truncate">{p.name}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">{p.description}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {p.violations > 0 && <span className="text-[10px] px-2 py-0.5 rounded-full bg-coral/10 text-coral font-medium">{p.violations} violations</span>}
+                      {p.severity && <span className="text-[10px] text-muted-foreground">{p.severity}</span>}
+                      {expandedPolicy === p.id ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
+                    </div>
+                  </div>
+                  {expandedPolicy === p.id && (
+                    <div className="px-4 pb-4 border-t border-border pt-3 space-y-3">
+                      <div className="grid grid-cols-4 gap-3 text-xs">
+                        <div><span className="text-muted-foreground block mb-0.5">Asset Type</span><span className="font-medium">{p.assetType || 'All'}</span></div>
+                        <div><span className="text-muted-foreground block mb-0.5">Condition</span><span className="font-medium">{p.condition || '—'} {p.value || ''}</span></div>
+                        <div><span className="text-muted-foreground block mb-0.5">Environment</span><span className="font-medium">{p.environments?.join(', ') || 'All'}</span></div>
+                        <div><span className="text-muted-foreground block mb-0.5">Teams</span><span className="font-medium">{p.teams || 'All'}</span></div>
+                      </div>
+                      {p.actions && p.actions.length > 0 && (
+                        <div>
+                          <span className="text-[10px] text-muted-foreground block mb-1">Actions on Violation</span>
+                          <div className="flex gap-1.5 flex-wrap">
+                            {p.actions.map(a => <span key={a} className="text-[10px] px-2 py-0.5 rounded bg-muted text-foreground">{a}</span>)}
+                          </div>
+                        </div>
+                      )}
+                      <div className="flex gap-2 pt-1">
+                        <button onClick={() => loadPolicyForEdit(p)} className="text-[10px] px-3 py-1.5 rounded bg-muted text-foreground hover:bg-muted/80">Edit</button>
+                        <button onClick={() => togglePolicyStatus(p.id)} className={`text-[10px] px-3 py-1.5 rounded ${p.status === 'Active' ? 'bg-amber/10 text-amber hover:bg-amber/20' : 'bg-teal/10 text-teal hover:bg-teal/20'}`}>
+                          {p.status === 'Active' ? 'Deactivate' : 'Activate'}
+                        </button>
+                        <button onClick={() => deletePolicy(p.id)} className="text-[10px] px-3 py-1.5 rounded bg-coral/10 text-coral hover:bg-coral/20">Delete</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
-          {/* Create policy — single-page form in a modal */}
-          <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Create Custom Policy" wide>
+          {/* Create/Edit policy modal */}
+          <Modal open={createOpen} onClose={() => setCreateOpen(false)} title={editingPolicy ? 'Edit Policy' : 'Create Custom Policy'} wide>
             <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
-              {/* Optional AI assist button */}
-              <div className="flex justify-end">
-                <button onClick={handleAIDraft} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal/10 text-teal text-[11px] hover:bg-teal/20 border border-teal/20">
-                  <Sparkles className="w-3.5 h-3.5" /> AI Auto-fill from Description
-                </button>
+              {/* Description first for AI */}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">Describe your policy (plain English)</label>
+                <textarea value={formDescription} onChange={e => setFormDescription(e.target.value)} rows={3} placeholder='e.g. "All certificates in payments must be renewed 30 days before expiry and issued only by DigiCert or Entrust"' className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-xs resize-none focus:outline-none focus:ring-1 focus:ring-teal" />
               </div>
+
+              {/* AI button */}
+              <button onClick={handleAIDraft} disabled={aiLoading} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-teal/10 text-teal text-xs hover:bg-teal/20 border border-teal/20 disabled:opacity-50 w-full justify-center">
+                <Sparkles className="w-3.5 h-3.5" /> {aiLoading ? 'Parsing...' : 'AI Auto-fill from Description'}
+              </button>
+
+              {/* Divider */}
+              <div className="flex items-center gap-2"><div className="flex-1 h-px bg-border" /><span className="text-[10px] text-muted-foreground">or fill manually</span><div className="flex-1 h-px bg-border" /></div>
 
               {/* Name */}
               <div>
@@ -177,45 +308,31 @@ export default function PolicyBuilderPage() {
                 <input type="text" value={formName} onChange={e => setFormName(e.target.value)} placeholder="e.g. DORA Compliance — Production Certs" className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-teal" />
               </div>
 
-              {/* Description (natural language) */}
-              <div>
-                <label className="text-xs font-medium text-muted-foreground block mb-1">Description (plain English)</label>
-                <textarea value={formDescription} onChange={e => setFormDescription(e.target.value)} rows={3} placeholder='e.g. "All certificates in the payments environment must be renewed at least 30 days before expiry and issued only by DigiCert or Entrust."' className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-xs resize-none focus:outline-none focus:ring-1 focus:ring-teal" />
-              </div>
-
               <div className="grid grid-cols-2 gap-4">
-                {/* Asset Type */}
                 <div>
                   <label className="text-xs font-medium text-muted-foreground block mb-1">Asset Type</label>
                   <select value={formAssetType} onChange={e => setFormAssetType(e.target.value)} className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-xs">
                     {['TLS Certificate', 'SSH Key', 'SSH Certificate', 'Code-Signing Certificate', 'K8s Workload Cert', 'Encryption Key', 'AI Agent Token', 'All'].map(t => <option key={t}>{t}</option>)}
                   </select>
                 </div>
-
-                {/* Severity */}
                 <div>
                   <label className="text-xs font-medium text-muted-foreground block mb-1">Severity</label>
                   <select value={formSeverity} onChange={e => setFormSeverity(e.target.value)} className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-xs">
                     {['Critical', 'High', 'Medium', 'Low'].map(s => <option key={s}>{s}</option>)}
                   </select>
                 </div>
-
-                {/* Condition */}
                 <div>
                   <label className="text-xs font-medium text-muted-foreground block mb-1">Condition</label>
                   <select value={formCondition} onChange={e => setFormCondition(e.target.value)} className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-xs">
                     {['Expiry less than', 'Algorithm equals', 'CA not in list', 'Key length less than', 'No rotation in'].map(c => <option key={c}>{c}</option>)}
                   </select>
                 </div>
-
-                {/* Value */}
                 <div>
                   <label className="text-xs font-medium text-muted-foreground block mb-1">Value</label>
                   <input type="text" value={formValue} onChange={e => setFormValue(e.target.value)} className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-teal" />
                 </div>
               </div>
 
-              {/* Environment */}
               <div>
                 <label className="text-xs font-medium text-muted-foreground block mb-1">Environment Scope</label>
                 <div className="flex gap-2">
@@ -228,13 +345,11 @@ export default function PolicyBuilderPage() {
                 </div>
               </div>
 
-              {/* Teams */}
               <div>
                 <label className="text-xs font-medium text-muted-foreground block mb-1">Teams (optional)</label>
                 <input type="text" value={formTeams} onChange={e => setFormTeams(e.target.value)} placeholder="All teams" className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-teal" />
               </div>
 
-              {/* Actions on violation */}
               <div>
                 <label className="text-xs font-medium text-muted-foreground block mb-1">Actions on Violation</label>
                 <div className="flex flex-wrap gap-2">
@@ -247,7 +362,6 @@ export default function PolicyBuilderPage() {
                 </div>
               </div>
 
-              {/* Summary preview */}
               {formName && (
                 <div className="bg-muted rounded-lg p-3 text-xs space-y-1">
                   <p className="font-semibold">Policy Preview</p>
@@ -257,11 +371,10 @@ export default function PolicyBuilderPage() {
                 </div>
               )}
 
-              {/* Footer */}
               <div className="flex justify-end gap-2 pt-2 border-t border-border">
                 <button onClick={() => setCreateOpen(false)} className="px-4 py-2 text-xs rounded-lg border border-border hover:bg-muted">Cancel</button>
                 <button onClick={() => handleSave(false)} className="px-4 py-2 text-xs rounded-lg border border-border hover:bg-muted">Save as Draft</button>
-                <button onClick={() => handleSave(true)} className="px-4 py-2 text-xs rounded-lg bg-teal text-primary-foreground hover:bg-teal-light">Activate</button>
+                <button onClick={() => handleSave(true)} className="px-4 py-2 text-xs rounded-lg bg-teal text-primary-foreground hover:bg-teal-light">{editingPolicy ? 'Save' : 'Activate'}</button>
               </div>
             </div>
           </Modal>
