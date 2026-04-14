@@ -63,6 +63,7 @@ export default function InventoryPage() {
   };
 
   const isSSHType = (type: string) => type === 'SSH Key' || type === 'SSH Certificate';
+  const isAgentView = typeFilter === 'AI Agent Token';
 
   const [showColumns, setShowColumns] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set(['name','type','caIssuer','algorithm','owner','env','expiry','days','status','pqcRisk','actions']));
