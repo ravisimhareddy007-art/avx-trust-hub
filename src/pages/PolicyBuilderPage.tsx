@@ -1,9 +1,24 @@
 import React, { useState } from 'react';
 import { useNav } from '@/context/NavigationContext';
-import { policyRules, customPolicies } from '@/data/mockData';
+import { policyRules, customPolicies as initialCustomPolicies } from '@/data/mockData';
 import { SeverityBadge, Modal } from '@/components/shared/UIComponents';
 import { toast } from 'sonner';
-import { Plus, Download, Search, Sparkles } from 'lucide-react';
+import { Plus, Download, Search, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
+
+interface CustomPolicy {
+  id: string;
+  name: string;
+  description: string;
+  status: string;
+  violations: number;
+  assetType?: string;
+  condition?: string;
+  value?: string;
+  severity?: string;
+  environments?: string[];
+  teams?: string;
+  actions?: string[];
+}
 
 export default function PolicyBuilderPage() {
   const { setCurrentPage, setFilters } = useNav();
@@ -12,8 +27,11 @@ export default function PolicyBuilderPage() {
   const [configModal, setConfigModal] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [userPolicies, setUserPolicies] = useState<CustomPolicy[]>(initialCustomPolicies.map(p => ({ ...p })));
+  const [expandedPolicy, setExpandedPolicy] = useState<string | null>(null);
+  const [editingPolicy, setEditingPolicy] = useState<string | null>(null);
 
-  // Create policy form state — single page, all fields visible
+  // Create policy form state
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formAssetType, setFormAssetType] = useState('TLS Certificate');
@@ -23,6 +41,7 @@ export default function PolicyBuilderPage() {
   const [formEnvironments, setFormEnvironments] = useState<string[]>(['All']);
   const [formTeams, setFormTeams] = useState('');
   const [formActions, setFormActions] = useState<string[]>(['Alert only']);
+  const [aiLoading, setAiLoading] = useState(false);
 
   const toggleEnv = (e: string) => setFormEnvironments(prev => prev.includes(e) ? prev.filter(x => x !== e) : [...prev, e]);
   const toggleAction = (a: string) => setFormActions(prev => prev.includes(a) ? prev.filter(x => x !== a) : [...prev, a]);
@@ -31,6 +50,18 @@ export default function PolicyBuilderPage() {
     setFormName(''); setFormDescription(''); setFormAssetType('TLS Certificate');
     setFormCondition('Expiry less than'); setFormValue('30 days'); setFormSeverity('High');
     setFormEnvironments(['All']); setFormTeams(''); setFormActions(['Alert only']);
+    setEditingPolicy(null);
+  };
+
+  const aiTemplates: Record<string, { name: string; assetType: string; condition: string; value: string; severity: string; envs: string[]; actions: string[] }> = {
+    'expir': { name: '', assetType: 'TLS Certificate', condition: 'Expiry less than', value: '30 days', severity: 'High', envs: ['Production'], actions: ['Alert only', 'Create TrustOps ticket'] },
+    'rsa': { name: '', assetType: 'TLS Certificate', condition: 'Algorithm equals', value: 'RSA-2048', severity: 'Critical', envs: ['All'], actions: ['Alert only', 'Escalate to owner'] },
+    'rotat': { name: '', assetType: 'SSH Key', condition: 'No rotation in', value: '90 days', severity: 'High', envs: ['Production'], actions: ['Alert only', 'Auto-remediate'] },
+    'ca': { name: '', assetType: 'TLS Certificate', condition: 'CA not in list', value: 'DigiCert, Entrust, GlobalSign', severity: 'Medium', envs: ['Production'], actions: ['Block issuance'] },
+    'key': { name: '', assetType: 'Encryption Key', condition: 'Key length less than', value: '256 bits', severity: 'Critical', envs: ['All'], actions: ['Alert only', 'Escalate to owner'] },
+    'pci': { name: '', assetType: 'TLS Certificate', condition: 'Algorithm equals', value: 'RSA-2048', severity: 'Critical', envs: ['Production'], actions: ['Alert only', 'Block issuance', 'Create TrustOps ticket'] },
+    'dora': { name: '', assetType: 'TLS Certificate', condition: 'Expiry less than', value: '90 days', severity: 'High', envs: ['Production'], actions: ['Alert only', 'Create TrustOps ticket'] },
+    'ssh': { name: '', assetType: 'SSH Key', condition: 'No rotation in', value: '60 days', severity: 'High', envs: ['All'], actions: ['Alert only', 'Auto-remediate'] },
   };
 
   const handleAIDraft = () => {
@@ -38,22 +69,87 @@ export default function PolicyBuilderPage() {
       toast.error('Enter a description first so AI can parse your intent');
       return;
     }
-    // Simulate AI parsing the description
-    toast.success('AI parsed your policy description');
-    setFormName(formDescription.slice(0, 60));
-    setFormAssetType('TLS Certificate');
-    setFormCondition('Expiry less than');
-    setFormValue('30 days');
-    setFormSeverity('High');
-    setFormEnvironments(['Production']);
-    setFormActions(['Alert only', 'Create TrustOps ticket']);
+    setAiLoading(true);
+    // Simulate AI delay
+    setTimeout(() => {
+      const desc = formDescription.toLowerCase();
+      // Find best matching template
+      let matched = false;
+      for (const [keyword, template] of Object.entries(aiTemplates)) {
+        if (desc.includes(keyword)) {
+          setFormName(formDescription.length > 60 ? formDescription.slice(0, 57) + '...' : formDescription);
+          setFormAssetType(template.assetType);
+          setFormCondition(template.condition);
+          setFormValue(template.value);
+          setFormSeverity(template.severity);
+          setFormEnvironments(template.envs);
+          setFormActions(template.actions);
+          matched = true;
+          break;
+        }
+      }
+      if (!matched) {
+        setFormName(formDescription.length > 60 ? formDescription.slice(0, 57) + '...' : formDescription);
+        setFormAssetType('TLS Certificate');
+        setFormCondition('Expiry less than');
+        setFormValue('30 days');
+        setFormSeverity('High');
+        setFormEnvironments(['Production']);
+        setFormActions(['Alert only', 'Create TrustOps ticket']);
+      }
+      setAiLoading(false);
+      toast.success('AI parsed your policy — review and adjust fields below');
+    }, 800);
   };
 
   const handleSave = (activate: boolean) => {
     if (!formName) { toast.error('Policy name is required'); return; }
-    toast.success(activate ? `Policy "${formName}" activated` : `Policy "${formName}" saved as draft`);
+    const newPolicy: CustomPolicy = {
+      id: editingPolicy || `cpol-${Date.now()}`,
+      name: formName,
+      description: formDescription || `${formCondition} ${formValue} on ${formAssetType}`,
+      status: activate ? 'Active' : 'Draft',
+      violations: 0,
+      assetType: formAssetType,
+      condition: formCondition,
+      value: formValue,
+      severity: formSeverity,
+      environments: formEnvironments,
+      teams: formTeams,
+      actions: formActions,
+    };
+    if (editingPolicy) {
+      setUserPolicies(prev => prev.map(p => p.id === editingPolicy ? newPolicy : p));
+      toast.success(`Policy "${formName}" updated`);
+    } else {
+      setUserPolicies(prev => [newPolicy, ...prev]);
+      toast.success(activate ? `Policy "${formName}" created & activated` : `Policy "${formName}" saved as draft`);
+    }
     setCreateOpen(false);
     resetForm();
+  };
+
+  const loadPolicyForEdit = (p: CustomPolicy) => {
+    setFormName(p.name);
+    setFormDescription(p.description);
+    setFormAssetType(p.assetType || 'TLS Certificate');
+    setFormCondition(p.condition || 'Expiry less than');
+    setFormValue(p.value || '30 days');
+    setFormSeverity(p.severity || 'High');
+    setFormEnvironments(p.environments || ['All']);
+    setFormTeams(p.teams || '');
+    setFormActions(p.actions || ['Alert only']);
+    setEditingPolicy(p.id);
+    setCreateOpen(true);
+  };
+
+  const deletePolicy = (id: string) => {
+    setUserPolicies(prev => prev.filter(p => p.id !== id));
+    toast.success('Policy deleted');
+  };
+
+  const togglePolicyStatus = (id: string) => {
+    setUserPolicies(prev => prev.map(p => p.id === id ? { ...p, status: p.status === 'Active' ? 'Draft' : 'Active' } : p));
   };
 
   const filteredPolicies = policyRules.filter(p =>
