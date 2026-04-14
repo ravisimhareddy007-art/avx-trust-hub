@@ -358,6 +358,77 @@ export default function InventoryPage() {
                   </div>
                 )}
 
+                {/* AI Agent Identity — Token Security style */}
+                {selectedAsset.type === 'AI Agent Token' && selectedAsset.agentMeta && (
+                  <>
+                    <div className="bg-secondary/50 rounded-lg p-4">
+                      <h4 className="text-xs font-semibold mb-3 flex items-center gap-2">
+                        <Bot className="w-4 h-4 text-teal" /> Agent Identity
+                      </h4>
+                      <div className="grid grid-cols-2 gap-3 text-xs">
+                        <div><p className="text-muted-foreground mb-0.5">Agent Type</p><p className="font-medium">{selectedAsset.agentMeta.agentType}</p></div>
+                        <div><p className="text-muted-foreground mb-0.5">Framework</p><p className="font-medium">{selectedAsset.agentMeta.framework}</p></div>
+                        <div><p className="text-muted-foreground mb-0.5">Last Activity</p><p className="font-medium">{selectedAsset.agentMeta.lastActivity}</p></div>
+                        <div><p className="text-muted-foreground mb-0.5">Actions / Day</p><p className="font-medium">{selectedAsset.agentMeta.actionsPerDay.toLocaleString()}</p></div>
+                      </div>
+                    </div>
+
+                    <div className="bg-secondary/50 rounded-lg p-4">
+                      <h4 className="text-xs font-semibold mb-3 flex items-center gap-2">
+                        <Lock className="w-4 h-4 text-teal" /> Permissions & Access
+                        <span className={`ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                          selectedAsset.agentMeta.permissionRisk === 'Over-privileged' ? 'bg-coral/10 text-coral' :
+                          selectedAsset.agentMeta.permissionRisk === 'Right-sized' ? 'bg-teal/10 text-teal' : 'bg-muted text-muted-foreground'
+                        }`}>
+                          {selectedAsset.agentMeta.permissionRisk === 'Over-privileged' && <AlertTriangle className="w-3 h-3 mr-1" />}
+                          {selectedAsset.agentMeta.permissionRisk}
+                        </span>
+                      </h4>
+                      <div className="space-y-2">
+                        <div>
+                          <p className="text-[10px] text-muted-foreground mb-1">Services Accessed ({selectedAsset.agentMeta.servicesAccessed.length})</p>
+                          <div className="flex flex-wrap gap-1">
+                            {selectedAsset.agentMeta.servicesAccessed.map(s => (
+                              <span key={s} className="px-2 py-0.5 rounded bg-muted text-[10px] text-foreground">{s}</span>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-muted-foreground mb-1">Permissions ({selectedAsset.agentMeta.permissions.length})</p>
+                          <div className="flex flex-wrap gap-1">
+                            {selectedAsset.agentMeta.permissions.map(p => (
+                              <span key={p} className="px-2 py-0.5 rounded bg-muted text-[10px] font-mono text-foreground">{p}</span>
+                            ))}
+                          </div>
+                        </div>
+                        {selectedAsset.agentMeta.mcpTools && (
+                          <div>
+                            <p className="text-[10px] text-muted-foreground mb-1">MCP Tools ({selectedAsset.agentMeta.mcpTools.length})</p>
+                            <div className="flex flex-wrap gap-1">
+                              {selectedAsset.agentMeta.mcpTools.map(t => (
+                                <span key={t} className="px-2 py-0.5 rounded bg-teal/10 text-[10px] font-mono text-teal">{t}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {selectedAsset.agentMeta.permissionRisk === 'Over-privileged' && (
+                      <div className="bg-coral/5 border border-coral/20 rounded-lg p-3">
+                        <p className="text-xs font-semibold text-coral mb-1 flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" /> Over-Privileged Agent</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          This agent has {selectedAsset.agentMeta.permissions.length} permissions across {selectedAsset.agentMeta.servicesAccessed.length} services.
+                          Recommend right-sizing to least-privilege access based on observed behavior patterns.
+                        </p>
+                        <button onClick={() => toast.success('Right-size permissions workflow created')} className="text-[10px] text-teal font-medium mt-2 hover:underline">
+                          Right-size permissions →
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+
                 {/* Dependency map */}
                 <div className="bg-secondary/50 rounded-lg p-4">
                   <h4 className="text-xs font-semibold mb-3">Dependency Map</h4>
