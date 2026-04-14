@@ -7,11 +7,18 @@ import {
   Link2, Lock, ScrollText, Cog, Wrench
 } from 'lucide-react';
 
+interface NavChild {
+  id: string;
+  label: string;
+  page?: string;
+  type?: string;
+}
+
 interface NavItem {
   id: string;
   label: string;
   icon: React.ElementType;
-  children?: { id: string; label: string; page?: string }[];
+  children?: NavChild[];
   page?: string;
 }
 
@@ -20,23 +27,23 @@ const navItems: NavItem[] = [
   { id: 'discovery', label: 'DISCOVERY', icon: Search, page: 'discovery' },
   {
     id: 'inventory-section', label: 'INVENTORY', icon: Package, children: [
-      { id: 'inventory-all', label: 'All Assets', page: 'inventory' },
-      { id: 'inventory-tls', label: 'TLS Certificates', page: 'inventory' },
-      { id: 'inventory-ssh', label: 'SSH Keys', page: 'inventory' },
-      { id: 'inventory-sshcert', label: 'SSH Certificates', page: 'inventory' },
-      { id: 'inventory-codesign', label: 'Code Signing', page: 'inventory' },
-      { id: 'inventory-k8s', label: 'K8s Workload Certs', page: 'inventory' },
-      { id: 'inventory-ai', label: 'AI Agent Tokens', page: 'inventory' },
+      { id: 'inventory-all', label: 'All Assets', page: 'inventory', type: 'All' },
+      { id: 'inventory-tls', label: 'TLS Certificates', page: 'inventory', type: 'TLS Certificate' },
+      { id: 'inventory-ssh', label: 'SSH Keys', page: 'inventory', type: 'SSH Key' },
+      { id: 'inventory-sshcert', label: 'SSH Certificates', page: 'inventory', type: 'SSH Certificate' },
+      { id: 'inventory-codesign', label: 'Code Signing', page: 'inventory', type: 'Code-Signing Certificate' },
+      { id: 'inventory-k8s', label: 'K8s Workload Certs', page: 'inventory', type: 'K8s Workload Cert' },
+      { id: 'inventory-ai', label: 'AI Agent Tokens', page: 'inventory', type: 'AI Agent Token' },
     ]
   },
   { id: 'policy-builder', label: 'POLICIES', icon: ScrollText, page: 'policy-builder' },
   {
     id: 'remediation-section', label: 'REMEDIATION', icon: Wrench, children: [
-      { id: 'remediation-all', label: 'All Remediation', page: 'remediation' },
-      { id: 'remediation-tls', label: 'TLS Certificates', page: 'remediation' },
-      { id: 'remediation-ssh', label: 'SSH Keys', page: 'remediation' },
-      { id: 'remediation-sshcert', label: 'SSH Certificates', page: 'remediation' },
-      { id: 'remediation-codesign', label: 'Code Signing', page: 'remediation' },
+      { id: 'remediation-all', label: 'All Remediation', page: 'remediation', type: 'All' },
+      { id: 'remediation-tls', label: 'TLS Certificates', page: 'remediation', type: 'TLS Certificate' },
+      { id: 'remediation-ssh', label: 'SSH Keys', page: 'remediation', type: 'SSH Key' },
+      { id: 'remediation-sshcert', label: 'SSH Certificates', page: 'remediation', type: 'SSH Certificate' },
+      { id: 'remediation-codesign', label: 'Code Signing', page: 'remediation', type: 'Code-Signing Certificate' },
     ]
   },
   { id: 'integrations', label: 'INTEGRATIONS', icon: Link2, page: 'integrations' },
@@ -59,7 +66,7 @@ const personaOptions: { value: Persona; label: string }[] = [
 
 export default function AppSidebar() {
   const { persona, setPersona } = usePersona();
-  const { currentPage, setCurrentPage } = useNav();
+  const { setCurrentPage, setFilters } = useNav();
   const [expandedGroups, setExpandedGroups] = useState<string[]>(['inventory-section']);
   const [personaOpen, setPersonaOpen] = useState(false);
   const [activeNavId, setActiveNavId] = useState<string>('dashboard');
@@ -70,10 +77,15 @@ export default function AppSidebar() {
     );
   };
 
-  const handleNavClick = (id: string, page?: string) => {
+  const handleNavClick = (id: string, page?: string, type?: string) => {
     setActiveNavId(id);
-    const targetPage = page || id;
-    setCurrentPage(targetPage);
+    setCurrentPage(page || id);
+
+    if (page === 'inventory' || page === 'remediation') {
+      setFilters(type && type !== 'All' ? { type } : {});
+    } else {
+      setFilters({});
+    }
   };
 
   const isActive = (id: string) => activeNavId === id;
@@ -81,7 +93,6 @@ export default function AppSidebar() {
 
   return (
     <div className="w-56 min-h-screen bg-navy flex flex-col border-r border-navy-lighter flex-shrink-0">
-      {/* Logo */}
       <div className="h-14 flex items-center px-4 border-b border-navy-lighter">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-teal flex items-center justify-center">
@@ -94,17 +105,17 @@ export default function AppSidebar() {
         </div>
       </div>
 
-      {/* Module */}
       <div className="px-4 py-2 border-b border-navy-lighter">
         <span className="text-xs font-bold text-primary-foreground tracking-wider">CERT+</span>
         <span className="text-[10px] text-muted-foreground ml-2">Module</span>
       </div>
 
-      {/* Persona */}
       <div className="px-3 py-2 border-b border-navy-lighter">
         <div className="relative">
-          <button onClick={() => setPersonaOpen(!personaOpen)}
-            className="w-full flex items-center justify-between px-3 py-1.5 rounded-md bg-navy-light text-sidebar-foreground text-xs hover:bg-navy-lighter transition-colors">
+          <button
+            onClick={() => setPersonaOpen(!personaOpen)}
+            className="w-full flex items-center justify-between px-3 py-1.5 rounded-md bg-navy-light text-sidebar-foreground text-xs hover:bg-navy-lighter transition-colors"
+          >
             <div className="flex items-center gap-2">
               <div className="w-5 h-5 rounded-full bg-amber/20 flex items-center justify-center">
                 <Users className="w-3 h-3 text-amber" />
@@ -116,8 +127,14 @@ export default function AppSidebar() {
           {personaOpen && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-navy-light border border-navy-lighter rounded-md shadow-lg z-50">
               {personaOptions.map(opt => (
-                <button key={opt.value} onClick={() => { setPersona(opt.value); setPersonaOpen(false); }}
-                  className={`w-full text-left px-3 py-2 text-xs hover:bg-navy-lighter transition-colors ${persona === opt.value ? 'text-teal' : 'text-sidebar-foreground'}`}>
+                <button
+                  key={opt.value}
+                  onClick={() => {
+                    setPersona(opt.value);
+                    setPersonaOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-2 text-xs hover:bg-navy-lighter transition-colors ${persona === opt.value ? 'text-teal' : 'text-sidebar-foreground'}`}
+                >
                   {opt.label}
                 </button>
               ))}
@@ -126,16 +143,17 @@ export default function AppSidebar() {
         </div>
       </div>
 
-      {/* Nav */}
       <nav className="flex-1 px-2 py-2 overflow-y-auto scrollbar-thin">
         {navItems.map(item => (
           <div key={item.id} className="mb-0.5">
             {item.children ? (
               <>
-                <button onClick={() => toggleGroup(item.id)}
+                <button
+                  onClick={() => toggleGroup(item.id)}
                   className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-[11px] font-semibold uppercase tracking-wide transition-colors ${
                     isChildActive(item) ? 'text-primary-foreground' : 'text-sidebar-foreground hover:text-primary-foreground'
-                  }`}>
+                  }`}
+                >
                   <item.icon className="w-4 h-4" />
                   <span className="flex-1 text-left">{item.label}</span>
                   {expandedGroups.includes(item.id) ? <span className="text-muted-foreground">—</span> : <ChevronRight className="w-3 h-3 text-muted-foreground" />}
@@ -143,10 +161,13 @@ export default function AppSidebar() {
                 {expandedGroups.includes(item.id) && (
                   <div className="ml-4 mt-0.5 space-y-0.5 border-l border-navy-lighter pl-3">
                     {item.children.map(child => (
-                      <button key={child.id} onClick={() => handleNavClick(child.id, child.page)}
+                      <button
+                        key={child.id}
+                        onClick={() => handleNavClick(child.id, child.page, child.type)}
                         className={`w-full text-left px-3 py-1.5 rounded-md text-xs transition-colors ${
                           isActive(child.id) ? 'bg-teal/10 text-teal font-medium' : 'text-sidebar-foreground hover:bg-navy-light hover:text-primary-foreground'
-                        }`}>
+                        }`}
+                      >
                         {child.label}
                       </button>
                     ))}
@@ -154,10 +175,12 @@ export default function AppSidebar() {
                 )}
               </>
             ) : (
-              <button onClick={() => handleNavClick(item.id, item.page)}
+              <button
+                onClick={() => handleNavClick(item.id, item.page)}
                 className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-[11px] font-semibold uppercase tracking-wide transition-colors ${
                   isActive(item.id) ? 'text-teal' : 'text-sidebar-foreground hover:text-primary-foreground'
-                }`}>
+                }`}
+              >
                 <item.icon className="w-4 h-4" />
                 <span>{item.label}</span>
               </button>
