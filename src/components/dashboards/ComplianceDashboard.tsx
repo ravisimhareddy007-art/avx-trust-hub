@@ -7,11 +7,11 @@ import { Download } from 'lucide-react';
 import { toast } from 'sonner';
 
 const buCompliance = [
-  { bu: 'Payments', DORA: 'red', 'PCI-DSS': 'red', HIPAA: 'green', 'FIPS': 'amber' },
-  { bu: 'Platform', DORA: 'green', 'PCI-DSS': 'green', HIPAA: 'green', 'FIPS': 'amber' },
-  { bu: 'Infrastructure', DORA: 'amber', 'PCI-DSS': 'green', HIPAA: 'green', 'FIPS': 'red' },
-  { bu: 'AI Engineering', DORA: 'amber', 'PCI-DSS': 'amber', HIPAA: 'amber', 'FIPS': 'green' },
-  { bu: 'Security Ops', DORA: 'green', 'PCI-DSS': 'green', HIPAA: 'green', 'FIPS': 'green' },
+  { bu: 'Payments', DORA: 'red', 'PCI-DSS': 'red', 'NIS2': 'amber', HIPAA: 'green', 'FIPS': 'amber' },
+  { bu: 'Platform', DORA: 'green', 'PCI-DSS': 'green', 'NIS2': 'green', HIPAA: 'green', 'FIPS': 'amber' },
+  { bu: 'Infrastructure', DORA: 'amber', 'PCI-DSS': 'green', 'NIS2': 'amber', HIPAA: 'green', 'FIPS': 'red' },
+  { bu: 'AI Engineering', DORA: 'amber', 'PCI-DSS': 'amber', 'NIS2': 'red', HIPAA: 'amber', 'FIPS': 'green' },
+  { bu: 'Security Ops', DORA: 'green', 'PCI-DSS': 'green', 'NIS2': 'green', HIPAA: 'green', 'FIPS': 'green' },
 ];
 
 const heatColors: Record<string, string> = { green: 'bg-teal/20 text-teal', amber: 'bg-amber/20 text-amber', red: 'bg-coral/20 text-coral' };
@@ -22,11 +22,11 @@ export default function ComplianceDashboard() {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-5 gap-3">
-        <KPICard label="Frameworks Active" value="4" color="teal" subtitle="DORA, PCI-DSS, HIPAA, FIPS" onClick={() => setCurrentPage('policy-builder')} />
+        <KPICard label="Frameworks Active" value="6" color="teal" subtitle="DORA, PCI-DSS, NIS2, HIPAA, FIPS, FedRAMP" onClick={() => setCurrentPage('policy-builder')} />
         <KPICard label="Open Violations" value="28,412" color="coral" onClick={() => { setFilters({ type: 'compliance' }); setCurrentPage('trustops'); }} />
         <KPICard label="Evidence Packages Ready" value={12} color="teal" onClick={() => toast.success('Downloading evidence packages...')} />
         <KPICard label="Audit Items Due" value={847} color="amber" onClick={() => { setFilters({ type: 'audit' }); setCurrentPage('trustops'); }} />
-        <KPICard label="PQC Compliance Gap" value="94%" color="coral" subtitle="4.4M assets non-compliant" onClick={() => setCurrentPage('quantum')} />
+        <KPICard label="PQC Compliance Gap" value="94%" color="coral" subtitle="4.4M assets non-PQC-ready" onClick={() => setCurrentPage('quantum')} />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -51,14 +51,14 @@ export default function ComplianceDashboard() {
             <thead>
               <tr className="border-b border-border">
                 <th className="text-left py-2 text-muted-foreground font-medium">Business Unit</th>
-                {['DORA', 'PCI-DSS', 'HIPAA', 'FIPS'].map(f => <th key={f} className="text-center py-2 text-muted-foreground font-medium">{f}</th>)}
+                {['DORA', 'PCI-DSS', 'NIS2', 'HIPAA', 'FIPS'].map(f => <th key={f} className="text-center py-2 text-muted-foreground font-medium">{f}</th>)}
               </tr>
             </thead>
             <tbody>
               {buCompliance.map(row => (
                 <tr key={row.bu} className="border-b border-border last:border-0">
                   <td className="py-2 font-medium">{row.bu}</td>
-                  {['DORA', 'PCI-DSS', 'HIPAA', 'FIPS'].map(f => (
+                  {['DORA', 'PCI-DSS', 'NIS2', 'HIPAA', 'FIPS'].map(f => (
                     <td key={f} className="text-center py-2">
                       <button onClick={() => { setFilters({ team: row.bu, framework: f }); setCurrentPage('inventory'); }} className={`inline-block w-6 h-6 rounded ${heatColors[(row as any)[f === 'FIPS' ? 'FIPS' : f]]}`} />
                     </td>
@@ -125,8 +125,9 @@ export default function ComplianceDashboard() {
       </div>
 
       <AIInsightCard>
-        Based on your DORA RTS obligations, 3 certificates in the payments environment exceed the maximum 90-day lifetime requirement.
+        Based on your DORA RTS and NIS2 obligations, 3 certificates in the payments environment exceed the maximum 90-day lifetime requirement.
         Auto-generating evidence package for Q2 audit. 847 assets require ML-DSA migration before your Jun 2026 PCI-DSS review.
+        AI agent identity governance gaps detected — 38% of agent tokens lack audit trail required by NIS2 Article 21.
       </AIInsightCard>
     </div>
   );
