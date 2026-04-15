@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { connectors } from '@/data/mockData';
 import { toast } from 'sonner';
-import { Search, Eye, EyeOff, Wifi, Link, X, ChevronLeft, ChevronRight, Check, RefreshCw, Play, Shield, Database, Settings } from 'lucide-react';
+import { Search, Eye, EyeOff, Wifi, Link, X, ChevronLeft, ChevronRight, Check, RefreshCw, Play } from 'lucide-react';
 
-// Extended connector metadata with category info for 6-step lifecycle
+// Extended connector metadata with category info for 4-step lifecycle
 const connectorMeta: Record<string, {
   category: string;
   discovers: string;
