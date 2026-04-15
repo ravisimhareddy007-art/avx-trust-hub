@@ -7,7 +7,7 @@ import {
   RefreshCw, RotateCcw, XCircle, Shield, Search, Download, CheckCircle2,
   Clock, AlertTriangle, MoreVertical, Eye, Key, Lock, FileCode, Bot, Server,
   ArrowRight, User, Workflow, CheckCircle, Plus, Ticket, LockKeyhole,
-  Terminal, Code, Database, Cpu
+  Terminal, Code, Database, Cpu, Sparkles
 } from 'lucide-react';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -368,6 +368,42 @@ function RowMenu({ item, onAction }: { item: RemediationItem; onAction: (item: R
   );
 }
 
+// ─── Locked Module Overlay ───────────────────────────────────────────────────
+
+function LockedModuleOverlay({ module, onRequestLicense }: { module: ModuleDef; onRequestLicense: () => void }) {
+  return (
+    <div className="flex-1 flex items-center justify-center p-6">
+      <div className="max-w-md text-center space-y-5">
+        <div className="mx-auto w-20 h-20 rounded-2xl bg-amber/10 border border-amber/20 flex items-center justify-center">
+          <Lock className="w-10 h-10 text-amber" />
+        </div>
+        <div>
+          <h2 className="text-lg font-bold text-foreground mb-2">{module.label}</h2>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Unlock powerful remediation workflows for {module.label.toLowerCase()} — including automated rotation, 
+            provisioning, policy enforcement, and AI-powered bulk actions.
+          </p>
+        </div>
+        <div className="bg-card border border-border rounded-lg p-4 text-left space-y-2">
+          <p className="text-xs font-semibold text-foreground">What you'll get:</p>
+          <ul className="space-y-1.5 text-xs text-muted-foreground">
+            <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-teal flex-shrink-0" /> Automated remediation & provisioning</li>
+            <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-teal flex-shrink-0" /> AI-assisted bulk operations</li>
+            <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-teal flex-shrink-0" /> Policy-driven workflow enforcement</li>
+            <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-teal flex-shrink-0" /> Full audit trail & compliance reporting</li>
+          </ul>
+        </div>
+        <div className="flex flex-col items-center gap-2">
+          <button onClick={onRequestLicense} className="flex items-center gap-2 px-6 py-2.5 text-sm font-medium bg-teal text-primary-foreground rounded-lg hover:bg-teal-light transition-colors">
+            <Ticket className="w-4 h-4" /> Request License to Enable
+          </button>
+          <p className="text-[10px] text-muted-foreground">A ticket will be created and routed to your procurement team.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
 export default function RemediationPage() {
@@ -381,6 +417,7 @@ export default function RemediationPage() {
   const [ticketModule, setTicketModule] = useState<ModuleDef | null>(null);
 
   const currentModule = modules.find(m => m.id === activeModule)!;
+  const isLocked = activeModule !== 'all' && !currentModule.licensed;
 
   const allItems = useMemo(() => getRemediationItems(mockAssets), []);
 
@@ -442,128 +479,106 @@ export default function RemediationPage() {
         </nav>
       </div>
 
-      {/* Main content */}
-      <div className="flex-1 overflow-auto p-6 space-y-3">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-bold flex items-center gap-2">
-              <currentModule.icon className="w-5 h-5 text-teal" />
-              {currentModule.label}
-              {!currentModule.licensed && <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber/10 text-amber border border-amber/30">Add-on Required</span>}
-            </h1>
-            <p className="text-xs text-muted-foreground mt-0.5">{items.length} items need attention</p>
-          </div>
-          <div className="flex items-center gap-2">
-            {activeModule !== 'all' && currentModule.licensed && currentModule.provisionLabel && (
-              <button onClick={() => setProvisionModule(currentModule)} className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-teal text-primary-foreground rounded-lg hover:bg-teal-light">
-                <Plus className="w-3.5 h-3.5" /> {currentModule.provisionLabel}
-              </button>
-            )}
-            {activeModule !== 'all' && !currentModule.licensed && (
-              <button onClick={() => setTicketModule(currentModule)} className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber/10 text-amber border border-amber/30 rounded-lg hover:bg-amber/20">
-                <Ticket className="w-3.5 h-3.5" /> Request License
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Unlicensed banner */}
-        {!currentModule.licensed && activeModule !== 'all' && (
-          <div className="bg-amber/5 border border-amber/20 rounded-lg p-4 flex items-center justify-between">
+      {/* Main content — locked overlay or full remediation view */}
+      {isLocked ? (
+        <LockedModuleOverlay module={currentModule} onRequestLicense={() => setTicketModule(currentModule)} />
+      ) : (
+        <div className="flex-1 overflow-auto p-6 space-y-3">
+          {/* Header */}
+          <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-amber">🔒 {currentModule.label} — Add-on Module</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Remediation workflows for this crypto type require an add-on license. You can still view issues below.</p>
+              <h1 className="text-lg font-bold flex items-center gap-2">
+                <currentModule.icon className="w-5 h-5 text-teal" />
+                {currentModule.label}
+              </h1>
+              <p className="text-xs text-muted-foreground mt-0.5">{items.length} items need attention</p>
             </div>
-            <button onClick={() => setTicketModule(currentModule)} className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-teal text-primary-foreground rounded-lg hover:bg-teal-light">
-              <Ticket className="w-3.5 h-3.5" /> Create Ticket
+            <div className="flex items-center gap-2">
+              {activeModule !== 'all' && currentModule.provisionLabel && (
+                <button onClick={() => setProvisionModule(currentModule)} className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-teal text-primary-foreground rounded-lg hover:bg-teal-light">
+                  <Plus className="w-3.5 h-3.5" /> {currentModule.provisionLabel}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Issue filters */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {issueFilters.map(f => (
+              <button key={f.id} onClick={() => { setActiveFilter(f.id); setSelectedRows(new Set()); }}
+                className={`px-3 py-1 rounded-full text-[10px] font-medium transition-colors ${
+                  activeFilter === f.id ? 'bg-teal/10 text-teal border border-teal/30' : 'bg-muted text-muted-foreground border border-transparent hover:border-border'
+                }`}>{f.label} ({issueFilterCounts[f.id]})</button>
+            ))}
+          </div>
+
+          {/* Toolbar */}
+          <div className="bg-card rounded-lg border border-border px-3 py-2 flex items-center gap-2">
+            <div className="relative flex-1 max-w-xs">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..."
+                className="w-full pl-7 pr-3 py-1 bg-muted border border-border rounded text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal" />
+            </div>
+            {selectedRows.size > 0 && (
+              <button onClick={() => { toast.success(`Bulk remediation for ${selectedRows.size} items`); setSelectedRows(new Set()); }}
+                className="flex items-center gap-1 px-3 py-1 text-xs font-medium bg-teal text-primary-foreground rounded hover:bg-teal-light">
+                <CheckCircle2 className="w-3.5 h-3.5" /> Remediate ({selectedRows.size})
+              </button>
+            )}
+            <button onClick={() => toast.success('Exporting...')} className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground ml-auto">
+              <Download className="w-3.5 h-3.5" /> Export
             </button>
           </div>
-        )}
 
-        {/* Issue filters */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {issueFilters.map(f => (
-            <button key={f.id} onClick={() => { setActiveFilter(f.id); setSelectedRows(new Set()); }}
-              className={`px-3 py-1 rounded-full text-[10px] font-medium transition-colors ${
-                activeFilter === f.id ? 'bg-teal/10 text-teal border border-teal/30' : 'bg-muted text-muted-foreground border border-transparent hover:border-border'
-              }`}>{f.label} ({issueFilterCounts[f.id]})</button>
-          ))}
-        </div>
-
-        {/* Toolbar */}
-        <div className="bg-card rounded-lg border border-border px-3 py-2 flex items-center gap-2">
-          <div className="relative flex-1 max-w-xs">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..."
-              className="w-full pl-7 pr-3 py-1 bg-muted border border-border rounded text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal" />
-          </div>
-          {selectedRows.size > 0 && (
-            <button onClick={() => { toast.success(`Bulk remediation for ${selectedRows.size} items`); setSelectedRows(new Set()); }}
-              className="flex items-center gap-1 px-3 py-1 text-xs font-medium bg-teal text-primary-foreground rounded hover:bg-teal-light">
-              <CheckCircle2 className="w-3.5 h-3.5" /> Remediate ({selectedRows.size})
-            </button>
-          )}
-          <button onClick={() => toast.success('Exporting...')} className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground ml-auto">
-            <Download className="w-3.5 h-3.5" /> Export
-          </button>
-        </div>
-
-        {/* Table */}
-        <div className="bg-card rounded-lg border border-border overflow-hidden">
-          <div className="overflow-x-auto scrollbar-thin">
-            <table className="w-full text-xs">
-              <thead className="bg-secondary/50">
-                <tr className="border-b border-border">
-                  <th className="w-8 py-2 px-2"><input type="checkbox" onChange={e => setSelectedRows(e.target.checked ? new Set(items.map((_, i) => `${i}`)) : new Set())} className="rounded" /></th>
-                  <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Severity</th>
-                  <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Asset</th>
-                  {activeModule === 'all' && <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Type</th>}
-                  <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Issue</th>
-                  <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Owner</th>
-                  <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Env</th>
-                  <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Recommended</th>
-                  <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Action</th>
-                  <th className="w-10 py-2 px-2"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item, i) => {
-                  const Icon = getActionIcon(item.actionType);
-                  const disabled = activeModule !== 'all' && !currentModule.licensed;
-                  return (
-                    <tr key={`${item.asset.id}-${item.issueCategory}-${i}`} className="border-b border-border hover:bg-secondary/30">
-                      <td className="py-2 px-2"><input type="checkbox" checked={selectedRows.has(`${i}`)} onChange={() => toggleRow(`${i}`)} className="rounded" /></td>
-                      <td className="py-2 px-2"><SeverityBadge severity={item.severity} /></td>
-                      <td className="py-2 px-2 font-medium text-foreground max-w-[200px] truncate">{item.asset.name}</td>
-                      {activeModule === 'all' && <td className="py-2 px-2 text-muted-foreground">{item.asset.type}</td>}
-                      <td className="py-2 px-2 text-muted-foreground">{item.issue}</td>
-                      <td className="py-2 px-2 text-muted-foreground">{item.asset.owner}</td>
-                      <td className="py-2 px-2"><StatusBadge status={item.asset.environment} /></td>
-                      <td className="py-2 px-2 text-muted-foreground text-[10px] max-w-[160px]">{item.recommendedAction}</td>
-                      <td className="py-2 px-2">
-                        {disabled ? (
-                          <button onClick={() => setTicketModule(currentModule)} className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium bg-amber/10 text-amber">
-                            <Ticket className="w-3 h-3" /> Request
-                          </button>
-                        ) : (
+          {/* Table */}
+          <div className="bg-card rounded-lg border border-border overflow-hidden">
+            <div className="overflow-x-auto scrollbar-thin">
+              <table className="w-full text-xs">
+                <thead className="bg-secondary/50">
+                  <tr className="border-b border-border">
+                    <th className="w-8 py-2 px-2"><input type="checkbox" onChange={e => setSelectedRows(e.target.checked ? new Set(items.map((_, i) => `${i}`)) : new Set())} className="rounded" /></th>
+                    <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Severity</th>
+                    <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Asset</th>
+                    {activeModule === 'all' && <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Type</th>}
+                    <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Issue</th>
+                    <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Owner</th>
+                    <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Env</th>
+                    <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Recommended</th>
+                    <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Action</th>
+                    <th className="w-10 py-2 px-2"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((item, i) => {
+                    const Icon = getActionIcon(item.actionType);
+                    return (
+                      <tr key={`${item.asset.id}-${item.issueCategory}-${i}`} className="border-b border-border hover:bg-secondary/30">
+                        <td className="py-2 px-2"><input type="checkbox" checked={selectedRows.has(`${i}`)} onChange={() => toggleRow(`${i}`)} className="rounded" /></td>
+                        <td className="py-2 px-2"><SeverityBadge severity={item.severity} /></td>
+                        <td className="py-2 px-2 font-medium text-foreground max-w-[200px] truncate">{item.asset.name}</td>
+                        {activeModule === 'all' && <td className="py-2 px-2 text-muted-foreground">{item.asset.type}</td>}
+                        <td className="py-2 px-2 text-muted-foreground">{item.issue}</td>
+                        <td className="py-2 px-2 text-muted-foreground">{item.asset.owner}</td>
+                        <td className="py-2 px-2"><StatusBadge status={item.asset.environment} /></td>
+                        <td className="py-2 px-2 text-muted-foreground text-[10px] max-w-[160px]">{item.recommendedAction}</td>
+                        <td className="py-2 px-2">
                           <button onClick={() => setWizardItem(item)} className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium bg-teal/10 text-teal hover:bg-teal/20 whitespace-nowrap">
                             <Icon className="w-3 h-3" /> {item.actionType}
                           </button>
-                        )}
-                      </td>
-                      <td className="py-2 px-2"><RowMenu item={item} onAction={setWizardItem} /></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        </td>
+                        <td className="py-2 px-2"><RowMenu item={item} onAction={setWizardItem} /></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {items.length === 0 && (
+              <div className="py-12 text-center text-sm text-muted-foreground">No remediation items match the current filters.</div>
+            )}
           </div>
-          {items.length === 0 && (
-            <div className="py-12 text-center text-sm text-muted-foreground">No remediation items match the current filters.</div>
-          )}
         </div>
-      </div>
+      )}
 
       {/* Modals */}
       <Modal open={!!wizardItem} onClose={() => setWizardItem(null)} title={`${wizardItem?.actionType} — ${wizardItem?.asset.name || ''}`}>
