@@ -34,8 +34,8 @@ export default function SecurityAdminDashboard() {
       <div>
         <div className="flex items-center justify-between mb-3">
           <div>
-            <h1 className="text-xl font-bold">Trust Control Plane</h1>
-            <p className="text-[11px] text-muted-foreground">Secure every machine identity — for the Agentic AI & Quantum era</p>
+            <h1 className="text-xl font-bold">Dashboard</h1>
+            <p className="text-[11px] text-muted-foreground">Machine identity posture overview</p>
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span>Refreshed 0m ago</span>
