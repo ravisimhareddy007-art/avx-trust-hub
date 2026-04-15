@@ -21,11 +21,6 @@ function DashboardPage() {
   const { persona } = usePersona();
   return (
     <div>
-      <h1 className="text-xl font-bold mb-4">
-        {persona === 'security-admin' ? 'Security Admin Dashboard' :
-         persona === 'compliance-officer' ? 'Compliance Officer Dashboard' :
-         'PKI / Platform Engineer Dashboard'}
-      </h1>
       {persona === 'security-admin' && <SecurityAdminDashboard />}
       {persona === 'compliance-officer' && <ComplianceDashboard />}
       {persona === 'pki-engineer' && <PKIEngineerDashboard />}

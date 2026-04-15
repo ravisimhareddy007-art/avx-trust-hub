@@ -6,9 +6,9 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts';
-import { Atom, RefreshCw, Info, X } from 'lucide-react';
+import { Atom, RefreshCw, Info, X, Shield, Bot, Key, Lock } from 'lucide-react';
 
-const cryptoScoreData = [
+const cryptoPostureData = [
   { name: 'Critical', value: 12, color: 'hsl(15, 72%, 52%)' },
   { name: 'High', value: 18, color: 'hsl(38, 78%, 41%)' },
   { name: 'Medium', value: 25, color: 'hsl(38, 78%, 55%)' },
@@ -33,7 +33,10 @@ export default function SecurityAdminDashboard() {
       {/* Page Header with Tabs */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h1 className="text-xl font-bold">Insights</h1>
+          <div>
+            <h1 className="text-xl font-bold">Trust Control Plane</h1>
+            <p className="text-[11px] text-muted-foreground">Secure every machine identity — for the Agentic AI & Quantum era</p>
+          </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span>Refreshed 0m ago</span>
             <button onClick={() => {}} className="p-1 hover:text-foreground"><RefreshCw className="w-3.5 h-3.5" /></button>
@@ -56,23 +59,23 @@ export default function SecurityAdminDashboard() {
         </div>
       </div>
 
-      {/* PQC Readiness Banner — purple gradient like CERT+ */}
+      {/* Three Converging Crises Banner */}
       {showPQCBanner && (
         <div className="relative rounded-lg overflow-hidden" style={{ background: 'linear-gradient(135deg, hsl(270, 50%, 35%), hsl(300, 40%, 30%))' }}>
           <div className="flex items-center justify-between p-4">
-            <div className="flex items-center gap-3">
-              <Atom className="w-10 h-10 text-primary-foreground/70" />
+            <div className="flex items-center gap-4">
+              <Atom className="w-10 h-10 text-primary-foreground/70 flex-shrink-0" />
               <div>
-                <h3 className="text-sm font-bold text-primary-foreground">Explore Your PQC Readiness</h3>
-                <p className="text-xs text-primary-foreground/70">Post quantum threats are real. Begin your certificate readiness checks and plan your migration strategy now</p>
+                <h3 className="text-sm font-bold text-primary-foreground">Three Converging Crises. One Trust Platform.</h3>
+                <p className="text-xs text-primary-foreground/70">Quantum threats, AI agent identity sprawl, and 250B+ unmanaged machine identities require a unified control plane — not piecemeal tools.</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
               <button
                 onClick={() => setCurrentPage('quantum')}
                 className="px-4 py-2 rounded-lg bg-primary-foreground/10 border border-primary-foreground/20 text-xs font-medium text-primary-foreground hover:bg-primary-foreground/20 transition-colors whitespace-nowrap"
               >
-                Go to Quantum Trust Hub
+                View PQC Posture
               </button>
               <button onClick={() => setShowPQCBanner(false)} className="p-1 text-primary-foreground/50 hover:text-primary-foreground">
                 <X className="w-4 h-4" />
@@ -84,10 +87,10 @@ export default function SecurityAdminDashboard() {
 
       {activeTab === 'summary' && (
         <>
-          {/* Inventory Snapshot — cards with colored left border like CERT+ */}
+          {/* Three Crises KPIs — aligned with strategy deck */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold">Inventory Snapshot</h3>
+              <h3 className="text-sm font-semibold">Crypto Posture Overview</h3>
               <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                 <span>0m ago</span>
                 <RefreshCw className="w-3 h-3" />
@@ -96,11 +99,11 @@ export default function SecurityAdminDashboard() {
             </div>
             <div className="grid grid-cols-5 gap-3">
               {[
-                { label: 'Total Certificates', value: '4.7M', color: 'hsl(var(--teal))', page: 'inventory' },
-                { label: 'Cert Manager', value: '1.2M', color: 'hsl(var(--purple))', page: 'inventory' },
-                { label: 'Total Issuing CAs', value: '142', color: 'hsl(var(--teal))', page: 'inventory' },
-                { label: 'Code Signing Certificates', value: '18,420', color: 'hsl(var(--amber))', page: 'inventory' },
-                { label: 'Total Devices', value: '284,700', color: 'hsl(var(--coral))', page: 'inventory' },
+                { label: 'Total Machine Identities', value: '5.2M', color: 'hsl(var(--teal))', page: 'inventory', subtitle: 'Certs, Keys, Tokens, Secrets' },
+                { label: 'PQC-Vulnerable Assets', value: '247K', color: 'hsl(var(--coral))', page: 'quantum', subtitle: 'NIST 2030 deadline' },
+                { label: 'AI Agent Identities', value: '472K', color: 'hsl(var(--purple))', page: 'inventory', subtitle: '38% over-privileged' },
+                { label: 'Unmanaged Secrets', value: '18,420', color: 'hsl(var(--amber))', page: 'inventory', subtitle: 'In repos & endpoints' },
+                { label: '47-Day TLS Mandate', value: '1.8M', color: 'hsl(var(--coral))', page: 'inventory', subtitle: 'Apple mandate by 2027' },
               ].map(item => (
                 <button
                   key={item.label}
@@ -110,17 +113,17 @@ export default function SecurityAdminDashboard() {
                 >
                   <p className="text-lg font-bold text-foreground">{item.value}</p>
                   <p className="text-[10px] text-muted-foreground mt-0.5">{item.label}</p>
+                  <p className="text-[9px] text-muted-foreground/70">{item.subtitle}</p>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Charts Row — Crypto Score + Certificate Expiry */}
+          {/* Charts Row — Crypto Posture Score + Expiry Trend */}
           <div className="grid grid-cols-2 gap-4">
-            {/* Crypto Score Donut */}
             <div className="bg-card rounded-lg border border-border p-4">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold">Crypto Score</h3>
+                <h3 className="text-sm font-semibold">Crypto Posture Score</h3>
                 <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                   <span>0m ago</span>
                   <RefreshCw className="w-3 h-3" />
@@ -130,15 +133,15 @@ export default function SecurityAdminDashboard() {
               <div className="flex items-center gap-6">
                 <ResponsiveContainer width={160} height={160}>
                   <PieChart>
-                    <Pie data={cryptoScoreData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} dataKey="value" paddingAngle={1} startAngle={90} endAngle={-270}>
-                      {cryptoScoreData.map((entry, index) => (
+                    <Pie data={cryptoPostureData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} dataKey="value" paddingAngle={1} startAngle={90} endAngle={-270}>
+                      {cryptoPostureData.map((entry, index) => (
                         <Cell key={index} fill={entry.color} />
                       ))}
                     </Pie>
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="space-y-2">
-                  {cryptoScoreData.map(item => (
+                  {cryptoPostureData.map(item => (
                     <div key={item.name} className="flex items-center gap-2 text-xs">
                       <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: item.color }} />
                       <span className="font-medium text-foreground">{item.name}</span>
@@ -149,10 +152,9 @@ export default function SecurityAdminDashboard() {
               </div>
             </div>
 
-            {/* Violations Chart */}
             <div className="bg-card rounded-lg border border-border p-4">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold">Certificate Expiry</h3>
+                <h3 className="text-sm font-semibold">Credential Expiry Trend</h3>
                 <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                   <span>0m ago</span>
                   <RefreshCw className="w-3 h-3" />
@@ -166,7 +168,7 @@ export default function SecurityAdminDashboard() {
                   <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
                   <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }} />
                   <Line type="monotone" dataKey="detected" stroke="hsl(var(--coral))" strokeWidth={2} dot={{ r: 2 }} name="Expiring" />
-                  <Line type="monotone" dataKey="remediated" stroke="hsl(var(--teal))" strokeWidth={2} dot={{ r: 2 }} name="Renewed" />
+                  <Line type="monotone" dataKey="remediated" stroke="hsl(var(--teal))" strokeWidth={2} dot={{ r: 2 }} name="Remediated" />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -187,10 +189,10 @@ export default function SecurityAdminDashboard() {
                       </div>
                     </div>
                     <button
-                      onClick={() => { setFilters({ assetId: alert.assetId }); setCurrentPage('trustops'); }}
+                      onClick={() => { setFilters({ assetId: alert.assetId }); setCurrentPage('remediation'); }}
                       className="text-[10px] px-2 py-1 rounded bg-coral/10 text-coral font-medium hover:bg-coral/20 flex-shrink-0"
                     >
-                      Act now
+                      Remediate
                     </button>
                   </div>
                 ))}
@@ -216,9 +218,10 @@ export default function SecurityAdminDashboard() {
           </div>
 
           {/* AI Insight */}
-          <AIInsightCard onClick={() => setCurrentPage('trustops')}>
-            Infinity AI detected 3 unusual patterns this week: SSH key rotation gap in prod-db cluster (last rotated 187 days ago),
-            12 wildcard certs in PCI-DSS zone, RSA-2048 spike in newly deployed K8s workloads.
+          <AIInsightCard onClick={() => setCurrentPage('remediation')}>
+            Infinity AI detected 3 converging risks: 247K PQC-vulnerable assets need migration before NIST 2030 deadline,
+            38% of AI agent tokens are over-privileged with access to production data, and 18K secrets discovered in source code repos.
+            Recommend: prioritize PQC migration for BFSI assets, right-size agent permissions, and rotate exposed secrets.
           </AIInsightCard>
         </>
       )}
@@ -289,7 +292,7 @@ export default function SecurityAdminDashboard() {
           </div>
           <div className="bg-card rounded-lg border border-border p-4">
             <h3 className="text-sm font-semibold mb-3">Short-Lived Certificate Activity</h3>
-            <p className="text-xs text-muted-foreground">Kubernetes workload certificates, Istio mTLS certs, and other short-lived credentials managed by cert-manager and service mesh.</p>
+            <p className="text-xs text-muted-foreground">Kubernetes workload certificates, Istio mTLS certs, SPIFFE/SVID identities, and other short-lived credentials managed by cert-manager and service mesh.</p>
           </div>
         </div>
       )}

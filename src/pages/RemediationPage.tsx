@@ -11,20 +11,21 @@ import {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-type CryptoCategory = 'certificates' | 'keys' | 'tokens';
+type CryptoCategory = 'certificates' | 'keys' | 'tokens' | 'secrets';
 
 function getCryptoCategory(type: CryptoAsset['type']): CryptoCategory {
   if (['TLS Certificate', 'Code-Signing Certificate', 'SSH Certificate', 'K8s Workload Cert'].includes(type)) return 'certificates';
   if (['SSH Key', 'Encryption Key'].includes(type)) return 'keys';
+  if (type === 'API Key / Secret') return 'secrets';
   return 'tokens';
 }
 
 function getCryptoCategoryLabel(cat: CryptoCategory) {
-  return { certificates: 'Certificates', keys: 'Keys', tokens: 'Tokens & Agents' }[cat];
+  return { certificates: 'Certificates', keys: 'Keys', tokens: 'Tokens & Agents', secrets: 'API Keys & Secrets' }[cat];
 }
 
 function getCryptoCategoryIcon(cat: CryptoCategory) {
-  return { certificates: Lock, keys: Key, tokens: Bot }[cat];
+  return { certificates: Lock, keys: Key, tokens: Bot, secrets: Key }[cat];
 }
 
 function getAssetNoun(type: CryptoAsset['type']): string {
