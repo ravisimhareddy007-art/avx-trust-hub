@@ -229,13 +229,6 @@ export default function InventoryPage() {
 
   const activeColumns = colDefs[typeFilter] || colDefs['All'];
 
-  const toggleColumn = (id: string) => {
-    setVisibleColumns(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
 
   return (
     <div className="space-y-3">
@@ -337,25 +330,8 @@ export default function InventoryPage() {
 
         <div className="w-px h-6 bg-border" />
 
-        {/* Columns toggle */}
-        <div className="relative">
-          <button
-            onClick={() => setShowColumns(!showColumns)}
-            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-foreground hover:bg-secondary rounded transition-colors"
-          >
-            <BarChart3 className="w-3.5 h-3.5" /> Columns
-          </button>
-          {showColumns && (
-            <div className="absolute top-full right-0 mt-1 bg-card border border-border rounded-lg shadow-lg z-50 p-2 min-w-[160px]">
-              {allColumns.map(col => (
-                <label key={col.id} className="flex items-center gap-2 px-2 py-1.5 text-xs cursor-pointer hover:bg-secondary rounded">
-                  <input type="checkbox" checked={visibleColumns.has(col.id)} onChange={() => toggleColumn(col.id)} className="rounded" />
-                  {col.label}
-                </label>
-              ))}
-            </div>
-          )}
-        </div>
+        {/* Column count indicator */}
+        <span className="text-[10px] text-muted-foreground">{activeColumns.length} cols</span>
 
         <div className="w-px h-6 bg-border" />
 
