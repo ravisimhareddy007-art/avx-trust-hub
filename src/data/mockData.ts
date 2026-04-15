@@ -20,7 +20,7 @@ export interface AgentMeta {
 export interface CryptoAsset {
   id: string;
   name: string;
-  type: 'TLS Certificate' | 'SSH Key' | 'SSH Certificate' | 'Code-Signing Certificate' | 'K8s Workload Cert' | 'Encryption Key' | 'AI Agent Token';
+  type: 'TLS Certificate' | 'SSH Key' | 'SSH Certificate' | 'Code-Signing Certificate' | 'K8s Workload Cert' | 'Encryption Key' | 'AI Agent Token' | 'API Key / Secret';
   commonName: string;
   caIssuer: string;
   algorithm: string;
@@ -107,7 +107,9 @@ export const assetTypeDistribution = [
   { name: 'SSH Certificates', value: 320000, color: 'hsl(245, 38%, 50%)' },
   { name: 'Code-Signing', value: 18420, color: 'hsl(15, 72%, 52%)' },
   { name: 'K8s Workload Certs', value: 810000, color: 'hsl(38, 78%, 41%)' },
+  { name: 'Encryption Keys', value: 142000, color: 'hsl(280, 50%, 50%)' },
   { name: 'AI Agent Tokens', value: 472000, color: 'hsl(200, 70%, 50%)' },
+  { name: 'API Keys & Secrets', value: 384000, color: 'hsl(340, 60%, 50%)' },
 ];
 
 export const compliancePosture = [
