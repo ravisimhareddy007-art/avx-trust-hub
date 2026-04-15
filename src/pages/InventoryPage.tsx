@@ -104,27 +104,130 @@ export default function InventoryPage() {
   };
 
   const isSSHType = (type: string) => type === 'SSH Key' || type === 'SSH Certificate';
-  const isAgentView = typeFilter === 'AI Agent Token';
-  const isSecretView = typeFilter === 'API Key / Secret';
 
   const [showColumns, setShowColumns] = useState(false);
-  const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set(['name','type','caIssuer','algorithm','owner','env','expiry','days','status','pqcRisk','actions']));
   const [actionsOpen, setActionsOpen] = useState(false);
 
-  const allColumns = [
-    { id: 'name', label: 'Common Name' },
-    { id: 'type', label: 'Type' },
-    { id: 'caIssuer', label: 'CA / Issuer' },
-    { id: 'algorithm', label: 'Algorithm' },
-    { id: 'owner', label: 'Owner' },
-    { id: 'team', label: 'Team' },
-    { id: 'env', label: 'Environment' },
-    { id: 'expiry', label: 'Valid To' },
-    { id: 'days', label: 'Days' },
-    { id: 'status', label: 'Status' },
-    { id: 'pqcRisk', label: 'PQC Risk' },
-    { id: 'actions', label: '' },
-  ];
+  // Type-specific column definitions
+  type ColDef = { id: string; label: string; render: (a: CryptoAsset) => React.ReactNode };
+
+  const colDefs: Record<string, ColDef[]> = {
+    'All': [
+      { id: 'name', label: 'Common Name', render: a => <span className="font-medium text-foreground truncate max-w-[200px] block">{a.name}</span> },
+      { id: 'type', label: 'Type', render: a => <span className="text-muted-foreground">{a.type}</span> },
+      { id: 'caIssuer', label: 'Issuer', render: a => <span className="text-muted-foreground truncate max-w-[140px] block">{a.caIssuer}</span> },
+      { id: 'algorithm', label: 'Algorithm', render: a => <span className="text-muted-foreground">{a.algorithm}</span> },
+      { id: 'owner', label: 'Owner', render: a => <span className="text-muted-foreground">{a.owner}</span> },
+      { id: 'env', label: 'Env', render: a => <EnvBadge env={a.environment} /> },
+      { id: 'expiry', label: 'Valid To', render: a => <span className="text-muted-foreground">{a.expiryDate}</span> },
+      { id: 'days', label: 'Days', render: a => <DaysToExpiry days={a.daysToExpiry} /> },
+      { id: 'status', label: 'Status', render: a => <StatusBadge status={a.status} /> },
+    ],
+    'TLS Certificate': [
+      { id: 'name', label: 'Subject / CN', render: a => <span className="font-medium text-foreground truncate max-w-[200px] block">{a.name}</span> },
+      { id: 'caIssuer', label: 'Issuer CA', render: a => <span className="text-muted-foreground truncate max-w-[140px] block">{a.caIssuer}</span> },
+      { id: 'serial', label: 'Serial #', render: a => <span className="text-muted-foreground font-mono text-[10px] truncate max-w-[120px] block">{a.serial}</span> },
+      { id: 'algorithm', label: 'Sig Algorithm', render: a => <span className="text-muted-foreground">{a.algorithm}</span> },
+      { id: 'keyLength', label: 'Key Size', render: a => <span className="text-muted-foreground">{a.keyLength}-bit</span> },
+      { id: 'owner', label: 'Owner', render: a => <span className="text-muted-foreground">{a.owner}</span> },
+      { id: 'env', label: 'Env', render: a => <EnvBadge env={a.environment} /> },
+      { id: 'expiry', label: 'Not After', render: a => <span className="text-muted-foreground">{a.expiryDate}</span> },
+      { id: 'days', label: 'Days Left', render: a => <DaysToExpiry days={a.daysToExpiry} /> },
+      { id: 'autoRenew', label: 'Auto-Renew', render: a => <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${a.autoRenewal ? 'bg-teal/10 text-teal' : 'bg-muted text-muted-foreground'}`}>{a.autoRenewal ? 'Yes' : 'No'}</span> },
+      { id: 'status', label: 'Status', render: a => <StatusBadge status={a.status} /> },
+      { id: 'pqcRisk', label: 'PQC Risk', render: a => <PQCBadge risk={a.pqcRisk} /> },
+    ],
+    'SSH Key': [
+      { id: 'name', label: 'Key Name', render: a => <span className="font-medium text-foreground truncate max-w-[180px] block">{a.name}</span> },
+      { id: 'fingerprint', label: 'Fingerprint', render: a => <span className="text-muted-foreground font-mono text-[10px] truncate max-w-[130px] block">{a.serial}</span> },
+      { id: 'algorithm', label: 'Key Type', render: a => <span className="text-muted-foreground">{a.algorithm}</span> },
+      { id: 'keyLength', label: 'Bits', render: a => <span className="text-muted-foreground">{a.keyLength}</span> },
+      { id: 'owner', label: 'Owner', render: a => <span className={`${a.owner === 'Unassigned' ? 'text-coral' : 'text-muted-foreground'}`}>{a.owner}</span> },
+      { id: 'endpoints', label: 'Endpoints', render: a => <span className="text-muted-foreground">{a.sshEndpoints?.length || 0} hosts</span> },
+      { id: 'env', label: 'Env', render: a => <EnvBadge env={a.environment} /> },
+      { id: 'lastRotated', label: 'Last Rotated', render: a => <span className="text-muted-foreground">{a.lastRotated}</span> },
+      { id: 'rotFreq', label: 'Rotation Policy', render: a => <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${a.rotationFrequency === 'Never' ? 'bg-coral/10 text-coral' : 'bg-muted text-muted-foreground'}`}>{a.rotationFrequency}</span> },
+      { id: 'status', label: 'Status', render: a => <StatusBadge status={a.status} /> },
+    ],
+    'SSH Certificate': [
+      { id: 'name', label: 'Cert Name', render: a => <span className="font-medium text-foreground truncate max-w-[180px] block">{a.name}</span> },
+      { id: 'caIssuer', label: 'SSH CA', render: a => <span className="text-muted-foreground">{a.caIssuer}</span> },
+      { id: 'serial', label: 'KRL Serial', render: a => <span className="text-muted-foreground font-mono text-[10px]">{a.serial}</span> },
+      { id: 'algorithm', label: 'Key Type', render: a => <span className="text-muted-foreground">{a.algorithm}</span> },
+      { id: 'owner', label: 'Principal', render: a => <span className="text-muted-foreground">{a.owner}</span> },
+      { id: 'endpoints', label: 'Endpoints', render: a => <span className="text-muted-foreground">{a.sshEndpoints?.length || 0} hosts</span> },
+      { id: 'env', label: 'Env', render: a => <EnvBadge env={a.environment} /> },
+      { id: 'expiry', label: 'Valid Until', render: a => <span className="text-muted-foreground">{a.expiryDate}</span> },
+      { id: 'days', label: 'TTL', render: a => <DaysToExpiry days={a.daysToExpiry} /> },
+      { id: 'autoRenew', label: 'Auto-Renew', render: a => <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${a.autoRenewal ? 'bg-teal/10 text-teal' : 'bg-coral/10 text-coral'}`}>{a.autoRenewal ? 'Yes' : 'No'}</span> },
+      { id: 'status', label: 'Status', render: a => <StatusBadge status={a.status} /> },
+    ],
+    'Code-Signing Certificate': [
+      { id: 'name', label: 'Certificate Name', render: a => <span className="font-medium text-foreground truncate max-w-[180px] block">{a.name}</span> },
+      { id: 'caIssuer', label: 'Issuer CA', render: a => <span className="text-muted-foreground truncate max-w-[120px] block">{a.caIssuer}</span> },
+      { id: 'algorithm', label: 'Sig Algorithm', render: a => <span className="text-muted-foreground">{a.algorithm}</span> },
+      { id: 'keyLength', label: 'Key Size', render: a => <span className="text-muted-foreground">{a.keyLength}-bit</span> },
+      { id: 'infra', label: 'HSM / Storage', render: a => <span className="text-muted-foreground text-[10px]">{a.infrastructure}</span> },
+      { id: 'owner', label: 'Owner', render: a => <span className="text-muted-foreground">{a.owner}</span> },
+      { id: 'expiry', label: 'Not After', render: a => <span className="text-muted-foreground">{a.expiryDate}</span> },
+      { id: 'days', label: 'Days Left', render: a => <DaysToExpiry days={a.daysToExpiry} /> },
+      { id: 'status', label: 'Status', render: a => <StatusBadge status={a.status} /> },
+      { id: 'pqcRisk', label: 'PQC Risk', render: a => <PQCBadge risk={a.pqcRisk} /> },
+    ],
+    'K8s Workload Cert': [
+      { id: 'name', label: 'Service Identity', render: a => <span className="font-medium text-foreground truncate max-w-[200px] block">{a.name}</span> },
+      { id: 'caIssuer', label: 'Mesh CA', render: a => <span className="text-muted-foreground">{a.caIssuer}</span> },
+      { id: 'spiffe', label: 'SPIFFE ID', render: a => <span className="text-muted-foreground font-mono text-[10px] truncate max-w-[180px] block">{a.serial}</span> },
+      { id: 'algorithm', label: 'Algorithm', render: a => <span className="text-muted-foreground">{a.algorithm}</span> },
+      { id: 'infra', label: 'Cluster', render: a => <span className="text-muted-foreground text-[10px]">{a.infrastructure}</span> },
+      { id: 'rotFreq', label: 'Rotation', render: a => <span className="text-muted-foreground">{a.rotationFrequency}</span> },
+      { id: 'autoRenew', label: 'Auto-Rotate', render: a => <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${a.autoRenewal ? 'bg-teal/10 text-teal' : 'bg-coral/10 text-coral'}`}>{a.autoRenewal ? 'Yes' : 'No'}</span> },
+      { id: 'status', label: 'Status', render: a => <StatusBadge status={a.status} /> },
+      { id: 'pqcRisk', label: 'PQC Risk', render: a => <PQCBadge risk={a.pqcRisk} /> },
+    ],
+    'Encryption Key': [
+      { id: 'name', label: 'Key Name', render: a => <span className="font-medium text-foreground truncate max-w-[180px] block">{a.name}</span> },
+      { id: 'caIssuer', label: 'KMS Provider', render: a => <span className="text-muted-foreground">{a.caIssuer}</span> },
+      { id: 'algorithm', label: 'Cipher', render: a => <span className="text-muted-foreground">{a.algorithm}</span> },
+      { id: 'keyLength', label: 'Key Size', render: a => <span className="text-muted-foreground">{a.keyLength}-bit</span> },
+      { id: 'owner', label: 'Owner', render: a => <span className="text-muted-foreground">{a.owner}</span> },
+      { id: 'app', label: 'Application', render: a => <span className="text-muted-foreground text-[10px]">{a.application}</span> },
+      { id: 'env', label: 'Env', render: a => <EnvBadge env={a.environment} /> },
+      { id: 'lastRotated', label: 'Last Rotated', render: a => <span className="text-muted-foreground">{a.lastRotated}</span> },
+      { id: 'rotFreq', label: 'Rotation Policy', render: a => <span className="text-muted-foreground">{a.rotationFrequency}</span> },
+      { id: 'autoRotate', label: 'Auto-Rotate', render: a => <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${a.autoRenewal ? 'bg-teal/10 text-teal' : 'bg-muted text-muted-foreground'}`}>{a.autoRenewal ? 'Yes' : 'No'}</span> },
+      { id: 'status', label: 'Status', render: a => <StatusBadge status={a.status} /> },
+    ],
+    'AI Agent Token': [
+      { id: 'name', label: 'Token Name', render: a => <span className="font-medium text-foreground truncate max-w-[180px] block">{a.name}</span> },
+      { id: 'agentType', label: 'Agent Type', render: a => <span className="inline-flex items-center gap-1 text-foreground"><Bot className="w-3 h-3 text-muted-foreground" />{a.agentMeta?.agentType || 'Unknown'}</span> },
+      { id: 'framework', label: 'Framework', render: a => <span className="text-muted-foreground text-[10px]">{a.agentMeta?.framework || '—'}</span> },
+      { id: 'owner', label: 'Owner', render: a => <span className="text-muted-foreground">{a.owner}</span> },
+      { id: 'permRisk', label: 'Permission Risk', render: a => {
+        const risk = a.agentMeta?.permissionRisk || '';
+        const cls = risk === 'Over-privileged' ? 'bg-coral/10 text-coral' : risk === 'Right-sized' ? 'bg-teal/10 text-teal' : 'bg-muted text-muted-foreground';
+        return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${cls}`}>{risk || '—'}</span>;
+      }},
+      { id: 'services', label: 'Services', render: a => <span className="text-muted-foreground text-[10px]">{a.agentMeta?.servicesAccessed?.length || 0} services</span> },
+      { id: 'actions', label: 'Actions/Day', render: a => <span className="text-muted-foreground">{a.agentMeta?.actionsPerDay?.toLocaleString() || '—'}</span> },
+      { id: 'expiry', label: 'Expires', render: a => <span className="text-muted-foreground">{a.expiryDate}</span> },
+      { id: 'days', label: 'TTL', render: a => <DaysToExpiry days={a.daysToExpiry} /> },
+      { id: 'status', label: 'Status', render: a => <StatusBadge status={a.status} /> },
+    ],
+    'API Key / Secret': [
+      { id: 'name', label: 'Secret Name', render: a => <span className="font-medium text-foreground truncate max-w-[180px] block">{a.name}</span> },
+      { id: 'caIssuer', label: 'Vault / Source', render: a => <span className="text-muted-foreground">{a.caIssuer}</span> },
+      { id: 'algorithm', label: 'Encryption', render: a => <span className="text-muted-foreground">{a.algorithm}</span> },
+      { id: 'owner', label: 'Owner', render: a => <span className={`${a.owner === 'Unassigned' ? 'text-coral' : 'text-muted-foreground'}`}>{a.owner}</span> },
+      { id: 'team', label: 'Team', render: a => <span className="text-muted-foreground">{a.team}</span> },
+      { id: 'env', label: 'Env', render: a => <EnvBadge env={a.environment} /> },
+      { id: 'lastRotated', label: 'Last Rotated', render: a => <span className="text-muted-foreground">{a.lastRotated}</span> },
+      { id: 'rotFreq', label: 'Rotation Policy', render: a => <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${a.rotationFrequency === 'Never' ? 'bg-coral/10 text-coral' : 'bg-muted text-muted-foreground'}`}>{a.rotationFrequency}</span> },
+      { id: 'status', label: 'Status', render: a => <StatusBadge status={a.status} /> },
+    ],
+  };
+
+  const activeColumns = colDefs[typeFilter] || colDefs['All'];
 
   const toggleColumn = (id: string) => {
     setVisibleColumns(prev => {
