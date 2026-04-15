@@ -6,7 +6,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts';
-import { Atom, RefreshCw, Info, X, Shield, Bot, Key, Lock } from 'lucide-react';
+import { RefreshCw, Info, Shield, Bot, Key, Lock } from 'lucide-react';
 
 const cryptoPostureData = [
   { name: 'Critical', value: 12, color: 'hsl(15, 72%, 52%)' },
