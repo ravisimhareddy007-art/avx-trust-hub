@@ -6,7 +6,8 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts';
-import { RefreshCw, Info, Shield, Bot, Key, Lock } from 'lucide-react';
+import { RefreshCw, Info, Shield, Bot, Key, Lock, Sparkles, Ticket, Zap, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { toast } from 'sonner';
 
 const cryptoPostureData = [
   { name: 'Critical', value: 12, color: 'hsl(15, 72%, 52%)' },
@@ -16,10 +17,108 @@ const cryptoPostureData = [
   { name: 'Compliant', value: 25, color: 'hsl(142, 71%, 45%)' },
 ];
 
+// ─── AI Command Center ──────────────────────────────────────────────────────
+
+function AICommandCenter({ onNavigate }: { onNavigate: (page: string, filters?: Record<string, string>) => void }) {
+  const [aiRunning, setAiRunning] = useState(false);
+  const [aiResults, setAiResults] = useState<{ action: string; count: number; status: string }[] | null>(null);
+
+  const aiActions = [
+    { id: 'bulk-renew', label: 'Auto-Renew Expiring Certs', desc: 'Renew all certificates expiring in <7 days', icon: RefreshCw, count: 342, severity: 'Critical' },
+    { id: 'bulk-rotate', label: 'Rotate Stale SSH Keys', desc: 'Rotate SSH keys not rotated in >90 days', icon: Key, count: 1247, severity: 'High' },
+    { id: 'pqc-migrate', label: 'PQC Migration Batch', desc: 'Create migration tickets for quantum-vulnerable assets', icon: Shield, count: 247000, severity: 'Critical' },
+    { id: 'orphan-assign', label: 'Auto-Assign Orphaned Assets', desc: 'Use AI to suggest owners based on usage patterns', icon: Bot, count: 3218, severity: 'High' },
+    { id: 'ticket-bulk', label: 'Create Bulk Remediation Tickets', desc: 'Generate tickets for all critical/high items', icon: Ticket, count: 8420, severity: 'Medium' },
+    { id: 'secret-rotate', label: 'Rotate Exposed Secrets', desc: 'Auto-rotate secrets found in source code', icon: Lock, count: 18420, severity: 'Critical' },
+  ];
+
+  const handleAIAction = (actionId: string) => {
+    setAiRunning(true);
+    setTimeout(() => {
+      setAiRunning(false);
+      const action = aiActions.find(a => a.id === actionId);
+      if (action) {
+        if (actionId === 'ticket-bulk') {
+          setAiResults([
+            { action: 'Cert renewal tickets', count: 342, status: 'Created' },
+            { action: 'SSH rotation tickets', count: 1247, status: 'Created' },
+            { action: 'PQC migration tickets', count: 4820, status: 'Queued' },
+            { action: 'Owner assignment tickets', count: 2011, status: 'Created' },
+          ]);
+          toast.success(`AI created ${action.count.toLocaleString()} remediation tickets`);
+        } else {
+          toast.success(`AI initiated: ${action.label} for ${action.count.toLocaleString()} assets`);
+          onNavigate('remediation');
+        }
+      }
+    }, 2000);
+  };
+
+  return (
+    <div className="bg-card rounded-lg border border-teal/30 p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-teal/10 flex items-center justify-center">
+            <Sparkles className="w-4 h-4 text-teal" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold">Infinity AI — Bulk Remediation</h3>
+            <p className="text-[10px] text-muted-foreground">AI-powered automated remediation across all crypto objects</p>
+          </div>
+        </div>
+        {aiRunning && (
+          <div className="flex items-center gap-1.5 text-[10px] text-teal">
+            <div className="w-2 h-2 rounded-full bg-teal animate-pulse" />
+            Processing...
+          </div>
+        )}
+      </div>
+
+      {aiResults && (
+        <div className="mb-3 bg-teal/5 border border-teal/20 rounded-lg p-3">
+          <p className="text-xs font-semibold text-teal mb-2 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> AI Execution Results</p>
+          <div className="space-y-1.5">
+            {aiResults.map((r, i) => (
+              <div key={i} className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">{r.action}</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-foreground">{r.count.toLocaleString()}</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${r.status === 'Created' ? 'bg-teal/10 text-teal' : 'bg-amber/10 text-amber'}`}>{r.status}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <button onClick={() => { setAiResults(null); onNavigate('tickets'); }} className="text-[10px] text-teal font-medium mt-2 hover:underline">View all tickets →</button>
+        </div>
+      )}
+
+      <div className="grid grid-cols-3 gap-2">
+        {aiActions.map(action => (
+          <button
+            key={action.id}
+            onClick={() => handleAIAction(action.id)}
+            disabled={aiRunning}
+            className="bg-secondary/50 hover:bg-secondary border border-border rounded-lg p-2.5 text-left transition-colors disabled:opacity-50 group"
+          >
+            <div className="flex items-center gap-1.5 mb-1">
+              <action.icon className="w-3.5 h-3.5 text-teal" />
+              <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
+                action.severity === 'Critical' ? 'bg-coral/10 text-coral' : action.severity === 'High' ? 'bg-amber/10 text-amber' : 'bg-muted text-muted-foreground'
+              }`}>{action.severity}</span>
+            </div>
+            <p className="text-[11px] font-medium text-foreground mb-0.5">{action.label}</p>
+            <p className="text-[9px] text-muted-foreground leading-tight">{action.desc}</p>
+            <p className="text-[10px] text-teal font-semibold mt-1">{action.count.toLocaleString()} assets</p>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function SecurityAdminDashboard() {
   const { setCurrentPage, setFilters } = useNav();
   const [activeTab, setActiveTab] = useState<'summary' | 'operations' | 'risk' | 'shortlived'>('summary');
-  
 
   const tabs = [
     { id: 'summary' as const, label: 'Summary' },
@@ -91,6 +190,12 @@ export default function SecurityAdminDashboard() {
               ))}
             </div>
           </div>
+
+          {/* AI Command Center */}
+          <AICommandCenter onNavigate={(page, filters) => {
+            if (filters) setFilters(filters);
+            setCurrentPage(page);
+          }} />
 
           {/* Per Crypto Object Widgets */}
           <div>

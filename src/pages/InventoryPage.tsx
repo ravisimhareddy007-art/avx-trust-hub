@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useNav } from '@/context/NavigationContext';
 import { mockAssets, CryptoAsset } from '@/data/mockData';
 import { StatusBadge, EnvBadge, PQCBadge, DaysToExpiry, Drawer, SeverityBadge, Modal } from '@/components/shared/UIComponents';
-import { Search, Settings, RefreshCw, RotateCcw, XCircle, Shield, User, Workflow, Key, ExternalLink, Monitor, Server, ChevronDown, Bot, Lock, AlertTriangle, MoreVertical } from 'lucide-react';
+import { Search, RefreshCw, RotateCcw, XCircle, Shield, User, Workflow, Key, ExternalLink, Monitor, Server, Bot, Lock, AlertTriangle, MoreVertical, Sparkles, GitBranch, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const typeFilters = ['All', 'TLS Certificate', 'SSH Key', 'SSH Certificate', 'Code-Signing Certificate', 'K8s Workload Cert', 'Encryption Key', 'AI Agent Token', 'API Key / Secret'];
@@ -57,6 +57,88 @@ function AssetRowMenu({ asset, onAction }: { asset: CryptoAsset; onAction: (acti
   );
 }
 
+// ─── AI Dependency Mapper ────────────────────────────────────────────────────
+
+function AIDependencyPanel({ asset, onClose }: { asset: CryptoAsset; onClose: () => void }) {
+  const [loading, setLoading] = useState(true);
+  const [deps, setDeps] = useState<{ name: string; type: string; risk: string; direction: string }[]>([]);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      const depMap: Record<string, { name: string; type: string; risk: string; direction: string }[]> = {
+        'TLS Certificate': [
+          { name: 'NGINX Reverse Proxy', type: 'Load Balancer', risk: 'High', direction: 'upstream' },
+          { name: 'payments-api (K8s)', type: 'Application', risk: 'Critical', direction: 'downstream' },
+          { name: 'CloudFront CDN', type: 'CDN', risk: 'Medium', direction: 'upstream' },
+          { name: 'Stripe Webhook', type: 'External API', risk: 'High', direction: 'downstream' },
+          { name: 'Internal mTLS Mesh', type: 'Service Mesh', risk: 'Low', direction: 'peer' },
+        ],
+        'SSH Key': [
+          { name: 'prod-bastion-01', type: 'Jump Server', risk: 'Critical', direction: 'upstream' },
+          { name: 'db-replica-set', type: 'Database Cluster', risk: 'High', direction: 'downstream' },
+          { name: 'CI/CD Pipeline (Jenkins)', type: 'Build System', risk: 'High', direction: 'downstream' },
+          { name: 'Ansible Tower', type: 'Config Mgmt', risk: 'Medium', direction: 'peer' },
+        ],
+        'AI Agent Token': [
+          { name: 'LangChain RAG Pipeline', type: 'AI Pipeline', risk: 'High', direction: 'downstream' },
+          { name: 'Vector DB (Pinecone)', type: 'Database', risk: 'Medium', direction: 'downstream' },
+          { name: 'OpenAI API Gateway', type: 'External API', risk: 'Critical', direction: 'downstream' },
+          { name: 'Slack Bot Integration', type: 'Messaging', risk: 'Low', direction: 'peer' },
+        ],
+      };
+      const defaultDeps = [
+        { name: 'App Server Cluster', type: 'Application', risk: 'High', direction: 'downstream' },
+        { name: 'Load Balancer', type: 'Infrastructure', risk: 'Medium', direction: 'upstream' },
+        { name: 'Monitoring (Datadog)', type: 'Observability', risk: 'Low', direction: 'peer' },
+      ];
+      setDeps(depMap[asset.type] || defaultDeps);
+      setLoading(false);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [asset]);
+
+  const riskColor = (r: string) => r === 'Critical' ? 'text-coral' : r === 'High' ? 'text-amber' : r === 'Medium' ? 'text-foreground' : 'text-teal';
+
+  return (
+    <div className="space-y-3">
+      <div className="bg-teal/5 border border-teal/20 rounded-lg p-3 flex items-center gap-2">
+        <Sparkles className="w-4 h-4 text-teal" />
+        <p className="text-xs text-teal font-medium">Infinity AI — Dependency Analysis</p>
+      </div>
+      {loading ? (
+        <div className="flex items-center justify-center py-8 gap-2 text-xs text-muted-foreground">
+          <Loader2 className="w-4 h-4 animate-spin text-teal" /> Analyzing dependency graph...
+        </div>
+      ) : (
+        <>
+          <div className="text-xs text-muted-foreground mb-2">
+            Found <span className="text-foreground font-medium">{deps.length}</span> dependencies for <span className="text-foreground font-medium">{asset.name}</span>
+          </div>
+          <div className="space-y-1.5">
+            {deps.map((d, i) => (
+              <div key={i} className="flex items-center gap-3 bg-secondary/50 rounded-lg p-2.5 text-xs">
+                <GitBranch className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-foreground">{d.name}</p>
+                  <p className="text-[10px] text-muted-foreground">{d.type} · {d.direction}</p>
+                </div>
+                <span className={`text-[10px] font-medium ${riskColor(d.risk)}`}>{d.risk}</span>
+              </div>
+            ))}
+          </div>
+          <div className="bg-amber/5 border border-amber/20 rounded-lg p-3 text-[10px] text-muted-foreground">
+            <p className="font-medium text-amber mb-1">AI Recommendation</p>
+            {asset.status === 'Expiring' || asset.status === 'Expired'
+              ? `Schedule renewal during next maintenance window. ${deps.filter(d => d.risk === 'Critical').length} critical dependencies need coordinated rollover.`
+              : `No immediate action needed. Monitor ${deps.filter(d => d.risk === 'High' || d.risk === 'Critical').length} high-risk dependencies.`
+            }
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function InventoryPage() {
   const { filters, setFilters } = useNav();
   const [search, setSearch] = useState('');
@@ -65,6 +147,7 @@ export default function InventoryPage() {
   const [drawerTab, setDrawerTab] = useState('overview');
   const [actionModal, setActionModal] = useState<{ action: string; asset: CryptoAsset } | null>(null);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+  const [depAsset, setDepAsset] = useState<CryptoAsset | null>(null);
 
   useEffect(() => {
     setTypeFilter(filters.type || 'All');
@@ -104,9 +187,6 @@ export default function InventoryPage() {
   };
 
   const isSSHType = (type: string) => type === 'SSH Key' || type === 'SSH Certificate';
-
-  
-  const [actionsOpen, setActionsOpen] = useState(false);
 
   // Type-specific column definitions
   type ColDef = { id: string; label: string; render: (a: CryptoAsset) => React.ReactNode };
@@ -229,6 +309,15 @@ export default function InventoryPage() {
 
   const activeColumns = colDefs[typeFilter] || colDefs['All'];
 
+  // Bulk action handlers
+  const handleBulkAction = (action: string) => {
+    if (selectedRows.size === 0) {
+      toast.info('Select assets first to perform bulk actions');
+      return;
+    }
+    toast.success(`${action} initiated for ${selectedRows.size} assets`, { description: 'Workflow created — track in TrustOps.' });
+    setSelectedRows(new Set());
+  };
 
   return (
     <div className="space-y-3">
@@ -244,7 +333,7 @@ export default function InventoryPage() {
         </div>
       </div>
 
-      {/* Tabs like reference image */}
+      {/* Tabs */}
       <div className="flex items-center gap-0 border-b border-border">
         {typeFilters.map(t => {
           const count = t === 'All' ? mockAssets.length : mockAssets.filter(a => a.type === t).length;
@@ -278,9 +367,6 @@ export default function InventoryPage() {
 
       {/* Toolbar */}
       <div className="bg-card rounded-lg border border-border px-3 py-2 flex items-center gap-2 flex-wrap">
-
-        <div className="w-px h-6 bg-border" />
-
         {/* Search */}
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
@@ -291,41 +377,6 @@ export default function InventoryPage() {
             placeholder="Type your search and press enter"
             className="w-full pl-7 pr-3 py-1 bg-muted border border-border rounded text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal"
           />
-        </div>
-
-        <div className="w-px h-6 bg-border" />
-
-        {/* Actions dropdown */}
-        <div className="relative">
-          <button
-            onClick={() => setActionsOpen(!actionsOpen)}
-            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-foreground hover:bg-secondary rounded transition-colors"
-          >
-            <Settings className="w-3.5 h-3.5" /> Actions <ChevronDown className="w-3 h-3" />
-          </button>
-          {actionsOpen && (
-            <div className="absolute top-full left-0 mt-1 bg-card border border-border rounded-lg shadow-lg z-50 min-w-[160px]">
-              {['Export CSV', 'Bulk Renew', 'Bulk Rotate', 'Bulk Revoke', 'Assign Owner'].map(action => (
-                <button
-                  key={action}
-                  onClick={() => {
-                    setActionsOpen(false);
-                    if (action === 'Export CSV') {
-                      toast.success('Exporting CSV...');
-                    } else if (selectedRows.size > 0) {
-                      toast.success(`${action} initiated for ${selectedRows.size} assets`, { description: 'Workflow created — track in TrustOps.' });
-                      setSelectedRows(new Set());
-                    } else {
-                      toast.info('Select assets first to perform bulk actions');
-                    }
-                  }}
-                  className="w-full text-left px-3 py-2 text-xs hover:bg-secondary transition-colors"
-                >
-                  {action}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
 
         <div className="w-px h-6 bg-border" />
@@ -344,11 +395,27 @@ export default function InventoryPage() {
         </div>
       </div>
 
-      {/* Selection indicator */}
+      {/* Green Bulk Actions Bar — replaces dropdown */}
       {selectedRows.size > 0 && (
-        <div className="bg-teal/5 border border-teal/20 rounded-lg px-4 py-1.5 flex items-center justify-between">
-          <span className="text-xs font-medium text-teal">{selectedRows.size} selected — use Actions menu for bulk operations</span>
-          <button onClick={() => setSelectedRows(new Set())} className="text-[10px] text-muted-foreground hover:text-foreground">Clear</button>
+        <div className="bg-teal/10 border border-teal/30 rounded-lg px-4 py-2 flex items-center gap-3">
+          <span className="text-xs font-semibold text-teal">{selectedRows.size} selected</span>
+          <div className="w-px h-5 bg-teal/30" />
+          {['Bulk Renew', 'Bulk Rotate', 'Bulk Revoke', 'Assign Owner', 'Export CSV'].map(action => (
+            <button
+              key={action}
+              onClick={() => handleBulkAction(action)}
+              className={`px-2.5 py-1 text-[10px] font-medium rounded transition-colors ${
+                action === 'Bulk Revoke'
+                  ? 'bg-coral/10 text-coral hover:bg-coral/20'
+                  : action === 'Export CSV'
+                  ? 'bg-muted text-muted-foreground hover:text-foreground hover:bg-secondary'
+                  : 'bg-teal/20 text-teal hover:bg-teal/30'
+              }`}
+            >
+              {action}
+            </button>
+          ))}
+          <button onClick={() => setSelectedRows(new Set())} className="text-[10px] text-muted-foreground hover:text-foreground ml-auto">Clear</button>
         </div>
       )}
 
@@ -398,9 +465,9 @@ export default function InventoryPage() {
           <div>
             {/* Tabs */}
             <div className="flex gap-1 mb-4 border-b border-border">
-              {['overview', 'history', 'policy', 'actions', 'ai'].map(tab => (
+              {['overview', 'history', 'policy', 'actions', 'dependencies', 'ai'].map(tab => (
                 <button key={tab} onClick={() => setDrawerTab(tab)} className={`px-3 py-2 text-xs font-medium capitalize border-b-2 transition-colors ${drawerTab === tab ? 'border-teal text-teal' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
-                  {tab === 'ai' ? 'AI' : tab}
+                  {tab === 'ai' ? 'AI' : tab === 'dependencies' ? '🔗 Deps' : tab}
                 </button>
               ))}
             </div>
@@ -424,7 +491,6 @@ export default function InventoryPage() {
                   ))}
                 </div>
 
-                {/* SSH Endpoints — only for SSH keys/certs */}
                 {isSSHType(selectedAsset.type) && selectedAsset.sshEndpoints && selectedAsset.sshEndpoints.length > 0 && (
                   <div className="bg-secondary/50 rounded-lg p-4">
                     <h4 className="text-xs font-semibold mb-3 flex items-center gap-2">
@@ -450,7 +516,6 @@ export default function InventoryPage() {
                   </div>
                 )}
 
-                {/* AI Agent Identity — Token Security style */}
                 {selectedAsset.type === 'AI Agent Token' && selectedAsset.agentMeta && (
                   <>
                     <div className="bg-secondary/50 rounded-lg p-4">
@@ -464,7 +529,6 @@ export default function InventoryPage() {
                         <div><p className="text-muted-foreground mb-0.5">Actions / Day</p><p className="font-medium">{selectedAsset.agentMeta.actionsPerDay.toLocaleString()}</p></div>
                       </div>
                     </div>
-
                     <div className="bg-secondary/50 rounded-lg p-4">
                       <h4 className="text-xs font-semibold mb-3 flex items-center gap-2">
                         <Lock className="w-4 h-4 text-teal" /> Permissions & Access
@@ -505,7 +569,6 @@ export default function InventoryPage() {
                         )}
                       </div>
                     </div>
-
                     {selectedAsset.agentMeta.permissionRisk === 'Over-privileged' && (
                       <div className="bg-coral/5 border border-coral/20 rounded-lg p-3">
                         <p className="text-xs font-semibold text-coral mb-1 flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" /> Over-Privileged Agent</p>
@@ -521,34 +584,6 @@ export default function InventoryPage() {
                   </>
                 )}
 
-                {/* Dependency map */}
-                <div className="bg-secondary/50 rounded-lg p-4">
-                  <h4 className="text-xs font-semibold mb-3">Dependency Map</h4>
-                  <div className="flex items-center justify-center gap-4">
-                    <div className="text-center">
-                      <div className="w-16 h-16 rounded-full bg-teal/10 border-2 border-teal flex items-center justify-center mb-1">
-                        <Key className="w-6 h-6 text-teal" />
-                      </div>
-                      <p className="text-[10px] text-foreground font-medium truncate max-w-[80px]">{selectedAsset.name.split('.')[0]}</p>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      {Array.from({ length: Math.min(selectedAsset.dependencyCount, 4) }).map((_, i) => (
-                        <div key={i} className="w-16 h-0.5 bg-border" />
-                      ))}
-                    </div>
-                    <div className="space-y-2">
-                      {['App Server', 'Load Balancer', 'CDN Edge'].slice(0, Math.min(3, selectedAsset.dependencyCount)).map((dep, i) => (
-                        <div key={i} className="flex items-center gap-2 cursor-pointer hover:text-teal">
-                          <div className="w-8 h-8 rounded bg-secondary border border-border flex items-center justify-center">
-                            <ExternalLink className="w-3 h-3 text-muted-foreground" />
-                          </div>
-                          <span className="text-[10px]">{dep}</span>
-                        </div>
-                      ))}
-                      {selectedAsset.dependencyCount > 3 && <p className="text-[10px] text-muted-foreground">+{selectedAsset.dependencyCount - 3} more</p>}
-                    </div>
-                  </div>
-                </div>
                 {selectedAsset.pqcRisk !== 'Safe' && selectedAsset.pqcRisk !== 'Low' && (
                   <div className="bg-amber/5 border border-amber/20 rounded-lg p-3">
                     <p className="text-xs font-semibold text-amber mb-1">PQC Risk: {selectedAsset.pqcRisk}</p>
@@ -559,6 +594,10 @@ export default function InventoryPage() {
                   </div>
                 )}
               </div>
+            )}
+
+            {drawerTab === 'dependencies' && (
+              <AIDependencyPanel asset={selectedAsset} onClose={() => setDrawerTab('overview')} />
             )}
 
             {drawerTab === 'history' && (
@@ -689,6 +728,11 @@ export default function InventoryPage() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* AI Dependency Modal */}
+      <Modal open={!!depAsset} onClose={() => setDepAsset(null)} title={`Dependencies — ${depAsset?.name || ''}`}>
+        {depAsset && <AIDependencyPanel asset={depAsset} onClose={() => setDepAsset(null)} />}
       </Modal>
     </div>
   );
