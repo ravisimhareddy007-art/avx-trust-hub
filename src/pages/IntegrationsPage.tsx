@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { connectors } from '@/data/mockData';
 import { toast } from 'sonner';
-import { Search, Eye, EyeOff, Wifi, Link, X, ChevronLeft, ChevronRight, Check, RefreshCw, Play, Shield, Database, Settings } from 'lucide-react';
+import { Search, Eye, EyeOff, Wifi, Link, X, ChevronLeft, ChevronRight, Check, RefreshCw, Play } from 'lucide-react';
 
-// Extended connector metadata with category info for 6-step lifecycle
+// Extended connector metadata with category info for 4-step lifecycle
 const connectorMeta: Record<string, {
   category: string;
   discovers: string;
@@ -50,8 +50,6 @@ const STEPS = [
   { num: 2, label: 'Configure', desc: 'Connection setup' },
   { num: 3, label: 'Credentials', desc: 'Authentication' },
   { num: 4, label: 'Validate', desc: 'Test connection' },
-  { num: 5, label: 'Discover', desc: 'Asset mapping' },
-  { num: 6, label: 'Monitor', desc: 'Ongoing lifecycle' },
 ];
 
 function ConnectorConfigModal({ item, open, onClose }: { item: ConnectorItem | null; open: boolean; onClose: () => void }) {
@@ -63,8 +61,6 @@ function ConnectorConfigModal({ item, open, onClose }: { item: ConnectorItem | n
   const [selectedModules, setSelectedModules] = useState<string[]>([]);
   const [validationStatus, setValidationStatus] = useState<'idle' | 'running' | 'success' | 'failed'>('idle');
   const [validationResults, setValidationResults] = useState<{ check: string; passed: boolean }[]>([]);
-  const [discoveryStatus, setDiscoveryStatus] = useState<'idle' | 'running' | 'complete'>('idle');
-  const [discoveredAssets, setDiscoveredAssets] = useState(0);
   const [integrationName, setIntegrationName] = useState('');
 
   useEffect(() => {
@@ -76,17 +72,14 @@ function ConnectorConfigModal({ item, open, onClose }: { item: ConnectorItem | n
       setIntegrationName(item.name + '-prod');
       setValidationStatus('idle');
       setValidationResults([]);
-      setDiscoveryStatus('idle');
-      setDiscoveredAssets(0);
       setFieldValues({});
-      if (item.status === 'connected') setStep(6);
-      else setStep(1);
+      setStep(1);
     }
   }, [item, open]);
 
   if (!open || !item) return null;
   const meta = getConnectorMeta(item.name);
-  const isConnected = item.status === 'connected';
+  
 
   const runValidation = () => {
     setValidationStatus('running');
@@ -110,23 +103,6 @@ function ConnectorConfigModal({ item, open, onClose }: { item: ConnectorItem | n
     }, 600);
   };
 
-  const runDiscovery = () => {
-    setDiscoveryStatus('running');
-    setDiscoveredAssets(0);
-    let count = 0;
-    const target = Math.floor(Math.random() * 2000) + 200;
-    const interval = setInterval(() => {
-      count += Math.floor(target / 10);
-      if (count >= target) {
-        setDiscoveredAssets(target);
-        setDiscoveryStatus('complete');
-        clearInterval(interval);
-        toast.success(`Discovery complete — ${target.toLocaleString()} assets mapped`);
-      } else {
-        setDiscoveredAssets(count);
-      }
-    }, 300);
-  };
 
   const handleFinish = () => {
     toast.success(`${item.name} integration activated successfully`);
@@ -135,8 +111,6 @@ function ConnectorConfigModal({ item, open, onClose }: { item: ConnectorItem | n
 
   const canAdvance = () => {
     if (step === 1) return integrationName.length > 0;
-    if (step === 4) return validationStatus === 'success';
-    if (step === 5) return discoveryStatus === 'complete';
     return true;
   };
 
@@ -148,7 +122,7 @@ function ConnectorConfigModal({ item, open, onClose }: { item: ConnectorItem | n
         <div className="sticky top-0 bg-card z-10 border-b border-border rounded-t-xl">
           <div className="flex items-center justify-between px-5 py-3">
             <div className="flex items-center gap-2">
-              {step > 1 && !isConnected && (
+              {step > 1 && (
                 <button onClick={() => setStep(s => s - 1)} className="text-muted-foreground hover:text-foreground">
                   <ChevronLeft className="w-4 h-4" />
                 </button>
@@ -394,177 +368,26 @@ function ConnectorConfigModal({ item, open, onClose }: { item: ConnectorItem | n
             </div>
           )}
 
-          {/* Step 5: Discover & Map */}
-          {step === 5 && (
-            <div className="space-y-4">
-              <div>
-                <p className="text-xs font-semibold text-foreground mb-0.5">Discover & map <span className="text-[9px] px-1.5 py-0.5 rounded bg-teal/10 text-teal ml-1">Auto-triggered</span></p>
-                <p className="text-[10px] text-muted-foreground">First sync + inventory · asset relationship mapping</p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] text-muted-foreground mb-1.5 block uppercase tracking-wide">System Fetches <span className="text-[9px] px-1 py-0.5 rounded bg-teal/10 text-teal">{item.name.substring(0, 4)}</span></label>
-                  <div className="space-y-1">
-                    {meta.systemFetches.map(f => (
-                      <div key={f} className="text-xs text-foreground flex items-center gap-1.5">
-                        <div className="w-1 h-1 rounded-full bg-teal" />
-                        {f}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label className="text-[10px] text-muted-foreground mb-1.5 block uppercase tracking-wide">User Reviews</label>
-                  <div className="space-y-1 text-xs">
-                    <div className="text-foreground flex items-center gap-1.5"><div className="w-1 h-1 rounded-full bg-teal" /> Full asset inventory</div>
-                    <div className="text-foreground flex items-center gap-1.5"><div className="w-1 h-1 rounded-full bg-teal" /> Subject-to-service mappings</div>
-                    <div className="text-amber flex items-center gap-1.5"><div className="w-1 h-1 rounded-full bg-amber" /> Expiring items</div>
-                    <div className="text-coral flex items-center gap-1.5"><div className="w-1 h-1 rounded-full bg-coral" /> Unmapped / orphaned assets</div>
-                  </div>
-                  <label className="text-[10px] text-muted-foreground mb-1 block uppercase tracking-wide mt-3">Scope Options</label>
-                  <div className="space-y-1 text-xs text-foreground">
-                    <div>• All resources</div>
-                    <div>• Selected resources</div>
-                    <div>• Filters: partition, group</div>
-                  </div>
-                </div>
-              </div>
-
-              {discoveryStatus === 'idle' && (
-                <button onClick={runDiscovery} className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-teal text-primary-foreground rounded-lg text-xs font-medium hover:bg-teal/90 transition-colors">
-                  <Database className="w-3.5 h-3.5" /> Start Discovery
-                </button>
-              )}
-
-              {discoveryStatus === 'running' && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2 text-amber">
-                      <div className="w-3 h-3 border-2 border-amber border-t-transparent rounded-full animate-spin" />
-                      Discovering assets...
-                    </div>
-                    <span className="text-foreground font-medium">{discoveredAssets.toLocaleString()} found</span>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-1.5">
-                    <div className="bg-teal h-1.5 rounded-full transition-all" style={{ width: '60%' }} />
-                  </div>
-                </div>
-              )}
-
-              {discoveryStatus === 'complete' && (
-                <div className="rounded-lg border border-teal/30 bg-teal/5 p-3">
-                  <div className="flex items-center gap-2 text-xs text-teal font-medium mb-2">
-                    <Check className="w-3.5 h-3.5" /> Discovery complete
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="bg-card rounded p-2 border border-border">
-                      <p className="text-lg font-bold text-foreground">{discoveredAssets.toLocaleString()}</p>
-                      <p className="text-[10px] text-muted-foreground">Total assets</p>
-                    </div>
-                    <div className="bg-card rounded p-2 border border-border">
-                      <p className="text-lg font-bold text-teal">{Math.floor(discoveredAssets * 0.92).toLocaleString()}</p>
-                      <p className="text-[10px] text-muted-foreground">Mapped</p>
-                    </div>
-                    <div className="bg-card rounded p-2 border border-border">
-                      <p className="text-lg font-bold text-amber">{Math.floor(discoveredAssets * 0.08).toLocaleString()}</p>
-                      <p className="text-[10px] text-muted-foreground">Unmapped</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="text-[10px] text-muted-foreground bg-muted/50 rounded p-2 font-mono">
-                Discovered assets · integration.health
-              </div>
-            </div>
-          )}
-
-          {/* Step 6: Monitor (Ongoing Lifecycle) */}
-          {step === 6 && (
-            <div className="space-y-4">
-              <div>
-                <p className="text-xs font-semibold text-foreground mb-0.5">Monitor <span className="text-[9px] px-1.5 py-0.5 rounded bg-teal/10 text-teal ml-1">Ongoing lifecycle</span></p>
-                <p className="text-[10px] text-muted-foreground">Continuous health monitoring · automation · integration.health</p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] text-muted-foreground mb-1.5 block uppercase tracking-wide">Health Status</label>
-                  <div className="flex flex-wrap gap-1.5 mb-3">
-                    {[
-                      { label: 'Healthy', cls: 'border-teal/30 bg-teal/10 text-teal' },
-                      { label: 'Degraded', cls: 'border-amber/30 bg-amber/10 text-amber' },
-                      { label: 'Failed', cls: 'border-coral/30 bg-coral/10 text-coral' },
-                      { label: 'Syncing', cls: 'border-teal/30 bg-teal/10 text-teal' },
-                    ].map(s => (
-                      <span key={s.label} className={`text-[9px] px-2 py-0.5 rounded-full border ${s.cls}`}>{s.label}</span>
-                    ))}
-                  </div>
-                  <label className="text-[10px] text-muted-foreground mb-1 block uppercase tracking-wide">Key Info</label>
-                  <div className="space-y-1 text-xs text-foreground">
-                    <div>• Last sync timestamp: {isConnected ? item.lastSync : 'Just now'}</div>
-                    <div>• Next scheduled sync: 1h</div>
-                    <div>• Discovered assets count: {isConnected ? item.assets.toLocaleString() : discoveredAssets.toLocaleString()}</div>
-                  </div>
-                </div>
-                <div>
-                  <label className="text-[10px] text-muted-foreground mb-1.5 block uppercase tracking-wide">Automation Alerts</label>
-                  <div className="space-y-1 text-xs">
-                    <div className="text-foreground">• Cert expiry warnings</div>
-                    <div className="text-coral">• Sync failure alerts</div>
-                    <div className="text-foreground">• Credential issue alerts</div>
-                    <div className="text-foreground">• Scheduled sync cadence</div>
-                  </div>
-                  <label className="text-[10px] text-muted-foreground mb-1 block uppercase tracking-wide mt-3">User Actions</label>
-                  <div className="space-y-1.5">
-                    <button onClick={() => toast.info('Re-sync triggered for ' + item.name)} className="text-xs text-teal hover:underline flex items-center gap-1.5">
-                      <RefreshCw className="w-3 h-3" /> Re-sync
-                    </button>
-                    <button onClick={() => toast.info('Credential rotation initiated')} className="text-xs text-teal hover:underline flex items-center gap-1.5">
-                      <Shield className="w-3 h-3" /> Rotate credentials
-                    </button>
-                    <button className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5">
-                      <Settings className="w-3 h-3" /> Change sync mode
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 pt-2 border-t border-border">
-                <div className="w-2 h-2 rounded-full bg-teal animate-pulse" />
-                <span className="text-xs text-foreground font-medium">Active integration · {item.name}</span>
-              </div>
-            </div>
-          )}
 
           {/* Navigation buttons */}
-          {!isConnected && (
-            <div className="flex items-center gap-2 mt-5 pt-4 border-t border-border">
-              {step > 1 && (
-                <button onClick={() => setStep(s => s - 1)} className="flex items-center gap-1 px-4 py-2 text-xs border border-border rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-                  <ChevronLeft className="w-3.5 h-3.5" /> Back
-                </button>
-              )}
-              <div className="flex-1" />
-              {step < 6 ? (
-                <button onClick={() => setStep(s => s + 1)} disabled={!canAdvance()}
-                  className="flex items-center gap-1 px-4 py-2.5 text-xs font-medium bg-teal text-primary-foreground rounded-lg hover:bg-teal/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-                  Next <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              ) : (
-                <button onClick={handleFinish} className="flex items-center gap-1 px-4 py-2.5 text-xs font-medium bg-teal text-primary-foreground rounded-lg hover:bg-teal/90 transition-colors">
-                  <Check className="w-3.5 h-3.5" /> Activate Integration
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Disconnect for connected integrations */}
-          {isConnected && (
-            <div className="flex items-center justify-end mt-4 pt-3 border-t border-border">
-              <button onClick={() => { toast.info(`${item.name} disconnected`); onClose(); }} className="text-xs text-coral hover:underline">
-                Disconnect integration
+          <div className="flex items-center gap-2 mt-5 pt-4 border-t border-border">
+            {step > 1 && (
+              <button onClick={() => setStep(s => s - 1)} className="flex items-center gap-1 px-4 py-2 text-xs border border-border rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                <ChevronLeft className="w-3.5 h-3.5" /> Back
               </button>
-            </div>
-          )}
+            )}
+            <div className="flex-1" />
+            {step < 4 ? (
+              <button onClick={() => setStep(s => s + 1)} disabled={!canAdvance()}
+                className="flex items-center gap-1 px-4 py-2.5 text-xs font-medium bg-teal text-primary-foreground rounded-lg hover:bg-teal/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                Next <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            ) : validationStatus === 'success' ? (
+              <button onClick={handleFinish} className="flex items-center gap-1 px-4 py-2.5 text-xs font-medium bg-teal text-primary-foreground rounded-lg hover:bg-teal/90 transition-colors">
+                <Check className="w-3.5 h-3.5" /> Activate Integration
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>
