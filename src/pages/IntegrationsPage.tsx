@@ -79,7 +79,7 @@ function ConnectorConfigModal({ item, open, onClose }: { item: ConnectorItem | n
 
   if (!open || !item) return null;
   const meta = getConnectorMeta(item.name);
-  const isConnected = item.status === 'connected';
+  
 
   const runValidation = () => {
     setValidationStatus('running');
