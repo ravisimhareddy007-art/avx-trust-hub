@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useNav } from '@/context/NavigationContext';
 import { mockAssets, CryptoAsset } from '@/data/mockData';
 import { StatusBadge, EnvBadge, PQCBadge, DaysToExpiry, Drawer, SeverityBadge, Modal } from '@/components/shared/UIComponents';
-import { Download, Search, Sparkles, Settings, RefreshCw, RotateCcw, XCircle, Shield, User, Workflow, Key, ExternalLink, Monitor, Server, ChevronDown, BarChart3, Bot, Zap, Lock, AlertTriangle, MoreVertical } from 'lucide-react';
+import { Search, Settings, RefreshCw, RotateCcw, XCircle, Shield, User, Workflow, Key, ExternalLink, Monitor, Server, ChevronDown, Bot, Lock, AlertTriangle, MoreVertical } from 'lucide-react';
 import { toast } from 'sonner';
 
 const typeFilters = ['All', 'TLS Certificate', 'SSH Key', 'SSH Certificate', 'Code-Signing Certificate', 'K8s Workload Cert', 'Encryption Key', 'AI Agent Token', 'API Key / Secret'];
@@ -104,35 +104,131 @@ export default function InventoryPage() {
   };
 
   const isSSHType = (type: string) => type === 'SSH Key' || type === 'SSH Certificate';
-  const isAgentView = typeFilter === 'AI Agent Token';
-  const isSecretView = typeFilter === 'API Key / Secret';
 
-  const [showColumns, setShowColumns] = useState(false);
-  const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set(['name','type','caIssuer','algorithm','owner','env','expiry','days','status','pqcRisk','actions']));
+  
   const [actionsOpen, setActionsOpen] = useState(false);
 
-  const allColumns = [
-    { id: 'name', label: 'Common Name' },
-    { id: 'type', label: 'Type' },
-    { id: 'caIssuer', label: 'CA / Issuer' },
-    { id: 'algorithm', label: 'Algorithm' },
-    { id: 'owner', label: 'Owner' },
-    { id: 'team', label: 'Team' },
-    { id: 'env', label: 'Environment' },
-    { id: 'expiry', label: 'Valid To' },
-    { id: 'days', label: 'Days' },
-    { id: 'status', label: 'Status' },
-    { id: 'pqcRisk', label: 'PQC Risk' },
-    { id: 'actions', label: '' },
-  ];
+  // Type-specific column definitions
+  type ColDef = { id: string; label: string; render: (a: CryptoAsset) => React.ReactNode };
 
-  const toggleColumn = (id: string) => {
-    setVisibleColumns(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
+  const colDefs: Record<string, ColDef[]> = {
+    'All': [
+      { id: 'name', label: 'Common Name', render: a => <span className="font-medium text-foreground truncate max-w-[200px] block">{a.name}</span> },
+      { id: 'type', label: 'Type', render: a => <span className="text-muted-foreground">{a.type}</span> },
+      { id: 'caIssuer', label: 'Issuer', render: a => <span className="text-muted-foreground truncate max-w-[140px] block">{a.caIssuer}</span> },
+      { id: 'algorithm', label: 'Algorithm', render: a => <span className="text-muted-foreground">{a.algorithm}</span> },
+      { id: 'owner', label: 'Owner', render: a => <span className="text-muted-foreground">{a.owner}</span> },
+      { id: 'env', label: 'Env', render: a => <EnvBadge env={a.environment} /> },
+      { id: 'expiry', label: 'Valid To', render: a => <span className="text-muted-foreground">{a.expiryDate}</span> },
+      { id: 'days', label: 'Days', render: a => <DaysToExpiry days={a.daysToExpiry} /> },
+      { id: 'status', label: 'Status', render: a => <StatusBadge status={a.status} /> },
+    ],
+    'TLS Certificate': [
+      { id: 'name', label: 'Subject / CN', render: a => <span className="font-medium text-foreground truncate max-w-[200px] block">{a.name}</span> },
+      { id: 'caIssuer', label: 'Issuer CA', render: a => <span className="text-muted-foreground truncate max-w-[140px] block">{a.caIssuer}</span> },
+      { id: 'serial', label: 'Serial #', render: a => <span className="text-muted-foreground font-mono text-[10px] truncate max-w-[120px] block">{a.serial}</span> },
+      { id: 'algorithm', label: 'Sig Algorithm', render: a => <span className="text-muted-foreground">{a.algorithm}</span> },
+      { id: 'keyLength', label: 'Key Size', render: a => <span className="text-muted-foreground">{a.keyLength}-bit</span> },
+      { id: 'owner', label: 'Owner', render: a => <span className="text-muted-foreground">{a.owner}</span> },
+      { id: 'env', label: 'Env', render: a => <EnvBadge env={a.environment} /> },
+      { id: 'expiry', label: 'Not After', render: a => <span className="text-muted-foreground">{a.expiryDate}</span> },
+      { id: 'days', label: 'Days Left', render: a => <DaysToExpiry days={a.daysToExpiry} /> },
+      { id: 'autoRenew', label: 'Auto-Renew', render: a => <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${a.autoRenewal ? 'bg-teal/10 text-teal' : 'bg-muted text-muted-foreground'}`}>{a.autoRenewal ? 'Yes' : 'No'}</span> },
+      { id: 'status', label: 'Status', render: a => <StatusBadge status={a.status} /> },
+      { id: 'pqcRisk', label: 'PQC Risk', render: a => <PQCBadge risk={a.pqcRisk} /> },
+    ],
+    'SSH Key': [
+      { id: 'name', label: 'Key Name', render: a => <span className="font-medium text-foreground truncate max-w-[180px] block">{a.name}</span> },
+      { id: 'fingerprint', label: 'Fingerprint', render: a => <span className="text-muted-foreground font-mono text-[10px] truncate max-w-[130px] block">{a.serial}</span> },
+      { id: 'algorithm', label: 'Key Type', render: a => <span className="text-muted-foreground">{a.algorithm}</span> },
+      { id: 'keyLength', label: 'Bits', render: a => <span className="text-muted-foreground">{a.keyLength}</span> },
+      { id: 'owner', label: 'Owner', render: a => <span className={`${a.owner === 'Unassigned' ? 'text-coral' : 'text-muted-foreground'}`}>{a.owner}</span> },
+      { id: 'endpoints', label: 'Endpoints', render: a => <span className="text-muted-foreground">{a.sshEndpoints?.length || 0} hosts</span> },
+      { id: 'env', label: 'Env', render: a => <EnvBadge env={a.environment} /> },
+      { id: 'lastRotated', label: 'Last Rotated', render: a => <span className="text-muted-foreground">{a.lastRotated}</span> },
+      { id: 'rotFreq', label: 'Rotation Policy', render: a => <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${a.rotationFrequency === 'Never' ? 'bg-coral/10 text-coral' : 'bg-muted text-muted-foreground'}`}>{a.rotationFrequency}</span> },
+      { id: 'status', label: 'Status', render: a => <StatusBadge status={a.status} /> },
+    ],
+    'SSH Certificate': [
+      { id: 'name', label: 'Cert Name', render: a => <span className="font-medium text-foreground truncate max-w-[180px] block">{a.name}</span> },
+      { id: 'caIssuer', label: 'SSH CA', render: a => <span className="text-muted-foreground">{a.caIssuer}</span> },
+      { id: 'serial', label: 'KRL Serial', render: a => <span className="text-muted-foreground font-mono text-[10px]">{a.serial}</span> },
+      { id: 'algorithm', label: 'Key Type', render: a => <span className="text-muted-foreground">{a.algorithm}</span> },
+      { id: 'owner', label: 'Principal', render: a => <span className="text-muted-foreground">{a.owner}</span> },
+      { id: 'endpoints', label: 'Endpoints', render: a => <span className="text-muted-foreground">{a.sshEndpoints?.length || 0} hosts</span> },
+      { id: 'env', label: 'Env', render: a => <EnvBadge env={a.environment} /> },
+      { id: 'expiry', label: 'Valid Until', render: a => <span className="text-muted-foreground">{a.expiryDate}</span> },
+      { id: 'days', label: 'TTL', render: a => <DaysToExpiry days={a.daysToExpiry} /> },
+      { id: 'autoRenew', label: 'Auto-Renew', render: a => <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${a.autoRenewal ? 'bg-teal/10 text-teal' : 'bg-coral/10 text-coral'}`}>{a.autoRenewal ? 'Yes' : 'No'}</span> },
+      { id: 'status', label: 'Status', render: a => <StatusBadge status={a.status} /> },
+    ],
+    'Code-Signing Certificate': [
+      { id: 'name', label: 'Certificate Name', render: a => <span className="font-medium text-foreground truncate max-w-[180px] block">{a.name}</span> },
+      { id: 'caIssuer', label: 'Issuer CA', render: a => <span className="text-muted-foreground truncate max-w-[120px] block">{a.caIssuer}</span> },
+      { id: 'algorithm', label: 'Sig Algorithm', render: a => <span className="text-muted-foreground">{a.algorithm}</span> },
+      { id: 'keyLength', label: 'Key Size', render: a => <span className="text-muted-foreground">{a.keyLength}-bit</span> },
+      { id: 'infra', label: 'HSM / Storage', render: a => <span className="text-muted-foreground text-[10px]">{a.infrastructure}</span> },
+      { id: 'owner', label: 'Owner', render: a => <span className="text-muted-foreground">{a.owner}</span> },
+      { id: 'expiry', label: 'Not After', render: a => <span className="text-muted-foreground">{a.expiryDate}</span> },
+      { id: 'days', label: 'Days Left', render: a => <DaysToExpiry days={a.daysToExpiry} /> },
+      { id: 'status', label: 'Status', render: a => <StatusBadge status={a.status} /> },
+      { id: 'pqcRisk', label: 'PQC Risk', render: a => <PQCBadge risk={a.pqcRisk} /> },
+    ],
+    'K8s Workload Cert': [
+      { id: 'name', label: 'Service Identity', render: a => <span className="font-medium text-foreground truncate max-w-[200px] block">{a.name}</span> },
+      { id: 'caIssuer', label: 'Mesh CA', render: a => <span className="text-muted-foreground">{a.caIssuer}</span> },
+      { id: 'spiffe', label: 'SPIFFE ID', render: a => <span className="text-muted-foreground font-mono text-[10px] truncate max-w-[180px] block">{a.serial}</span> },
+      { id: 'algorithm', label: 'Algorithm', render: a => <span className="text-muted-foreground">{a.algorithm}</span> },
+      { id: 'infra', label: 'Cluster', render: a => <span className="text-muted-foreground text-[10px]">{a.infrastructure}</span> },
+      { id: 'rotFreq', label: 'Rotation', render: a => <span className="text-muted-foreground">{a.rotationFrequency}</span> },
+      { id: 'autoRenew', label: 'Auto-Rotate', render: a => <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${a.autoRenewal ? 'bg-teal/10 text-teal' : 'bg-coral/10 text-coral'}`}>{a.autoRenewal ? 'Yes' : 'No'}</span> },
+      { id: 'status', label: 'Status', render: a => <StatusBadge status={a.status} /> },
+      { id: 'pqcRisk', label: 'PQC Risk', render: a => <PQCBadge risk={a.pqcRisk} /> },
+    ],
+    'Encryption Key': [
+      { id: 'name', label: 'Key Name', render: a => <span className="font-medium text-foreground truncate max-w-[180px] block">{a.name}</span> },
+      { id: 'caIssuer', label: 'KMS Provider', render: a => <span className="text-muted-foreground">{a.caIssuer}</span> },
+      { id: 'algorithm', label: 'Cipher', render: a => <span className="text-muted-foreground">{a.algorithm}</span> },
+      { id: 'keyLength', label: 'Key Size', render: a => <span className="text-muted-foreground">{a.keyLength}-bit</span> },
+      { id: 'owner', label: 'Owner', render: a => <span className="text-muted-foreground">{a.owner}</span> },
+      { id: 'app', label: 'Application', render: a => <span className="text-muted-foreground text-[10px]">{a.application}</span> },
+      { id: 'env', label: 'Env', render: a => <EnvBadge env={a.environment} /> },
+      { id: 'lastRotated', label: 'Last Rotated', render: a => <span className="text-muted-foreground">{a.lastRotated}</span> },
+      { id: 'rotFreq', label: 'Rotation Policy', render: a => <span className="text-muted-foreground">{a.rotationFrequency}</span> },
+      { id: 'autoRotate', label: 'Auto-Rotate', render: a => <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${a.autoRenewal ? 'bg-teal/10 text-teal' : 'bg-muted text-muted-foreground'}`}>{a.autoRenewal ? 'Yes' : 'No'}</span> },
+      { id: 'status', label: 'Status', render: a => <StatusBadge status={a.status} /> },
+    ],
+    'AI Agent Token': [
+      { id: 'name', label: 'Token Name', render: a => <span className="font-medium text-foreground truncate max-w-[180px] block">{a.name}</span> },
+      { id: 'agentType', label: 'Agent Type', render: a => <span className="inline-flex items-center gap-1 text-foreground"><Bot className="w-3 h-3 text-muted-foreground" />{a.agentMeta?.agentType || 'Unknown'}</span> },
+      { id: 'framework', label: 'Framework', render: a => <span className="text-muted-foreground text-[10px]">{a.agentMeta?.framework || '—'}</span> },
+      { id: 'owner', label: 'Owner', render: a => <span className="text-muted-foreground">{a.owner}</span> },
+      { id: 'permRisk', label: 'Permission Risk', render: a => {
+        const risk = a.agentMeta?.permissionRisk || '';
+        const cls = risk === 'Over-privileged' ? 'bg-coral/10 text-coral' : risk === 'Right-sized' ? 'bg-teal/10 text-teal' : 'bg-muted text-muted-foreground';
+        return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${cls}`}>{risk || '—'}</span>;
+      }},
+      { id: 'services', label: 'Services', render: a => <span className="text-muted-foreground text-[10px]">{a.agentMeta?.servicesAccessed?.length || 0} services</span> },
+      { id: 'actions', label: 'Actions/Day', render: a => <span className="text-muted-foreground">{a.agentMeta?.actionsPerDay?.toLocaleString() || '—'}</span> },
+      { id: 'expiry', label: 'Expires', render: a => <span className="text-muted-foreground">{a.expiryDate}</span> },
+      { id: 'days', label: 'TTL', render: a => <DaysToExpiry days={a.daysToExpiry} /> },
+      { id: 'status', label: 'Status', render: a => <StatusBadge status={a.status} /> },
+    ],
+    'API Key / Secret': [
+      { id: 'name', label: 'Secret Name', render: a => <span className="font-medium text-foreground truncate max-w-[180px] block">{a.name}</span> },
+      { id: 'caIssuer', label: 'Vault / Source', render: a => <span className="text-muted-foreground">{a.caIssuer}</span> },
+      { id: 'algorithm', label: 'Encryption', render: a => <span className="text-muted-foreground">{a.algorithm}</span> },
+      { id: 'owner', label: 'Owner', render: a => <span className={`${a.owner === 'Unassigned' ? 'text-coral' : 'text-muted-foreground'}`}>{a.owner}</span> },
+      { id: 'team', label: 'Team', render: a => <span className="text-muted-foreground">{a.team}</span> },
+      { id: 'env', label: 'Env', render: a => <EnvBadge env={a.environment} /> },
+      { id: 'lastRotated', label: 'Last Rotated', render: a => <span className="text-muted-foreground">{a.lastRotated}</span> },
+      { id: 'rotFreq', label: 'Rotation Policy', render: a => <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${a.rotationFrequency === 'Never' ? 'bg-coral/10 text-coral' : 'bg-muted text-muted-foreground'}`}>{a.rotationFrequency}</span> },
+      { id: 'status', label: 'Status', render: a => <StatusBadge status={a.status} /> },
+    ],
   };
+
+  const activeColumns = colDefs[typeFilter] || colDefs['All'];
+
 
   return (
     <div className="space-y-3">
@@ -234,25 +330,8 @@ export default function InventoryPage() {
 
         <div className="w-px h-6 bg-border" />
 
-        {/* Columns toggle */}
-        <div className="relative">
-          <button
-            onClick={() => setShowColumns(!showColumns)}
-            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-foreground hover:bg-secondary rounded transition-colors"
-          >
-            <BarChart3 className="w-3.5 h-3.5" /> Columns
-          </button>
-          {showColumns && (
-            <div className="absolute top-full right-0 mt-1 bg-card border border-border rounded-lg shadow-lg z-50 p-2 min-w-[160px]">
-              {allColumns.map(col => (
-                <label key={col.id} className="flex items-center gap-2 px-2 py-1.5 text-xs cursor-pointer hover:bg-secondary rounded">
-                  <input type="checkbox" checked={visibleColumns.has(col.id)} onChange={() => toggleColumn(col.id)} className="rounded" />
-                  {col.label}
-                </label>
-              ))}
-            </div>
-          )}
-        </div>
+        {/* Column count indicator */}
+        <span className="text-[10px] text-muted-foreground">{activeColumns.length} cols</span>
 
         <div className="w-px h-6 bg-border" />
 
@@ -277,65 +356,31 @@ export default function InventoryPage() {
       <div className="bg-card rounded-lg border border-border overflow-hidden">
         <div className="overflow-x-auto scrollbar-thin">
           <table className="w-full text-xs">
-             <thead className="bg-secondary/50">
+            <thead className="bg-secondary/50">
               <tr className="border-b border-border">
                 <th className="w-8 py-2 px-2"><input type="checkbox" onChange={e => setSelectedRows(e.target.checked ? new Set(filtered.map(a => a.id)) : new Set())} className="rounded" /></th>
                 <th className="w-6 py-2 px-1"></th>
-                {visibleColumns.has('name') && <th className="text-left py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground">Common Name ↕</th>}
-                {!isAgentView && visibleColumns.has('type') && <th className="text-left py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground">Type ↕</th>}
-                {isAgentView && <th className="text-left py-2 px-2 font-medium text-muted-foreground">Agent Type</th>}
-                {isAgentView && <th className="text-left py-2 px-2 font-medium text-muted-foreground">Framework</th>}
-                {!isAgentView && visibleColumns.has('caIssuer') && <th className="text-left py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground">Issuer Common Name ↕</th>}
-                {!isAgentView && visibleColumns.has('algorithm') && <th className="text-left py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground">Algorithm ↕</th>}
-                {visibleColumns.has('owner') && <th className="text-left py-2 px-2 font-medium text-muted-foreground">Owner</th>}
-                {isAgentView && <th className="text-left py-2 px-2 font-medium text-muted-foreground">Permission Risk</th>}
-                {isAgentView && <th className="text-left py-2 px-2 font-medium text-muted-foreground">Services</th>}
-                {isAgentView && <th className="text-left py-2 px-2 font-medium text-muted-foreground">Actions/Day</th>}
-                {!isAgentView && visibleColumns.has('team') && <th className="text-left py-2 px-2 font-medium text-muted-foreground">Team</th>}
-                {visibleColumns.has('env') && <th className="text-left py-2 px-2 font-medium text-muted-foreground">Env</th>}
-                {visibleColumns.has('expiry') && <th className="text-left py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground">Valid To (GMT) ↕</th>}
-                {visibleColumns.has('days') && <th className="text-left py-2 px-2 font-medium text-muted-foreground">Days</th>}
-                {visibleColumns.has('status') && <th className="text-left py-2 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground">Status ↕</th>}
-                {visibleColumns.has('actions') && <th className="w-10 py-2 px-2"></th>}
+                {activeColumns.map(col => (
+                  <th key={col.id} className="text-left py-2 px-2 font-medium text-muted-foreground whitespace-nowrap">{col.label}</th>
+                ))}
+                <th className="w-10 py-2 px-2"></th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map(asset => {
-                
-                const agentRiskColors: Record<string, string> = {
-                  'Over-privileged': 'bg-coral/10 text-coral',
-                  'Right-sized': 'bg-teal/10 text-teal',
-                  'Minimal': 'bg-muted text-muted-foreground',
-                };
-                return (
-                  <tr key={asset.id} className="border-b border-border hover:bg-secondary/30 cursor-pointer transition-colors" onClick={() => { setSelectedAsset(asset); setDrawerTab('overview'); }}>
-                    <td className="py-2 px-2" onClick={e => e.stopPropagation()}>
-                      <input type="checkbox" checked={selectedRows.has(asset.id)} onChange={() => toggleRow(asset.id)} className="rounded" />
-                    </td>
-                    <td className="py-2 px-1 text-muted-foreground">{isAgentView ? <Bot className="w-3 h-3 text-teal" /> : '▸'}</td>
-                    {visibleColumns.has('name') && <td className="py-2 px-2 font-medium text-foreground max-w-[200px] truncate">{asset.name}</td>}
-                    {!isAgentView && visibleColumns.has('type') && <td className="py-2 px-2 text-muted-foreground">{asset.type}</td>}
-                    {isAgentView && <td className="py-2 px-2"><span className="inline-flex items-center gap-1 text-xs text-foreground"><Bot className="w-3 h-3 text-muted-foreground" />{asset.agentMeta?.agentType || 'Unknown'}</span></td>}
-                    {isAgentView && <td className="py-2 px-2 text-muted-foreground text-[10px]">{asset.agentMeta?.framework || '—'}</td>}
-                    {!isAgentView && visibleColumns.has('caIssuer') && <td className="py-2 px-2 text-muted-foreground truncate max-w-[140px]">{asset.caIssuer}</td>}
-                    {!isAgentView && visibleColumns.has('algorithm') && <td className="py-2 px-2 text-muted-foreground">{asset.algorithm}</td>}
-                    {visibleColumns.has('owner') && <td className="py-2 px-2 text-muted-foreground">{asset.owner}</td>}
-                    {isAgentView && <td className="py-2 px-2"><span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${agentRiskColors[asset.agentMeta?.permissionRisk || ''] || 'bg-muted text-muted-foreground'}`}>{asset.agentMeta?.permissionRisk || '—'}</span></td>}
-                    {isAgentView && <td className="py-2 px-2 text-muted-foreground text-[10px]">{asset.agentMeta?.servicesAccessed?.length || 0} services</td>}
-                    {isAgentView && <td className="py-2 px-2 text-muted-foreground text-[10px]">{asset.agentMeta?.actionsPerDay?.toLocaleString() || '—'}</td>}
-                    {!isAgentView && visibleColumns.has('team') && <td className="py-2 px-2 text-muted-foreground truncate max-w-[120px]">{asset.team}</td>}
-                    {visibleColumns.has('env') && <td className="py-2 px-2"><EnvBadge env={asset.environment} /></td>}
-                    {visibleColumns.has('expiry') && <td className="py-2 px-2 text-muted-foreground">{asset.expiryDate}</td>}
-                    {visibleColumns.has('days') && <td className="py-2 px-2"><DaysToExpiry days={asset.daysToExpiry} /></td>}
-                    {visibleColumns.has('status') && <td className="py-2 px-2"><StatusBadge status={asset.status} /></td>}
-                    {visibleColumns.has('actions') && (
-                      <td className="py-2 px-2" onClick={e => e.stopPropagation()}>
-                        <AssetRowMenu asset={asset} onAction={handleAction} />
-                      </td>
-                    )}
-                  </tr>
-                );
-              })}
+              {filtered.map(asset => (
+                <tr key={asset.id} className="border-b border-border hover:bg-secondary/30 cursor-pointer transition-colors" onClick={() => { setSelectedAsset(asset); setDrawerTab('overview'); }}>
+                  <td className="py-2 px-2" onClick={e => e.stopPropagation()}>
+                    <input type="checkbox" checked={selectedRows.has(asset.id)} onChange={() => toggleRow(asset.id)} className="rounded" />
+                  </td>
+                  <td className="py-2 px-1 text-muted-foreground">▸</td>
+                  {activeColumns.map(col => (
+                    <td key={col.id} className="py-2 px-2">{col.render(asset)}</td>
+                  ))}
+                  <td className="py-2 px-2" onClick={e => e.stopPropagation()}>
+                    <AssetRowMenu asset={asset} onAction={handleAction} />
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
