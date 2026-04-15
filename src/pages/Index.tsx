@@ -38,6 +38,7 @@ function PageRouter() {
     'inventory': <InventoryPage />,
     'policy-builder': <PolicyBuilderPage />,
     'remediation': <RemediationPage />,
+    'tickets': <TicketManagementPage />,
     'integrations': <IntegrationsPage />,
     'core-services': <CoreServicesPage />,
     'trustops': <TrustOpsPage />,
