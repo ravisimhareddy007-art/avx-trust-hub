@@ -42,7 +42,7 @@ export default function SecurityAdminDashboard() {
             <button onClick={() => {}} className="p-1 hover:text-foreground"><RefreshCw className="w-3.5 h-3.5" /></button>
           </div>
         </div>
-        <div className="flex gap-1 border-b border-border">
+        <div className="flex gap-1 border-b border-border overflow-x-auto">
           {tabs.map(tab => (
             <button
               key={tab.id}
