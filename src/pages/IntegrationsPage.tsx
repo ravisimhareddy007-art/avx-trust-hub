@@ -122,7 +122,7 @@ function ConnectorConfigModal({ item, open, onClose }: { item: ConnectorItem | n
         <div className="sticky top-0 bg-card z-10 border-b border-border rounded-t-xl">
           <div className="flex items-center justify-between px-5 py-3">
             <div className="flex items-center gap-2">
-              {step > 1 && !isConnected && (
+              {step > 1 && (
                 <button onClick={() => setStep(s => s - 1)} className="text-muted-foreground hover:text-foreground">
                   <ChevronLeft className="w-4 h-4" />
                 </button>
