@@ -28,6 +28,7 @@ const navItems: NavItem[] = [
   { id: 'inventory', label: 'INVENTORY', icon: Package, page: 'inventory' },
   { id: 'policy-builder', label: 'POLICIES', icon: ScrollText, page: 'policy-builder' },
   { id: 'remediation', label: 'REMEDIATION', icon: Wrench, page: 'remediation' },
+  { id: 'tickets', label: 'TICKETS', icon: LayoutDashboard, page: 'tickets' },
   { id: 'integrations', label: 'INTEGRATIONS', icon: Link2, page: 'integrations' },
   { id: 'core-services', label: 'PLATFORM CORE', icon: Cog, page: 'core-services' },
 ];

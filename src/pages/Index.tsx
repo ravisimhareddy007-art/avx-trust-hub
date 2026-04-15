@@ -15,6 +15,7 @@ import DiscoveryPage from '@/pages/DiscoveryPage';
 import CoreServicesPage from '@/pages/CoreServicesPage';
 import SettingsPage from '@/pages/SettingsPage';
 import RemediationPage from '@/pages/RemediationPage';
+import TicketManagementPage from '@/pages/TicketManagementPage';
 import IntegrationsPage from '@/pages/IntegrationsPage';
 
 function DashboardPage() {
