@@ -11,8 +11,9 @@ function getQuickActions(asset: CryptoAsset) {
   const isSSH = asset.type === 'SSH Key' || asset.type === 'SSH Certificate';
   const isTLS = asset.type === 'TLS Certificate' || asset.type === 'Code-Signing Certificate';
   const isAI = asset.type === 'AI Agent Token';
+  const isSecret = asset.type === 'API Key / Secret';
   if (isTLS) return [{ label: 'Renew', icon: RefreshCw }, { label: 'Revoke', icon: XCircle }];
-  if (isSSH || isAI) return [{ label: 'Rotate', icon: RotateCcw }, { label: 'Revoke', icon: XCircle }];
+  if (isSSH || isAI || isSecret) return [{ label: 'Rotate', icon: RotateCcw }, { label: 'Revoke', icon: XCircle }];
   return [{ label: 'Renew', icon: RefreshCw }, { label: 'Revoke', icon: XCircle }];
 }
 
@@ -104,6 +105,7 @@ export default function InventoryPage() {
 
   const isSSHType = (type: string) => type === 'SSH Key' || type === 'SSH Certificate';
   const isAgentView = typeFilter === 'AI Agent Token';
+  const isSecretView = typeFilter === 'API Key / Secret';
 
   const [showColumns, setShowColumns] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set(['name','type','caIssuer','algorithm','owner','env','expiry','days','status','pqcRisk','actions']));
