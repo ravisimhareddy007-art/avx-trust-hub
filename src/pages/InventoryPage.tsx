@@ -352,6 +352,38 @@ export default function InventoryPage() {
         </div>
       )}
 
+      {/* Table */}
+      <div className="bg-card rounded-lg border border-border overflow-hidden">
+        <div className="overflow-x-auto scrollbar-thin">
+          <table className="w-full text-xs">
+            <thead className="bg-secondary/50">
+              <tr className="border-b border-border">
+                <th className="w-8 py-2 px-2"><input type="checkbox" onChange={e => setSelectedRows(e.target.checked ? new Set(filtered.map(a => a.id)) : new Set())} className="rounded" /></th>
+                <th className="w-6 py-2 px-1"></th>
+                {activeColumns.map(col => (
+                  <th key={col.id} className="text-left py-2 px-2 font-medium text-muted-foreground whitespace-nowrap">{col.label}</th>
+                ))}
+                <th className="w-10 py-2 px-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(asset => (
+                <tr key={asset.id} className="border-b border-border hover:bg-secondary/30 cursor-pointer transition-colors" onClick={() => { setSelectedAsset(asset); setDrawerTab('overview'); }}>
+                  <td className="py-2 px-2" onClick={e => e.stopPropagation()}>
+                    <input type="checkbox" checked={selectedRows.has(asset.id)} onChange={() => toggleRow(asset.id)} className="rounded" />
+                  </td>
+                  <td className="py-2 px-1 text-muted-foreground">▸</td>
+                  {activeColumns.map(col => (
+                    <td key={col.id} className="py-2 px-2">{col.render(asset)}</td>
+                  ))}
+                  <td className="py-2 px-2" onClick={e => e.stopPropagation()}>
+                    <AssetRowMenu asset={asset} onAction={handleAction} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         {filtered.length === 0 && (
           <div className="py-12 text-center text-sm text-muted-foreground">
             No assets found matching your filters.{' '}
