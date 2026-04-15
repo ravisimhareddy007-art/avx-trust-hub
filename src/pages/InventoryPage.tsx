@@ -5,7 +5,7 @@ import { StatusBadge, EnvBadge, PQCBadge, DaysToExpiry, Drawer, SeverityBadge, M
 import { Download, Search, Sparkles, Settings, RefreshCw, RotateCcw, XCircle, Shield, User, Workflow, Key, ExternalLink, Monitor, Server, ChevronDown, BarChart3, Bot, Zap, Lock, AlertTriangle, MoreVertical } from 'lucide-react';
 import { toast } from 'sonner';
 
-const typeFilters = ['All', 'TLS Certificate', 'SSH Key', 'SSH Certificate', 'Code-Signing Certificate', 'K8s Workload Cert', 'AI Agent Token'];
+const typeFilters = ['All', 'TLS Certificate', 'SSH Key', 'SSH Certificate', 'Code-Signing Certificate', 'K8s Workload Cert', 'Encryption Key', 'AI Agent Token', 'API Key / Secret'];
 
 function getQuickActions(asset: CryptoAsset) {
   const isSSH = asset.type === 'SSH Key' || asset.type === 'SSH Certificate';
@@ -150,7 +150,7 @@ export default function InventoryPage() {
       <div className="flex items-center gap-0 border-b border-border">
         {typeFilters.map(t => {
           const count = t === 'All' ? mockAssets.length : mockAssets.filter(a => a.type === t).length;
-          const shortLabel = t === 'All' ? 'All' : t === 'TLS Certificate' ? 'Certificates' : t === 'SSH Key' ? 'SSH Keys' : t === 'SSH Certificate' ? 'SSH Certs' : t === 'Code-Signing Certificate' ? 'Code Signing' : t === 'K8s Workload Cert' ? 'K8s Certs' : t === 'AI Agent Token' ? 'AI Agents' : t;
+          const shortLabel = t === 'All' ? 'All' : t === 'TLS Certificate' ? 'Certificates' : t === 'SSH Key' ? 'SSH Keys' : t === 'SSH Certificate' ? 'SSH Certs' : t === 'Code-Signing Certificate' ? 'Code Signing' : t === 'K8s Workload Cert' ? 'K8s Certs' : t === 'Encryption Key' ? 'Enc Keys' : t === 'AI Agent Token' ? 'AI Agents' : t === 'API Key / Secret' ? 'Secrets' : t;
           return (
             <button
               key={t}
