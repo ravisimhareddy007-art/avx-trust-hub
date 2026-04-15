@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useNav } from '@/context/NavigationContext';
 import { mockAssets, CryptoAsset } from '@/data/mockData';
 import { StatusBadge, EnvBadge, PQCBadge, DaysToExpiry, Drawer, SeverityBadge, Modal } from '@/components/shared/UIComponents';
-import { Search, Settings, RefreshCw, RotateCcw, XCircle, User, Workflow, Key, ExternalLink, Monitor, Server, ChevronDown, Bot, Lock, AlertTriangle, MoreVertical } from 'lucide-react';
+import { Search, Settings, RefreshCw, RotateCcw, XCircle, Shield, User, Workflow, Key, ExternalLink, Monitor, Server, ChevronDown, Bot, Lock, AlertTriangle, MoreVertical } from 'lucide-react';
 import { toast } from 'sonner';
 
 const typeFilters = ['All', 'TLS Certificate', 'SSH Key', 'SSH Certificate', 'Code-Signing Certificate', 'K8s Workload Cert', 'Encryption Key', 'AI Agent Token', 'API Key / Secret'];
