@@ -29,7 +29,7 @@ export default function SecurityAdminDashboard() {
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 max-h-[calc(100vh-120px)] overflow-y-auto scrollbar-thin pr-1">
       {/* Page Header with Tabs */}
       <div>
         <div className="flex items-center justify-between mb-3">
@@ -42,7 +42,7 @@ export default function SecurityAdminDashboard() {
             <button onClick={() => {}} className="p-1 hover:text-foreground"><RefreshCw className="w-3.5 h-3.5" /></button>
           </div>
         </div>
-        <div className="flex gap-1 border-b border-border">
+        <div className="flex gap-1 border-b border-border overflow-x-auto">
           {tabs.map(tab => (
             <button
               key={tab.id}
@@ -59,12 +59,9 @@ export default function SecurityAdminDashboard() {
         </div>
       </div>
 
-
-
-
       {activeTab === 'summary' && (
         <>
-          {/* Three Crises KPIs — aligned with strategy deck */}
+          {/* Top-level KPIs */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-semibold">Crypto Posture Overview</h3>
@@ -74,13 +71,12 @@ export default function SecurityAdminDashboard() {
                 <Info className="w-3 h-3" />
               </div>
             </div>
-            <div className="grid grid-cols-5 gap-3">
+            <div className="grid grid-cols-4 gap-3">
               {[
                 { label: 'Total Machine Identities', value: '5.2M', color: 'hsl(var(--teal))', page: 'inventory', subtitle: 'Certs, Keys, Tokens, Secrets' },
-                { label: 'PQC-Vulnerable Assets', value: '247K', color: 'hsl(var(--coral))', page: 'quantum', subtitle: 'NIST 2030 deadline' },
+                { label: 'PQC-Vulnerable Assets', value: '247K', color: 'hsl(var(--coral))', page: 'inventory', subtitle: 'Requires algorithm migration' },
                 { label: 'AI Agent Identities', value: '472K', color: 'hsl(var(--purple))', page: 'inventory', subtitle: '38% over-privileged' },
                 { label: 'Unmanaged Secrets', value: '18,420', color: 'hsl(var(--amber))', page: 'inventory', subtitle: 'In repos & endpoints' },
-                { label: '47-Day TLS Mandate', value: '1.8M', color: 'hsl(var(--coral))', page: 'inventory', subtitle: 'Apple mandate by 2027' },
               ].map(item => (
                 <button
                   key={item.label}
@@ -96,7 +92,77 @@ export default function SecurityAdminDashboard() {
             </div>
           </div>
 
-          {/* Charts Row — Crypto Posture Score + Expiry Trend */}
+          {/* Per Crypto Object Widgets */}
+          <div>
+            <h3 className="text-sm font-semibold mb-2">By Crypto Object Type</h3>
+            <div className="grid grid-cols-4 gap-3">
+              {/* Certificates */}
+              <div className="bg-card rounded-lg border border-border p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Shield className="w-4 h-4 text-teal" />
+                  <span className="text-xs font-semibold">Certificates</span>
+                </div>
+                <div className="space-y-1.5 text-[11px]">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Total</span><span className="font-medium">1.8M</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Expiring &lt;30d</span><span className="font-medium text-coral">12,847</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Expired</span><span className="font-medium text-coral">342</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Self-Signed</span><span className="font-medium text-amber">8,412</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Weak Algorithm</span><span className="font-medium text-amber">4,218</span></div>
+                </div>
+                <button onClick={() => { setFilters({ type: 'TLS Certificate' }); setCurrentPage('inventory'); }} className="text-[10px] text-teal mt-2 hover:underline">View all →</button>
+              </div>
+
+              {/* SSH & Encryption Keys */}
+              <div className="bg-card rounded-lg border border-border p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Key className="w-4 h-4 text-purple" />
+                  <span className="text-xs font-semibold">Keys</span>
+                </div>
+                <div className="space-y-1.5 text-[11px]">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Total</span><span className="font-medium">1.4M</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">SSH Keys</span><span className="font-medium">842K</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Encryption Keys</span><span className="font-medium">558K</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Orphaned</span><span className="font-medium text-coral">3,218</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Non-HSM Stored</span><span className="font-medium text-amber">14,720</span></div>
+                </div>
+                <button onClick={() => { setFilters({ type: 'SSH Key' }); setCurrentPage('inventory'); }} className="text-[10px] text-teal mt-2 hover:underline">View all →</button>
+              </div>
+
+              {/* Tokens & Agent Identities */}
+              <div className="bg-card rounded-lg border border-border p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Bot className="w-4 h-4 text-amber" />
+                  <span className="text-xs font-semibold">Tokens & Agents</span>
+                </div>
+                <div className="space-y-1.5 text-[11px]">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Total</span><span className="font-medium">1.2M</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">AI Agent Tokens</span><span className="font-medium">472K</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Service Tokens</span><span className="font-medium">728K</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Over-Privileged</span><span className="font-medium text-coral">179K</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">No Audit Trail</span><span className="font-medium text-amber">82K</span></div>
+                </div>
+                <button onClick={() => { setFilters({ type: 'AI Agent Token' }); setCurrentPage('inventory'); }} className="text-[10px] text-teal mt-2 hover:underline">View all →</button>
+              </div>
+
+              {/* Secrets */}
+              <div className="bg-card rounded-lg border border-border p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Lock className="w-4 h-4 text-coral" />
+                  <span className="text-xs font-semibold">Secrets</span>
+                </div>
+                <div className="space-y-1.5 text-[11px]">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Total</span><span className="font-medium">812K</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">API Keys</span><span className="font-medium">384K</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Vault Secrets</span><span className="font-medium">428K</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Exposed in Code</span><span className="font-medium text-coral">18,420</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Not Rotated &gt;90d</span><span className="font-medium text-amber">42,180</span></div>
+                </div>
+                <button onClick={() => { setFilters({ type: 'API Key' }); setCurrentPage('inventory'); }} className="text-[10px] text-teal mt-2 hover:underline">View all →</button>
+              </div>
+            </div>
+          </div>
+
+          {/* Charts Row */}
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-card rounded-lg border border-border p-4">
               <div className="flex items-center justify-between mb-3">
@@ -196,7 +262,7 @@ export default function SecurityAdminDashboard() {
 
           {/* AI Insight */}
           <AIInsightCard onClick={() => setCurrentPage('remediation')}>
-            Infinity AI detected 3 converging risks: 247K PQC-vulnerable assets need migration before NIST 2030 deadline,
+            Infinity AI detected 3 converging risks: 247K PQC-vulnerable assets need algorithm migration,
             38% of AI agent tokens are over-privileged with access to production data, and 18K secrets discovered in source code repos.
             Recommend: prioritize PQC migration for BFSI assets, right-size agent permissions, and rotate exposed secrets.
           </AIInsightCard>
