@@ -19,7 +19,7 @@ const cryptoPostureData = [
 export default function SecurityAdminDashboard() {
   const { setCurrentPage, setFilters } = useNav();
   const [activeTab, setActiveTab] = useState<'summary' | 'operations' | 'risk' | 'shortlived'>('summary');
-  const [showPQCBanner, setShowPQCBanner] = useState(true);
+  
 
   const tabs = [
     { id: 'summary' as const, label: 'Summary' },
@@ -59,31 +59,8 @@ export default function SecurityAdminDashboard() {
         </div>
       </div>
 
-      {/* Three Converging Crises Banner */}
-      {showPQCBanner && (
-        <div className="relative rounded-lg overflow-hidden" style={{ background: 'linear-gradient(135deg, hsl(270, 50%, 35%), hsl(300, 40%, 30%))' }}>
-          <div className="flex items-center justify-between p-4">
-            <div className="flex items-center gap-4">
-              <Atom className="w-10 h-10 text-primary-foreground/70 flex-shrink-0" />
-              <div>
-                <h3 className="text-sm font-bold text-primary-foreground">Three Converging Crises. One Trust Platform.</h3>
-                <p className="text-xs text-primary-foreground/70">Quantum threats, AI agent identity sprawl, and 250B+ unmanaged machine identities require a unified control plane — not piecemeal tools.</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <button
-                onClick={() => setCurrentPage('quantum')}
-                className="px-4 py-2 rounded-lg bg-primary-foreground/10 border border-primary-foreground/20 text-xs font-medium text-primary-foreground hover:bg-primary-foreground/20 transition-colors whitespace-nowrap"
-              >
-                View PQC Posture
-              </button>
-              <button onClick={() => setShowPQCBanner(false)} className="p-1 text-primary-foreground/50 hover:text-primary-foreground">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+
+
 
       {activeTab === 'summary' && (
         <>
