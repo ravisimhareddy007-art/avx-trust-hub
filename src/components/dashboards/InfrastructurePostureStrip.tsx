@@ -1,15 +1,14 @@
-import React, { useMemo } from 'react';
-import {
-  Server, Database, Globe, Boxes, Shield, Cloud, ArrowRight,
-} from 'lucide-react';
+import React from 'react';
+import { Server, Boxes, Cloud, ArrowRight, TrendingUp, TrendingDown, ArrowRightLeft } from 'lucide-react';
 import { useNav } from '@/context/NavigationContext';
-import { mockITAssets } from '@/data/inventoryMockData';
-import { useInventoryRegistry } from '@/context/InventoryRegistryContext';
 
 /**
- * Infrastructure-level posture — mirrors the IdentityHealthBands design:
- * one card per asset category, stacked health bar (Critical / High / Medium / Healthy),
- * top issue link. Counts are enterprise-realistic (M/K) not just the seeded mock count.
+ * Infrastructure Posture Distribution — a "map", not a "to-do list".
+ * Mirrors IdentityHealthBands design language: ONE key insight per tile,
+ * 7d trend, explicit drill-down, cross-layer pivot to identity view.
+ *
+ * Per spec: only the 3 infrastructure categories (Hosts & Servers,
+ * Kubernetes & Service Mesh, Cloud Accounts) — no mixing with identity types.
  */
 
 interface Band {
@@ -17,120 +16,118 @@ interface Band {
   type: string;
   icon: React.ComponentType<{ className?: string }>;
   total: string;
-  totalRaw: number;
-  // Health distribution — must sum to 100
   critical: number; high: number; medium: number; healthy: number;
-  topIssue: { label: string; value: string; page: string; filters: Record<string, string> };
+  keyInsight: { label: string; value: string; filter: Record<string, string> };
+  trend7d: number;
+  pivotTo?: { label: string; filters: Record<string, string> };
 }
 
-// Enterprise-scale mock counts. Anchors to mockITAssets where possible
-// but represents the full population that discovery would surface across
-// a Fortune-500 footprint.
 const BANDS: Band[] = [
   {
     name: 'Hosts & Servers', type: 'Application Server', icon: Server,
-    total: '184K', totalRaw: 184_320,
+    total: '184K',
     critical: 6, high: 14, medium: 22, healthy: 58,
-    topIssue: { label: 'crypto agent missing', value: '24,180', page: 'inventory', filters: { tab: 'infrastructure', type: 'Application Server' } },
+    keyInsight: { label: 'crypto agent missing', value: '24,180', filter: { tab: 'infrastructure', type: 'Application Server', agent: 'missing' } },
+    trend7d: +0.6,
+    pivotTo: { label: 'Identities on these hosts', filters: { tab: 'identities', hostScope: 'agent-missing' } },
   },
   {
-    name: 'K8s & Service Mesh', type: 'K8s Cluster', icon: Boxes,
-    total: '1,847', totalRaw: 1_847,
+    name: 'Kubernetes & Service Mesh', type: 'K8s Cluster', icon: Boxes,
+    total: '1,847',
     critical: 4, high: 10, medium: 18, healthy: 68,
-    topIssue: { label: 'cert-manager unhealthy', value: '147', page: 'inventory', filters: { tab: 'infrastructure', type: 'K8s Cluster' } },
+    keyInsight: { label: 'cert-manager unhealthy', value: '147', filter: { tab: 'infrastructure', type: 'K8s Cluster', certManager: 'unhealthy' } },
+    trend7d: -1.2,
+    pivotTo: { label: 'Certs in these clusters', filters: { tab: 'identities', type: 'TLS Certificate', scope: 'k8s' } },
   },
   {
     name: 'Cloud Accounts', type: 'Cloud Account', icon: Cloud,
-    total: '521', totalRaw: 521,
+    total: '521',
     critical: 8, high: 16, medium: 20, healthy: 56,
-    topIssue: { label: 'unmanaged KMS keys', value: '3,412', page: 'inventory', filters: { tab: 'infrastructure', type: 'Cloud Account' } },
-  },
-  {
-    name: 'Databases & Stores', type: 'Database Server', icon: Database,
-    total: '12.4K', totalRaw: 12_412,
-    critical: 5, high: 12, medium: 19, healthy: 64,
-    topIssue: { label: 'TLS not enforced', value: '847', page: 'inventory', filters: { tab: 'infrastructure', type: 'Database Server' } },
-  },
-  {
-    name: 'Gateways & Edge', type: 'API Gateway', icon: Globe,
-    total: '8.2K', totalRaw: 8_240,
-    critical: 3, high: 9, medium: 14, healthy: 74,
-    topIssue: { label: 'weak cipher suites', value: '1,284', page: 'inventory', filters: { tab: 'infrastructure', type: 'API Gateway' } },
-  },
-  {
-    name: 'Vaults & HSMs', type: 'HSM', icon: Shield,
-    total: '342', totalRaw: 342,
-    critical: 2, high: 7, medium: 13, healthy: 78,
-    topIssue: { label: 'capacity > 80%', value: '47', page: 'inventory', filters: { tab: 'infrastructure', type: 'HSM' } },
+    keyInsight: { label: 'unmanaged KMS keys', value: '3,412', filter: { tab: 'infrastructure', type: 'Cloud Account', kms: 'unmanaged' } },
+    trend7d: +2.8,
+    pivotTo: { label: 'Secrets in these accounts', filters: { tab: 'identities', type: 'API Key / Secret', scope: 'cloud' } },
   },
 ];
 
 export default function InfrastructurePostureStrip() {
   const { setCurrentPage, setFilters } = useNav();
-  const { manualITAssets } = useInventoryRegistry();
 
-  const totals = useMemo(() => {
-    const totalRaw = BANDS.reduce((s, b) => s + b.totalRaw, 0);
-    const blastHotspots = mockITAssets.filter(a => a.cryptoObjectIds.length >= 4 && a.riskScore > 60).length + 184; // scaled
-    return { totalRaw, blastHotspots, manualCount: manualITAssets.length };
-  }, [manualITAssets]);
-
-  const nav = (page: string, filters?: Record<string, string>) => {
-    if (filters) setFilters(filters);
-    setCurrentPage(page);
+  const nav = (filters: Record<string, string>) => {
+    setFilters(filters);
+    setCurrentPage('inventory');
   };
 
   return (
     <div className="bg-card rounded-xl border border-border p-5">
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h2 className="text-sm font-semibold text-foreground">Infrastructure Posture Bands</h2>
-          <p className="text-[10px] text-muted-foreground">
-            Posture by asset category · {totals.totalRaw.toLocaleString()} assets total · {totals.blastHotspots.toLocaleString()} blast-radius hotspots · click to drill into Inventory
-          </p>
+          <h2 className="text-sm font-semibold text-foreground">Infrastructure Posture Distribution</h2>
+          <p className="text-[10px] text-muted-foreground">Where your infrastructure risk lives — click any tile to drill into Inventory with the filter pre-applied</p>
         </div>
-        {totals.manualCount > 0 && (
-          <span className="text-[10px] text-teal">+{totals.manualCount} manual entr{totals.manualCount > 1 ? 'ies' : 'y'}</span>
-        )}
+        <span className="text-[10px] text-muted-foreground">3 categories · 7d trend shown</span>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
         {BANDS.map(b => {
           const Icon = b.icon;
           const issuePct = b.critical + b.high;
+          const TrendIcon = b.trend7d >= 0 ? TrendingUp : TrendingDown;
+          const trendColor = b.trend7d > 0.5 ? 'text-coral' : b.trend7d < -0.5 ? 'text-teal' : 'text-muted-foreground';
           return (
-            <button
+            <div
               key={b.name}
-              onClick={() => nav('inventory', { tab: 'infrastructure', type: b.type })}
-              className="text-left bg-secondary/30 hover:bg-secondary/60 rounded-lg p-3 border border-transparent hover:border-border transition-all group"
+              className="bg-secondary/30 hover:bg-secondary/60 rounded-lg p-3 border border-transparent hover:border-border transition-all group flex flex-col"
             >
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <Icon className="w-3.5 h-3.5 text-foreground" />
-                  <span className="text-[11.5px] font-semibold text-foreground">{b.name}</span>
+              <button
+                onClick={() => nav({ tab: 'infrastructure', type: b.type })}
+                className="flex items-center justify-between mb-2 text-left w-full"
+                title={`View all ${b.name} in Inventory`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <Icon className="w-3.5 h-3.5 text-foreground flex-shrink-0" />
+                  <span className="text-[11.5px] font-semibold text-foreground truncate">{b.name}</span>
                 </div>
-                <span className="text-[10px] text-muted-foreground tabular-nums">{b.total}</span>
+                <span className="text-[9.5px] text-muted-foreground/70 tabular-nums font-normal flex-shrink-0">{b.total}</span>
+              </button>
+
+              <div className="flex h-1.5 rounded-full overflow-hidden mb-1.5" title={`Critical ${b.critical}% · High ${b.high}% · Medium ${b.medium}% · Healthy ${b.healthy}%`}>
+                <div style={{ width: `${b.critical}%` }} className="bg-coral" />
+                <div style={{ width: `${b.high}%` }} className="bg-coral/60" />
+                <div style={{ width: `${b.medium}%` }} className="bg-amber" />
+                <div style={{ width: `${b.healthy}%` }} className="bg-teal" />
               </div>
 
-              {/* Stacked health bar */}
-              <div className="flex h-1.5 rounded-full overflow-hidden mb-2">
-                <div style={{ width: `${b.critical}%` }} className="bg-coral" title={`Critical: ${b.critical}%`} />
-                <div style={{ width: `${b.high}%` }} className="bg-coral/60" title={`High: ${b.high}%`} />
-                <div style={{ width: `${b.medium}%` }} className="bg-amber" title={`Medium: ${b.medium}%`} />
-                <div style={{ width: `${b.healthy}%` }} className="bg-teal" title={`Healthy: ${b.healthy}%`} />
-              </div>
-
-              <div className="flex items-center justify-between text-[10px]">
+              <div className="flex items-center justify-between text-[10px] mb-2">
                 <span className="text-coral font-semibold tabular-nums">{issuePct}% at risk</span>
-                <span
-                  onClick={(e) => { e.stopPropagation(); nav(b.topIssue.page, b.topIssue.filters); }}
-                  className="text-muted-foreground hover:text-teal flex items-center gap-1 cursor-pointer"
-                >
-                  {b.topIssue.value} {b.topIssue.label}
-                  <ArrowRight className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <span className={`flex items-center gap-0.5 tabular-nums ${trendColor}`} title="7-day change in % at risk">
+                  <TrendIcon className="w-2.5 h-2.5" />
+                  {b.trend7d > 0 ? '+' : ''}{b.trend7d.toFixed(1)}%
                 </span>
               </div>
-            </button>
+
+              <button
+                onClick={() => nav(b.keyInsight.filter)}
+                className="text-left text-[10.5px] text-foreground/90 hover:text-teal flex items-start justify-between gap-1 py-1 border-t border-border/40"
+                title={`Filter Inventory by: ${b.keyInsight.label}`}
+              >
+                <span className="leading-tight">
+                  <span className="font-semibold tabular-nums">{b.keyInsight.value}</span>{' '}
+                  <span className="text-muted-foreground">{b.keyInsight.label}</span>
+                </span>
+                <ArrowRight className="w-2.5 h-2.5 mt-0.5 flex-shrink-0 opacity-40 group-hover:opacity-100 group-hover:text-teal transition-all" />
+              </button>
+
+              {b.pivotTo && (
+                <button
+                  onClick={() => nav(b.pivotTo!.filters)}
+                  className="mt-1 text-left text-[9.5px] text-muted-foreground hover:text-teal flex items-center gap-1 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Pivot to identity layer with this filter"
+                >
+                  <ArrowRightLeft className="w-2.5 h-2.5" />
+                  {b.pivotTo.label}
+                </button>
+              )}
+            </div>
           );
         })}
       </div>
