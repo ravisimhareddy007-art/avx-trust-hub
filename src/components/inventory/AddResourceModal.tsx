@@ -96,6 +96,16 @@ export default function AddResourceModal({ open, onClose, initialKind }: Props) 
     setAAddress(''); setALocation(''); setAType('Linux Host'); setAEnv('Production');
   };
 
+  // Reset every time the modal transitions to open — guarantees a fresh chooser + empty form on each invocation.
+  useEffect(() => {
+    if (open) {
+      setKind(initialKind ?? null);
+      setIName(''); setILocation(''); setIOwner('Unassigned');
+      setIType('TLS Certificate'); setIAlg('RSA'); setIKeySize('2048');
+      setAAddress(''); setALocation(''); setAType('Linux Host'); setAEnv('Production');
+    }
+  }, [open, initialKind]);
+
   if (!open) return null;
 
   const close = () => { reset(); onClose(); };
