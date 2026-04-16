@@ -16,7 +16,7 @@ interface Band {
 const BANDS: Band[] = [
   { name: 'Certificates', type: 'TLS Certificate', icon: Shield, total: '1.8M', totalRaw: 1_800_000,
     critical: 4, high: 12, medium: 18, healthy: 66,
-    topIssue: { label: 'Expiring <30d', value: '12,847', page: 'inventory', filters: { type: 'TLS Certificate', status: 'Expiring' } } },
+    topIssue: { label: 'Expiring <30d', value: '12,847', page: 'inventory', filters: { type: 'TLS Certificate', status: 'Expiring', tab: 'identities' } } },
   { name: 'SSH & Encryption Keys', type: 'SSH Key', icon: Key, total: '1.4M', totalRaw: 1_400_000,
     critical: 2, high: 8, medium: 15, healthy: 75,
     topIssue: { label: 'Not rotated >90d', value: '8,412', page: 'remediation', filters: { module: 'ssh', filter: 'rotation' } } },
@@ -28,7 +28,7 @@ const BANDS: Band[] = [
     topIssue: { label: 'Exposed in code', value: '18,420', page: 'remediation', filters: { module: 'secrets' } } },
   { name: 'Code Signing', type: 'Code Signing', icon: Fingerprint, total: '48K', totalRaw: 48_000,
     critical: 3, high: 10, medium: 14, healthy: 73,
-    topIssue: { label: 'Weak algorithm', value: '2,180', page: 'inventory', filters: { type: 'Code Signing', algorithm: 'weak' } } },
+    topIssue: { label: 'Weak algorithm', value: '2,180', page: 'inventory', filters: { type: 'Code Signing', algorithm: 'weak', tab: 'identities' } } },
   { name: 'K8s & Service Mesh', type: 'K8s Certificate', icon: Globe, total: '342K', totalRaw: 342_000,
     critical: 1, high: 6, medium: 12, healthy: 81,
     topIssue: { label: 'Failed renewals', value: '1,247', page: 'trustops', filters: {} } },
@@ -58,7 +58,7 @@ export default function IdentityHealthBands() {
           return (
             <button
               key={b.name}
-              onClick={() => nav('inventory', { type: b.type })}
+              onClick={() => nav('inventory', { type: b.type, tab: 'identities' })}
               className="text-left bg-secondary/30 hover:bg-secondary/60 rounded-lg p-3 border border-transparent hover:border-border transition-all group"
             >
               <div className="flex items-center justify-between mb-2">

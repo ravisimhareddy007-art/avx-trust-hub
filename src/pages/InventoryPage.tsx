@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNav } from '@/context/NavigationContext';
 import ITAssetsTab from '@/components/inventory/ITAssetsTab';
 import CryptoObjectsTab from '@/components/inventory/CryptoObjectsTab';
@@ -16,7 +16,15 @@ const tabs = [
 type TabKey = typeof tabs[number]['key'];
 
 export default function InventoryPage() {
+  const { filters } = useNav();
   const [activeTab, setActiveTab] = useState<TabKey>('it-assets');
+
+  // Read tab from navigation filters
+  useEffect(() => {
+    if (filters.tab === 'identities') setActiveTab('crypto-objects');
+    else if (filters.tab === 'infrastructure') setActiveTab('it-assets');
+    else if (filters.tab === 'groups') setActiveTab('groups');
+  }, [filters]);
 
   // Policy Drawer state
   const [policyDrawerOpen, setPolicyDrawerOpen] = useState(false);
