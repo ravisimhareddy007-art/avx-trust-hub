@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { mockITAssets, ITAsset, getAssetRiskDrivers, getAssetAINarrative, getAssetViolations, getBlastRadius } from '@/data/inventoryMockData';
 import { mockAssets, CryptoAsset } from '@/data/mockData';
 import { useInventoryRegistry } from '@/context/InventoryRegistryContext';
+import { useAgent } from '@/context/AgentContext';
 import { StatusBadge, EnvBadge, DaysToExpiry, SeverityBadge } from '@/components/shared/UIComponents';
 import { Search, Server, Database, Globe, Shield, ShieldOff, ChevronDown, ChevronRight, MoreVertical, X, Ticket, RefreshCw, XCircle, RotateCcw, User, Plus, FileEdit } from 'lucide-react';
 import { toast } from 'sonner';
@@ -81,6 +82,13 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [assetStack, setAssetStack] = useState<ITAsset[]>([]);
   const { manualITAssets } = useInventoryRegistry();
+  const { setSelectedEntity } = useAgent();
+
+  // Sync infrastructure asset selection to Agent context
+  useEffect(() => {
+    if (selectedAsset) setSelectedEntity({ kind: 'infrastructure', id: selectedAsset.id, name: selectedAsset.name });
+    return () => { setSelectedEntity(null); };
+  }, [selectedAsset, setSelectedEntity]);
 
   // Manual assets first so they're immediately visible after add.
   const allAssets = useMemo(() => [...manualITAssets, ...mockITAssets], [manualITAssets]);

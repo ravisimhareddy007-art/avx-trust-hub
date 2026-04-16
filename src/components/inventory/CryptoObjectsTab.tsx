@@ -1,7 +1,8 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { mockAssets, CryptoAsset } from '@/data/mockData';
 import { mockITAssets, mockGroups } from '@/data/inventoryMockData';
 import { useInventoryRegistry } from '@/context/InventoryRegistryContext';
+import { useAgent } from '@/context/AgentContext';
 import { Modal } from '@/components/shared/UIComponents';
 import { StatusBadge, EnvBadge, PQCBadge, DaysToExpiry, SeverityBadge } from '@/components/shared/UIComponents';
 import { Search, ChevronDown, ChevronRight, MoreVertical, X, Shield, ShieldOff, ChevronsRight, FileEdit } from 'lucide-react';
@@ -85,6 +86,13 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   const [ownerFilter, setOwnerFilter] = useState('');
   const tableScrollRef = useRef<HTMLDivElement | null>(null);
   const { manualIdentities } = useInventoryRegistry();
+  const { setSelectedEntity } = useAgent();
+
+  // Push current identity selection to Agent so it sees what you're looking at
+  useEffect(() => {
+    if (detailAsset) setSelectedEntity({ kind: 'identity', id: detailAsset.id, name: detailAsset.name });
+    return () => { setSelectedEntity(null); };
+  }, [detailAsset, setSelectedEntity]);
 
   const allAssets = useMemo(() => [...manualIdentities, ...mockAssets], [manualIdentities]);
   const isManual = (a: CryptoAsset) => manualIdentities.some(m => m.id === a.id);

@@ -1,11 +1,12 @@
 import React from 'react';
 import { PersonaProvider, usePersona } from '@/context/PersonaContext';
 import { NavigationProvider, useNav } from '@/context/NavigationContext';
-import { IntegrationsProvider } from '@/context/IntegrationsContext';
+import { IntegrationsProvider, useIntegrations } from '@/context/IntegrationsContext';
 import { InventoryRegistryProvider } from '@/context/InventoryRegistryContext';
+import { AgentProvider } from '@/context/AgentContext';
 import AppSidebar from '@/components/AppSidebar';
 import TopBar from '@/components/TopBar';
-import QuantumBanner from '@/components/QuantumBanner';
+import InfinityAIDrawer from '@/components/InfinityAIDrawer';
 import SecurityAdminDashboard from '@/components/dashboards/SecurityAdminDashboard';
 import ComplianceDashboard from '@/components/dashboards/ComplianceDashboard';
 import PKIEngineerDashboard from '@/components/dashboards/PKIEngineerDashboard';
@@ -55,6 +56,15 @@ function PageRouter() {
   );
 }
 
+function AgentBoundary({ children }: { children: React.ReactNode }) {
+  const { connected } = useIntegrations();
+  // Pass connected CA / Cloud connectors to the agent so it knows what it can call
+  const connectorNames = connected
+    .filter(c => c.integrationType === 'CA' || c.integrationType === 'Cloud' || c.integrationType === 'Vault')
+    .map(c => c.name);
+  return <AgentProvider connectedConnectors={connectorNames}>{children}</AgentProvider>;
+}
+
 function AppShell() {
   return (
     <div className="flex h-screen w-full overflow-hidden">
@@ -63,6 +73,7 @@ function AppShell() {
         <TopBar />
         <PageRouter />
       </div>
+      <InfinityAIDrawer />
     </div>
   );
 }
@@ -73,7 +84,9 @@ export default function Index() {
       <NavigationProvider>
         <IntegrationsProvider>
           <InventoryRegistryProvider>
-            <AppShell />
+            <AgentBoundary>
+              <AppShell />
+            </AgentBoundary>
           </InventoryRegistryProvider>
         </IntegrationsProvider>
       </NavigationProvider>
