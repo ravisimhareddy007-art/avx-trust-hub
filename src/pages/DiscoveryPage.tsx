@@ -280,6 +280,8 @@ function NewScanTab({ existing, onSaved }: { existing: Profile | null; onSaved: 
 
   const currentCategory = scanCategories.find(c => c.category === activeCategory)!;
 
+  const isEditing = existing != null;
+
   const handleStart = () => {
     if (!discoveryName.trim()) { toast.error('Discovery name is required'); return; }
     if (saveAsProfile && !profileName.trim()) { toast.error('Profile name is required'); return; }
@@ -290,6 +292,12 @@ function NewScanTab({ existing, onSaved }: { existing: Profile | null; onSaved: 
   const handleSaveOnly = () => {
     if (!profileName.trim()) { toast.error('Profile name is required'); return; }
     toast.success(`Profile "${profileName}" saved`);
+    onSaved();
+  };
+
+  const handleUpdate = () => {
+    if (!discoveryName.trim()) { toast.error('Profile name is required'); return; }
+    toast.success(`Profile "${discoveryName}" updated`, { description: 'Changes saved successfully' });
     onSaved();
   };
 
