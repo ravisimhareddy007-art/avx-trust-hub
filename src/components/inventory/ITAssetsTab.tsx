@@ -290,14 +290,14 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
               {/* Column 2 — Crypto Objects */}
               <div className="p-4 overflow-y-auto scrollbar-thin">
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs font-semibold text-foreground">Crypto Objects ({getCryptoObjects(selectedAsset).length})</p>
+                  <p className="text-xs font-semibold text-foreground">Identities ({getIdentities(selectedAsset).length})</p>
                 </div>
                 <div className="space-y-0">
                   {/* Header */}
                   <div className="grid grid-cols-[24px_1fr_80px_60px_55px_50px_36px_36px_28px] gap-1 text-[10px] font-medium text-muted-foreground py-1.5 border-b border-border px-1">
                     <span></span><span>Common Name</span><span>Type</span><span>Algorithm</span><span>Expiry</span><span>Days</span><span>Policy</span><span>Viol.</span><span></span>
                   </div>
-                  {getCryptoObjects(selectedAsset).map(co => (
+                  {getIdentities(selectedAsset).map(co => (
                     <React.Fragment key={co.id}>
                       <div className="grid grid-cols-[24px_1fr_80px_60px_55px_50px_36px_36px_28px] gap-1 items-center text-[10px] py-2 border-b border-border/50 hover:bg-secondary/30 px-1 cursor-pointer"
                         onClick={() => setExpandedRow(expandedRow === co.id ? null : co.id)}>
