@@ -355,22 +355,32 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                   ))}
                 </div>
 
-                {/* Risk gauge */}
-                <div className="flex justify-center">
-                  <RiskGauge score={detailAsset.pqcRisk === 'Critical' ? 85 : detailAsset.pqcRisk === 'High' ? 62 : 28} size={100} />
-                </div>
-
-                {/* Risk bars */}
+                {/* Risk gauge — derived from weighted breakdown */}
                 {(() => {
                   const risk = getIdentityRisk(detailAsset);
+                  // Weighted aggregate: algorithm 30%, expiry 20%, exposure 20%, dependents 15%, ownership 15%
+                  const weights = { alg: 0.30, expiry: 0.20, exposure: 0.20, dep: 0.15, owner: 0.15 };
+                  const aggregate = Math.round(
+                    risk.algScore * weights.alg +
+                    risk.expiryScore * weights.expiry +
+                    risk.exposureScore * weights.exposure +
+                    risk.depScore * weights.dep +
+                    risk.ownerScore * weights.owner
+                  );
                   return (
-                    <div className="space-y-3">
-                      <RiskBar label="Algorithm vulnerability" score={risk.algScore} driver={risk.algScore > 60 ? `${detailAsset.algorithm} is quantum-vulnerable` : 'Algorithm meets minimum standards'} />
-                      <RiskBar label="Expiry urgency" score={risk.expiryScore} driver={risk.expiryScore > 60 ? `Expires in ${detailAsset.daysToExpiry} days` : 'No urgent expiration'} />
-                      <RiskBar label="Internet exposure" score={risk.exposureScore} driver={detailAsset.environment === 'Production' ? 'Production-facing asset' : 'Internal environment'} />
-                      <RiskBar label="Dependent assets" score={risk.depScore} driver={`${getAssociatedAssets(detailAsset).length} infrastructure assets depend on this`} />
-                      <RiskBar label="Ownership gap" score={risk.ownerScore} driver={detailAsset.owner === 'Unassigned' ? 'No owner assigned' : `Owned by ${detailAsset.owner}`} />
-                    </div>
+                    <>
+                      <div className="flex flex-col items-center gap-1.5">
+                        <RiskGauge score={aggregate} size={100} />
+                        <ExplainScore score={aggregate} risk={risk} weights={weights} asset={detailAsset} />
+                      </div>
+                      <div className="space-y-3">
+                        <RiskBar label="Algorithm vulnerability" score={risk.algScore} driver={risk.algScore > 60 ? `${detailAsset.algorithm} is quantum-vulnerable` : 'Algorithm meets minimum standards'} />
+                        <RiskBar label="Expiry urgency" score={risk.expiryScore} driver={risk.expiryScore > 60 ? `Expires in ${detailAsset.daysToExpiry} days` : 'No urgent expiration'} />
+                        <RiskBar label="Internet exposure" score={risk.exposureScore} driver={detailAsset.environment === 'Production' ? 'Production-facing asset' : 'Internal environment'} />
+                        <RiskBar label="Dependent assets" score={risk.depScore} driver={`${getAssociatedAssets(detailAsset).length} infrastructure assets depend on this`} />
+                        <RiskBar label="Ownership gap" score={risk.ownerScore} driver={detailAsset.owner === 'Unassigned' ? 'No owner assigned' : `Owned by ${detailAsset.owner}`} />
+                      </div>
+                    </>
                   );
                 })()}
 
