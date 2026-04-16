@@ -11,7 +11,7 @@ import {
 import { StatusBadge } from '@/components/shared/UIComponents';
 import { users, auditLog } from '@/data/mockData';
 
-type PillarTab = 'license' | 'health' | 'multitenancy' | 'telemetry' | 'users' | 'infra-integrations' | 'infrastructure';
+type PillarTab = 'license' | 'health' | 'multitenancy' | 'telemetry' | 'users' | 'infra-integrations' | 'infrastructure' | 'mcp';
 
 export default function CoreServicesPage() {
   const [pillar, setPillar] = useState<PillarTab>('license');
@@ -24,6 +24,7 @@ export default function CoreServicesPage() {
     { id: 'users', label: 'Users & RBAC', icon: Users },
     { id: 'infra-integrations', label: 'Integrations', icon: Plug },
     { id: 'infrastructure', label: 'Infrastructure', icon: Server },
+    { id: 'mcp', label: 'MCP Server', icon: Globe },
   ];
 
   return (
@@ -44,6 +45,7 @@ export default function CoreServicesPage() {
       {pillar === 'users' && <UserManagement />}
       {pillar === 'infra-integrations' && <InfraIntegrations />}
       {pillar === 'infrastructure' && <InfrastructureResources />}
+      {pillar === 'mcp' && <MCPServerPanel />}
     </div>
   );
 }
