@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNav } from '@/context/NavigationContext';
 import { useAgent } from '@/context/AgentContext';
-import { Bell, Sparkles, User, AlertTriangle } from 'lucide-react';
+import { Bell, Infinity as InfinityIcon, User, AlertTriangle } from 'lucide-react';
 
 const breadcrumbMap: Record<string, string> = {
   'dashboards': 'Insights',
@@ -39,16 +39,18 @@ export default function TopBar() {
 
       {/* Right side */}
       <div className="flex items-center gap-3">
-        {/* Single Infinity AI entry point */}
+        {/* Single Infinity Intelligence entry point */}
         <button
           onClick={() => setDrawerOpen(!drawerOpen)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors relative ${
-            drawerOpen ? 'bg-teal text-primary-foreground' : 'bg-teal/10 text-teal hover:bg-teal/20'
+          className={`group flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all relative border ${
+            drawerOpen
+              ? 'bg-teal/15 text-teal border-teal/40 shadow-[0_0_12px_-2px_hsl(var(--teal)/0.4)]'
+              : 'bg-navy/40 text-foreground/80 border-border hover:border-teal/30 hover:text-teal'
           }`}
-          title="Open Infinity AI agent (single entry point for all AI interactions)"
+          title="Infinity Intelligence — single AI entry point"
         >
-          <Sparkles className="w-3.5 h-3.5" />
-          Infinity AI
+          <InfinityIcon className="w-3.5 h-3.5" strokeWidth={2.25} />
+          Infinity Intelligence
           {activeUndo > 0 && (
             <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber rounded-full text-[9px] text-background flex items-center justify-center font-bold">{activeUndo}</span>
           )}
