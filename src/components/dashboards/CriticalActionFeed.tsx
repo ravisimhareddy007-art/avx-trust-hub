@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Shield, Key, Bot, Lock, Fingerprint, Globe, AlertTriangle, Clock, Sparkles, Check, ChevronDown, ChevronUp, Layers } from 'lucide-react';
+import { Shield, Key, Bot, Lock, Fingerprint, Globe, AlertTriangle, Clock, Sparkles, Check, ChevronDown, ChevronUp, Layers, Ticket, Lock as LockIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDashboard, feedItemToDriver } from '@/context/DashboardContext';
 import { useNav } from '@/context/NavigationContext';
@@ -26,6 +26,7 @@ interface ActionItem {
   approveSummary: string;
   ageMins: number;
   remediationGroups?: RemediationGroup[];
+  licenseGated?: { module: string; reason: string };
 }
 
 const FEED: ActionItem[] = [
@@ -98,6 +99,10 @@ const FEED: ActionItem[] = [
     aiPlan: 'Block 142 unsigned artifacts at registry. Alert release engineers. Add policy gate to CI for the 3 affected branches.',
     approveSummary: 'Block unsigned builds and gate CI on 3 branches.',
     ageMins: 320,
+    licenseGated: {
+      module: 'Code Signing+',
+      reason: 'Automated remediation requires a Code Signing+ module license. You can still create a ticket for your release engineering team to action manually.',
+    },
   },
   {
     id: '8', category: 'Secrets', icon: Lock, severity: 'P2',
@@ -174,6 +179,14 @@ export default function CriticalActionFeed() {
   const handleApprove = (item: ActionItem) => {
     resolveFeedItem(item.id);
     setExpanded(null);
+    if (item.licenseGated) {
+      const ticketId = `TKT-${1000 + Number(item.id) * 37}`;
+      toast.success(`Ticket ${ticketId} created`, {
+        description: `Assigned to release engineering · ${item.licenseGated.module} not licensed`,
+        action: { label: 'Open Tickets', onClick: () => setCurrentPage('tickets') },
+      });
+      return;
+    }
     const groupCount = item.remediationGroups?.length ?? 1;
     toast.success(
       groupCount > 1
@@ -239,9 +252,14 @@ export default function CriticalActionFeed() {
                           <Layers className="w-2.5 h-2.5" /> {item.remediationGroups.length} CA groups
                         </span>
                       )}
+                      {item.licenseGated && !isQueued && (
+                        <span className="text-[9.5px] font-semibold px-1.5 py-0.5 rounded bg-amber/15 text-amber border border-amber/30 flex items-center gap-0.5">
+                          <LockIcon className="w-2.5 h-2.5" /> Manual ticket only
+                        </span>
+                      )}
                       {isQueued && (
                         <span className="text-[9.5px] font-semibold px-1.5 py-0.5 rounded bg-teal/15 text-teal flex items-center gap-1">
-                          <Check className="w-2.5 h-2.5" /> Queued
+                          <Check className="w-2.5 h-2.5" /> {item.licenseGated ? 'Ticket created' : 'Queued'}
                         </span>
                       )}
                     </div>
@@ -256,7 +274,41 @@ export default function CriticalActionFeed() {
                 </button>
 
                 {/* Expanded AI execution panel */}
-                {isExpanded && !isQueued && (
+                {isExpanded && !isQueued && item.licenseGated && (
+                  <div className="px-5 pb-3 ml-10 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <div className="rounded-md bg-amber/5 border border-amber/30 p-3">
+                      <p className="text-[9px] uppercase tracking-wider text-amber font-semibold mb-1 flex items-center gap-1">
+                        <LockIcon className="w-2.5 h-2.5" /> {item.licenseGated.module} not licensed
+                      </p>
+                      <p className="text-[11px] text-foreground leading-snug mb-2.5">{item.licenseGated.reason}</p>
+                      <div className="rounded border border-border bg-card p-2.5 mb-2.5">
+                        <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">Ticket will be pre-filled with</p>
+                        <ul className="text-[10.5px] text-foreground space-y-0.5">
+                          <li>• <span className="text-muted-foreground">Title:</span> {item.title}</li>
+                          <li>• <span className="text-muted-foreground">Context:</span> {item.detail}</li>
+                          <li>• <span className="text-muted-foreground">Suggested action:</span> {item.approveSummary}</li>
+                          <li>• <span className="text-muted-foreground">Assignee:</span> Release Engineering</li>
+                        </ul>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleApprove(item)}
+                          className="flex-1 flex items-center justify-center gap-1.5 text-[11px] font-semibold py-1.5 rounded-md bg-amber text-primary-foreground hover:opacity-90"
+                        >
+                          <Ticket className="w-3 h-3" /> Create ticket
+                        </button>
+                        <button
+                          onClick={() => { setExpanded(null); toast.info('Contact your account manager to enable Code Signing+'); }}
+                          className="text-[11px] font-medium px-3 py-1.5 rounded-md border border-amber/40 text-amber hover:bg-amber/10"
+                        >
+                          Request module
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {isExpanded && !isQueued && !item.licenseGated && (
                   <div className="px-5 pb-3 ml-10 animate-in fade-in slide-in-from-top-1 duration-200">
                     <div className="rounded-md bg-secondary/40 border border-teal/20 p-3">
                       <p className="text-[9px] uppercase tracking-wider text-teal font-semibold mb-1 flex items-center gap-1">
@@ -346,8 +398,8 @@ export default function CriticalActionFeed() {
                 )}
 
                 {isQueued && (
-                  <p className="px-5 pb-2 ml-10 text-[10px] text-teal">
-                    Workflow request submitted · #TKT-{1000 + Number(item.id) * 37} · view in Tickets
+                  <p className={`px-5 pb-2 ml-10 text-[10px] ${item.licenseGated ? 'text-amber' : 'text-teal'}`}>
+                    {item.licenseGated ? 'Manual ticket created' : 'Workflow request submitted'} · #TKT-{1000 + Number(item.id) * 37} · view in Tickets
                   </p>
                 )}
               </li>
