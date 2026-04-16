@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useNav } from '@/context/NavigationContext';
 import { policyRules, customPolicies as initialCustomPolicies } from '@/data/mockData';
+import { mockGroups } from '@/data/inventoryMockData';
 import { SeverityBadge, Modal } from '@/components/shared/UIComponents';
 import { toast } from 'sonner';
-import { Plus, Download, Search, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Download, Search, Sparkles, ChevronDown, ChevronUp, Shield, AlertTriangle, CheckSquare } from 'lucide-react';
 
 interface CustomPolicy {
   id: string;
@@ -18,11 +19,28 @@ interface CustomPolicy {
   environments?: string[];
   teams?: string;
   actions?: string[];
+  groupIds?: string[];
 }
+
+// Mock violations data
+const mockViolations = [
+  { id: 'v-001', policyName: 'Weak Algorithm Detection', objectName: '*.payments.acmecorp.com', objectType: 'TLS Certificate', severity: 'Critical' as const, environment: 'Production', group: 'RSA-2048 Production Certs', detectedAt: '2026-04-14 09:12', status: 'Open' },
+  { id: 'v-002', policyName: 'Certificate Expiry Alert', objectName: 'vault.internal.acmecorp.com', objectType: 'TLS Certificate', severity: 'Critical' as const, environment: 'Production', group: 'Expiring < 30 Days', detectedAt: '2026-04-14 08:45', status: 'Open' },
+  { id: 'v-003', policyName: 'Weak Algorithm Detection', objectName: 'prod-db-01-authorized-key', objectType: 'SSH Key', severity: 'High' as const, environment: 'Production', group: 'RSA-2048 Production Certs', detectedAt: '2026-04-13 22:00', status: 'Open' },
+  { id: 'v-004', policyName: 'Orphaned SSH Key', objectName: 'gitlab-deploy-key', objectType: 'SSH Key', severity: 'High' as const, environment: 'Production', group: 'Orphaned & Unowned Keys', detectedAt: '2026-04-13 18:30', status: 'Open' },
+  { id: 'v-005', policyName: 'Certificate Expiry Alert', objectName: 'mail.acmecorp.com', objectType: 'TLS Certificate', severity: 'High' as const, environment: 'Production', group: 'Expiring < 30 Days', detectedAt: '2026-04-13 14:20', status: 'Open' },
+  { id: 'v-006', policyName: 'PCI-DSS Cardholder Zone', objectName: 'k8s-node-ssh-cert', objectType: 'SSH Certificate', severity: 'Critical' as const, environment: 'Production', group: 'Payments Team Assets', detectedAt: '2026-04-13 11:05', status: 'Acknowledged' },
+  { id: 'v-007', policyName: 'Weak Algorithm Detection', objectName: 'auth-gateway.acmecorp.com', objectType: 'TLS Certificate', severity: 'High' as const, environment: 'Production', group: 'RSA-2048 Production Certs', detectedAt: '2026-04-12 16:42', status: 'Open' },
+  { id: 'v-008', policyName: 'DORA Compliance', objectName: 'staging-api.acmecorp.com', objectType: 'TLS Certificate', severity: 'Medium' as const, environment: 'Staging', group: '', detectedAt: '2026-04-12 10:00', status: 'Open' },
+  { id: 'v-009', policyName: 'Orphaned SSH Key', objectName: 'bastion-host-key-legacy', objectType: 'SSH Key', severity: 'High' as const, environment: 'Production', group: 'Orphaned & Unowned Keys', detectedAt: '2026-04-11 22:15', status: 'Open' },
+  { id: 'v-010', policyName: 'Certificate Expiry Alert', objectName: 'cdn-edge-cert-03', objectType: 'TLS Certificate', severity: 'Medium' as const, environment: 'Production', group: 'Expiring < 30 Days', detectedAt: '2026-04-11 15:30', status: 'Remediated' },
+  { id: 'v-011', policyName: 'Weak Algorithm Detection', objectName: 'legacy-erp-cert', objectType: 'TLS Certificate', severity: 'Critical' as const, environment: 'Production', group: 'RSA-2048 Production Certs', detectedAt: '2026-04-10 09:00', status: 'Open' },
+  { id: 'v-012', policyName: 'AI Agent Over-Privilege', objectName: 'data-pipeline-agent', objectType: 'AI Agent Token', severity: 'High' as const, environment: 'Production', group: 'Over-Privileged AI Agents', detectedAt: '2026-04-10 08:15', status: 'Open' },
+];
 
 export default function PolicyBuilderPage() {
   const { setCurrentPage, setFilters } = useNav();
-  const [tab, setTab] = useState<'outofbox' | 'custom' | 'compliance'>('outofbox');
+  const [tab, setTab] = useState<'outofbox' | 'custom' | 'violations' | 'compliance'>('outofbox');
   const [policyStates, setPolicyStates] = useState<Record<string, boolean>>(Object.fromEntries(policyRules.map(p => [p.id, p.enabled])));
   const [configModal, setConfigModal] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
@@ -41,27 +59,38 @@ export default function PolicyBuilderPage() {
   const [formEnvironments, setFormEnvironments] = useState<string[]>(['All']);
   const [formTeams, setFormTeams] = useState('');
   const [formActions, setFormActions] = useState<string[]>(['Alert only']);
+  const [formGroupIds, setFormGroupIds] = useState<string[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
+
+  // Violations tab state
+  const [violationSearch, setViolationSearch] = useState('');
+  const [violationSeverity, setViolationSeverity] = useState('');
+  const [violationStatus, setViolationStatus] = useState('');
+  const [selectedViolations, setSelectedViolations] = useState<string[]>([]);
+  const [bulkConfirm, setBulkConfirm] = useState(false);
 
   const toggleEnv = (e: string) => setFormEnvironments(prev => prev.includes(e) ? prev.filter(x => x !== e) : [...prev, e]);
   const toggleAction = (a: string) => setFormActions(prev => prev.includes(a) ? prev.filter(x => x !== a) : [...prev, a]);
+  const toggleGroup = (gid: string) => setFormGroupIds(prev => prev.includes(gid) ? prev.filter(x => x !== gid) : [...prev, gid]);
 
   const resetForm = () => {
     setFormName(''); setFormDescription(''); setFormAssetType('TLS Certificate');
     setFormCondition('Expiry less than'); setFormValue('30 days'); setFormSeverity('High');
-    setFormEnvironments(['All']); setFormTeams(''); setFormActions(['Alert only']);
+    setFormEnvironments(['All']); setFormTeams(''); setFormActions(['Alert only']); setFormGroupIds([]);
     setEditingPolicy(null);
   };
 
-  const aiTemplates: Record<string, { name: string; assetType: string; condition: string; value: string; severity: string; envs: string[]; actions: string[] }> = {
-    'expir': { name: '', assetType: 'TLS Certificate', condition: 'Expiry less than', value: '30 days', severity: 'High', envs: ['Production'], actions: ['Alert only', 'Create TrustOps ticket'] },
-    'rsa': { name: '', assetType: 'TLS Certificate', condition: 'Algorithm equals', value: 'RSA-2048', severity: 'Critical', envs: ['All'], actions: ['Alert only', 'Escalate to owner'] },
-    'rotat': { name: '', assetType: 'SSH Key', condition: 'No rotation in', value: '90 days', severity: 'High', envs: ['Production'], actions: ['Alert only', 'Auto-remediate'] },
-    'ca': { name: '', assetType: 'TLS Certificate', condition: 'CA not in list', value: 'DigiCert, Entrust, GlobalSign', severity: 'Medium', envs: ['Production'], actions: ['Block issuance'] },
-    'key': { name: '', assetType: 'Encryption Key', condition: 'Key length less than', value: '256 bits', severity: 'Critical', envs: ['All'], actions: ['Alert only', 'Escalate to owner'] },
-    'pci': { name: '', assetType: 'TLS Certificate', condition: 'Algorithm equals', value: 'RSA-2048', severity: 'Critical', envs: ['Production'], actions: ['Alert only', 'Block issuance', 'Create TrustOps ticket'] },
-    'dora': { name: '', assetType: 'TLS Certificate', condition: 'Expiry less than', value: '90 days', severity: 'High', envs: ['Production'], actions: ['Alert only', 'Create TrustOps ticket'] },
-    'ssh': { name: '', assetType: 'SSH Key', condition: 'No rotation in', value: '60 days', severity: 'High', envs: ['All'], actions: ['Alert only', 'Auto-remediate'] },
+  const aiTemplates: Record<string, { name: string; assetType: string; condition: string; value: string; severity: string; envs: string[]; actions: string[]; groups: string[] }> = {
+    'expir': { name: '', assetType: 'TLS Certificate', condition: 'Expiry less than', value: '30 days', severity: 'High', envs: ['Production'], actions: ['Alert only', 'Create TrustOps ticket'], groups: ['grp-002'] },
+    'rsa': { name: '', assetType: 'TLS Certificate', condition: 'Algorithm equals', value: 'RSA-2048', severity: 'Critical', envs: ['All'], actions: ['Alert only', 'Escalate to owner'], groups: ['grp-001'] },
+    'weak': { name: '', assetType: 'TLS Certificate', condition: 'Algorithm equals', value: 'RSA-2048', severity: 'Critical', envs: ['All'], actions: ['Alert only', 'Block issuance'], groups: ['grp-001'] },
+    'block': { name: '', assetType: 'TLS Certificate', condition: 'Algorithm equals', value: 'RSA-2048', severity: 'Critical', envs: ['Production'], actions: ['Block issuance', 'Escalate to owner'], groups: ['grp-001'] },
+    'rotat': { name: '', assetType: 'SSH Key', condition: 'No rotation in', value: '90 days', severity: 'High', envs: ['Production'], actions: ['Alert only', 'Auto-remediate'], groups: ['grp-003'] },
+    'ca': { name: '', assetType: 'TLS Certificate', condition: 'CA not in list', value: 'DigiCert, Entrust, GlobalSign', severity: 'Medium', envs: ['Production'], actions: ['Block issuance'], groups: [] },
+    'key': { name: '', assetType: 'Encryption Key', condition: 'Key length less than', value: '256 bits', severity: 'Critical', envs: ['All'], actions: ['Alert only', 'Escalate to owner'], groups: [] },
+    'pci': { name: '', assetType: 'TLS Certificate', condition: 'Algorithm equals', value: 'RSA-2048', severity: 'Critical', envs: ['Production'], actions: ['Alert only', 'Block issuance', 'Create TrustOps ticket'], groups: ['grp-004'] },
+    'dora': { name: '', assetType: 'TLS Certificate', condition: 'Expiry less than', value: '90 days', severity: 'High', envs: ['Production'], actions: ['Alert only', 'Create TrustOps ticket'], groups: [] },
+    'ssh': { name: '', assetType: 'SSH Key', condition: 'No rotation in', value: '60 days', severity: 'High', envs: ['All'], actions: ['Alert only', 'Auto-remediate'], groups: ['grp-003'] },
   };
 
   const handleAIDraft = () => {
@@ -70,10 +99,8 @@ export default function PolicyBuilderPage() {
       return;
     }
     setAiLoading(true);
-    // Simulate AI delay
     setTimeout(() => {
       const desc = formDescription.toLowerCase();
-      // Find best matching template
       let matched = false;
       for (const [keyword, template] of Object.entries(aiTemplates)) {
         if (desc.includes(keyword)) {
@@ -84,18 +111,13 @@ export default function PolicyBuilderPage() {
           setFormSeverity(template.severity);
           setFormEnvironments(template.envs);
           setFormActions(template.actions);
+          setFormGroupIds(template.groups);
           matched = true;
           break;
         }
       }
       if (!matched) {
         setFormName(formDescription.length > 60 ? formDescription.slice(0, 57) + '...' : formDescription);
-        setFormAssetType('TLS Certificate');
-        setFormCondition('Expiry less than');
-        setFormValue('30 days');
-        setFormSeverity('High');
-        setFormEnvironments(['Production']);
-        setFormActions(['Alert only', 'Create TrustOps ticket']);
       }
       setAiLoading(false);
       toast.success('AI parsed your policy — review and adjust fields below');
@@ -104,6 +126,7 @@ export default function PolicyBuilderPage() {
 
   const handleSave = (activate: boolean) => {
     if (!formName) { toast.error('Policy name is required'); return; }
+    if (formGroupIds.length === 0) { toast.error('Select at least one group to apply this policy'); return; }
     const newPolicy: CustomPolicy = {
       id: editingPolicy || `cpol-${Date.now()}`,
       name: formName,
@@ -117,6 +140,7 @@ export default function PolicyBuilderPage() {
       environments: formEnvironments,
       teams: formTeams,
       actions: formActions,
+      groupIds: formGroupIds,
     };
     if (editingPolicy) {
       setUserPolicies(prev => prev.map(p => p.id === editingPolicy ? newPolicy : p));
@@ -139,6 +163,7 @@ export default function PolicyBuilderPage() {
     setFormEnvironments(p.environments || ['All']);
     setFormTeams(p.teams || '');
     setFormActions(p.actions || ['Alert only']);
+    setFormGroupIds(p.groupIds || []);
     setEditingPolicy(p.id);
     setCreateOpen(true);
   };
@@ -157,6 +182,23 @@ export default function PolicyBuilderPage() {
     p.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const filteredViolations = mockViolations.filter(v => {
+    if (violationSearch && !v.objectName.toLowerCase().includes(violationSearch.toLowerCase()) && !v.policyName.toLowerCase().includes(violationSearch.toLowerCase())) return false;
+    if (violationSeverity && v.severity !== violationSeverity) return false;
+    if (violationStatus && v.status !== violationStatus) return false;
+    return true;
+  });
+
+  const toggleViolationSelection = (id: string) => {
+    setSelectedViolations(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+  const toggleAllViolations = () => {
+    if (selectedViolations.length === filteredViolations.length) setSelectedViolations([]);
+    else setSelectedViolations(filteredViolations.map(v => v.id));
+  };
+
+  const openViolationCount = mockViolations.filter(v => v.status === 'Open').length;
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -168,10 +210,14 @@ export default function PolicyBuilderPage() {
         {[
           { id: 'outofbox' as const, label: 'Out-of-Box Policies' },
           { id: 'custom' as const, label: 'Custom Policies' },
+          { id: 'violations' as const, label: `Violations`, count: openViolationCount },
           { id: 'compliance' as const, label: 'Compliance Frameworks' },
         ].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} className={`px-4 py-2 text-xs font-medium border-b-2 transition-colors ${tab === t.id ? 'border-teal text-teal' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
+          <button key={t.id} onClick={() => setTab(t.id)} className={`px-4 py-2 text-xs font-medium border-b-2 transition-colors flex items-center gap-1.5 ${tab === t.id ? 'border-teal text-teal' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
             {t.label}
+            {'count' in t && t.count! > 0 && (
+              <span className={`min-w-[18px] px-1.5 py-0.5 rounded-full text-[9px] font-bold ${tab === t.id ? 'bg-coral/10 text-coral' : 'bg-coral/10 text-coral'}`}>{t.count}</span>
+            )}
           </button>
         ))}
       </div>
@@ -250,6 +296,9 @@ export default function PolicyBuilderPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
+                      {p.groupIds && p.groupIds.length > 0 && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-muted-foreground">{p.groupIds.length} group{p.groupIds.length > 1 ? 's' : ''}</span>
+                      )}
                       {p.violations > 0 && <span className="text-[10px] px-2 py-0.5 rounded-full bg-coral/10 text-coral font-medium">{p.violations} violations</span>}
                       {p.severity && <span className="text-[10px] text-muted-foreground">{p.severity}</span>}
                       {expandedPolicy === p.id ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
@@ -257,11 +306,19 @@ export default function PolicyBuilderPage() {
                   </div>
                   {expandedPolicy === p.id && (
                     <div className="px-4 pb-4 border-t border-border pt-3 space-y-3">
-                      <div className="grid grid-cols-4 gap-3 text-xs">
+                      <div className="grid grid-cols-5 gap-3 text-xs">
                         <div><span className="text-muted-foreground block mb-0.5">Asset Type</span><span className="font-medium">{p.assetType || 'All'}</span></div>
                         <div><span className="text-muted-foreground block mb-0.5">Condition</span><span className="font-medium">{p.condition || '—'} {p.value || ''}</span></div>
                         <div><span className="text-muted-foreground block mb-0.5">Environment</span><span className="font-medium">{p.environments?.join(', ') || 'All'}</span></div>
                         <div><span className="text-muted-foreground block mb-0.5">Teams</span><span className="font-medium">{p.teams || 'All'}</span></div>
+                        <div>
+                          <span className="text-muted-foreground block mb-0.5">Groups</span>
+                          <span className="font-medium">
+                            {p.groupIds && p.groupIds.length > 0
+                              ? p.groupIds.map(gid => mockGroups.find(g => g.id === gid)?.name || gid).join(', ')
+                              : 'None'}
+                          </span>
+                        </div>
                       </div>
                       {p.actions && p.actions.length > 0 && (
                         <div>
@@ -291,7 +348,7 @@ export default function PolicyBuilderPage() {
               {/* Description first for AI */}
               <div>
                 <label className="text-xs font-medium text-muted-foreground block mb-1">Describe your policy (plain English)</label>
-                <textarea value={formDescription} onChange={e => setFormDescription(e.target.value)} rows={3} placeholder='e.g. "All certificates in payments must be renewed 30 days before expiry and issued only by DigiCert or Entrust"' className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-xs resize-none focus:outline-none focus:ring-1 focus:ring-teal" />
+                <textarea value={formDescription} onChange={e => setFormDescription(e.target.value)} rows={3} placeholder='e.g. "Block all RSA-2048 in production" or "All certs in payments must renew 30d before expiry"' className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-xs resize-none focus:outline-none focus:ring-1 focus:ring-teal" />
               </div>
 
               {/* AI button */}
@@ -304,7 +361,7 @@ export default function PolicyBuilderPage() {
 
               {/* Name */}
               <div>
-                <label className="text-xs font-medium text-muted-foreground block mb-1">Policy Name</label>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">Policy Name *</label>
                 <input type="text" value={formName} onChange={e => setFormName(e.target.value)} placeholder="e.g. DORA Compliance — Production Certs" className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-teal" />
               </div>
 
@@ -331,6 +388,24 @@ export default function PolicyBuilderPage() {
                   <label className="text-xs font-medium text-muted-foreground block mb-1">Value</label>
                   <input type="text" value={formValue} onChange={e => setFormValue(e.target.value)} className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-teal" />
                 </div>
+              </div>
+
+              {/* Group mapping — REQUIRED */}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">Apply to Groups *</label>
+                <div className="space-y-1.5">
+                  {mockGroups.map(g => (
+                    <label key={g.id} className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors ${formGroupIds.includes(g.id) ? 'bg-teal/5 border-teal/30' : 'bg-muted border-border hover:border-foreground/20'}`}>
+                      <input type="checkbox" checked={formGroupIds.includes(g.id)} onChange={() => toggleGroup(g.id)} className="rounded" />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-xs font-medium text-foreground">{g.name}</span>
+                        <span className="text-[10px] text-muted-foreground ml-2">{g.objectCount} identities · {g.type}</span>
+                      </div>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${g.riskScore > 70 ? 'bg-coral/10 text-coral' : g.riskScore > 40 ? 'bg-amber/10 text-amber' : 'bg-teal/10 text-teal'}`}>Risk {g.riskScore}</span>
+                    </label>
+                  ))}
+                </div>
+                {formGroupIds.length === 0 && <p className="text-[10px] text-coral mt-1">At least one group must be selected</p>}
               </div>
 
               <div>
@@ -366,7 +441,9 @@ export default function PolicyBuilderPage() {
                 <div className="bg-muted rounded-lg p-3 text-xs space-y-1">
                   <p className="font-semibold">Policy Preview</p>
                   <p className="text-muted-foreground">
-                    <strong>{formName}</strong> — {formCondition} {formValue} on {formAssetType} in {formEnvironments.join(', ')} environments. Severity: {formSeverity}. Actions: {formActions.join(', ')}.
+                    <strong>{formName}</strong> — {formCondition} {formValue} on {formAssetType} in {formEnvironments.join(', ')} environments.
+                    Severity: {formSeverity}. Groups: {formGroupIds.length > 0 ? formGroupIds.map(gid => mockGroups.find(g => g.id === gid)?.name || gid).join(', ') : 'None'}.
+                    Actions: {formActions.join(', ')}.
                   </p>
                 </div>
               )}
@@ -375,6 +452,124 @@ export default function PolicyBuilderPage() {
                 <button onClick={() => setCreateOpen(false)} className="px-4 py-2 text-xs rounded-lg border border-border hover:bg-muted">Cancel</button>
                 <button onClick={() => handleSave(false)} className="px-4 py-2 text-xs rounded-lg border border-border hover:bg-muted">Save as Draft</button>
                 <button onClick={() => handleSave(true)} className="px-4 py-2 text-xs rounded-lg bg-teal text-primary-foreground hover:bg-teal-light">{editingPolicy ? 'Save' : 'Activate'}</button>
+              </div>
+            </div>
+          </Modal>
+        </div>
+      )}
+
+      {/* VIOLATIONS TAB */}
+      {tab === 'violations' && (
+        <div className="space-y-3">
+          {/* Toolbar */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input type="text" value={violationSearch} onChange={e => setViolationSearch(e.target.value)} placeholder="Search violations..." className="w-full pl-9 pr-4 py-2 bg-card border border-border rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-teal" />
+            </div>
+            <select value={violationSeverity} onChange={e => setViolationSeverity(e.target.value)} className="px-2 py-2 bg-card border border-border rounded-lg text-xs">
+              <option value="">All Severity</option>
+              {['Critical', 'High', 'Medium', 'Low'].map(s => <option key={s}>{s}</option>)}
+            </select>
+            <select value={violationStatus} onChange={e => setViolationStatus(e.target.value)} className="px-2 py-2 bg-card border border-border rounded-lg text-xs">
+              <option value="">All Status</option>
+              {['Open', 'Acknowledged', 'Remediated'].map(s => <option key={s}>{s}</option>)}
+            </select>
+            {selectedViolations.length > 0 && (
+              <button onClick={() => setBulkConfirm(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-teal text-primary-foreground text-xs hover:bg-teal-light">
+                <CheckSquare className="w-3.5 h-3.5" /> Bulk Remediate ({selectedViolations.length})
+              </button>
+            )}
+            <span className="text-[10px] text-muted-foreground ml-auto">{filteredViolations.length} violations</span>
+          </div>
+
+          {/* Summary cards */}
+          <div className="grid grid-cols-4 gap-3">
+            {[
+              { label: 'Open', count: mockViolations.filter(v => v.status === 'Open').length, color: 'text-coral' },
+              { label: 'Critical', count: mockViolations.filter(v => v.severity === 'Critical').length, color: 'text-coral' },
+              { label: 'Acknowledged', count: mockViolations.filter(v => v.status === 'Acknowledged').length, color: 'text-amber' },
+              { label: 'Remediated', count: mockViolations.filter(v => v.status === 'Remediated').length, color: 'text-teal' },
+            ].map(s => (
+              <div key={s.label} className="bg-card rounded-lg border border-border p-3 text-center">
+                <p className={`text-lg font-bold ${s.color}`}>{s.count}</p>
+                <p className="text-[10px] text-muted-foreground">{s.label}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Violations table */}
+          <div className="bg-card rounded-lg border border-border overflow-hidden">
+            <table className="w-full text-xs">
+              <thead className="bg-muted/50">
+                <tr className="border-b border-border">
+                  <th className="py-2.5 px-3 w-8"><input type="checkbox" checked={selectedViolations.length === filteredViolations.length && filteredViolations.length > 0} onChange={toggleAllViolations} className="rounded" /></th>
+                  <th className="text-left py-2.5 px-3 font-medium text-muted-foreground">Policy</th>
+                  <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Object</th>
+                  <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Type</th>
+                  <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Severity</th>
+                  <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Env</th>
+                  <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Group</th>
+                  <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Detected</th>
+                  <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Status</th>
+                  <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredViolations.map(v => (
+                  <tr key={v.id} className="border-b border-border hover:bg-muted/30">
+                    <td className="py-2.5 px-3"><input type="checkbox" checked={selectedViolations.includes(v.id)} onChange={() => toggleViolationSelection(v.id)} className="rounded" /></td>
+                    <td className="py-2.5 px-3 font-medium">{v.policyName}</td>
+                    <td className="py-2.5 px-2 text-foreground">{v.objectName}</td>
+                    <td className="py-2.5 px-2 text-muted-foreground text-[10px]">{v.objectType}</td>
+                    <td className="py-2.5 px-2"><SeverityBadge severity={v.severity} /></td>
+                    <td className="py-2.5 px-2"><span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{v.environment}</span></td>
+                    <td className="py-2.5 px-2 text-[10px] text-muted-foreground">{v.group || '—'}</td>
+                    <td className="py-2.5 px-2 text-[10px] text-muted-foreground">{v.detectedAt}</td>
+                    <td className="py-2.5 px-2">
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${v.status === 'Open' ? 'bg-coral/10 text-coral' : v.status === 'Acknowledged' ? 'bg-amber/10 text-amber' : 'bg-teal/10 text-teal'}`}>{v.status}</span>
+                    </td>
+                    <td className="py-2.5 px-2">
+                      <div className="flex gap-1">
+                        {v.status === 'Open' && (
+                          <>
+                            <button onClick={() => toast.success(`Remediation started for ${v.objectName}`)} className="text-[10px] px-2 py-1 rounded bg-teal/10 text-teal hover:bg-teal/20">Fix</button>
+                            <button onClick={() => toast.info(`Acknowledged: ${v.objectName}`)} className="text-[10px] px-2 py-1 rounded bg-muted text-muted-foreground hover:bg-muted/80">Ack</button>
+                          </>
+                        )}
+                        <button onClick={() => { setFilters({ violation: v.objectName }); setCurrentPage('inventory'); }} className="text-[10px] px-2 py-1 rounded bg-muted text-muted-foreground hover:bg-muted/80">View</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Bulk remediate confirmation */}
+          <Modal open={bulkConfirm} onClose={() => setBulkConfirm(false)} title="Confirm Bulk Remediation">
+            <div className="space-y-4">
+              <div className="bg-amber/5 border border-amber/20 rounded-lg p-3 flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber flex-shrink-0 mt-0.5" />
+                <div className="text-xs text-muted-foreground">
+                  You are about to initiate remediation for <span className="font-bold text-foreground">{selectedViolations.length}</span> violations. This will create tickets and trigger automated workflows where available.
+                </div>
+              </div>
+              <div className="max-h-32 overflow-y-auto space-y-1">
+                {selectedViolations.map(id => {
+                  const v = mockViolations.find(x => x.id === id);
+                  return v ? (
+                    <div key={id} className="flex items-center gap-2 text-[10px] py-1">
+                      <SeverityBadge severity={v.severity} />
+                      <span className="text-foreground">{v.objectName}</span>
+                      <span className="text-muted-foreground">— {v.policyName}</span>
+                    </div>
+                  ) : null;
+                })}
+              </div>
+              <div className="flex justify-end gap-2">
+                <button onClick={() => setBulkConfirm(false)} className="px-4 py-2 text-xs rounded-lg border border-border hover:bg-muted">Cancel</button>
+                <button onClick={() => { setBulkConfirm(false); setSelectedViolations([]); toast.success(`Remediation initiated for ${selectedViolations.length} violations`); }} className="px-4 py-2 text-xs rounded-lg bg-teal text-primary-foreground hover:bg-teal-light">Confirm & Remediate</button>
               </div>
             </div>
           </Modal>
