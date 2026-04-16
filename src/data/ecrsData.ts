@@ -11,19 +11,36 @@ export const urgencyMeta: Record<Urgency, { label: string; hsl: string; window: 
   'aging':     { label: 'Aging',     hsl: 'hsl(var(--purple))', window: '>30d overdue' },
 };
 
+export interface SystemsRef {
+  totalCount: number;
+  named: string[];
+  page: string;
+  filters: Record<string, string>;
+}
+
+export interface AIAction {
+  label: string;
+  description: string;
+  route: string;
+  isExecutable: boolean;
+}
+
 export interface RiskDriver {
   id: string;
   name: string;
-  impact: number;           // pts contribution to ERS
-  assets: number;           // affected count
-  tier1Pct: number;         // % of Tier-1 systems affected
-  prodPct: number;          // % of production systems affected
-  systems: string[];        // top impacted apps/services
+  impact: number;
+  assets: number;
+  count: number;            // headline count for this driver
+  countLabel: string;       // e.g. "certs", "secrets", "keys"
+  tier1Pct: number;
+  prodPct: number;
+  systems: SystemsRef;
   envs: ('Production' | 'Non-prod')[];
   urgency: Urgency;
-  compliance: string[];     // standards violated
+  compliance: string[];
   page: string;
-  filters?: Record<string, string>;
+  filters: Record<string, string>;
+  aiAction: AIAction;
 }
 
 export const drivers: RiskDriver[] = [
@@ -32,71 +49,126 @@ export const drivers: RiskDriver[] = [
     name: 'Weak algorithms (RSA-1024, SHA-1)',
     impact: 12,
     assets: 6_398,
+    count: 6_398,
+    countLabel: 'certs',
     tier1Pct: 28,
     prodPct: 19,
-    systems: ['payments-api', 'auth-svc', 'billing-gateway'],
+    systems: { totalCount: 312, named: ['payments-api', 'auth-svc', 'billing-gateway'], page: 'inventory', filters: { algorithm: 'weak', severity: 'critical' } },
     envs: ['Production'],
     urgency: 'immediate',
     compliance: ['NIST SP 800-131A', 'PCI-DSS 4.0 §4.2.1'],
-    page: 'quantum',
+    page: 'inventory',
+    filters: { algorithm: 'weak', severity: 'critical' },
+    aiAction: {
+      label: 'Plan PQC migration',
+      description: 'AI will analyse 6,398 weak-algorithm certs, group by CA and application team, and generate a staged migration plan for QTH review.',
+      route: 'quantum-posture',
+      isExecutable: false,
+    },
   },
   {
     id: 'expiring-certs',
     name: 'Expired & expiring certificates',
     impact: 9,
     assets: 13_189,
+    count: 2_847,
+    countLabel: 'expiring',
     tier1Pct: 14,
     prodPct: 22,
-    systems: ['edge-cdn', 'internal-api-gw', 'partner-mtls'],
+    systems: { totalCount: 184, named: ['edge-cdn', 'internal-api-gw', 'partner-mtls'], page: 'inventory', filters: { status: 'expiring', daysToExpiry: '30' } },
     envs: ['Production', 'Non-prod'],
     urgency: 'immediate',
     compliance: ['Internal CLM Policy v3', 'CA/B Forum BR'],
     page: 'inventory',
-    filters: { status: 'Expiring' },
+    filters: { status: 'expiring', daysToExpiry: '30' },
+    aiAction: {
+      label: 'Create renewal workflows',
+      description: 'AI will generate Cert+ renewal workflow requests for 2,847 expiring certs, grouped by CA.',
+      route: 'trustops',
+      isExecutable: true,
+    },
   },
   {
     id: 'non-rotated-secrets',
     name: 'Non-rotated secrets (>90 days)',
     impact: 7,
     assets: 42_180,
+    count: 42_180,
+    countLabel: 'secrets',
     tier1Pct: 11,
     prodPct: 34,
-    systems: ['data-platform', 'ml-pipelines', 'analytics'],
+    systems: { totalCount: 921, named: ['data-platform', 'ml-pipelines', 'analytics'], page: 'remediation', filters: { module: 'secrets', filter: 'rotation' } },
     envs: ['Production', 'Non-prod'],
     urgency: 'near-term',
     compliance: ['NIST SP 800-57 Pt1 §5.3', 'SOC 2 CC6.1'],
     page: 'remediation',
     filters: { module: 'secrets', filter: 'rotation' },
+    aiAction: {
+      label: 'Schedule rotation waves',
+      description: 'AI will create a 5-wave rotation schedule across HashiCorp Vault, AWS Secrets Manager, and Azure Key Vault with team notifications.',
+      route: 'remediation',
+      isExecutable: true,
+    },
   },
   {
     id: 'non-hsm-keys',
     name: 'Non-HSM stored keys',
     impact: 6,
     assets: 14_720,
+    count: 14_720,
+    countLabel: 'keys',
     tier1Pct: 9,
     prodPct: 12,
-    systems: ['signing-svc', 'document-vault'],
+    systems: { totalCount: 847, named: ['signing-svc', 'document-vault', 'auth-gateway'], page: 'inventory', filters: { type: 'Encryption Key', storage: 'non-hsm' } },
     envs: ['Production'],
     urgency: 'aging',
     compliance: ['FIPS 140-3 L3', 'Internal Key Storage Std'],
     page: 'inventory',
-    filters: { storage: 'non-hsm' },
+    filters: { type: 'Encryption Key', storage: 'non-hsm' },
+    aiAction: {
+      label: 'View HSM migration guide',
+      description: 'Moving 14,720 keys into HSM requires capacity planning, PKCS#11 key wrapping, and application reconfiguration. This is a multi-week operational task — AI will prepare the migration runbook.',
+      route: 'remediation',
+      isExecutable: false,
+    },
   },
   {
     id: 'overpriv-ai-tokens',
     name: 'Over-privileged AI agent tokens',
     impact: 5,
     assets: 179_000,
+    count: 44_000,
+    countLabel: 'tokens',
     tier1Pct: 6,
     prodPct: 41,
-    systems: ['langchain-pipelines', 'copilot-svc', 'rag-search'],
+    systems: { totalCount: 1_204, named: ['langchain-pipelines', 'copilot-svc', 'rag-search'], page: 'inventory', filters: { type: 'AI Agent Token', module: 'ai-agents' } },
     envs: ['Production', 'Non-prod'],
     urgency: 'near-term',
     compliance: ['NIST AI RMF GV-3.2', 'Internal NHI Policy'],
     page: 'remediation',
     filters: { module: 'ai-agents' },
+    aiAction: {
+      label: 'Review in Eos governance',
+      description: 'AI will propose sponsor assignments for 44K tokens based on token creator and service ownership graph. Each sponsor receives a 7-day confirmation window.',
+      route: 'inventory',
+      isExecutable: true,
+    },
   },
 ];
+
+export const QTH_DATA = {
+  pqrScore: 45,
+  totalVulnerable: 247_334,
+  migrated: 234,
+  inFlight: 100,
+  nistDeadline: '2030',
+  estimatedCompletion: '2031',
+  topAlgorithms: [
+    { algorithm: 'RSA-2048', count: 47_201, harvested: true },
+    { algorithm: 'ECDSA P-256', count: 89_441, harvested: true },
+    { algorithm: 'ML-KEM-768', count: 234, harvested: false },
+  ],
+};
 
 export const distribution = [
   { label: 'Critical', count: 184_320,  pct: 3.5,  contribPct: 42, color: 'hsl(var(--coral))' },
