@@ -17,39 +17,131 @@ const cryptoPostureData = [
   { name: 'Compliant', value: 25, color: 'hsl(142, 71%, 45%)' },
 ];
 
-// ─── AI Command Center ──────────────────────────────────────────────────────
+// ─── 5-Dimension Posture Breakdown ──────────────────────────────────────────
 
-function AICommandCenter({ onNavigate }: { onNavigate: (page: string, filters?: Record<string, string>) => void }) {
-  const [aiRunning, setAiRunning] = useState(false);
-  const [aiResults, setAiResults] = useState<{ action: string; count: number; status: string }[] | null>(null);
+function PostureDimensions() {
+  const dims = [
+    { id: 'AH', label: 'Algorithm Health', weight: '30%', score: 64, desc: '% using approved algorithms', color: 'hsl(var(--amber))' },
+    { id: 'EP', label: 'Expiry Posture', weight: '25%', score: 78, desc: 'Penalty by urgency window', color: 'hsl(var(--teal))' },
+    { id: 'PQR', label: 'PQC Readiness', weight: '25%', score: 12, desc: '% quantum-safe or with QTH plan', color: 'hsl(var(--coral))' },
+    { id: 'GC', label: 'Governance Cover', weight: '15%', score: 71, desc: 'Owner + lifecycle + no violations', color: 'hsl(var(--amber))' },
+    { id: 'AIT', label: 'AI Identity Trust', weight: '5%', score: 48, desc: 'Sponsor + scoped + audited', color: 'hsl(var(--purple))' },
+  ];
+  const composite = Math.round(64 * 0.30 + 78 * 0.25 + 12 * 0.25 + 71 * 0.15 + 48 * 0.05);
 
-  const aiActions = [
-    { id: 'bulk-renew', label: 'Auto-Renew Expiring Certs', desc: 'Renew all certificates expiring in <7 days', icon: RefreshCw, count: 342, severity: 'Critical' },
-    { id: 'bulk-rotate', label: 'Rotate Stale SSH Keys', desc: 'Rotate SSH keys not rotated in >90 days', icon: Key, count: 1247, severity: 'High' },
-    { id: 'pqc-migrate', label: 'PQC Migration Batch', desc: 'Create migration tickets for quantum-vulnerable assets', icon: Shield, count: 247000, severity: 'Critical' },
-    { id: 'orphan-assign', label: 'Auto-Assign Orphaned Assets', desc: 'Use AI to suggest owners based on usage patterns', icon: Bot, count: 3218, severity: 'High' },
-    { id: 'ticket-bulk', label: 'Create Bulk Remediation Tickets', desc: 'Generate tickets for all critical/high items', icon: Ticket, count: 8420, severity: 'Medium' },
-    { id: 'secret-rotate', label: 'Rotate Exposed Secrets', desc: 'Auto-rotate secrets found in source code', icon: Lock, count: 18420, severity: 'Critical' },
+  return (
+    <div className="bg-card rounded-lg border border-border p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold">Crypto Posture — 5 Dimensions</h3>
+        <div className="flex items-center gap-2">
+          <span className="text-2xl font-bold text-foreground">{composite}</span>
+          <span className="text-[10px] text-muted-foreground">/ 100</span>
+        </div>
+      </div>
+      <div className="space-y-2">
+        {dims.map(d => (
+          <div key={d.id} className="flex items-center gap-3">
+            <span className="w-8 text-[10px] font-bold text-muted-foreground">{d.id}</span>
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-0.5">
+                <span className="text-[11px] text-foreground">{d.label} <span className="text-muted-foreground">({d.weight})</span></span>
+                <span className="text-[11px] font-semibold" style={{ color: d.color }}>{d.score}</span>
+              </div>
+              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                <div className="h-full rounded-full transition-all" style={{ width: `${d.score}%`, backgroundColor: d.color }} />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="text-[9px] text-muted-foreground mt-2">Composite = AH×0.30 + EP×0.25 + PQR×0.25 + GC×0.15 + AIT×0.05 (tenant-configurable weights)</p>
+    </div>
+  );
+}
+
+// ─── Infinity AI Intelligence Center ────────────────────────────────────────
+
+function InfinityAICenter({ onNavigate }: { onNavigate: (page: string, filters?: Record<string, string>) => void }) {
+  const [aiRunning, setAiRunning] = useState<string | null>(null);
+  const [aiResults, setAiResults] = useState<{ capability: string; output: string; detail: string }[] | null>(null);
+  const [chatInput, setChatInput] = useState('');
+  const [chatResponse, setChatResponse] = useState<string | null>(null);
+
+  const aiCapabilities = [
+    {
+      id: 'predictive-expiry', label: 'Predictive Expiry Engine', icon: AlertTriangle,
+      desc: 'Ranks certs by P(failure) using CA latency telemetry — alerts 14d before predicted failure, not just expiry date',
+      feeds: 'UCO expiry history · CA latency · Renewal success rates', phase: 'Phase 3',
+    },
+    {
+      id: 'nl-to-rego', label: 'Natural Language → Rego', icon: Shield,
+      desc: 'Describe a policy in plain English, get a validated OPA/Rego rule — unit-tested and ready to deploy',
+      feeds: 'Policy description · UCO schema · NIST/PCI map', phase: 'Phase 2',
+    },
+    {
+      id: 'blast-radius', label: 'Blast Radius Correlation', icon: Zap,
+      desc: 'Graph neural network on credential dependency graph — shows downstream systems at risk if a cert fails',
+      feeds: 'UCO deployments · CA chain · IAM graph · Topology', phase: 'Phase 2',
+    },
+    {
+      id: 'pqc-prioritiser', label: 'PQC Migration Prioritiser', icon: Shield,
+      desc: 'AI-ranked migration queue: asset × algorithm × target PQC algo × deadline based on harvest risk × criticality',
+      feeds: 'UCO pqc_risk · Business criticality · Harvest risk timeline', phase: 'Phase 3',
+    },
+    {
+      id: 'anomaly-detection', label: 'Agent Anomaly Detection', icon: Bot,
+      desc: 'Autoencoder + isolation forest on agent credential velocity — auto-suspend deviating agents pending review',
+      feeds: 'Eos action logs · Behaviour baseline · SPIFFE telemetry', phase: 'Phase 3',
+    },
+    {
+      id: 'posture-narrative', label: 'Posture Narrative Generator', icon: Sparkles,
+      desc: 'Board-ready paragraph: score, trend, top risks, recommended actions — one click CISO report',
+      feeds: '5 posture dimensions · Trend data · Violation catalogue', phase: 'Phase 1',
+    },
   ];
 
-  const handleAIAction = (actionId: string) => {
-    setAiRunning(true);
+  const handleAIRun = (capId: string) => {
+    setAiRunning(capId);
+    setChatResponse(null);
     setTimeout(() => {
-      setAiRunning(false);
-      const action = aiActions.find(a => a.id === actionId);
-      if (action) {
-        if (actionId === 'ticket-bulk') {
-          setAiResults([
-            { action: 'Cert renewal tickets', count: 342, status: 'Created' },
-            { action: 'SSH rotation tickets', count: 1247, status: 'Created' },
-            { action: 'PQC migration tickets', count: 4820, status: 'Queued' },
-            { action: 'Owner assignment tickets', count: 2011, status: 'Created' },
-          ]);
-          toast.success(`AI created ${action.count.toLocaleString()} remediation tickets`);
-        } else {
-          toast.success(`AI initiated: ${action.label} for ${action.count.toLocaleString()} assets`);
-          onNavigate('remediation');
-        }
+      setAiRunning(null);
+      const results: Record<string, { capability: string; output: string; detail: string }[]> = {
+        'predictive-expiry': [
+          { capability: 'Predictive Expiry', output: '47 certs predicted to fail renewal', detail: 'DigiCert CA avg latency 6.2h — 47 certs will miss renewal window if not started within 48h. Ranked by blast radius.' },
+        ],
+        'nl-to-rego': [
+          { capability: 'NL → Rego', output: 'Policy rule generated & validated', detail: 'Enter a policy in the chat below: e.g. "Block all RSA-2048 certs in production environments"' },
+        ],
+        'blast-radius': [
+          { capability: 'Blast Radius', output: '12 critical cascade paths found', detail: 'payments-api.acme.com TLS cert → 847 downstream services. If this cert fails, estimated $2.4M/hr impact.' },
+        ],
+        'pqc-prioritiser': [
+          { capability: 'PQC Queue', output: 'Migration queue reordered by AI', detail: 'Top priority: 847 payment certs (harvest risk: HIGH, criticality: P0). Target: ML-DSA-65. Est. 12 days batch migration.' },
+        ],
+        'anomaly-detection': [
+          { capability: 'Anomaly Alert', output: '3 agents flagged for review', detail: 'Agent "ci-deploy-bot-7" requesting 14× normal credential velocity. Agent "data-pipeline-agent" accessing out-of-scope secrets.' },
+        ],
+        'posture-narrative': [
+          { capability: 'CISO Report', output: 'Executive narrative generated', detail: 'Your crypto posture score is 55/100 (↓3 from last month). Top risk: PQC readiness at 12% — 247K assets use quantum-vulnerable algorithms. Recommend: accelerate Batch 1 payment cert migration and right-size 179K over-privileged AI agent tokens.' },
+        ],
+      };
+      setAiResults(results[capId] || []);
+    }, 2500);
+  };
+
+  const handleChat = () => {
+    if (!chatInput.trim()) return;
+    setAiRunning('chat');
+    const input = chatInput;
+    setChatInput('');
+    setTimeout(() => {
+      setAiRunning(null);
+      if (input.toLowerCase().includes('expir')) {
+        setChatResponse(`Found 342 certificates expiring in next 7 days with no owner assigned.\n\nTop 3 by blast radius:\n1. payments-api.acme.com — 847 downstream services\n2. auth-gateway.acme.com — 312 services\n3. k8s-ingress-prod — 204 services\n\nShall I create remediation tickets for all 342? (AI will auto-assign owners based on deployment patterns)`);
+      } else if (input.toLowerCase().includes('rotate') || input.toLowerCase().includes('rsa')) {
+        setChatResponse(`Identified 1,247 RSA-2048 SSH keys in payments namespace.\n\nAI recommendation: Rotate to Ed25519 in 3 batches:\n• Batch 1: 412 bastion keys (zero-downtime swap)\n• Batch 2: 518 service keys (maintenance window required)\n• Batch 3: 317 legacy keys (manual review needed)\n\nEstimated completion: 4 days. Shall I create the rotation workflow?`);
+      } else {
+        setChatResponse(`Analyzing your request: "${input}"\n\nI've correlated data across all 5 engines. Based on your current posture (score: 55), the highest-impact action is migrating 847 payment certificates to ML-DSA-65. This would improve your PQR dimension from 12 → 28 and composite score from 55 → 59.\n\nWant me to generate the migration plan and create tickets?`);
       }
     }, 2000);
   };
@@ -62,55 +154,78 @@ function AICommandCenter({ onNavigate }: { onNavigate: (page: string, filters?: 
             <Sparkles className="w-4 h-4 text-teal" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold">Infinity AI — Bulk Remediation</h3>
-            <p className="text-[10px] text-muted-foreground">AI-powered automated remediation across all crypto objects</p>
+            <h3 className="text-sm font-semibold">∞ Infinity AI — Intelligence Substrate</h3>
+            <p className="text-[10px] text-muted-foreground">AI reads all engine event streams simultaneously — prediction, correlation, autonomous actions</p>
           </div>
         </div>
         {aiRunning && (
           <div className="flex items-center gap-1.5 text-[10px] text-teal">
             <div className="w-2 h-2 rounded-full bg-teal animate-pulse" />
-            Processing...
+            {aiRunning === 'chat' ? 'Correlating across engines...' : 'Processing...'}
           </div>
         )}
       </div>
 
+      {/* AI Results */}
       {aiResults && (
         <div className="mb-3 bg-teal/5 border border-teal/20 rounded-lg p-3">
-          <p className="text-xs font-semibold text-teal mb-2 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> AI Execution Results</p>
-          <div className="space-y-1.5">
-            {aiResults.map((r, i) => (
-              <div key={i} className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">{r.action}</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-foreground">{r.count.toLocaleString()}</span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${r.status === 'Created' ? 'bg-teal/10 text-teal' : 'bg-amber/10 text-amber'}`}>{r.status}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-          <button onClick={() => { setAiResults(null); onNavigate('tickets'); }} className="text-[10px] text-teal font-medium mt-2 hover:underline">View all tickets →</button>
+          <p className="text-xs font-semibold text-teal mb-2 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> AI Analysis Complete</p>
+          {aiResults.map((r, i) => (
+            <div key={i} className="text-xs space-y-1">
+              <p className="font-medium text-foreground">{r.output}</p>
+              <p className="text-muted-foreground text-[11px] leading-relaxed whitespace-pre-line">{r.detail}</p>
+            </div>
+          ))}
+          <button onClick={() => { setAiResults(null); onNavigate('remediation'); }} className="text-[10px] text-teal font-medium mt-2 hover:underline">Take action in Remediation →</button>
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-2">
-        {aiActions.map(action => (
+      {/* Chat Response */}
+      {chatResponse && (
+        <div className="mb-3 bg-secondary/50 border border-border rounded-lg p-3">
+          <p className="text-[10px] font-semibold text-teal mb-1">∞ Infinity AI</p>
+          <p className="text-xs text-foreground leading-relaxed whitespace-pre-line">{chatResponse}</p>
+          <div className="flex gap-2 mt-2">
+            <button onClick={() => { toast.success('Workflow created'); setChatResponse(null); }} className="text-[10px] px-2 py-1 rounded bg-teal text-primary-foreground hover:bg-teal-light">Yes, proceed</button>
+            <button onClick={() => setChatResponse(null)} className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80">Dismiss</button>
+          </div>
+        </div>
+      )}
+
+      {/* 6 AI Capabilities Grid */}
+      <div className="grid grid-cols-3 gap-2 mb-3">
+        {aiCapabilities.map(cap => (
           <button
-            key={action.id}
-            onClick={() => handleAIAction(action.id)}
-            disabled={aiRunning}
+            key={cap.id}
+            onClick={() => handleAIRun(cap.id)}
+            disabled={!!aiRunning}
             className="bg-secondary/50 hover:bg-secondary border border-border rounded-lg p-2.5 text-left transition-colors disabled:opacity-50 group"
           >
             <div className="flex items-center gap-1.5 mb-1">
-              <action.icon className="w-3.5 h-3.5 text-teal" />
-              <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
-                action.severity === 'Critical' ? 'bg-coral/10 text-coral' : action.severity === 'High' ? 'bg-amber/10 text-amber' : 'bg-muted text-muted-foreground'
-              }`}>{action.severity}</span>
+              <cap.icon className="w-3.5 h-3.5 text-teal" />
+              <span className="text-[9px] px-1.5 py-0.5 rounded-full font-medium bg-teal/10 text-teal">{cap.phase}</span>
             </div>
-            <p className="text-[11px] font-medium text-foreground mb-0.5">{action.label}</p>
-            <p className="text-[9px] text-muted-foreground leading-tight">{action.desc}</p>
-            <p className="text-[10px] text-teal font-semibold mt-1">{action.count.toLocaleString()} assets</p>
+            <p className="text-[11px] font-medium text-foreground mb-0.5">{cap.label}</p>
+            <p className="text-[9px] text-muted-foreground leading-tight">{cap.desc}</p>
+            <p className="text-[8px] text-muted-foreground/70 mt-1 italic">Feeds: {cap.feeds}</p>
           </button>
         ))}
+      </div>
+
+      {/* Chat-Driven Remediation */}
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={chatInput}
+          onChange={e => setChatInput(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleChat()}
+          placeholder="Ask Infinity AI: 'Which certs expire this week with no owner?' or 'Rotate all RSA-2048 in payments'"
+          className="flex-1 px-3 py-2 bg-muted border border-border rounded-lg text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-teal"
+          disabled={!!aiRunning}
+        />
+        <button onClick={handleChat} disabled={!!aiRunning || !chatInput.trim()} className="px-3 py-2 text-xs font-medium bg-teal text-primary-foreground rounded-lg hover:bg-teal-light disabled:opacity-50">
+          Ask AI
+        </button>
       </div>
     </div>
   );
@@ -191,8 +306,11 @@ export default function SecurityAdminDashboard() {
             </div>
           </div>
 
-          {/* AI Command Center */}
-          <AICommandCenter onNavigate={(page, filters) => {
+          {/* 5-Dimension Posture Breakdown */}
+          <PostureDimensions />
+
+          {/* Infinity AI Intelligence Center */}
+          <InfinityAICenter onNavigate={(page, filters) => {
             if (filters) setFilters(filters);
             setCurrentPage(page);
           }} />
