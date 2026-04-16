@@ -1,7 +1,185 @@
 import React, { useState, useEffect } from 'react';
 import { connectors } from '@/data/mockData';
 import { toast } from 'sonner';
-import { Search, Eye, EyeOff, Wifi, Link, X, ChevronLeft, ChevronRight, Check, RefreshCw, Play } from 'lucide-react';
+import { Search, Eye, EyeOff, Wifi, Link, X, ChevronLeft, ChevronRight, Check, RefreshCw, Play, ArrowUpRight, AlertTriangle, CheckCircle2, Clock, Zap } from 'lucide-react';
+import { useNav } from '@/context/NavigationContext';
+
+// Capability metadata: what each integration category enables + downstream actions
+const categoryCapability: Record<string, {
+  capability: string;
+  descriptor: string;
+  managedLabel: (n: number) => string;
+  inventoryFilter: { tab?: string; type?: string; scope?: string };
+  onboardingCTA: string;
+  postActions: { label: string; action: string }[];
+}> = {
+  'Certificate Authorities': {
+    capability: 'Certificate lifecycle automation',
+    descriptor: 'Enables automated issuance, renewal & revocation',
+    managedLabel: n => `${formatNum(n)} certificates under management`,
+    inventoryFilter: { tab: 'identity', type: 'Certificate' },
+    onboardingCTA: 'Discover & onboard certificate endpoints',
+    postActions: [
+      { label: 'View managed certs', action: 'inventory' },
+      { label: 'Enable auto-renewal', action: 'policy' },
+    ],
+  },
+  'Cloud Platforms': {
+    capability: 'Cloud asset & key discovery',
+    descriptor: 'Enables ingestion of cloud certs, KMS keys & secrets',
+    managedLabel: n => `${formatNum(n)} cloud assets managed`,
+    inventoryFilter: { tab: 'infrastructure', scope: 'Cloud' },
+    onboardingCTA: 'Import compute assets for onboarding',
+    postActions: [
+      { label: 'View managed assets', action: 'inventory' },
+      { label: 'Start onboarding', action: 'discovery' },
+    ],
+  },
+  'HSM': {
+    capability: 'Hardware-backed key custody',
+    descriptor: 'Enables FIPS 140-2/3 key generation & protection',
+    managedLabel: n => `${formatNum(n)} keys protected`,
+    inventoryFilter: { tab: 'identity', type: 'Key' },
+    onboardingCTA: 'Bind keys to certificate profiles',
+    postActions: [
+      { label: 'View protected keys', action: 'inventory' },
+      { label: 'Bind to CA', action: 'policy' },
+    ],
+  },
+  'PAM / Secrets Management': {
+    capability: 'Secret rotation & vaulting',
+    descriptor: 'Enables centralized secret storage & rotation',
+    managedLabel: n => `${formatNum(n)} secrets vaulted`,
+    inventoryFilter: { tab: 'identity', type: 'Secret' },
+    onboardingCTA: 'Onboard secrets into rotation policy',
+    postActions: [
+      { label: 'View vaulted secrets', action: 'inventory' },
+      { label: 'Enable rotation', action: 'policy' },
+    ],
+  },
+  'ITSM / Ticketing': {
+    capability: 'Workflow & change management',
+    descriptor: 'Enables automated ticketing for renewals & incidents',
+    managedLabel: n => `${formatNum(n)} tickets routed`,
+    inventoryFilter: {},
+    onboardingCTA: 'Configure approval workflows',
+    postActions: [
+      { label: 'View tickets', action: 'tickets' },
+      { label: 'Edit workflow', action: 'policy' },
+    ],
+  },
+  'DDI (DNS / DHCP / IPAM)': {
+    capability: 'Network identity discovery',
+    descriptor: 'Enables host & endpoint resolution for cert binding',
+    managedLabel: n => `${formatNum(n)} hosts resolved`,
+    inventoryFilter: { tab: 'infrastructure', scope: 'Hosts' },
+    onboardingCTA: 'Discover hosts for cert deployment',
+    postActions: [
+      { label: 'View hosts', action: 'inventory' },
+      { label: 'Run discovery', action: 'discovery' },
+    ],
+  },
+  'Web Servers': {
+    capability: 'Endpoint cert deployment',
+    descriptor: 'Enables push-based cert install on web servers',
+    managedLabel: n => `${formatNum(n)} servers actively managed`,
+    inventoryFilter: { tab: 'infrastructure', scope: 'Hosts' },
+    onboardingCTA: 'Onboard servers for auto-deploy',
+    postActions: [
+      { label: 'View managed servers', action: 'inventory' },
+      { label: 'Push cert', action: 'policy' },
+    ],
+  },
+  'ADC / Load Balancers': {
+    capability: 'SSL profile & VIP automation',
+    descriptor: 'Enables cert binding on virtual servers & profiles',
+    managedLabel: n => `${formatNum(n)} VIPs / profiles managed`,
+    inventoryFilter: { tab: 'infrastructure', scope: 'Hosts' },
+    onboardingCTA: 'Onboard VIPs for cert rotation',
+    postActions: [
+      { label: 'View VIPs', action: 'inventory' },
+      { label: 'Bind cert', action: 'policy' },
+    ],
+  },
+  'Firewall': {
+    capability: 'Inline cert inspection',
+    descriptor: 'Enables TLS inspection cert distribution',
+    managedLabel: n => `${formatNum(n)} firewalls integrated`,
+    inventoryFilter: { tab: 'infrastructure', scope: 'Hosts' },
+    onboardingCTA: 'Distribute inspection certs',
+    postActions: [
+      { label: 'View firewalls', action: 'inventory' },
+      { label: 'Rotate cert', action: 'policy' },
+    ],
+  },
+  'WAF': {
+    capability: 'Edge cert lifecycle',
+    descriptor: 'Enables managed certs at the application edge',
+    managedLabel: n => `${formatNum(n)} edge certs managed`,
+    inventoryFilter: { tab: 'identity', type: 'Certificate' },
+    onboardingCTA: 'Onboard edge endpoints',
+    postActions: [
+      { label: 'View edge certs', action: 'inventory' },
+      { label: 'Renew', action: 'policy' },
+    ],
+  },
+  'SDN / NFV': {
+    capability: 'Software-defined fabric trust',
+    descriptor: 'Enables identity for virtualized network functions',
+    managedLabel: n => `${formatNum(n)} VNFs identified`,
+    inventoryFilter: { tab: 'infrastructure' },
+    onboardingCTA: 'Onboard VNF identities',
+    postActions: [
+      { label: 'View VNFs', action: 'inventory' },
+      { label: 'Issue cert', action: 'policy' },
+    ],
+  },
+  'DevOps / Automation': {
+    capability: 'Pipeline-driven cert delivery',
+    descriptor: 'Enables CI/CD-integrated cert provisioning',
+    managedLabel: n => `${formatNum(n)} pipelines wired`,
+    inventoryFilter: {},
+    onboardingCTA: 'Wire pipeline for cert provisioning',
+    postActions: [
+      { label: 'View workflows', action: 'automation' },
+      { label: 'Add pipeline', action: 'policy' },
+    ],
+  },
+};
+
+// Hierarchy: group categories into operational layers
+const layerGrouping: { layer: string; categories: string[] }[] = [
+  { layer: 'Certificate Authorities', categories: ['Certificate Authorities'] },
+  { layer: 'Secrets Managers / Key Vaults', categories: ['HSM', 'PAM / Secrets Management'] },
+  { layer: 'Cloud Platforms', categories: ['Cloud Platforms'] },
+  { layer: 'Load Balancers / ADCs / Network Devices', categories: ['ADC / Load Balancers', 'Web Servers', 'Firewall', 'WAF', 'SDN / NFV', 'DDI (DNS / DHCP / IPAM)'] },
+  { layer: 'Workflow & Delivery', categories: ['ITSM / Ticketing', 'DevOps / Automation'] },
+];
+
+function formatNum(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
+  if (n >= 1_000) return Math.round(n / 1_000) + 'K';
+  return String(n);
+}
+
+// Lightweight integration health derived from lastSync
+function deriveHealth(item: { status: string; lastSync: string }): { state: 'healthy' | 'delayed' | 'failed' | 'idle'; label: string; lastError?: string } {
+  if (item.status !== 'connected') return { state: 'idle', label: 'Not connected' };
+  const ls = (item.lastSync || '').toLowerCase();
+  // mock: anything mentioning hours over 12 = delayed; "failed" keyword = failed
+  if (ls.includes('fail')) return { state: 'failed', label: 'Sync failed', lastError: 'API rate limit exceeded' };
+  const hMatch = ls.match(/(\d+)\s*h/);
+  if (hMatch && parseInt(hMatch[1]) > 12) return { state: 'delayed', label: 'Sync delayed' };
+  return { state: 'healthy', label: 'Healthy' };
+}
+
+// Mock adoption % (assets actively managed vs discovered)
+function adoptionPct(name: string, assets: number): number | null {
+  if (!assets) return null;
+  // deterministic mock so it doesn't reshuffle on render
+  const seed = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+  return 55 + (seed % 41); // 55-95%
+}
 
 // Extended connector metadata with category info for 4-step lifecycle
 const connectorMeta: Record<string, {
