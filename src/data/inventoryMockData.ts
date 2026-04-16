@@ -64,16 +64,15 @@ export interface BlastRadiusNode {
   cryptoType?: string;
 }
 
-export function getBlastRadius(assetId: string): { nodes: BlastRadiusNode[]; summary: { directDeps: number; siblingAssets: number; cascadeAssets: number; sentence: string } } {
+export function getBlastRadius(assetId: string, cryptoAssets: any[]): { nodes: BlastRadiusNode[]; summary: { directDeps: number; siblingAssets: number; cascadeAssets: number; sentence: string } } {
   const asset = mockITAssets.find(a => a.id === assetId);
   if (!asset) return { nodes: [], summary: { directDeps: 0, siblingAssets: 0, cascadeAssets: 0, sentence: '' } };
 
   const ring0: BlastRadiusNode = { id: asset.id, name: asset.name, type: 'asset', ring: 0, riskScore: asset.riskScore };
 
   // Ring 1: crypto objects
-  const { mockAssets } = require('@/data/mockData');
   const ring1: BlastRadiusNode[] = asset.cryptoObjectIds.map((cid: string) => {
-    const co = (mockAssets as any[]).find((a: any) => a.id === cid);
+    const co = cryptoAssets.find((a: any) => a.id === cid);
     return { id: cid, name: co?.name || cid, type: 'crypto' as const, ring: 1 as const, daysToExpiry: co?.daysToExpiry, violations: co?.policyViolations, cryptoType: co?.type };
   });
 
