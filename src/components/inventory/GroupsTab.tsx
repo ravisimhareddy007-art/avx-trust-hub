@@ -96,7 +96,7 @@ function ConditionBuilder({ conditions, onChange }: { conditions: GroupCondition
       {conditions.length > 0 && conditions.some(c => c.value) && (
         <div className="bg-secondary/50 rounded p-2">
           <p className="text-[10px] text-muted-foreground italic mb-1">{summary || 'Build conditions above'}</p>
-          <p className="text-[10px] font-medium text-teal">{matchCount} crypto objects match</p>
+          <p className="text-[10px] font-medium text-teal">{matchCount} identities match</p>
         </div>
       )}
     </div>
