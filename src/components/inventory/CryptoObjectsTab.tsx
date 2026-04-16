@@ -92,56 +92,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   };
 
   return (
-    <div className="flex gap-0 h-full relative">
-      {/* Left sidebar filters */}
-      <div className="w-[200px] flex-shrink-0 border-r border-border p-3 space-y-3 overflow-y-auto">
-        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Filters</p>
-
-        <div>
-          <p className="text-[10px] text-muted-foreground mb-1">Algorithm</p>
-          <div className="space-y-0.5 max-h-[100px] overflow-y-auto scrollbar-thin">
-            {algorithms.map(a => (
-              <button key={a} onClick={() => setAlgFilter(algFilter === a ? '' : a)}
-                className={`w-full text-left px-2 py-1 rounded text-[10px] transition-colors ${algFilter === a ? 'bg-teal/10 text-teal' : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}>{a}</button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <p className="text-[10px] text-muted-foreground mb-1">Environment</p>
-          {['Production', 'Staging', 'Development'].map(e => (
-            <button key={e} onClick={() => setEnvFilter(envFilter === e ? '' : e)}
-              className={`w-full text-left px-2 py-1 rounded text-[10px] transition-colors ${envFilter === e ? 'bg-teal/10 text-teal' : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}>{e}</button>
-          ))}
-        </div>
-
-        <div>
-          <p className="text-[10px] text-muted-foreground mb-1">Status</p>
-          {['Active', 'Expiring', 'Expired', 'Orphaned', 'Revoked'].map(s => (
-            <button key={s} onClick={() => setStatusFilter(statusFilter === s ? '' : s)}
-              className={`w-full text-left px-2 py-1 rounded text-[10px] transition-colors ${statusFilter === s ? 'bg-teal/10 text-teal' : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}>{s}</button>
-          ))}
-        </div>
-
-        <div>
-          <p className="text-[10px] text-muted-foreground mb-1">PQC Risk</p>
-          {['Critical', 'High', 'Medium', 'Low'].map(r => (
-            <button key={r} onClick={() => setPqcFilter(pqcFilter === r ? '' : r)}
-              className={`w-full text-left px-2 py-1 rounded text-[10px] transition-colors ${pqcFilter === r ? 'bg-teal/10 text-teal' : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}>{r}</button>
-          ))}
-        </div>
-
-        <div>
-          <p className="text-[10px] text-muted-foreground mb-1">Owner</p>
-          <button onClick={() => setOwnerFilter(ownerFilter === 'Unassigned' ? '' : 'Unassigned')}
-            className={`w-full text-left px-2 py-1 rounded text-[10px] transition-colors ${ownerFilter === 'Unassigned' ? 'bg-teal/10 text-teal' : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}>Unassigned only</button>
-        </div>
-
-        {(algFilter || envFilter || statusFilter || pqcFilter || ownerFilter) && (
-          <button onClick={() => { setAlgFilter(''); setEnvFilter(''); setStatusFilter(''); setPqcFilter(''); setOwnerFilter(''); }} className="text-[10px] text-coral hover:underline">Clear all</button>
-        )}
-      </div>
-
+    <div className="flex flex-col h-full relative">
       {/* Main content */}
       <div className="flex-1 min-w-0 p-3 space-y-3 overflow-y-auto">
         {/* Type tabs */}
@@ -158,14 +109,37 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
           })}
         </div>
 
-        {/* Search */}
-        <div className="flex items-center gap-2">
+        {/* Search + filter dropdowns */}
+        <div className="flex items-center gap-2 flex-wrap">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search crypto objects..."
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search identities..."
               className="w-full pl-7 pr-3 py-1.5 bg-muted border border-border rounded text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal" />
           </div>
-          <span className="text-[10px] text-muted-foreground">{filtered.length} objects</span>
+          <select value={algFilter} onChange={e => setAlgFilter(e.target.value)} className="px-2 py-1.5 bg-muted border border-border rounded text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal">
+            <option value="">All Algorithms</option>
+            {algorithms.map(a => <option key={a} value={a}>{a}</option>)}
+          </select>
+          <select value={envFilter} onChange={e => setEnvFilter(e.target.value)} className="px-2 py-1.5 bg-muted border border-border rounded text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal">
+            <option value="">All Envs</option>
+            {['Production', 'Staging', 'Development'].map(e => <option key={e} value={e}>{e}</option>)}
+          </select>
+          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="px-2 py-1.5 bg-muted border border-border rounded text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal">
+            <option value="">All Status</option>
+            {['Active', 'Expiring', 'Expired', 'Orphaned', 'Revoked'].map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+          <select value={pqcFilter} onChange={e => setPqcFilter(e.target.value)} className="px-2 py-1.5 bg-muted border border-border rounded text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal">
+            <option value="">All PQC Risk</option>
+            {['Critical', 'High', 'Medium', 'Low'].map(r => <option key={r} value={r}>{r}</option>)}
+          </select>
+          <select value={ownerFilter} onChange={e => setOwnerFilter(e.target.value)} className="px-2 py-1.5 bg-muted border border-border rounded text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal">
+            <option value="">All Owners</option>
+            <option value="Unassigned">Unassigned only</option>
+          </select>
+          {(algFilter || envFilter || statusFilter || pqcFilter || ownerFilter) && (
+            <button onClick={() => { setAlgFilter(''); setEnvFilter(''); setStatusFilter(''); setPqcFilter(''); setOwnerFilter(''); }} className="text-[10px] text-coral hover:underline">Clear</button>
+          )}
+          <span className="text-[10px] text-muted-foreground ml-auto">{filtered.length} identities</span>
         </div>
 
         {/* Table */}
