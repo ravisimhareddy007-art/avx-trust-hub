@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Key, Server, Shield, Cpu, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { useInventoryRegistry, type ManualIdentity, type ManualITAsset } from '@/context/InventoryRegistryContext';
@@ -95,6 +95,16 @@ export default function AddResourceModal({ open, onClose, initialKind }: Props) 
     setIName(''); setILocation(''); setIOwner('Unassigned'); setIType('TLS Certificate'); setIAlg('RSA'); setIKeySize('2048');
     setAAddress(''); setALocation(''); setAType('Linux Host'); setAEnv('Production');
   };
+
+  // Reset every time the modal transitions to open — guarantees a fresh chooser + empty form on each invocation.
+  useEffect(() => {
+    if (open) {
+      setKind(initialKind ?? null);
+      setIName(''); setILocation(''); setIOwner('Unassigned');
+      setIType('TLS Certificate'); setIAlg('RSA'); setIKeySize('2048');
+      setAAddress(''); setALocation(''); setAType('Linux Host'); setAEnv('Production');
+    }
+  }, [open, initialKind]);
 
   if (!open) return null;
 

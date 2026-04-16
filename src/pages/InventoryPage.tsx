@@ -37,7 +37,6 @@ export default function InventoryPage() {
 
   // Add Resource Modal state
   const [addOpen, setAddOpen] = useState(false);
-  const [addInitialKind, setAddInitialKind] = useState<'identity' | 'infrastructure' | undefined>(undefined);
 
   const openPolicyDrawer = (groupId: string, groupName: string) => {
     setPolicyDrawerCtx({ groupId, groupName });
@@ -50,10 +49,7 @@ export default function InventoryPage() {
   };
 
   const openAdd = () => {
-    // Pre-select form based on the currently active tab
-    if (activeTab === 'it-assets') setAddInitialKind('infrastructure');
-    else if (activeTab === 'crypto-objects') setAddInitialKind('identity');
-    else setAddInitialKind(undefined);
+    // Always show the chooser first — user picks Identity vs Infrastructure each time.
     setAddOpen(true);
   };
 
@@ -106,8 +102,7 @@ export default function InventoryPage() {
       {/* Add Resource Modal */}
       <AddResourceModal
         open={addOpen}
-        onClose={() => { setAddOpen(false); setAddInitialKind(undefined); }}
-        initialKind={addInitialKind}
+        onClose={() => setAddOpen(false)}
       />
     </div>
   );
