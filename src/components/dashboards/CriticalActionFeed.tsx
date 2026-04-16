@@ -398,8 +398,8 @@ export default function CriticalActionFeed() {
                 )}
 
                 {isQueued && (
-                  <p className="px-5 pb-2 ml-10 text-[10px] text-teal">
-                    Workflow request submitted · #TKT-{1000 + Number(item.id) * 37} · view in Tickets
+                  <p className={`px-5 pb-2 ml-10 text-[10px] ${item.licenseGated ? 'text-amber' : 'text-teal'}`}>
+                    {item.licenseGated ? 'Manual ticket created' : 'Workflow request submitted'} · #TKT-{1000 + Number(item.id) * 37} · view in Tickets
                   </p>
                 )}
               </li>
