@@ -145,18 +145,19 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   return (
     <div className="flex flex-col h-full relative">
       <div className="flex-1 min-w-0 p-3 space-y-3 overflow-y-auto">
-        {/* Type tabs */}
-        <div className="flex items-center gap-0 border-b border-border overflow-x-auto">
-          {typeFilters.map(t => {
-            const count = t.key === 'All' ? mockAssets.length : mockAssets.filter(a => a.type === t.key).length;
-            return (
-              <button key={t.key} onClick={() => setTypeFilter(t.key)}
-                className={`px-3 py-2 text-[10px] font-medium border-b-2 transition-colors whitespace-nowrap flex items-center gap-1 ${typeFilter === t.key ? 'border-teal text-teal' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
-                {t.label}
-                <span className={`min-w-[16px] px-1 py-0.5 rounded-full text-[9px] font-semibold ${typeFilter === t.key ? 'bg-teal/10 text-teal' : 'bg-muted text-muted-foreground'}`}>{count}</span>
-              </button>
-            );
-          })}
+        {/* Type filter — replaced horizontal scroll-tabs with a dropdown */}
+        <div className="flex items-center gap-2 border-b border-border pb-2">
+          <span className="text-[10px] font-medium text-muted-foreground">Identity type:</span>
+          <select
+            value={typeFilter}
+            onChange={e => setTypeFilter(e.target.value)}
+            className="px-2 py-1 bg-muted border border-border rounded text-[11px] font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-teal"
+          >
+            {typeFilters.map(t => {
+              const count = t.key === 'All' ? allAssets.length : allAssets.filter(a => a.type === t.key).length;
+              return <option key={t.key} value={t.key}>{t.label} ({count})</option>;
+            })}
+          </select>
         </div>
 
         {/* Search + filter dropdowns */}
@@ -192,11 +193,15 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
           <span className="text-[10px] text-muted-foreground ml-auto">{filtered.length} identities</span>
         </div>
 
-        {/* Table */}
-        <div className="bg-card rounded-lg border border-border overflow-hidden">
-          <div className="overflow-x-auto overflow-y-visible" style={{ maxHeight: 'calc(100vh - 300px)' }}>
-            <table className="w-full text-xs">
-              <thead className="bg-secondary/50">
+        {/* Table — single bottom horizontal scroll, with a "scroll right" affordance */}
+        <div className="bg-card rounded-lg border border-border overflow-hidden relative">
+          <div
+            ref={tableScrollRef}
+            className="overflow-x-auto overflow-y-auto scrollbar-thin"
+            style={{ maxHeight: 'calc(100vh - 290px)' }}
+          >
+            <table className="w-full text-xs min-w-[1200px]">
+              <thead className="bg-secondary/50 sticky top-0 z-10">
                 <tr className="border-b border-border">
                   <th className="w-6 py-2 px-1"></th>
                   <th className="text-left py-2 px-2 font-medium text-muted-foreground">Common Name</th>
@@ -220,7 +225,16 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                     <tr className="border-b border-border hover:bg-secondary/30 cursor-pointer transition-colors"
                       onClick={() => setExpandedRow(expandedRow === co.id ? null : co.id)}>
                       <td className="py-2 px-1 text-muted-foreground">{expandedRow === co.id ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}</td>
-                      <td className="py-2 px-2 font-medium text-foreground truncate max-w-[180px]">{co.name}</td>
+                      <td className="py-2 px-2 font-medium text-foreground max-w-[220px]">
+                        <div className="flex items-center gap-1.5">
+                          <span className="truncate">{co.name}</span>
+                          {isManual(co) && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-teal/15 text-teal text-[9px] font-semibold flex-shrink-0" title="Discovery Vector: Manual Entry">
+                              <FileEdit className="w-2.5 h-2.5" /> Manual
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td className="py-2 px-2 text-muted-foreground text-[10px]">{co.type}</td>
                       <td className="py-2 px-2 text-muted-foreground">{co.algorithm}</td>
                       <td className="py-2 px-2 text-muted-foreground">{co.keyLength}</td>
