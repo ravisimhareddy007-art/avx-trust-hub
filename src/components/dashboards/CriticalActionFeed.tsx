@@ -158,14 +158,43 @@ function ageLabel(mins: number) {
   return `${Math.floor(mins / 1440)}d`;
 }
 
+type FilterKey = 'All' | 'Certificates' | 'Secrets' | 'SSH Keys' | 'AI Tokens' | 'Infrastructure';
+
+const FILTER_MAP: Record<FilterKey, ActionItem['category'][] | null> = {
+  'All': null,
+  'Certificates': ['Certs'],
+  'Secrets': ['Secrets'],
+  'SSH Keys': ['SSH'],
+  'AI Tokens': ['AI'],
+  'Infrastructure': ['K8s', 'Code Sign'],
+};
+
+const FILTERS: FilterKey[] = ['All', 'Certificates', 'Secrets', 'SSH Keys', 'AI Tokens', 'Infrastructure'];
+
 export default function CriticalActionFeed() {
   const { hoveredDriver, resolvedFeedItems, resolveFeedItem } = useDashboard();
   const { setCurrentPage } = useNav();
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [filter, setFilter] = useState<FilterKey>('All');
 
-  // Sort: pending first (preserve original order), queued/resolved at bottom
+  // Per-filter counts for chip badges (computed once, ignores filter state)
+  const counts = useMemo(() => {
+    const c: Record<FilterKey, number> = { 'All': 0, 'Certificates': 0, 'Secrets': 0, 'SSH Keys': 0, 'AI Tokens': 0, 'Infrastructure': 0 };
+    FEED.forEach(item => {
+      c['All']++;
+      (Object.keys(FILTER_MAP) as FilterKey[]).forEach(k => {
+        const cats = FILTER_MAP[k];
+        if (cats && cats.includes(item.category)) c[k]++;
+      });
+    });
+    return c;
+  }, []);
+
+  // Apply filter, then sort: pending first, queued/resolved at bottom (preserving impact×urgency order within)
   const items = useMemo(() => {
-    const decorated = FEED.map(item => ({
+    const cats = FILTER_MAP[filter];
+    const filtered = cats ? FEED.filter(i => cats.includes(i.category)) : FEED;
+    const decorated = filtered.map(item => ({
       ...item,
       highlighted: hoveredDriver != null && feedItemToDriver[item.id] === hoveredDriver,
       isQueued: resolvedFeedItems.has(item.id),
@@ -174,7 +203,7 @@ export default function CriticalActionFeed() {
       ...decorated.filter(i => !i.isQueued),
       ...decorated.filter(i => i.isQueued),
     ];
-  }, [hoveredDriver, resolvedFeedItems]);
+  }, [hoveredDriver, resolvedFeedItems, filter]);
 
   const handleApprove = (item: ActionItem) => {
     resolveFeedItem(item.id);
@@ -201,14 +230,46 @@ export default function CriticalActionFeed() {
 
   return (
     <div className="bg-card rounded-xl border border-border h-full flex flex-col">
-      <div className="px-5 pt-5 pb-3 border-b border-border">
+      <div className="px-5 pt-5 pb-3 border-b border-border space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-coral" />
             <h2 className="text-sm font-semibold text-foreground">Critical Action Feed</h2>
             <span className="text-[10px] text-muted-foreground">· ranked by impact × urgency · click row to inspect</span>
           </div>
-          <span className="text-[10px] text-muted-foreground">{FEED.length} items</span>
+          <span className="text-[10px] text-muted-foreground">
+            {filter === 'All' ? `${FEED.length} items` : `${items.length} of ${FEED.length}`}
+          </span>
+        </div>
+        {/* Always-visible filter chips */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {FILTERS.map(f => {
+            const active = filter === f;
+            return (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-full border transition-colors ${
+                  active
+                    ? 'bg-teal text-primary-foreground border-teal shadow-[0_0_0_2px_hsl(var(--teal)/0.15)]'
+                    : 'bg-secondary/40 text-muted-foreground border-border hover:text-foreground hover:border-teal/40'
+                }`}
+              >
+                {f}
+                <span className={`text-[9px] px-1 rounded ${active ? 'bg-primary-foreground/20' : 'bg-background/60'}`}>
+                  {counts[f]}
+                </span>
+              </button>
+            );
+          })}
+          {filter !== 'All' && (
+            <button
+              onClick={() => setFilter('All')}
+              className="text-[10px] text-muted-foreground hover:text-coral underline-offset-2 hover:underline ml-1"
+            >
+              Reset
+            </button>
+          )}
         </div>
       </div>
 
