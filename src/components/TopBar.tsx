@@ -83,15 +83,6 @@ export default function TopBar() {
           )}
         </div>
 
-        {/* Quantum Risk Pill */}
-        <button
-          onClick={() => setCurrentPage('quantum-posture')}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber/10 text-amber text-xs font-medium hover:bg-amber/20 transition-colors"
-        >
-          <AlertTriangle className="w-3 h-3" />
-          12,847 PQC
-        </button>
-
         {/* User Avatar */}
         <div className="w-8 h-8 rounded-full bg-teal/20 flex items-center justify-center">
           <User className="w-4 h-4 text-teal" />
