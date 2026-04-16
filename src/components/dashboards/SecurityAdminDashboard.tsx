@@ -5,6 +5,7 @@ import EnterpriseCryptoRiskScore from './EnterpriseCryptoRiskScore';
 import CriticalActionFeed from './CriticalActionFeed';
 import IdentityHealthBands from './IdentityHealthBands';
 import QTHPostureStrip from './QTHPostureStrip';
+import InfrastructurePostureStrip from './InfrastructurePostureStrip';
 
 export default function SecurityAdminDashboard() {
   return (
@@ -32,10 +33,13 @@ export default function SecurityAdminDashboard() {
           </div>
         </div>
 
-        {/* Zone 3: QTH Posture Strip */}
+        {/* Zone 3: Infrastructure Posture Strip (host/cluster/gateway-level metrics) */}
+        <InfrastructurePostureStrip />
+
+        {/* Zone 4: QTH Posture Strip */}
         <QTHPostureStrip />
 
-        {/* Zone 4: Identity Health Bands */}
+        {/* Zone 5: Identity Health Bands */}
         <IdentityHealthBands />
       </div>
     </DashboardProvider>

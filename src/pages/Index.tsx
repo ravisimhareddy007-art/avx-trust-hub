@@ -2,6 +2,7 @@ import React from 'react';
 import { PersonaProvider, usePersona } from '@/context/PersonaContext';
 import { NavigationProvider, useNav } from '@/context/NavigationContext';
 import { IntegrationsProvider } from '@/context/IntegrationsContext';
+import { InventoryRegistryProvider } from '@/context/InventoryRegistryContext';
 import AppSidebar from '@/components/AppSidebar';
 import TopBar from '@/components/TopBar';
 import QuantumBanner from '@/components/QuantumBanner';
@@ -71,7 +72,9 @@ export default function Index() {
     <PersonaProvider>
       <NavigationProvider>
         <IntegrationsProvider>
-          <AppShell />
+          <InventoryRegistryProvider>
+            <AppShell />
+          </InventoryRegistryProvider>
         </IntegrationsProvider>
       </NavigationProvider>
     </PersonaProvider>

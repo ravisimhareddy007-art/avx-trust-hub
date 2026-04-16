@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { mockITAssets, ITAsset, getAssetRiskDrivers, getAssetAINarrative, getAssetViolations, getBlastRadius } from '@/data/inventoryMockData';
 import { mockAssets, CryptoAsset } from '@/data/mockData';
+import { useInventoryRegistry } from '@/context/InventoryRegistryContext';
 import { StatusBadge, EnvBadge, DaysToExpiry, SeverityBadge } from '@/components/shared/UIComponents';
-import { Search, Server, Database, Globe, Shield, ShieldOff, ChevronDown, ChevronRight, MoreVertical, X, Ticket, RefreshCw, XCircle, RotateCcw, User, Plus } from 'lucide-react';
+import { Search, Server, Database, Globe, Shield, ShieldOff, ChevronDown, ChevronRight, MoreVertical, X, Ticket, RefreshCw, XCircle, RotateCcw, User, Plus, FileEdit } from 'lucide-react';
 import { toast } from 'sonner';
 import BlastRadiusTopology from './BlastRadiusTopology';
 
@@ -79,19 +80,25 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
   const [selectedAsset, setSelectedAsset] = useState<ITAsset | null>(null);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [assetStack, setAssetStack] = useState<ITAsset[]>([]);
+  const { manualITAssets } = useInventoryRegistry();
+
+  // Manual assets first so they're immediately visible after add.
+  const allAssets = useMemo(() => [...manualITAssets, ...mockITAssets], [manualITAssets]);
 
   const filtered = useMemo(() => {
-    let result = [...mockITAssets];
+    let result = [...allAssets];
     if (search) result = result.filter(a => a.name.toLowerCase().includes(search.toLowerCase()));
     if (envFilter) result = result.filter(a => a.environment === envFilter);
     if (typeFilter) result = result.filter(a => a.type === typeFilter);
     if (teamFilter) result = result.filter(a => a.ownerTeam === teamFilter);
     result = result.filter(a => a.riskScore >= riskRange[0] && a.riskScore <= riskRange[1]);
     return result;
-  }, [search, envFilter, typeFilter, teamFilter, riskRange]);
+  }, [allAssets, search, envFilter, typeFilter, teamFilter, riskRange]);
 
-  const uniqueTeams = [...new Set(mockITAssets.map(a => a.ownerTeam))];
-  const uniqueTypes = [...new Set(mockITAssets.map(a => a.type))];
+  const uniqueTeams = [...new Set(allAssets.map(a => a.ownerTeam))];
+  const uniqueTypes = [...new Set(allAssets.map(a => a.type))];
+
+  const isManual = (a: ITAsset) => manualITAssets.some(m => m.id === a.id);
 
   const openAssetDetail = (asset: ITAsset) => {
     if (selectedAsset) setAssetStack(prev => [...prev, selectedAsset]);
@@ -180,6 +187,11 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                         <div className="flex items-center gap-2">
                           <span>{assetTypeIcons[asset.type] || '📋'}</span>
                           <span className="font-medium text-foreground truncate max-w-[200px]">{asset.name}</span>
+                          {isManual(asset) && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-teal/15 text-teal text-[9px] font-semibold" title="Discovery Vector: Manual Entry">
+                              <FileEdit className="w-2.5 h-2.5" /> Manual
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="py-2 px-2 text-muted-foreground">{asset.type}</td>
