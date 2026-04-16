@@ -287,7 +287,7 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                 })()}
               </div>
 
-              {/* Column 2 — Crypto Objects */}
+              {/* Column 2 — Identities */}
               <div className="p-4 overflow-y-auto scrollbar-thin">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-xs font-semibold text-foreground">Identities ({getIdentities(selectedAsset).length})</p>
