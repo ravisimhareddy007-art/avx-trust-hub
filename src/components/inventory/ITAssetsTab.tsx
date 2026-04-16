@@ -396,7 +396,7 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
               <div className="border-l border-border p-4 overflow-y-auto scrollbar-thin">
                 <p className="text-xs font-semibold text-foreground mb-3">Blast Radius</p>
                 {(() => {
-                  const br = getBlastRadius(selectedAsset.id);
+                  const br = getBlastRadius(selectedAsset.id, mockAssets);
                   return (
                     <BlastRadiusTopology
                       nodes={br.nodes}
