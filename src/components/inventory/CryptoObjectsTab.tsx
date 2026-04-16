@@ -292,6 +292,14 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
               </tbody>
             </table>
           </div>
+          {/* Scroll-right affordance — fixed at the right edge of the table */}
+          <button
+            onClick={() => tableScrollRef.current?.scrollBy({ left: 300, behavior: 'smooth' })}
+            className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-card border border-border shadow-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors z-20"
+            title="Scroll right"
+          >
+            <ChevronsRight className="w-3.5 h-3.5" />
+          </button>
           {filtered.length === 0 && <div className="py-12 text-center text-sm text-muted-foreground">No identities match your filters.</div>}
         </div>
       </div>
