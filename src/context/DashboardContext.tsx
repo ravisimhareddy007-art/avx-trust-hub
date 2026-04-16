@@ -22,6 +22,9 @@ export const feedItemImpact: Record<string, number> = {
   '6': 4, '7': 1, '8': 3, '9': 2, '10': 2,
 };
 
+// Score increment per resolved feed item (per spec: -2 score per resolved item)
+const SCORE_DECREMENT_PER_RESOLVE = 2;
+
 interface DashCtx {
   // hover wiring: driver row <-> ECRS bar + feed filter
   hoveredDriver: string | null;
@@ -54,8 +57,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       const driver = feedItemToDriver[itemId];
       const impact = feedItemImpact[itemId] ?? 1;
 
-      // Animate score down (lower = better)
-      setScore(prev => Math.max(0, prev - impact));
+      // Animate score down (lower = better) — fixed -2 per resolve per spec
+      setScore(prev => Math.max(0, prev - SCORE_DECREMENT_PER_RESOLVE));
 
       if (driver) {
         setDriverImpactDelta(prev => ({
