@@ -190,7 +190,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                       <tr><td colSpan={14} className="p-0">
                         <div className="bg-secondary/30 px-4 py-3 grid grid-cols-3 gap-4">
                           <div>
-                            <p className="text-[10px] font-semibold text-foreground mb-1.5">Associated IT Assets</p>
+                            <p className="text-[10px] font-semibold text-foreground mb-1.5">Associated Infrastructure</p>
                             {getAssociatedAssets(co).length > 0 ? getAssociatedAssets(co).map(a => (
                               <div key={a.id} className="flex items-center gap-2 text-[10px] py-1">
                                 <span className="text-foreground">{a.name}</span>
@@ -228,7 +228,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
               </tbody>
             </table>
           </div>
-          {filtered.length === 0 && <div className="py-12 text-center text-sm text-muted-foreground">No crypto objects match your filters.</div>}
+          {filtered.length === 0 && <div className="py-12 text-center text-sm text-muted-foreground">No identities match your filters.</div>}
         </div>
       </div>
 
@@ -290,14 +290,14 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                 </div>
               </div>
 
-              {/* Right: associated IT assets + mini topology */}
+              {/* Right: associated infrastructure + mini topology */}
               <div className="p-4 space-y-4 overflow-y-auto scrollbar-thin">
                 <div className="bg-amber/5 border border-amber/20 rounded-lg p-3 text-[10px] text-muted-foreground">
                   This object is shared across <span className="font-semibold text-foreground">{getAssociatedAssets(detailAsset).length}</span> assets. Expiry or failure impacts all of them.
                 </div>
 
                 <div>
-                  <p className="text-xs font-semibold mb-2">Associated IT Assets</p>
+                  <p className="text-xs font-semibold mb-2">Associated Infrastructure</p>
                   <div className="space-y-1">
                     {getAssociatedAssets(detailAsset).map(a => (
                       <div key={a.id} className="flex items-center gap-2 bg-secondary/50 rounded p-2 text-[10px]">
@@ -307,7 +307,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                         <span className="ml-auto text-muted-foreground">{a.ownerTeam}</span>
                       </div>
                     ))}
-                    {getAssociatedAssets(detailAsset).length === 0 && <p className="text-[10px] text-muted-foreground">No associated IT assets found.</p>}
+                    {getAssociatedAssets(detailAsset).length === 0 && <p className="text-[10px] text-muted-foreground">No associated infrastructure found.</p>}
                   </div>
                 </div>
               </div>
