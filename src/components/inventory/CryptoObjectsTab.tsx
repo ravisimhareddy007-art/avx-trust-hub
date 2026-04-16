@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { mockAssets, CryptoAsset } from '@/data/mockData';
 import { mockITAssets, mockGroups } from '@/data/inventoryMockData';
+import { useInventoryRegistry } from '@/context/InventoryRegistryContext';
 import { Modal } from '@/components/shared/UIComponents';
 import { StatusBadge, EnvBadge, PQCBadge, DaysToExpiry, SeverityBadge } from '@/components/shared/UIComponents';
-import { Search, ChevronDown, ChevronRight, MoreVertical, X, Shield, ShieldOff } from 'lucide-react';
+import { Search, ChevronDown, ChevronRight, MoreVertical, X, Shield, ShieldOff, ChevronsRight, FileEdit } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Props {
@@ -82,9 +83,14 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   const [statusFilter, setStatusFilter] = useState('');
   const [pqcFilter, setPqcFilter] = useState('');
   const [ownerFilter, setOwnerFilter] = useState('');
+  const tableScrollRef = useRef<HTMLDivElement | null>(null);
+  const { manualIdentities } = useInventoryRegistry();
+
+  const allAssets = useMemo(() => [...manualIdentities, ...mockAssets], [manualIdentities]);
+  const isManual = (a: CryptoAsset) => manualIdentities.some(m => m.id === a.id);
 
   const filtered = useMemo(() => {
-    let result = [...mockAssets];
+    let result = [...allAssets];
     if (typeFilter !== 'All') result = result.filter(a => a.type === typeFilter);
     if (search) result = result.filter(a => a.name.toLowerCase().includes(search.toLowerCase()) || a.commonName.toLowerCase().includes(search.toLowerCase()));
     if (algFilter) result = result.filter(a => a.algorithm === algFilter);
@@ -93,9 +99,9 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
     if (pqcFilter) result = result.filter(a => a.pqcRisk === pqcFilter);
     if (ownerFilter === 'Unassigned') result = result.filter(a => a.owner === 'Unassigned');
     return result;
-  }, [search, typeFilter, algFilter, envFilter, statusFilter, pqcFilter, ownerFilter]);
+  }, [allAssets, search, typeFilter, algFilter, envFilter, statusFilter, pqcFilter, ownerFilter]);
 
-  const algorithms = [...new Set(mockAssets.map(a => a.algorithm))].sort();
+  const algorithms = [...new Set(allAssets.map(a => a.algorithm))].sort();
   const getAssociatedAssets = (co: CryptoAsset) => mockITAssets.filter(a => a.cryptoObjectIds.includes(co.id));
 
   const [actionModal, setActionModal] = useState<{ action: string; asset: CryptoAsset } | null>(null);
