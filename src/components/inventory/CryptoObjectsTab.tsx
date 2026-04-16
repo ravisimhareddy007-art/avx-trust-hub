@@ -222,8 +222,12 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                 {filtered.map(co => (
                   <React.Fragment key={co.id}>
                     <tr className="border-b border-border hover:bg-secondary/30 cursor-pointer transition-colors"
-                      onClick={() => setExpandedRow(expandedRow === co.id ? null : co.id)}>
-                      <td className="py-2 px-1 text-muted-foreground">{expandedRow === co.id ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}</td>
+                      onClick={() => setDetailAsset(co)}>
+                      <td className="py-2 px-1 text-muted-foreground" onClick={e => { e.stopPropagation(); setExpandedRow(expandedRow === co.id ? null : co.id); }}>
+                        <button className="p-0.5 rounded hover:bg-secondary" title="Toggle quick preview">
+                          {expandedRow === co.id ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                        </button>
+                      </td>
                       <td className="py-2 px-2 font-medium text-foreground max-w-[220px]">
                         <div className="flex items-center gap-1.5">
                           <span className="truncate">{co.name}</span>
