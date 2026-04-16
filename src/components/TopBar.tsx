@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNav } from '@/context/NavigationContext';
 import { useAgent } from '@/context/AgentContext';
-import { Bell, Infinity as InfinityIcon, User, AlertTriangle } from 'lucide-react';
+import { Bell, Infinity as InfinityIcon, User } from 'lucide-react';
 
 const breadcrumbMap: Record<string, string> = {
   'dashboards': 'Insights',
@@ -82,15 +82,6 @@ export default function TopBar() {
             </div>
           )}
         </div>
-
-        {/* Quantum Risk Pill */}
-        <button
-          onClick={() => setCurrentPage('quantum-posture')}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber/10 text-amber text-xs font-medium hover:bg-amber/20 transition-colors"
-        >
-          <AlertTriangle className="w-3 h-3" />
-          12,847 PQC
-        </button>
 
         {/* User Avatar */}
         <div className="w-8 h-8 rounded-full bg-teal/20 flex items-center justify-center">
