@@ -11,11 +11,11 @@ export default function SecurityAdminDashboard() {
   return (
     <DashboardProvider>
       <div className="space-y-4 max-h-[calc(100vh-120px)] overflow-y-auto scrollbar-thin pr-1">
-        {/* Header */}
-        <div className="flex items-center justify-between">
+        {/* Primary page header — single entry point, no competing labels */}
+        <div className="flex items-end justify-between pt-1">
           <div>
-            <h1 className="text-xl font-bold">Trust Posture & Risk Intelligence</h1>
-            <p className="text-[11px] text-muted-foreground">High-Impact Recommendations & Active Insights</p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Trust Posture & Risk Intelligence</h1>
+            <p className="text-xs text-muted-foreground mt-1">High-Impact Recommendations & Active Insights</p>
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span>Refreshed 0m ago</span>
