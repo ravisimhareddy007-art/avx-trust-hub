@@ -33,14 +33,14 @@ export default function SecurityAdminDashboard() {
           </div>
         </div>
 
-        {/* Zone 3: Infrastructure Posture Strip (host/cluster/gateway-level metrics) */}
-        <InfrastructurePostureStrip />
-
-        {/* Zone 4: QTH Posture Strip */}
+        {/* Zone 3: QTH Posture Strip */}
         <QTHPostureStrip />
 
-        {/* Zone 5: Identity Health Bands */}
+        {/* Zone 4: Identity Health Bands */}
         <IdentityHealthBands />
+
+        {/* Zone 5 (bottom): Infrastructure Posture Bands */}
+        <InfrastructurePostureStrip />
       </div>
     </DashboardProvider>
   );

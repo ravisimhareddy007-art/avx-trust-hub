@@ -122,9 +122,9 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
   return (
     <div className="flex flex-col h-full relative">
       {/* Main table */}
-      <div className="flex-1 min-w-0 p-3 space-y-3 overflow-y-auto">
+      <div className="flex-1 min-h-0 flex flex-col p-3 gap-3 overflow-hidden">
         {/* Search bar */}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search infrastructure..."
@@ -161,8 +161,8 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
         </div>
 
         {/* Table */}
-        <div className="bg-card rounded-lg border border-border overflow-hidden">
-          <div className="overflow-x-auto overflow-y-visible" style={{ maxHeight: 'calc(100vh - 260px)' }}>
+        <div className="bg-card rounded-lg border border-border overflow-hidden flex-1 min-h-0 flex flex-col">
+          <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto scrollbar-thin">
             <table className="w-full text-xs">
               <thead className="bg-secondary/50">
                 <tr className="border-b border-border">

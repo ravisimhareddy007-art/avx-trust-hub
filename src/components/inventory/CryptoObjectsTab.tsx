@@ -144,9 +144,9 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
 
   return (
     <div className="flex flex-col h-full relative">
-      <div className="flex-1 min-w-0 p-3 space-y-3 overflow-y-auto">
+      <div className="flex-1 min-h-0 flex flex-col p-3 gap-3 overflow-hidden">
         {/* Type filter — replaced horizontal scroll-tabs with a dropdown */}
-        <div className="flex items-center gap-2 border-b border-border pb-2">
+        <div className="flex items-center gap-2 border-b border-border pb-2 flex-shrink-0">
           <span className="text-[10px] font-medium text-muted-foreground">Identity type:</span>
           <select
             value={typeFilter}
@@ -161,7 +161,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
         </div>
 
         {/* Search + filter dropdowns */}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search identities..."
@@ -193,12 +193,11 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
           <span className="text-[10px] text-muted-foreground ml-auto">{filtered.length} identities</span>
         </div>
 
-        {/* Table — single bottom horizontal scroll, with a "scroll right" affordance */}
-        <div className="bg-card rounded-lg border border-border overflow-hidden relative">
+        {/* Table — flex-fills remaining height; single bottom horizontal scroll */}
+        <div className="bg-card rounded-lg border border-border overflow-hidden relative flex-1 min-h-0 flex flex-col">
           <div
             ref={tableScrollRef}
-            className="overflow-x-auto overflow-y-auto scrollbar-thin"
-            style={{ maxHeight: 'calc(100vh - 290px)' }}
+            className="flex-1 min-h-0 overflow-x-auto overflow-y-auto scrollbar-thin"
           >
             <table className="w-full text-xs min-w-[1200px]">
               <thead className="bg-secondary/50 sticky top-0 z-10">
@@ -223,8 +222,12 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                 {filtered.map(co => (
                   <React.Fragment key={co.id}>
                     <tr className="border-b border-border hover:bg-secondary/30 cursor-pointer transition-colors"
-                      onClick={() => setExpandedRow(expandedRow === co.id ? null : co.id)}>
-                      <td className="py-2 px-1 text-muted-foreground">{expandedRow === co.id ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}</td>
+                      onClick={() => setDetailAsset(co)}>
+                      <td className="py-2 px-1 text-muted-foreground" onClick={e => { e.stopPropagation(); setExpandedRow(expandedRow === co.id ? null : co.id); }}>
+                        <button className="p-0.5 rounded hover:bg-secondary" title="Toggle quick preview">
+                          {expandedRow === co.id ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                        </button>
+                      </td>
                       <td className="py-2 px-2 font-medium text-foreground max-w-[220px]">
                         <div className="flex items-center gap-1.5">
                           <span className="truncate">{co.name}</span>
