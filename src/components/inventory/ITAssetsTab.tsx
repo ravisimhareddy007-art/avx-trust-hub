@@ -155,7 +155,7 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
 
         {/* Table */}
         <div className="bg-card rounded-lg border border-border overflow-hidden">
-          <div className="overflow-x-auto scrollbar-thin">
+          <div className="overflow-x-auto overflow-y-visible" style={{ maxHeight: 'calc(100vh - 260px)' }}>
             <table className="w-full text-xs">
               <thead className="bg-secondary/50">
                 <tr className="border-b border-border">
