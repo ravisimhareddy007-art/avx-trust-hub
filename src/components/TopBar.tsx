@@ -4,7 +4,7 @@ import { useAgent } from '@/context/AgentContext';
 import { Bell, Infinity as InfinityIcon, User } from 'lucide-react';
 
 const breadcrumbMap: Record<string, string> = {
-  'dashboards': 'Insights',
+  'dashboards': '',
   'discovery': 'Discovery > Add Discovery',
   'inventory': 'Inventory > All Assets',
   'policy-builder': 'Policies > Policy Builder',
