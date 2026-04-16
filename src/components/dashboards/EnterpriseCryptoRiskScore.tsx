@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { TrendingDown, TrendingUp, Sparkles, AlertTriangle } from 'lucide-react';
-import { SCORE, SCORE_DELTA_7D, distribution } from '@/data/ecrsData';
-import ScoreRing from './ecrs/ScoreRing';
-import TrendPanel from './ecrs/TrendPanel';
+import { TrendingDown, TrendingUp, Sparkles, ArrowRight } from 'lucide-react';
+import { SCORE_DELTA_7D, scoreBand } from '@/data/ecrsData';
+import { useDashboard } from '@/context/DashboardContext';
+import ImpactBars from './ecrs/ImpactBars';
 import RiskDriversList from './ecrs/RiskDriversList';
 import WhatIfSimulator from './ecrs/WhatIfSimulator';
 import ScoreBreakdown from './ecrs/ScoreBreakdown';
@@ -10,80 +10,86 @@ import ScoreBreakdown from './ecrs/ScoreBreakdown';
 interface Props { onScoreClick?: () => void; }
 
 export default function EnterpriseCryptoRiskScore({ onScoreClick }: Props) {
-  const [hoverSeg, setHoverSeg] = useState<number | null>(null);
+  const { score } = useDashboard();
+  const [simOpen, setSimOpen] = useState(false);
   const improving = SCORE_DELTA_7D < 0;
+  const band = scoreBand(score);
 
   return (
     <div className="bg-card rounded-xl border border-border p-5 h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-start justify-between mb-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-teal" />
-            <h2 className="text-sm font-semibold text-foreground">Enterprise Crypto Risk Score</h2>
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-teal" />
+          <h2 className="text-sm font-semibold text-foreground">Enterprise Crypto Risk Score</h2>
+        </div>
+        <span className="text-[10px] text-muted-foreground">CVSS-inspired · updated 2m ago</span>
+      </div>
+
+      {/* Score + verdict sentence */}
+      <div className="flex items-start gap-4 mb-4">
+        <button
+          onClick={onScoreClick}
+          className="flex flex-col items-center group"
+          title="Click for BU/App breakdown"
+        >
+          <span
+            className="text-[56px] font-bold leading-none tabular-nums transition-all"
+            style={{ color: band.hsl }}
+          >
+            {score}
+          </span>
+          <span
+            className="text-[11px] font-semibold mt-1 px-2 py-0.5 rounded"
+            style={{ background: `${band.hsl}20`, color: band.hsl }}
+          >
+            {band.label}
+          </span>
+        </button>
+        <div className="flex-1 pt-1">
+          <div
+            className={`inline-flex items-center gap-1 text-[10.5px] font-semibold px-1.5 py-0.5 rounded mb-1.5 ${
+              improving ? 'bg-teal/15 text-teal' : 'bg-coral/15 text-coral'
+            }`}
+          >
+            {improving ? <TrendingDown className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
+            {improving ? '↓' : '↑'} {Math.abs(SCORE_DELTA_7D)} pts (7d)
           </div>
-          <p className="text-[10px] text-muted-foreground mt-0.5">CVSS-inspired weighted model · updated 2m ago</p>
-        </div>
-        <div className={`flex items-center gap-1 text-xs font-semibold ${improving ? 'text-teal' : 'text-coral'}`}>
-          {improving ? <TrendingDown className="w-3.5 h-3.5" /> : <TrendingUp className="w-3.5 h-3.5" />}
-          {improving ? '↓' : '↑'} {Math.abs(SCORE_DELTA_7D)} pts (7d)
-        </div>
-      </div>
-
-      {/* Score + distribution + trend */}
-      <div className="grid grid-cols-12 gap-4 mb-3">
-        <div className="col-span-5 flex items-center justify-center">
-          <ScoreRing score={SCORE} hoverSeg={hoverSeg} setHoverSeg={setHoverSeg} onScoreClick={onScoreClick} />
-        </div>
-        <div className="col-span-4">
-          <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Asset Distribution</p>
-          <div className="space-y-1">
-            {distribution.map((seg, i) => (
-              <div
-                key={seg.label}
-                onMouseEnter={() => setHoverSeg(i)}
-                onMouseLeave={() => setHoverSeg(null)}
-                className={`flex items-center justify-between text-[10px] px-1.5 py-1 rounded cursor-pointer transition-colors ${hoverSeg === i ? 'bg-secondary/50' : 'hover:bg-secondary/30'}`}
-              >
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-sm" style={{ background: seg.color }} />
-                  <span className="text-foreground">{seg.label}</span>
-                </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <span className="tabular-nums">{seg.count.toLocaleString()}</span>
-                  <span className="tabular-nums w-10 text-right">{hoverSeg === i ? `+${seg.contribPct}%` : `${seg.pct}%`}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="col-span-3">
-          <TrendPanel improving={improving} />
+          <p className="text-[12px] text-foreground leading-snug">
+            Score dropped <span className="font-semibold text-teal">6 pts</span> in 7 days — driven by
+            <span className="font-semibold text-coral"> weak algorithm exposure</span> in 3 production systems.
+          </p>
         </div>
       </div>
 
-      {/* Smart insight */}
-      <div className="bg-coral/5 border border-coral/20 rounded-lg px-3 py-2 mb-3 flex items-start gap-2">
-        <AlertTriangle className="w-3.5 h-3.5 text-coral mt-0.5 flex-shrink-0" />
-        <p className="text-[11px] text-foreground leading-snug">
-          <span className="font-semibold text-coral">3.5% of assets contribute to 42% of total risk.</span>
-          <span className="text-muted-foreground"> 1 root key creates systemic exposure across 120 dependent assets in payments. Focus Critical-band identities first.</span>
-        </p>
-      </div>
-
-      {/* Risk drivers w/ business context, urgency, compliance */}
+      {/* Top 3 impact bars (replaces donut + 5 bands of millions) */}
       <div className="mb-3">
+        <ImpactBars />
+      </div>
+
+      {/* Single CTA: opens simulator */}
+      <button
+        onClick={() => setSimOpen(o => !o)}
+        className="w-full flex items-center justify-between text-[11px] font-semibold px-3 py-2 rounded-md bg-teal/10 hover:bg-teal/20 text-teal border border-teal/30 transition-colors mb-3"
+      >
+        <span>What fixes the score fastest?</span>
+        <ArrowRight className={`w-3.5 h-3.5 transition-transform ${simOpen ? 'rotate-90' : ''}`} />
+      </button>
+
+      {simOpen && (
+        <div className="mb-3 animate-in fade-in slide-in-from-top-1 duration-200">
+          <WhatIfSimulator score={score} />
+        </div>
+      )}
+
+      {/* Risk drivers — context-rich, with AI batch CTAs */}
+      <div className="mb-3 flex-1 overflow-y-auto scrollbar-thin">
         <RiskDriversList />
-      </div>
-
-      {/* What-if simulator (replaces static recommended actions) */}
-      <div className="mb-3">
-        <WhatIfSimulator score={SCORE} />
       </div>
 
       {/* Explainability */}
       <div className="mt-auto">
-        <ScoreBreakdown score={SCORE} />
+        <ScoreBreakdown score={score} />
       </div>
     </div>
   );
