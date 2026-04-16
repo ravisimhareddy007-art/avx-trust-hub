@@ -189,67 +189,73 @@ function ProfilesTab({ onEdit, onNew }: { onEdit: (p: Profile) => void; onNew: (
         <span className="text-[11px] text-muted-foreground">{filtered.length} of {mockProfiles.length} profiles</span>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-        {filtered.map(p => (
-          <div key={p.id} className="bg-card rounded-lg border border-border p-3.5 space-y-2.5 hover:border-teal/40 transition-colors">
-            <div className="flex items-start justify-between">
-              <div className="min-w-0">
-                <p className="text-[12.5px] font-semibold text-foreground truncate">{p.name}</p>
-                <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground mt-1 inline-block">{p.category}</span>
-              </div>
-              <StatusBadge status={p.status} />
-            </div>
-
-            <div className="space-y-1">
-              <p className="text-[9.5px] uppercase tracking-wider text-muted-foreground">Includes</p>
-              <div className="flex flex-wrap gap-1">
-                {p.types.map(t => (
-                  <span key={t} className="text-[9.5px] px-1.5 py-0.5 rounded bg-teal/10 text-teal border border-teal/20">{t}</span>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 text-[10px] pt-1.5 border-t border-border">
-              <div>
-                <p className="text-muted-foreground">Schedule</p>
-                <p className="text-foreground font-medium flex items-center gap-1"><Calendar className="w-2.5 h-2.5" /> {p.schedule}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Discovered</p>
-                <p className="text-foreground font-semibold tabular-nums">{p.discovered.toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Last run</p>
-                <p className="text-foreground">{p.lastRun}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Next run</p>
-                <p className="text-foreground">{p.nextRun}</p>
-              </div>
-            </div>
-
-            <div className="flex gap-1 pt-1.5 border-t border-border">
-              <button
-                onClick={() => toast.success(`"${p.name}" started on-demand`, { description: 'View progress in Discovery Runs' })}
-                className="flex-1 flex items-center justify-center gap-1 text-[10.5px] font-semibold py-1.5 rounded bg-teal text-primary-foreground hover:bg-teal-light"
-              >
-                <Play className="w-2.5 h-2.5" /> Run Now
-              </button>
-              <button onClick={() => onEdit(p)}
-                className="flex items-center justify-center gap-1 text-[10.5px] font-medium px-2.5 py-1.5 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-secondary">
-                <Edit className="w-2.5 h-2.5" /> Edit
-              </button>
-              <button
-                onClick={() => toast.success(`Cloned "${p.name}"`)}
-                className="flex items-center justify-center gap-1 text-[10.5px] font-medium px-2.5 py-1.5 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-secondary">
-                <Copy className="w-2.5 h-2.5" /> Clone
-              </button>
-            </div>
-          </div>
-        ))}
+      <div className="bg-card rounded-lg border border-border overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead className="bg-secondary/40 text-muted-foreground">
+              <tr>
+                <th className="text-left px-3 py-2 font-medium">Profile</th>
+                <th className="text-left px-3 py-2 font-medium">Category</th>
+                <th className="text-left px-3 py-2 font-medium">Includes</th>
+                <th className="text-left px-3 py-2 font-medium">Schedule</th>
+                <th className="text-right px-3 py-2 font-medium">Discovered</th>
+                <th className="text-left px-3 py-2 font-medium">Last run</th>
+                <th className="text-left px-3 py-2 font-medium">Next run</th>
+                <th className="text-left px-3 py-2 font-medium">Status</th>
+                <th className="text-right px-3 py-2 font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(p => (
+                <tr key={p.id} className="border-t border-border hover:bg-secondary/20">
+                  <td className="px-3 py-2 font-semibold text-foreground whitespace-nowrap">{p.name}</td>
+                  <td className="px-3 py-2">
+                    <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground whitespace-nowrap">{p.category}</span>
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="flex flex-wrap gap-1">
+                      {p.types.map(t => (
+                        <span key={t} className="text-[9.5px] px-1.5 py-0.5 rounded bg-teal/10 text-teal border border-teal/20 whitespace-nowrap">{t}</span>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
+                    <span className="inline-flex items-center gap-1"><Calendar className="w-2.5 h-2.5" /> {p.schedule}</span>
+                  </td>
+                  <td className="px-3 py-2 text-right text-foreground tabular-nums font-medium">{p.discovered.toLocaleString()}</td>
+                  <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{p.lastRun}</td>
+                  <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{p.nextRun}</td>
+                  <td className="px-3 py-2"><StatusBadge status={p.status} /></td>
+                  <td className="px-3 py-2">
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => toast.success(`"${p.name}" started on-demand`, { description: 'View progress in Discovery Runs' })}
+                        className="flex items-center gap-1 text-[10.5px] font-semibold px-2 py-1 rounded bg-teal text-primary-foreground hover:bg-teal-light"
+                      >
+                        <Play className="w-2.5 h-2.5" /> Run
+                      </button>
+                      <button onClick={() => onEdit(p)}
+                        className="flex items-center gap-1 text-[10.5px] font-medium px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-secondary">
+                        <Edit className="w-2.5 h-2.5" /> Edit
+                      </button>
+                      <button
+                        onClick={() => toast.success(`Cloned "${p.name}"`)}
+                        className="flex items-center gap-1 text-[10.5px] font-medium px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-secondary">
+                        <Copy className="w-2.5 h-2.5" /> Clone
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {filtered.length === 0 && (
+                <tr><td colSpan={9} className="px-3 py-8 text-center text-muted-foreground">No profiles match your search.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
         <button onClick={onNew}
-          className="bg-card rounded-lg border-2 border-dashed border-border hover:border-teal/40 hover:bg-secondary/30 transition-colors flex flex-col items-center justify-center gap-1.5 min-h-[180px] text-muted-foreground hover:text-teal">
-          <Plus className="w-5 h-5" />
+          className="w-full border-t border-dashed border-border hover:bg-secondary/30 transition-colors flex items-center justify-center gap-1.5 py-3 text-muted-foreground hover:text-teal">
+          <Plus className="w-4 h-4" />
           <span className="text-xs font-medium">New Profile</span>
         </button>
       </div>
