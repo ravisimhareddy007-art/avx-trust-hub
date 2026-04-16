@@ -1,7 +1,14 @@
 import React, { useState, useMemo } from 'react';
-import { Shield, Key, Bot, Lock, Fingerprint, Globe, AlertTriangle, Clock, Sparkles, Loader2, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { Shield, Key, Bot, Lock, Fingerprint, Globe, AlertTriangle, Clock, Sparkles, Loader2, Check, ChevronDown, ChevronUp, Layers } from 'lucide-react';
 import { useDashboard } from '@/context/DashboardContext';
 import { feedItemToDriver } from '@/context/DashboardContext';
+
+interface WaveInfo {
+  waves: number;
+  perWave: number;
+  totalAffected: number;
+  unit: string;
+}
 
 interface ActionItem {
   id: string;
@@ -10,9 +17,10 @@ interface ActionItem {
   severity: 'P1' | 'P2' | 'P3';
   title: string;
   detail: string;
-  aiPlan: string;       // what AI will do (plain English)
+  aiPlan: string;
   approveSummary: string;
   ageMins: number;
+  waveInfo?: WaveInfo;
 }
 
 const FEED: ActionItem[] = [
@@ -39,6 +47,7 @@ const FEED: ActionItem[] = [
     aiPlan: 'Bulk revoke 3,218 SSH keys (last used >180d, no owner). Quarantine for 30d before deletion. Notify last-known accessing IPs.',
     approveSummary: 'Quarantine 3,218 orphaned keys for 30 days.',
     ageMins: 95,
+    waveInfo: { waves: 4, perWave: 800, totalAffected: 3218, unit: 'keys' },
   },
   {
     id: '4', category: 'Secrets', icon: Lock, severity: 'P1',
@@ -47,6 +56,7 @@ const FEED: ActionItem[] = [
     aiPlan: 'Open PRs to replace hardcoded secrets with Vault references. Rotate all 18,420 exposed values. Notify last-author per repo.',
     approveSummary: 'Rotate all 18,420 secrets and open replacement PRs.',
     ageMins: 130,
+    waveInfo: { waves: 6, perWave: 3070, totalAffected: 18420, unit: 'secrets' },
   },
   {
     id: '5', category: 'K8s', icon: Globe, severity: 'P2',
@@ -63,6 +73,7 @@ const FEED: ActionItem[] = [
     aiPlan: 'Stage PQC migration: re-issue 4,218 certs with ML-KEM-768 hybrid via DigiCert. Roll in waves of 200/day. Auto-rollback on TLS handshake failure.',
     approveSummary: 'Begin staged PQC migration of 4,218 certs.',
     ageMins: 240,
+    waveInfo: { waves: 21, perWave: 200, totalAffected: 4218, unit: 'certs' },
   },
   {
     id: '7', category: 'Code Sign', icon: Fingerprint, severity: 'P2',
@@ -79,6 +90,7 @@ const FEED: ActionItem[] = [
     aiPlan: 'Schedule wave-based rotation of 42,180 API keys (5 waves over 5 days). Notify owning teams 24h before each wave.',
     approveSummary: 'Schedule 5-wave rotation of 42,180 keys.',
     ageMins: 480,
+    waveInfo: { waves: 5, perWave: 8436, totalAffected: 42180, unit: 'keys' },
   },
   {
     id: '9', category: 'SSH', icon: Key, severity: 'P3',
@@ -95,6 +107,7 @@ const FEED: ActionItem[] = [
     aiPlan: 'Auto-assign sponsors based on token creator + service ownership graph. Send confirmation email to each sponsor with 7d objection window.',
     approveSummary: 'Auto-sponsor 44K tokens with confirmation flow.',
     ageMins: 1100,
+    waveInfo: { waves: 4, perWave: 11000, totalAffected: 44000, unit: 'tokens' },
   },
 ];
 
@@ -114,18 +127,17 @@ export default function CriticalActionFeed() {
   const { hoveredDriver, resolvedFeedItems, resolvingFeedItems, resolveFeedItem } = useDashboard();
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  // Narrative thread: when a driver is hovered upstream, dim non-related items
+  // Soft narrative wiring: only highlight matching items, do NOT dim others
   const items = useMemo(() => {
     return FEED.map(item => ({
       ...item,
-      dimmed: hoveredDriver != null && feedItemToDriver[item.id] !== hoveredDriver,
       highlighted: hoveredDriver != null && feedItemToDriver[item.id] === hoveredDriver,
     }));
   }, [hoveredDriver]);
 
   return (
     <div className="bg-card rounded-xl border border-border h-full flex flex-col">
-      {/* Header — no type filter tabs */}
+      {/* Header */}
       <div className="px-5 pt-5 pb-3 border-b border-border">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -135,11 +147,6 @@ export default function CriticalActionFeed() {
           </div>
           <span className="text-[10px] text-muted-foreground">{FEED.length} items</span>
         </div>
-        {hoveredDriver && (
-          <p className="text-[10px] text-coral mt-2">
-            Filtered by hovered driver — release to clear
-          </p>
-        )}
       </div>
 
       {/* Feed */}
@@ -154,8 +161,12 @@ export default function CriticalActionFeed() {
             return (
               <li
                 key={item.id}
-                className={`px-5 py-3 transition-all ${
-                  isResolved ? 'bg-teal/5' : item.highlighted ? 'bg-coral/5' : item.dimmed ? 'opacity-40' : 'hover:bg-secondary/20'
+                className={`px-5 py-3 transition-all border-l-2 ${
+                  isResolved
+                    ? 'bg-teal/5 border-l-teal/40'
+                    : item.highlighted
+                      ? 'bg-coral/[0.03] border-l-coral'
+                      : 'border-l-transparent hover:bg-secondary/20'
                 }`}
               >
                 <div className="flex items-start gap-3">
@@ -171,6 +182,11 @@ export default function CriticalActionFeed() {
                       <span className="text-[9.5px] text-muted-foreground flex items-center gap-0.5">
                         <Clock className="w-2.5 h-2.5" /> {ageLabel(item.ageMins)} ago
                       </span>
+                      {item.waveInfo && (
+                        <span className="text-[9.5px] text-purple-light flex items-center gap-0.5">
+                          <Layers className="w-2.5 h-2.5" /> {item.waveInfo.waves}-wave plan
+                        </span>
+                      )}
                     </div>
                     <p className="text-[12px] font-medium text-foreground leading-snug">{item.title}</p>
                     <p className="text-[10.5px] text-muted-foreground mt-0.5 leading-snug">{item.detail}</p>
@@ -205,12 +221,25 @@ export default function CriticalActionFeed() {
                     <p className="text-[11px] text-foreground leading-snug mb-2">{item.aiPlan}</p>
                     <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">You're approving</p>
                     <p className="text-[11px] text-foreground leading-snug mb-2.5">{item.approveSummary}</p>
+
+                    {item.waveInfo && (
+                      <div className="mb-2.5 rounded bg-purple/10 border border-purple/30 px-2.5 py-1.5">
+                        <p className="text-[9px] uppercase tracking-wider text-purple-light font-semibold mb-0.5 flex items-center gap-1">
+                          <Layers className="w-2.5 h-2.5" /> Wave plan scope
+                        </p>
+                        <p className="text-[10.5px] text-foreground tabular-nums">
+                          Wave 1 of {item.waveInfo.waves} · {item.waveInfo.perWave.toLocaleString()} {item.waveInfo.unit} · today
+                          <span className="text-muted-foreground"> ({item.waveInfo.totalAffected.toLocaleString()} total over {item.waveInfo.waves} waves)</span>
+                        </p>
+                      </div>
+                    )}
+
                     <div className="flex gap-2">
                       <button
                         onClick={() => { resolveFeedItem(item.id); setExpanded(null); }}
                         className="flex-1 text-[11px] font-semibold py-1.5 rounded-md bg-teal text-primary-foreground hover:bg-teal-light"
                       >
-                        Approve & Execute
+                        {item.waveInfo ? 'Approve wave plan →' : 'Approve & Execute'}
                       </button>
                       <button
                         onClick={() => setExpanded(null)}
@@ -225,7 +254,7 @@ export default function CriticalActionFeed() {
                 {/* Live status after approve */}
                 {isResolved && (
                   <p className="mt-1.5 ml-10 text-[10px] text-teal">
-                    Renewing → Deployed → Ticket closed (#TKT-{1000 + Number(item.id) * 37})
+                    {item.waveInfo ? `Wave 1/${item.waveInfo.waves} executed → next wave scheduled` : 'Renewing → Deployed → Ticket closed'} (#TKT-{1000 + Number(item.id) * 37})
                   </p>
                 )}
               </li>

@@ -221,7 +221,7 @@ export default function TopBar() {
 
           {/* Quantum Risk Pill */}
           <button
-            onClick={() => setCurrentPage('quantum')}
+            onClick={() => setCurrentPage('quantum-posture')}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber/10 text-amber text-xs font-medium hover:bg-amber/20 transition-colors"
           >
             <AlertTriangle className="w-3 h-3" />
