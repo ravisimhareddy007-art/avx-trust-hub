@@ -303,6 +303,16 @@ function NewScanTab({ existing, onSaved }: { existing: Profile | null; onSaved: 
 
   return (
     <div className="space-y-4">
+      {isEditing && (
+        <div className="bg-amber/10 border border-amber/30 rounded-lg px-3 py-2 flex items-center justify-between">
+          <p className="text-[11.5px]">
+            <span className="font-semibold text-amber">Editing profile:</span>{' '}
+            <span className="text-foreground">{existing?.name}</span>
+            <span className="text-muted-foreground"> · changes apply on save</span>
+          </p>
+          <button onClick={onSaved} className="text-[10.5px] text-muted-foreground hover:text-foreground">Cancel</button>
+        </div>
+      )}
       {/* Two-column scan type selector */}
       <div className="bg-card rounded-lg border border-border overflow-hidden">
         <div className="px-3 py-2 border-b border-border bg-secondary/30">
