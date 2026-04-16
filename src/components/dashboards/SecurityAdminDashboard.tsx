@@ -6,7 +6,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts';
-import { RefreshCw, Info, Shield, Bot, Key, Lock, Sparkles, Ticket, Zap, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { RefreshCw, Info, Shield, Bot, Key, Lock, Sparkles, AlertTriangle, FileText, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 
 const cryptoPostureData = [
@@ -19,214 +19,66 @@ const cryptoPostureData = [
 
 // ─── 5-Dimension Posture Breakdown ──────────────────────────────────────────
 
-function PostureDimensions() {
+function PostureDimensions({ onNavigate }: { onNavigate: (page: string, filters?: Record<string, string>) => void }) {
   const dims = [
-    { id: 'AH', label: 'Algorithm Health', weight: '30%', score: 64, desc: '% using approved algorithms', color: 'hsl(var(--amber))' },
-    { id: 'EP', label: 'Expiry Posture', weight: '25%', score: 78, desc: 'Penalty by urgency window', color: 'hsl(var(--teal))' },
-    { id: 'PQR', label: 'PQC Readiness', weight: '25%', score: 12, desc: '% quantum-safe or with QTH plan', color: 'hsl(var(--coral))' },
-    { id: 'GC', label: 'Governance Cover', weight: '15%', score: 71, desc: 'Owner + lifecycle + no violations', color: 'hsl(var(--amber))' },
-    { id: 'AIT', label: 'AI Identity Trust', weight: '5%', score: 48, desc: 'Sponsor + scoped + audited', color: 'hsl(var(--purple))' },
+    { id: 'AH', label: 'Algorithm Health', weight: '30%', score: 64, desc: '% using approved algorithms', color: 'hsl(var(--amber))', page: 'inventory', filters: { algorithm: 'weak' } },
+    { id: 'EP', label: 'Expiry Posture', weight: '25%', score: 78, desc: 'Penalty by urgency window', color: 'hsl(var(--teal))', page: 'inventory', filters: { status: 'Expiring' } },
+    { id: 'PQR', label: 'PQC Readiness', weight: '25%', score: 12, desc: '% quantum-safe or with QTH plan', color: 'hsl(var(--coral))', page: 'quantum', filters: {} },
+    { id: 'GC', label: 'Governance Cover', weight: '15%', score: 71, desc: 'Owner + lifecycle + no violations', color: 'hsl(var(--amber))', page: 'policy-builder', filters: {} },
+    { id: 'AIT', label: 'AI Identity Trust', weight: '5%', score: 48, desc: 'Sponsor + scoped + audited', color: 'hsl(var(--purple))', page: 'inventory', filters: { type: 'AI Agent Token' } },
   ];
   const composite = Math.round(64 * 0.30 + 78 * 0.25 + 12 * 0.25 + 71 * 0.15 + 48 * 0.05);
+  const [generating, setGenerating] = useState(false);
+
+  const handleGenerateReport = () => {
+    setGenerating(true);
+    setTimeout(() => {
+      setGenerating(false);
+      toast.success('CISO narrative report generated — score 55/100, top risk: PQC readiness at 12%');
+    }, 1500);
+  };
 
   return (
     <div className="bg-card rounded-lg border border-border p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold">Crypto Posture — 5 Dimensions</h3>
-        <div className="flex items-center gap-2">
-          <span className="text-2xl font-bold text-foreground">{composite}</span>
-          <span className="text-[10px] text-muted-foreground">/ 100</span>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleGenerateReport}
+            disabled={generating}
+            className="flex items-center gap-1.5 text-[10px] px-2 py-1 rounded bg-teal/10 text-teal font-medium hover:bg-teal/20 disabled:opacity-50"
+          >
+            <Sparkles className="w-3 h-3" />
+            {generating ? 'Generating...' : 'AI: Generate CISO Report'}
+          </button>
+          <div className="flex items-center gap-2">
+            <span className="text-2xl font-bold text-foreground">{composite}</span>
+            <span className="text-[10px] text-muted-foreground">/ 100</span>
+          </div>
         </div>
       </div>
       <div className="space-y-2">
         {dims.map(d => (
-          <div key={d.id} className="flex items-center gap-3">
+          <button
+            key={d.id}
+            onClick={() => onNavigate(d.page, d.filters)}
+            className="w-full flex items-center gap-3 hover:bg-secondary/30 rounded px-1 py-0.5 transition-colors group"
+          >
             <span className="w-8 text-[10px] font-bold text-muted-foreground">{d.id}</span>
             <div className="flex-1">
               <div className="flex items-center justify-between mb-0.5">
-                <span className="text-[11px] text-foreground">{d.label} <span className="text-muted-foreground">({d.weight})</span></span>
+                <span className="text-[11px] text-foreground group-hover:text-teal transition-colors">{d.label} <span className="text-muted-foreground">({d.weight})</span></span>
                 <span className="text-[11px] font-semibold" style={{ color: d.color }}>{d.score}</span>
               </div>
               <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                 <div className="h-full rounded-full transition-all" style={{ width: `${d.score}%`, backgroundColor: d.color }} />
               </div>
             </div>
-          </div>
-        ))}
-      </div>
-      <p className="text-[9px] text-muted-foreground mt-2">Composite = AH×0.30 + EP×0.25 + PQR×0.25 + GC×0.15 + AIT×0.05 (tenant-configurable weights)</p>
-    </div>
-  );
-}
-
-// ─── Infinity AI Intelligence Center ────────────────────────────────────────
-
-function InfinityAICenter({ onNavigate }: { onNavigate: (page: string, filters?: Record<string, string>) => void }) {
-  const [aiRunning, setAiRunning] = useState<string | null>(null);
-  const [aiResults, setAiResults] = useState<{ capability: string; output: string; detail: string }[] | null>(null);
-  const [chatInput, setChatInput] = useState('');
-  const [chatResponse, setChatResponse] = useState<string | null>(null);
-
-  const aiCapabilities = [
-    {
-      id: 'predictive-expiry', label: 'Predictive Expiry Engine', icon: AlertTriangle,
-      desc: 'Ranks certs by P(failure) using CA latency telemetry — alerts 14d before predicted failure, not just expiry date',
-      feeds: 'UCO expiry history · CA latency · Renewal success rates', phase: 'Phase 3',
-    },
-    {
-      id: 'nl-to-rego', label: 'Natural Language → Rego', icon: Shield,
-      desc: 'Describe a policy in plain English, get a validated OPA/Rego rule — unit-tested and ready to deploy',
-      feeds: 'Policy description · UCO schema · NIST/PCI map', phase: 'Phase 2',
-    },
-    {
-      id: 'blast-radius', label: 'Blast Radius Correlation', icon: Zap,
-      desc: 'Graph neural network on credential dependency graph — shows downstream systems at risk if a cert fails',
-      feeds: 'UCO deployments · CA chain · IAM graph · Topology', phase: 'Phase 2',
-    },
-    {
-      id: 'pqc-prioritiser', label: 'PQC Migration Prioritiser', icon: Shield,
-      desc: 'AI-ranked migration queue: asset × algorithm × target PQC algo × deadline based on harvest risk × criticality',
-      feeds: 'UCO pqc_risk · Business criticality · Harvest risk timeline', phase: 'Phase 3',
-    },
-    {
-      id: 'anomaly-detection', label: 'Agent Anomaly Detection', icon: Bot,
-      desc: 'Autoencoder + isolation forest on agent credential velocity — auto-suspend deviating agents pending review',
-      feeds: 'Eos action logs · Behaviour baseline · SPIFFE telemetry', phase: 'Phase 3',
-    },
-    {
-      id: 'posture-narrative', label: 'Posture Narrative Generator', icon: Sparkles,
-      desc: 'Board-ready paragraph: score, trend, top risks, recommended actions — one click CISO report',
-      feeds: '5 posture dimensions · Trend data · Violation catalogue', phase: 'Phase 1',
-    },
-  ];
-
-  const handleAIRun = (capId: string) => {
-    setAiRunning(capId);
-    setChatResponse(null);
-    setTimeout(() => {
-      setAiRunning(null);
-      const results: Record<string, { capability: string; output: string; detail: string }[]> = {
-        'predictive-expiry': [
-          { capability: 'Predictive Expiry', output: '47 certs predicted to fail renewal', detail: 'DigiCert CA avg latency 6.2h — 47 certs will miss renewal window if not started within 48h. Ranked by blast radius.' },
-        ],
-        'nl-to-rego': [
-          { capability: 'NL → Rego', output: 'Policy rule generated & validated', detail: 'Enter a policy in the chat below: e.g. "Block all RSA-2048 certs in production environments"' },
-        ],
-        'blast-radius': [
-          { capability: 'Blast Radius', output: '12 critical cascade paths found', detail: 'payments-api.acme.com TLS cert → 847 downstream services. If this cert fails, estimated $2.4M/hr impact.' },
-        ],
-        'pqc-prioritiser': [
-          { capability: 'PQC Queue', output: 'Migration queue reordered by AI', detail: 'Top priority: 847 payment certs (harvest risk: HIGH, criticality: P0). Target: ML-DSA-65. Est. 12 days batch migration.' },
-        ],
-        'anomaly-detection': [
-          { capability: 'Anomaly Alert', output: '3 agents flagged for review', detail: 'Agent "ci-deploy-bot-7" requesting 14× normal credential velocity. Agent "data-pipeline-agent" accessing out-of-scope secrets.' },
-        ],
-        'posture-narrative': [
-          { capability: 'CISO Report', output: 'Executive narrative generated', detail: 'Your crypto posture score is 55/100 (↓3 from last month). Top risk: PQC readiness at 12% — 247K assets use quantum-vulnerable algorithms. Recommend: accelerate Batch 1 payment cert migration and right-size 179K over-privileged AI agent tokens.' },
-        ],
-      };
-      setAiResults(results[capId] || []);
-    }, 2500);
-  };
-
-  const handleChat = () => {
-    if (!chatInput.trim()) return;
-    setAiRunning('chat');
-    const input = chatInput;
-    setChatInput('');
-    setTimeout(() => {
-      setAiRunning(null);
-      if (input.toLowerCase().includes('expir')) {
-        setChatResponse(`Found 342 certificates expiring in next 7 days with no owner assigned.\n\nTop 3 by blast radius:\n1. payments-api.acme.com — 847 downstream services\n2. auth-gateway.acme.com — 312 services\n3. k8s-ingress-prod — 204 services\n\nShall I create remediation tickets for all 342? (AI will auto-assign owners based on deployment patterns)`);
-      } else if (input.toLowerCase().includes('rotate') || input.toLowerCase().includes('rsa')) {
-        setChatResponse(`Identified 1,247 RSA-2048 SSH keys in payments namespace.\n\nAI recommendation: Rotate to Ed25519 in 3 batches:\n• Batch 1: 412 bastion keys (zero-downtime swap)\n• Batch 2: 518 service keys (maintenance window required)\n• Batch 3: 317 legacy keys (manual review needed)\n\nEstimated completion: 4 days. Shall I create the rotation workflow?`);
-      } else {
-        setChatResponse(`Analyzing your request: "${input}"\n\nI've correlated data across all 5 engines. Based on your current posture (score: 55), the highest-impact action is migrating 847 payment certificates to ML-DSA-65. This would improve your PQR dimension from 12 → 28 and composite score from 55 → 59.\n\nWant me to generate the migration plan and create tickets?`);
-      }
-    }, 2000);
-  };
-
-  return (
-    <div className="bg-card rounded-lg border border-teal/30 p-4">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-teal/10 flex items-center justify-center">
-            <Sparkles className="w-4 h-4 text-teal" />
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold">∞ Infinity AI — Intelligence Substrate</h3>
-            <p className="text-[10px] text-muted-foreground">AI reads all engine event streams simultaneously — prediction, correlation, autonomous actions</p>
-          </div>
-        </div>
-        {aiRunning && (
-          <div className="flex items-center gap-1.5 text-[10px] text-teal">
-            <div className="w-2 h-2 rounded-full bg-teal animate-pulse" />
-            {aiRunning === 'chat' ? 'Correlating across engines...' : 'Processing...'}
-          </div>
-        )}
-      </div>
-
-      {/* AI Results */}
-      {aiResults && (
-        <div className="mb-3 bg-teal/5 border border-teal/20 rounded-lg p-3">
-          <p className="text-xs font-semibold text-teal mb-2 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> AI Analysis Complete</p>
-          {aiResults.map((r, i) => (
-            <div key={i} className="text-xs space-y-1">
-              <p className="font-medium text-foreground">{r.output}</p>
-              <p className="text-muted-foreground text-[11px] leading-relaxed whitespace-pre-line">{r.detail}</p>
-            </div>
-          ))}
-          <button onClick={() => { setAiResults(null); onNavigate('remediation'); }} className="text-[10px] text-teal font-medium mt-2 hover:underline">Take action in Remediation →</button>
-        </div>
-      )}
-
-      {/* Chat Response */}
-      {chatResponse && (
-        <div className="mb-3 bg-secondary/50 border border-border rounded-lg p-3">
-          <p className="text-[10px] font-semibold text-teal mb-1">∞ Infinity AI</p>
-          <p className="text-xs text-foreground leading-relaxed whitespace-pre-line">{chatResponse}</p>
-          <div className="flex gap-2 mt-2">
-            <button onClick={() => { toast.success('Workflow created'); setChatResponse(null); }} className="text-[10px] px-2 py-1 rounded bg-teal text-primary-foreground hover:bg-teal-light">Yes, proceed</button>
-            <button onClick={() => setChatResponse(null)} className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80">Dismiss</button>
-          </div>
-        </div>
-      )}
-
-      {/* 6 AI Capabilities Grid */}
-      <div className="grid grid-cols-3 gap-2 mb-3">
-        {aiCapabilities.map(cap => (
-          <button
-            key={cap.id}
-            onClick={() => handleAIRun(cap.id)}
-            disabled={!!aiRunning}
-            className="bg-secondary/50 hover:bg-secondary border border-border rounded-lg p-2.5 text-left transition-colors disabled:opacity-50 group"
-          >
-            <div className="flex items-center gap-1.5 mb-1">
-              <cap.icon className="w-3.5 h-3.5 text-teal" />
-              <span className="text-[9px] px-1.5 py-0.5 rounded-full font-medium bg-teal/10 text-teal">{cap.phase}</span>
-            </div>
-            <p className="text-[11px] font-medium text-foreground mb-0.5">{cap.label}</p>
-            <p className="text-[9px] text-muted-foreground leading-tight">{cap.desc}</p>
-            <p className="text-[8px] text-muted-foreground/70 mt-1 italic">Feeds: {cap.feeds}</p>
+            <ArrowRight className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
           </button>
         ))}
       </div>
-
-      {/* Chat-Driven Remediation */}
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={chatInput}
-          onChange={e => setChatInput(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleChat()}
-          placeholder="Ask Infinity AI: 'Which certs expire this week with no owner?' or 'Rotate all RSA-2048 in payments'"
-          className="flex-1 px-3 py-2 bg-muted border border-border rounded-lg text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-teal"
-          disabled={!!aiRunning}
-        />
-        <button onClick={handleChat} disabled={!!aiRunning || !chatInput.trim()} className="px-3 py-2 text-xs font-medium bg-teal text-primary-foreground rounded-lg hover:bg-teal-light disabled:opacity-50">
-          Ask AI
-        </button>
-      </div>
+      <p className="text-[9px] text-muted-foreground mt-2">Composite = AH×0.30 + EP×0.25 + PQR×0.25 + GC×0.15 + AIT×0.05 · Click any dimension to drill down</p>
     </div>
   );
 }
@@ -241,6 +93,11 @@ export default function SecurityAdminDashboard() {
     { id: 'risk' as const, label: 'Risk & Crypto' },
     { id: 'shortlived' as const, label: 'Short Lived Certs' },
   ];
+
+  const handleNavigate = (page: string, filters?: Record<string, string>) => {
+    if (filters) setFilters(filters);
+    setCurrentPage(page);
+  };
 
   return (
     <div className="space-y-4 max-h-[calc(100vh-120px)] overflow-y-auto scrollbar-thin pr-1">
@@ -275,47 +132,36 @@ export default function SecurityAdminDashboard() {
 
       {activeTab === 'summary' && (
         <>
-          {/* Top-level KPIs */}
+          {/* Top-level KPIs — each navigates to filtered inventory */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-semibold">Crypto Posture Overview</h3>
-              <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                <span>0m ago</span>
-                <RefreshCw className="w-3 h-3" />
-                <Info className="w-3 h-3" />
-              </div>
             </div>
             <div className="grid grid-cols-4 gap-3">
               {[
-                { label: 'Total Machine Identities', value: '5.2M', color: 'hsl(var(--teal))', page: 'inventory', subtitle: 'Certs, Keys, Tokens, Secrets' },
-                { label: 'PQC-Vulnerable Assets', value: '247K', color: 'hsl(var(--coral))', page: 'inventory', subtitle: 'Requires algorithm migration' },
-                { label: 'AI Agent Identities', value: '472K', color: 'hsl(var(--purple))', page: 'inventory', subtitle: '38% over-privileged' },
-                { label: 'Unmanaged Secrets', value: '18,420', color: 'hsl(var(--amber))', page: 'inventory', subtitle: 'In repos & endpoints' },
+                { label: 'Total Machine Identities', value: '5.2M', color: 'hsl(var(--teal))', page: 'inventory', filters: {}, subtitle: 'Certs, Keys, Tokens, Secrets' },
+                { label: 'PQC-Vulnerable Assets', value: '247K', color: 'hsl(var(--coral))', page: 'quantum', filters: {}, subtitle: 'Requires algorithm migration' },
+                { label: 'AI Agent Identities', value: '472K', color: 'hsl(var(--purple))', page: 'inventory', filters: { type: 'AI Agent Token' }, subtitle: '38% over-privileged' },
+                { label: 'Unmanaged Secrets', value: '18,420', color: 'hsl(var(--amber))', page: 'inventory', filters: { type: 'API Key / Secret', status: 'Orphaned' }, subtitle: 'In repos & endpoints' },
               ].map(item => (
                 <button
                   key={item.label}
-                  onClick={() => setCurrentPage(item.page)}
-                  className="bg-card rounded-lg border border-border p-3 text-left hover:bg-secondary/50 transition-colors"
+                  onClick={() => handleNavigate(item.page, item.filters)}
+                  className="bg-card rounded-lg border border-border p-3 text-left hover:bg-secondary/50 hover:border-teal/30 transition-all group"
                   style={{ borderLeft: `3px solid ${item.color}` }}
                 >
                   <p className="text-lg font-bold text-foreground">{item.value}</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">{item.label}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5 group-hover:text-teal transition-colors">{item.label}</p>
                   <p className="text-[9px] text-muted-foreground/70">{item.subtitle}</p>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* 5-Dimension Posture Breakdown */}
-          <PostureDimensions />
+          {/* 5-Dimension Posture Breakdown — each dimension navigates */}
+          <PostureDimensions onNavigate={handleNavigate} />
 
-          {/* Infinity AI Intelligence Center */}
-          <InfinityAICenter onNavigate={(page, filters) => {
-            if (filters) setFilters(filters);
-            setCurrentPage(page);
-          }} />
-
-          {/* Per Crypto Object Widgets */}
+          {/* Per Crypto Object Widgets — each has actionable links */}
           <div>
             <h3 className="text-sm font-semibold mb-2">By Crypto Object Type</h3>
             <div className="grid grid-cols-4 gap-3">
@@ -327,15 +173,15 @@ export default function SecurityAdminDashboard() {
                 </div>
                 <div className="space-y-1.5 text-[11px]">
                   <div className="flex justify-between"><span className="text-muted-foreground">Total</span><span className="font-medium">1.8M</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Expiring &lt;30d</span><span className="font-medium text-coral">12,847</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Expired</span><span className="font-medium text-coral">342</span></div>
+                  <button onClick={() => handleNavigate('remediation', { module: 'clm', filter: 'expiry' })} className="w-full flex justify-between hover:text-coral transition-colors"><span className="text-muted-foreground">Expiring &lt;30d</span><span className="font-medium text-coral">12,847 →</span></button>
+                  <button onClick={() => handleNavigate('remediation', { module: 'clm', filter: 'expiry' })} className="w-full flex justify-between hover:text-coral transition-colors"><span className="text-muted-foreground">Expired</span><span className="font-medium text-coral">342 →</span></button>
                   <div className="flex justify-between"><span className="text-muted-foreground">Self-Signed</span><span className="font-medium text-amber">8,412</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Weak Algorithm</span><span className="font-medium text-amber">4,218</span></div>
+                  <button onClick={() => handleNavigate('quantum')} className="w-full flex justify-between hover:text-amber transition-colors"><span className="text-muted-foreground">Weak Algorithm</span><span className="font-medium text-amber">4,218 →</span></button>
                 </div>
                 <button onClick={() => { setFilters({ type: 'TLS Certificate' }); setCurrentPage('inventory'); }} className="text-[10px] text-teal mt-2 hover:underline">View all →</button>
               </div>
 
-              {/* SSH & Encryption Keys */}
+              {/* Keys */}
               <div className="bg-card rounded-lg border border-border p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <Key className="w-4 h-4 text-purple" />
@@ -345,13 +191,13 @@ export default function SecurityAdminDashboard() {
                   <div className="flex justify-between"><span className="text-muted-foreground">Total</span><span className="font-medium">1.4M</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">SSH Keys</span><span className="font-medium">842K</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">Encryption Keys</span><span className="font-medium">558K</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Orphaned</span><span className="font-medium text-coral">3,218</span></div>
+                  <button onClick={() => handleNavigate('remediation', { module: 'ssh', filter: 'orphaned' })} className="w-full flex justify-between hover:text-coral transition-colors"><span className="text-muted-foreground">Orphaned</span><span className="font-medium text-coral">3,218 →</span></button>
                   <div className="flex justify-between"><span className="text-muted-foreground">Non-HSM Stored</span><span className="font-medium text-amber">14,720</span></div>
                 </div>
                 <button onClick={() => { setFilters({ type: 'SSH Key' }); setCurrentPage('inventory'); }} className="text-[10px] text-teal mt-2 hover:underline">View all →</button>
               </div>
 
-              {/* Tokens & Agent Identities */}
+              {/* Tokens & Agents */}
               <div className="bg-card rounded-lg border border-border p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <Bot className="w-4 h-4 text-amber" />
@@ -361,8 +207,8 @@ export default function SecurityAdminDashboard() {
                   <div className="flex justify-between"><span className="text-muted-foreground">Total</span><span className="font-medium">1.2M</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">AI Agent Tokens</span><span className="font-medium">472K</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">Service Tokens</span><span className="font-medium">728K</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Over-Privileged</span><span className="font-medium text-coral">179K</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">No Audit Trail</span><span className="font-medium text-amber">82K</span></div>
+                  <button onClick={() => handleNavigate('remediation', { module: 'ai-agents' })} className="w-full flex justify-between hover:text-coral transition-colors"><span className="text-muted-foreground">Over-Privileged</span><span className="font-medium text-coral">179K →</span></button>
+                  <button onClick={() => handleNavigate('trustops')} className="w-full flex justify-between hover:text-amber transition-colors"><span className="text-muted-foreground">No Audit Trail</span><span className="font-medium text-amber">82K →</span></button>
                 </div>
                 <button onClick={() => { setFilters({ type: 'AI Agent Token' }); setCurrentPage('inventory'); }} className="text-[10px] text-teal mt-2 hover:underline">View all →</button>
               </div>
@@ -377,10 +223,10 @@ export default function SecurityAdminDashboard() {
                   <div className="flex justify-between"><span className="text-muted-foreground">Total</span><span className="font-medium">812K</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">API Keys</span><span className="font-medium">384K</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">Vault Secrets</span><span className="font-medium">428K</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Exposed in Code</span><span className="font-medium text-coral">18,420</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Not Rotated &gt;90d</span><span className="font-medium text-amber">42,180</span></div>
+                  <button onClick={() => handleNavigate('remediation', { module: 'secrets' })} className="w-full flex justify-between hover:text-coral transition-colors"><span className="text-muted-foreground">Exposed in Code</span><span className="font-medium text-coral">18,420 →</span></button>
+                  <button onClick={() => handleNavigate('remediation', { module: 'secrets', filter: 'policy' })} className="w-full flex justify-between hover:text-amber transition-colors"><span className="text-muted-foreground">Not Rotated &gt;90d</span><span className="font-medium text-amber">42,180 →</span></button>
                 </div>
-                <button onClick={() => { setFilters({ type: 'API Key' }); setCurrentPage('inventory'); }} className="text-[10px] text-teal mt-2 hover:underline">View all →</button>
+                <button onClick={() => { setFilters({ type: 'API Key / Secret' }); setCurrentPage('inventory'); }} className="text-[10px] text-teal mt-2 hover:underline">View all →</button>
               </div>
             </div>
           </div>
@@ -390,11 +236,6 @@ export default function SecurityAdminDashboard() {
             <div className="bg-card rounded-lg border border-border p-4">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-semibold">Crypto Posture Score</h3>
-                <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                  <span>0m ago</span>
-                  <RefreshCw className="w-3 h-3" />
-                  <Info className="w-3 h-3" />
-                </div>
               </div>
               <div className="flex items-center gap-6">
                 <ResponsiveContainer width={160} height={160}>
@@ -408,11 +249,11 @@ export default function SecurityAdminDashboard() {
                 </ResponsiveContainer>
                 <div className="space-y-2">
                   {cryptoPostureData.map(item => (
-                    <div key={item.name} className="flex items-center gap-2 text-xs">
+                    <button key={item.name} onClick={() => handleNavigate('remediation')} className="flex items-center gap-2 text-xs hover:text-teal transition-colors">
                       <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: item.color }} />
                       <span className="font-medium text-foreground">{item.name}</span>
                       <span className="text-muted-foreground ml-auto">{item.value}%</span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -421,11 +262,6 @@ export default function SecurityAdminDashboard() {
             <div className="bg-card rounded-lg border border-border p-4">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-semibold">Credential Expiry Trend</h3>
-                <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                  <span>0m ago</span>
-                  <RefreshCw className="w-3 h-3" />
-                  <Info className="w-3 h-3" />
-                </div>
               </div>
               <ResponsiveContainer width="100%" height={180}>
                 <LineChart data={violationData}>
@@ -440,10 +276,13 @@ export default function SecurityAdminDashboard() {
             </div>
           </div>
 
-          {/* Alerts and Expirations */}
+          {/* Alerts and Expirations — actionable rows */}
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-card rounded-lg border border-border p-4">
-              <h3 className="text-sm font-semibold mb-3">Critical Alerts</h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold">Critical Alerts</h3>
+                <button onClick={() => setCurrentPage('trustops')} className="text-[10px] text-teal hover:underline">View all in TrustOps →</button>
+              </div>
               <div className="space-y-2 max-h-[250px] overflow-y-auto scrollbar-thin">
                 {criticalAlerts.map(alert => (
                   <div key={alert.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
@@ -465,7 +304,10 @@ export default function SecurityAdminDashboard() {
               </div>
             </div>
             <div className="bg-card rounded-lg border border-border p-4">
-              <h3 className="text-sm font-semibold mb-3">Upcoming Expirations</h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold">Upcoming Expirations</h3>
+                <button onClick={() => handleNavigate('inventory', { status: 'Expiring' })} className="text-[10px] text-teal hover:underline">View all →</button>
+              </div>
               <div className="space-y-2 max-h-[250px] overflow-y-auto scrollbar-thin">
                 {upcomingExpirations.map((item, i) => (
                   <div key={i} className="flex items-center justify-between py-2 border-b border-border last:border-0 cursor-pointer hover:bg-secondary/30 rounded px-1" onClick={() => { setFilters({ assetId: item.assetId }); setCurrentPage('inventory'); }}>
@@ -482,13 +324,6 @@ export default function SecurityAdminDashboard() {
               </div>
             </div>
           </div>
-
-          {/* AI Insight */}
-          <AIInsightCard onClick={() => setCurrentPage('remediation')}>
-            Infinity AI detected 3 converging risks: 247K PQC-vulnerable assets need algorithm migration,
-            38% of AI agent tokens are over-privileged with access to production data, and 18K secrets discovered in source code repos.
-            Recommend: prioritize PQC migration for BFSI assets, right-size agent permissions, and rotate exposed secrets.
-          </AIInsightCard>
         </>
       )}
 
@@ -498,7 +333,7 @@ export default function SecurityAdminDashboard() {
             <KPICard label="Enrolled Today" value="4,218" color="teal" />
             <KPICard label="Renewed Today" value="3,842" color="teal" />
             <KPICard label="Revoked Today" value={187} color="coral" />
-            <KPICard label="Failed Operations" value={23} color="coral" />
+            <KPICard label="Failed Operations" value={23} color="coral" onClick={() => setCurrentPage('trustops')} />
           </div>
           <div className="bg-card rounded-lg border border-border p-4">
             <h3 className="text-sm font-semibold mb-3">Operations — Last 14 Days</h3>
@@ -554,7 +389,7 @@ export default function SecurityAdminDashboard() {
           <div className="grid grid-cols-3 gap-3">
             <KPICard label="Short-Lived Certs (≤24h)" value="342K" color="teal" />
             <KPICard label="Auto-Renewed (24h)" value="339K" color="teal" />
-            <KPICard label="Failed Renewals" value="1,247" color="coral" />
+            <KPICard label="Failed Renewals" value="1,247" color="coral" onClick={() => setCurrentPage('trustops')} />
           </div>
           <div className="bg-card rounded-lg border border-border p-4">
             <h3 className="text-sm font-semibold mb-3">Short-Lived Certificate Activity</h3>
