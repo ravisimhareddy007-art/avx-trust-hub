@@ -1,402 +1,320 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNav } from '@/context/NavigationContext';
-import { KPICard, SeverityBadge, DaysToExpiry, AIInsightCard } from '@/components/shared/UIComponents';
-import { violationData, assetTypeDistribution, criticalAlerts, upcomingExpirations } from '@/data/mockData';
+import { SeverityBadge, DaysToExpiry } from '@/components/shared/UIComponents';
+import { violationData, criticalAlerts, upcomingExpirations } from '@/data/mockData';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell
 } from 'recharts';
-import { RefreshCw, Info, Shield, Bot, Key, Lock, Sparkles, AlertTriangle, FileText, ArrowRight } from 'lucide-react';
-import { toast } from 'sonner';
-
-const cryptoPostureData = [
-  { name: 'Critical', value: 12, color: 'hsl(15, 72%, 52%)' },
-  { name: 'High', value: 18, color: 'hsl(38, 78%, 41%)' },
-  { name: 'Medium', value: 25, color: 'hsl(38, 78%, 55%)' },
-  { name: 'Low', value: 20, color: 'hsl(160, 60%, 45%)' },
-  { name: 'Compliant', value: 25, color: 'hsl(142, 71%, 45%)' },
-];
-
-// ─── 5-Dimension Posture Breakdown ──────────────────────────────────────────
-
-function PostureDimensions({ onNavigate }: { onNavigate: (page: string, filters?: Record<string, string>) => void }) {
-  const dims = [
-    { id: 'AH', label: 'Algorithm Health', weight: '30%', score: 64, desc: '% using approved algorithms', color: 'hsl(var(--amber))', page: 'inventory', filters: { algorithm: 'weak' } },
-    { id: 'EP', label: 'Expiry Posture', weight: '25%', score: 78, desc: 'Penalty by urgency window', color: 'hsl(var(--teal))', page: 'inventory', filters: { status: 'Expiring' } },
-    { id: 'PQR', label: 'PQC Readiness', weight: '25%', score: 12, desc: '% quantum-safe or with QTH plan', color: 'hsl(var(--coral))', page: 'quantum', filters: {} },
-    { id: 'GC', label: 'Governance Cover', weight: '15%', score: 71, desc: 'Owner + lifecycle + no violations', color: 'hsl(var(--amber))', page: 'policy-builder', filters: {} },
-    { id: 'AIT', label: 'AI Identity Trust', weight: '5%', score: 48, desc: 'Sponsor + scoped + audited', color: 'hsl(var(--purple))', page: 'inventory', filters: { type: 'AI Agent Token' } },
-  ];
-  const composite = Math.round(64 * 0.30 + 78 * 0.25 + 12 * 0.25 + 71 * 0.15 + 48 * 0.05);
-  const [generating, setGenerating] = useState(false);
-
-  const handleGenerateReport = () => {
-    setGenerating(true);
-    setTimeout(() => {
-      setGenerating(false);
-      toast.success('CISO narrative report generated — score 55/100, top risk: PQC readiness at 12%');
-    }, 1500);
-  };
-
-  return (
-    <div className="bg-card rounded-lg border border-border p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold">Crypto Posture — 5 Dimensions</h3>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleGenerateReport}
-            disabled={generating}
-            className="flex items-center gap-1.5 text-[10px] px-2 py-1 rounded bg-teal/10 text-teal font-medium hover:bg-teal/20 disabled:opacity-50"
-          >
-            <Sparkles className="w-3 h-3" />
-            {generating ? 'Generating...' : 'AI: Generate CISO Report'}
-          </button>
-          <div className="flex items-center gap-2">
-            <span className="text-2xl font-bold text-foreground">{composite}</span>
-            <span className="text-[10px] text-muted-foreground">/ 100</span>
-          </div>
-        </div>
-      </div>
-      <div className="space-y-2">
-        {dims.map(d => (
-          <button
-            key={d.id}
-            onClick={() => onNavigate(d.page, d.filters)}
-            className="w-full flex items-center gap-3 hover:bg-secondary/30 rounded px-1 py-0.5 transition-colors group"
-          >
-            <span className="w-8 text-[10px] font-bold text-muted-foreground">{d.id}</span>
-            <div className="flex-1">
-              <div className="flex items-center justify-between mb-0.5">
-                <span className="text-[11px] text-foreground group-hover:text-teal transition-colors">{d.label} <span className="text-muted-foreground">({d.weight})</span></span>
-                <span className="text-[11px] font-semibold" style={{ color: d.color }}>{d.score}</span>
-              </div>
-              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                <div className="h-full rounded-full transition-all" style={{ width: `${d.score}%`, backgroundColor: d.color }} />
-              </div>
-            </div>
-            <ArrowRight className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-          </button>
-        ))}
-      </div>
-      <p className="text-[9px] text-muted-foreground mt-2">Composite = AH×0.30 + EP×0.25 + PQR×0.25 + GC×0.15 + AIT×0.05 · Click any dimension to drill down</p>
-    </div>
-  );
-}
+import { RefreshCw, Shield, Bot, Key, Lock, AlertTriangle, ArrowRight, Clock, FileWarning, Users, Fingerprint, Globe, RotateCcw } from 'lucide-react';
 
 export default function SecurityAdminDashboard() {
   const { setCurrentPage, setFilters } = useNav();
-  const [activeTab, setActiveTab] = useState<'summary' | 'operations' | 'risk' | 'shortlived'>('summary');
 
-  const tabs = [
-    { id: 'summary' as const, label: 'Summary' },
-    { id: 'operations' as const, label: 'Operations' },
-    { id: 'risk' as const, label: 'Risk & Crypto' },
-    { id: 'shortlived' as const, label: 'Short Lived Certs' },
-  ];
-
-  const handleNavigate = (page: string, filters?: Record<string, string>) => {
+  const nav = (page: string, filters?: Record<string, string>) => {
     if (filters) setFilters(filters);
     setCurrentPage(page);
   };
 
   return (
     <div className="space-y-4 max-h-[calc(100vh-120px)] overflow-y-auto scrollbar-thin pr-1">
-      {/* Page Header with Tabs */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h1 className="text-xl font-bold">Dashboard</h1>
-            <p className="text-[11px] text-muted-foreground">Machine identity posture overview</p>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>Refreshed 0m ago</span>
-            <button onClick={() => {}} className="p-1 hover:text-foreground"><RefreshCw className="w-3.5 h-3.5" /></button>
-          </div>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold">Dashboard</h1>
+          <p className="text-[11px] text-muted-foreground">Machine identity posture overview</p>
         </div>
-        <div className="flex gap-1 border-b border-border overflow-x-auto">
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 text-xs font-medium border-b-2 transition-colors ${
-                activeTab === tab.id
-                  ? 'border-teal text-teal'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span>Refreshed 0m ago</span>
+          <button className="p-1 hover:text-foreground"><RefreshCw className="w-3.5 h-3.5" /></button>
         </div>
       </div>
 
-      {activeTab === 'summary' && (
-        <>
-          {/* Top-level KPIs — each navigates to filtered inventory */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold">Crypto Posture Overview</h3>
+      {/* Posture Score + Top KPIs */}
+      <div className="grid grid-cols-5 gap-3">
+        <button onClick={() => nav('inventory')} className="bg-card rounded-lg border border-border p-4 text-left hover:border-teal/30 transition-all" style={{ borderLeft: '3px solid hsl(var(--teal))' }}>
+          <p className="text-2xl font-bold">5.2M</p>
+          <p className="text-[10px] text-muted-foreground">Total Identities</p>
+          <p className="text-[9px] text-muted-foreground/60">Certs, Keys, Tokens, Secrets</p>
+        </button>
+        <button onClick={() => nav('quantum')} className="bg-card rounded-lg border border-border p-4 text-left hover:border-coral/30 transition-all" style={{ borderLeft: '3px solid hsl(var(--coral))' }}>
+          <p className="text-2xl font-bold text-coral">247K</p>
+          <p className="text-[10px] text-muted-foreground">PQC-Vulnerable</p>
+          <p className="text-[9px] text-muted-foreground/60">Requires algorithm migration</p>
+        </button>
+        <button onClick={() => nav('inventory', { status: 'Expiring' })} className="bg-card rounded-lg border border-border p-4 text-left hover:border-amber/30 transition-all" style={{ borderLeft: '3px solid hsl(var(--amber))' }}>
+          <p className="text-2xl font-bold text-amber">12,847</p>
+          <p className="text-[10px] text-muted-foreground">Expiring &lt;30d</p>
+          <p className="text-[9px] text-muted-foreground/60">342 already expired</p>
+        </button>
+        <button onClick={() => nav('inventory', { type: 'AI Agent Token' })} className="bg-card rounded-lg border border-border p-4 text-left hover:border-purple/30 transition-all" style={{ borderLeft: '3px solid hsl(var(--purple))' }}>
+          <p className="text-2xl font-bold">472K</p>
+          <p className="text-[10px] text-muted-foreground">AI Agent Identities</p>
+          <p className="text-[9px] text-muted-foreground/60">38% over-privileged</p>
+        </button>
+        <button onClick={() => nav('inventory', { type: 'API Key / Secret', status: 'Orphaned' })} className="bg-card rounded-lg border border-border p-4 text-left hover:border-amber/30 transition-all" style={{ borderLeft: '3px solid hsl(var(--amber))' }}>
+          <p className="text-2xl font-bold text-amber">18,420</p>
+          <p className="text-[10px] text-muted-foreground">Unmanaged Secrets</p>
+          <p className="text-[9px] text-muted-foreground/60">In repos & endpoints</p>
+        </button>
+      </div>
+
+      {/* Identity Breakdown Widgets — 2 per row */}
+      <div className="grid grid-cols-2 gap-4">
+        {/* Certificates */}
+        <div className="bg-card rounded-lg border border-border p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Shield className="w-4 h-4 text-teal" />
+              <span className="text-sm font-semibold">Certificates</span>
+              <span className="text-[10px] text-muted-foreground">1.8M total</span>
             </div>
-            <div className="grid grid-cols-4 gap-3">
-              {[
-                { label: 'Total Machine Identities', value: '5.2M', color: 'hsl(var(--teal))', page: 'inventory', filters: {}, subtitle: 'Certs, Keys, Tokens, Secrets' },
-                { label: 'PQC-Vulnerable Assets', value: '247K', color: 'hsl(var(--coral))', page: 'quantum', filters: {}, subtitle: 'Requires algorithm migration' },
-                { label: 'AI Agent Identities', value: '472K', color: 'hsl(var(--purple))', page: 'inventory', filters: { type: 'AI Agent Token' }, subtitle: '38% over-privileged' },
-                { label: 'Unmanaged Secrets', value: '18,420', color: 'hsl(var(--amber))', page: 'inventory', filters: { type: 'API Key / Secret', status: 'Orphaned' }, subtitle: 'In repos & endpoints' },
-              ].map(item => (
-                <button
-                  key={item.label}
-                  onClick={() => handleNavigate(item.page, item.filters)}
-                  className="bg-card rounded-lg border border-border p-3 text-left hover:bg-secondary/50 hover:border-teal/30 transition-all group"
-                  style={{ borderLeft: `3px solid ${item.color}` }}
-                >
-                  <p className="text-lg font-bold text-foreground">{item.value}</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5 group-hover:text-teal transition-colors">{item.label}</p>
-                  <p className="text-[9px] text-muted-foreground/70">{item.subtitle}</p>
-                </button>
-              ))}
-            </div>
+            <button onClick={() => nav('inventory', { type: 'TLS Certificate' })} className="text-[10px] text-teal hover:underline">View all →</button>
           </div>
-
-          {/* 5-Dimension Posture Breakdown — each dimension navigates */}
-          <PostureDimensions onNavigate={handleNavigate} />
-
-          {/* Per Crypto Object Widgets — each has actionable links */}
-          <div>
-            <h3 className="text-sm font-semibold mb-2">By Crypto Object Type</h3>
-            <div className="grid grid-cols-4 gap-3">
-              {/* Certificates */}
-              <div className="bg-card rounded-lg border border-border p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <Shield className="w-4 h-4 text-teal" />
-                  <span className="text-xs font-semibold">Certificates</span>
-                </div>
-                <div className="space-y-1.5 text-[11px]">
-                  <div className="flex justify-between"><span className="text-muted-foreground">Total</span><span className="font-medium">1.8M</span></div>
-                  <button onClick={() => handleNavigate('remediation', { module: 'clm', filter: 'expiry' })} className="w-full flex justify-between hover:text-coral transition-colors"><span className="text-muted-foreground">Expiring &lt;30d</span><span className="font-medium text-coral">12,847 →</span></button>
-                  <button onClick={() => handleNavigate('remediation', { module: 'clm', filter: 'expiry' })} className="w-full flex justify-between hover:text-coral transition-colors"><span className="text-muted-foreground">Expired</span><span className="font-medium text-coral">342 →</span></button>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Self-Signed</span><span className="font-medium text-amber">8,412</span></div>
-                  <button onClick={() => handleNavigate('quantum')} className="w-full flex justify-between hover:text-amber transition-colors"><span className="text-muted-foreground">Weak Algorithm</span><span className="font-medium text-amber">4,218 →</span></button>
-                </div>
-                <button onClick={() => { setFilters({ type: 'TLS Certificate' }); setCurrentPage('inventory'); }} className="text-[10px] text-teal mt-2 hover:underline">View all →</button>
-              </div>
-
-              {/* Keys */}
-              <div className="bg-card rounded-lg border border-border p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <Key className="w-4 h-4 text-purple" />
-                  <span className="text-xs font-semibold">Keys</span>
-                </div>
-                <div className="space-y-1.5 text-[11px]">
-                  <div className="flex justify-between"><span className="text-muted-foreground">Total</span><span className="font-medium">1.4M</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">SSH Keys</span><span className="font-medium">842K</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Encryption Keys</span><span className="font-medium">558K</span></div>
-                  <button onClick={() => handleNavigate('remediation', { module: 'ssh', filter: 'orphaned' })} className="w-full flex justify-between hover:text-coral transition-colors"><span className="text-muted-foreground">Orphaned</span><span className="font-medium text-coral">3,218 →</span></button>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Non-HSM Stored</span><span className="font-medium text-amber">14,720</span></div>
-                </div>
-                <button onClick={() => { setFilters({ type: 'SSH Key' }); setCurrentPage('inventory'); }} className="text-[10px] text-teal mt-2 hover:underline">View all →</button>
-              </div>
-
-              {/* Tokens & Agents */}
-              <div className="bg-card rounded-lg border border-border p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <Bot className="w-4 h-4 text-amber" />
-                  <span className="text-xs font-semibold">Tokens & Agents</span>
-                </div>
-                <div className="space-y-1.5 text-[11px]">
-                  <div className="flex justify-between"><span className="text-muted-foreground">Total</span><span className="font-medium">1.2M</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">AI Agent Tokens</span><span className="font-medium">472K</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Service Tokens</span><span className="font-medium">728K</span></div>
-                  <button onClick={() => handleNavigate('remediation', { module: 'ai-agents' })} className="w-full flex justify-between hover:text-coral transition-colors"><span className="text-muted-foreground">Over-Privileged</span><span className="font-medium text-coral">179K →</span></button>
-                  <button onClick={() => handleNavigate('trustops')} className="w-full flex justify-between hover:text-amber transition-colors"><span className="text-muted-foreground">No Audit Trail</span><span className="font-medium text-amber">82K →</span></button>
-                </div>
-                <button onClick={() => { setFilters({ type: 'AI Agent Token' }); setCurrentPage('inventory'); }} className="text-[10px] text-teal mt-2 hover:underline">View all →</button>
-              </div>
-
-              {/* Secrets */}
-              <div className="bg-card rounded-lg border border-border p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <Lock className="w-4 h-4 text-coral" />
-                  <span className="text-xs font-semibold">Secrets</span>
-                </div>
-                <div className="space-y-1.5 text-[11px]">
-                  <div className="flex justify-between"><span className="text-muted-foreground">Total</span><span className="font-medium">812K</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">API Keys</span><span className="font-medium">384K</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Vault Secrets</span><span className="font-medium">428K</span></div>
-                  <button onClick={() => handleNavigate('remediation', { module: 'secrets' })} className="w-full flex justify-between hover:text-coral transition-colors"><span className="text-muted-foreground">Exposed in Code</span><span className="font-medium text-coral">18,420 →</span></button>
-                  <button onClick={() => handleNavigate('remediation', { module: 'secrets', filter: 'policy' })} className="w-full flex justify-between hover:text-amber transition-colors"><span className="text-muted-foreground">Not Rotated &gt;90d</span><span className="font-medium text-amber">42,180 →</span></button>
-                </div>
-                <button onClick={() => { setFilters({ type: 'API Key / Secret' }); setCurrentPage('inventory'); }} className="text-[10px] text-teal mt-2 hover:underline">View all →</button>
-              </div>
-            </div>
+          <div className="grid grid-cols-4 gap-2">
+            {[
+              { label: 'Expiring <7d', value: '2,847', color: 'text-coral', page: 'remediation', filters: { module: 'clm', filter: 'expiry' } },
+              { label: 'Expiring <30d', value: '12,847', color: 'text-amber', page: 'inventory', filters: { status: 'Expiring' } },
+              { label: 'Expired', value: '342', color: 'text-coral', page: 'remediation', filters: { module: 'clm' } },
+              { label: 'Self-Signed', value: '8,412', color: 'text-amber', page: 'inventory', filters: { type: 'TLS Certificate', selfSigned: 'true' } },
+              { label: 'Weak Algorithm', value: '4,218', color: 'text-coral', page: 'quantum', filters: {} },
+              { label: 'No Owner', value: '3,218', color: 'text-amber', page: 'inventory', filters: { hasOwner: 'false' } },
+              { label: 'Auto-Renew On', value: '1.2M', color: 'text-teal', page: 'inventory', filters: { autoRenew: 'true' } },
+              { label: 'Shadow Certs', value: '1,847', color: 'text-coral', page: 'inventory', filters: { shadow: 'true' } },
+            ].map(item => (
+              <button key={item.label} onClick={() => nav(item.page, item.filters)} className="text-left p-2 rounded hover:bg-secondary/40 transition-colors">
+                <p className={`text-sm font-bold ${item.color}`}>{item.value}</p>
+                <p className="text-[10px] text-muted-foreground">{item.label}</p>
+              </button>
+            ))}
           </div>
+        </div>
 
-          {/* Charts Row */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-card rounded-lg border border-border p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold">Crypto Posture Score</h3>
-              </div>
-              <div className="flex items-center gap-6">
-                <ResponsiveContainer width={160} height={160}>
-                  <PieChart>
-                    <Pie data={cryptoPostureData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} dataKey="value" paddingAngle={1} startAngle={90} endAngle={-270}>
-                      {cryptoPostureData.map((entry, index) => (
-                        <Cell key={index} fill={entry.color} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="space-y-2">
-                  {cryptoPostureData.map(item => (
-                    <button key={item.name} onClick={() => handleNavigate('remediation')} className="flex items-center gap-2 text-xs hover:text-teal transition-colors">
-                      <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: item.color }} />
-                      <span className="font-medium text-foreground">{item.name}</span>
-                      <span className="text-muted-foreground ml-auto">{item.value}%</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
+        {/* SSH & Encryption Keys */}
+        <div className="bg-card rounded-lg border border-border p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Key className="w-4 h-4 text-purple" />
+              <span className="text-sm font-semibold">SSH & Encryption Keys</span>
+              <span className="text-[10px] text-muted-foreground">1.4M total</span>
             </div>
-
-            <div className="bg-card rounded-lg border border-border p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold">Credential Expiry Trend</h3>
-              </div>
-              <ResponsiveContainer width="100%" height={180}>
-                <LineChart data={violationData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="day" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                  <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                  <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }} />
-                  <Line type="monotone" dataKey="detected" stroke="hsl(var(--coral))" strokeWidth={2} dot={{ r: 2 }} name="Expiring" />
-                  <Line type="monotone" dataKey="remediated" stroke="hsl(var(--teal))" strokeWidth={2} dot={{ r: 2 }} name="Remediated" />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            <button onClick={() => nav('inventory', { type: 'SSH Key' })} className="text-[10px] text-teal hover:underline">View all →</button>
           </div>
+          <div className="grid grid-cols-4 gap-2">
+            {[
+              { label: 'SSH Keys', value: '842K', color: 'text-foreground', page: 'inventory', filters: { type: 'SSH Key' } },
+              { label: 'Encryption Keys', value: '558K', color: 'text-foreground', page: 'inventory', filters: { type: 'Encryption Key' } },
+              { label: 'Orphaned', value: '3,218', color: 'text-coral', page: 'remediation', filters: { module: 'ssh', filter: 'orphaned' } },
+              { label: 'Non-HSM Stored', value: '14,720', color: 'text-amber', page: 'inventory', filters: { storage: 'non-hsm' } },
+              { label: 'RSA-2048', value: '24,180', color: 'text-amber', page: 'inventory', filters: { algorithm: 'RSA-2048' } },
+              { label: 'Not Rotated >90d', value: '8,412', color: 'text-coral', page: 'remediation', filters: { module: 'ssh', filter: 'rotation' } },
+              { label: 'Shared Keys', value: '2,847', color: 'text-amber', page: 'inventory', filters: { shared: 'true' } },
+              { label: 'Compliant', value: '1.3M', color: 'text-teal', page: 'inventory', filters: { status: 'Compliant' } },
+            ].map(item => (
+              <button key={item.label} onClick={() => nav(item.page, item.filters)} className="text-left p-2 rounded hover:bg-secondary/40 transition-colors">
+                <p className={`text-sm font-bold ${item.color}`}>{item.value}</p>
+                <p className="text-[10px] text-muted-foreground">{item.label}</p>
+              </button>
+            ))}
+          </div>
+        </div>
 
-          {/* Alerts and Expirations — actionable rows */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-card rounded-lg border border-border p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold">Critical Alerts</h3>
-                <button onClick={() => setCurrentPage('trustops')} className="text-[10px] text-teal hover:underline">View all in TrustOps →</button>
-              </div>
-              <div className="space-y-2 max-h-[250px] overflow-y-auto scrollbar-thin">
-                {criticalAlerts.map(alert => (
-                  <div key={alert.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <SeverityBadge severity={alert.severity} />
-                      <div className="min-w-0">
-                        <p className="text-xs font-medium text-foreground truncate">{alert.asset}</p>
-                        <p className="text-[10px] text-muted-foreground">{alert.policy} · {alert.time}</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => { setFilters({ assetId: alert.assetId }); setCurrentPage('remediation'); }}
-                      className="text-[10px] px-2 py-1 rounded bg-coral/10 text-coral font-medium hover:bg-coral/20 flex-shrink-0"
-                    >
-                      Remediate
-                    </button>
+        {/* AI Agent Tokens */}
+        <div className="bg-card rounded-lg border border-border p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Bot className="w-4 h-4 text-amber" />
+              <span className="text-sm font-semibold">AI Agent Tokens</span>
+              <span className="text-[10px] text-muted-foreground">472K total</span>
+            </div>
+            <button onClick={() => nav('inventory', { type: 'AI Agent Token' })} className="text-[10px] text-teal hover:underline">View all →</button>
+          </div>
+          <div className="grid grid-cols-4 gap-2">
+            {[
+              { label: 'Over-Privileged', value: '179K', color: 'text-coral', page: 'remediation', filters: { module: 'ai-agents' } },
+              { label: 'No Audit Trail', value: '82K', color: 'text-amber', page: 'trustops', filters: {} },
+              { label: 'No Sponsor', value: '44K', color: 'text-coral', page: 'inventory', filters: { type: 'AI Agent Token', hasOwner: 'false' } },
+              { label: 'Anomalous', value: '312', color: 'text-coral', page: 'trustops', filters: {} },
+              { label: 'Active Now', value: '284K', color: 'text-teal', page: 'inventory', filters: { type: 'AI Agent Token', status: 'Active' } },
+              { label: 'Expired', value: '12,480', color: 'text-amber', page: 'inventory', filters: { type: 'AI Agent Token', status: 'Expired' } },
+              { label: 'Service Tokens', value: '728K', color: 'text-foreground', page: 'inventory', filters: { type: 'Service Token' } },
+              { label: 'Scoped Correctly', value: '148K', color: 'text-teal', page: 'inventory', filters: { type: 'AI Agent Token', scoped: 'true' } },
+            ].map(item => (
+              <button key={item.label} onClick={() => nav(item.page, item.filters)} className="text-left p-2 rounded hover:bg-secondary/40 transition-colors">
+                <p className={`text-sm font-bold ${item.color}`}>{item.value}</p>
+                <p className="text-[10px] text-muted-foreground">{item.label}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Secrets & API Keys */}
+        <div className="bg-card rounded-lg border border-border p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Lock className="w-4 h-4 text-coral" />
+              <span className="text-sm font-semibold">Secrets & API Keys</span>
+              <span className="text-[10px] text-muted-foreground">812K total</span>
+            </div>
+            <button onClick={() => nav('inventory', { type: 'API Key / Secret' })} className="text-[10px] text-teal hover:underline">View all →</button>
+          </div>
+          <div className="grid grid-cols-4 gap-2">
+            {[
+              { label: 'Exposed in Code', value: '18,420', color: 'text-coral', page: 'remediation', filters: { module: 'secrets' } },
+              { label: 'Not Rotated >90d', value: '42,180', color: 'text-amber', page: 'remediation', filters: { module: 'secrets', filter: 'rotation' } },
+              { label: 'Vault Secrets', value: '428K', color: 'text-foreground', page: 'inventory', filters: { type: 'Vault Secret' } },
+              { label: 'API Keys', value: '384K', color: 'text-foreground', page: 'inventory', filters: { type: 'API Key' } },
+              { label: 'Hardcoded', value: '4,218', color: 'text-coral', page: 'remediation', filters: { module: 'secrets', filter: 'hardcoded' } },
+              { label: 'No Owner', value: '8,720', color: 'text-amber', page: 'inventory', filters: { type: 'API Key / Secret', hasOwner: 'false' } },
+              { label: 'Shared Across Envs', value: '2,180', color: 'text-amber', page: 'inventory', filters: { sharedEnv: 'true' } },
+              { label: 'Compliant', value: '742K', color: 'text-teal', page: 'inventory', filters: { type: 'API Key / Secret', status: 'Compliant' } },
+            ].map(item => (
+              <button key={item.label} onClick={() => nav(item.page, item.filters)} className="text-left p-2 rounded hover:bg-secondary/40 transition-colors">
+                <p className={`text-sm font-bold ${item.color}`}>{item.value}</p>
+                <p className="text-[10px] text-muted-foreground">{item.label}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Code Signing */}
+        <div className="bg-card rounded-lg border border-border p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Fingerprint className="w-4 h-4 text-teal" />
+              <span className="text-sm font-semibold">Code Signing</span>
+              <span className="text-[10px] text-muted-foreground">48K total</span>
+            </div>
+            <button onClick={() => nav('inventory', { type: 'Code Signing' })} className="text-[10px] text-teal hover:underline">View all →</button>
+          </div>
+          <div className="grid grid-cols-4 gap-2">
+            {[
+              { label: 'Active Certs', value: '32K', color: 'text-teal', page: 'inventory', filters: { type: 'Code Signing', status: 'Active' } },
+              { label: 'Expiring <30d', value: '847', color: 'text-amber', page: 'inventory', filters: { type: 'Code Signing', status: 'Expiring' } },
+              { label: 'Weak Algorithm', value: '2,180', color: 'text-coral', page: 'inventory', filters: { type: 'Code Signing', algorithm: 'weak' } },
+              { label: 'Unsigned Builds', value: '142', color: 'text-coral', page: 'remediation', filters: { module: 'codesign' } },
+              { label: 'No Policy', value: '4,218', color: 'text-amber', page: 'inventory', filters: { type: 'Code Signing', policy: 'none' } },
+              { label: 'Shared Keys', value: '312', color: 'text-amber', page: 'inventory', filters: { type: 'Code Signing', shared: 'true' } },
+              { label: 'HSM-Backed', value: '28K', color: 'text-teal', page: 'inventory', filters: { type: 'Code Signing', storage: 'hsm' } },
+              { label: 'PQC-Ready', value: '1,247', color: 'text-teal', page: 'inventory', filters: { type: 'Code Signing', pqc: 'ready' } },
+            ].map(item => (
+              <button key={item.label} onClick={() => nav(item.page, item.filters)} className="text-left p-2 rounded hover:bg-secondary/40 transition-colors">
+                <p className={`text-sm font-bold ${item.color}`}>{item.value}</p>
+                <p className="text-[10px] text-muted-foreground">{item.label}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Kubernetes & Service Mesh */}
+        <div className="bg-card rounded-lg border border-border p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Globe className="w-4 h-4 text-purple" />
+              <span className="text-sm font-semibold">Kubernetes & Service Mesh</span>
+              <span className="text-[10px] text-muted-foreground">342K total</span>
+            </div>
+            <button onClick={() => nav('inventory', { type: 'K8s Certificate' })} className="text-[10px] text-teal hover:underline">View all →</button>
+          </div>
+          <div className="grid grid-cols-4 gap-2">
+            {[
+              { label: 'K8s TLS', value: '184K', color: 'text-foreground', page: 'inventory', filters: { type: 'K8s Certificate' } },
+              { label: 'mTLS/SPIFFE', value: '128K', color: 'text-foreground', page: 'inventory', filters: { type: 'mTLS' } },
+              { label: 'Short-Lived (<24h)', value: '342K', color: 'text-teal', page: 'inventory', filters: { shortLived: 'true' } },
+              { label: 'Failed Renewals', value: '1,247', color: 'text-coral', page: 'trustops', filters: {} },
+              { label: 'Cert-Manager', value: '212K', color: 'text-teal', page: 'inventory', filters: { managedBy: 'cert-manager' } },
+              { label: 'Istio Certs', value: '86K', color: 'text-foreground', page: 'inventory', filters: { managedBy: 'istio' } },
+              { label: 'No Mesh Policy', value: '4,180', color: 'text-amber', page: 'inventory', filters: { type: 'K8s Certificate', policy: 'none' } },
+              { label: 'Cross-Namespace', value: '847', color: 'text-amber', page: 'inventory', filters: { crossNamespace: 'true' } },
+            ].map(item => (
+              <button key={item.label} onClick={() => nav(item.page, item.filters)} className="text-left p-2 rounded hover:bg-secondary/40 transition-colors">
+                <p className={`text-sm font-bold ${item.color}`}>{item.value}</p>
+                <p className="text-[10px] text-muted-foreground">{item.label}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Operational Overview */}
+      <div className="grid grid-cols-3 gap-4">
+        {/* Expiry Trend */}
+        <div className="bg-card rounded-lg border border-border p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold">Expiry vs Remediation Trend</h3>
+          </div>
+          <ResponsiveContainer width="100%" height={160}>
+            <LineChart data={violationData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="day" tick={{ fontSize: 9 }} stroke="hsl(var(--muted-foreground))" />
+              <YAxis tick={{ fontSize: 9 }} stroke="hsl(var(--muted-foreground))" />
+              <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }} />
+              <Line type="monotone" dataKey="detected" stroke="hsl(var(--coral))" strokeWidth={2} dot={{ r: 2 }} name="Expiring" />
+              <Line type="monotone" dataKey="remediated" stroke="hsl(var(--teal))" strokeWidth={2} dot={{ r: 2 }} name="Remediated" />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Critical Alerts */}
+        <div className="bg-card rounded-lg border border-border p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold">Critical Alerts</h3>
+            <button onClick={() => setCurrentPage('trustops')} className="text-[10px] text-teal hover:underline">View all →</button>
+          </div>
+          <div className="space-y-1.5 max-h-[160px] overflow-y-auto scrollbar-thin">
+            {criticalAlerts.map(alert => (
+              <div key={alert.id} className="flex items-center justify-between py-1.5 border-b border-border last:border-0">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <SeverityBadge severity={alert.severity} />
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-medium truncate">{alert.asset}</p>
+                    <p className="text-[9px] text-muted-foreground">{alert.policy} · {alert.time}</p>
                   </div>
-                ))}
-              </div>
-            </div>
-            <div className="bg-card rounded-lg border border-border p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold">Upcoming Expirations</h3>
-                <button onClick={() => handleNavigate('inventory', { status: 'Expiring' })} className="text-[10px] text-teal hover:underline">View all →</button>
-              </div>
-              <div className="space-y-2 max-h-[250px] overflow-y-auto scrollbar-thin">
-                {upcomingExpirations.map((item, i) => (
-                  <div key={i} className="flex items-center justify-between py-2 border-b border-border last:border-0 cursor-pointer hover:bg-secondary/30 rounded px-1" onClick={() => { setFilters({ assetId: item.assetId }); setCurrentPage('inventory'); }}>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium text-foreground truncate">{item.asset}</p>
-                      <p className="text-[10px] text-muted-foreground">{item.type} · {item.owner}</p>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-[10px] text-muted-foreground">{item.expiry}</p>
-                      <DaysToExpiry days={item.days} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      {activeTab === 'operations' && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-4 gap-3">
-            <KPICard label="Enrolled Today" value="4,218" color="teal" />
-            <KPICard label="Renewed Today" value="3,842" color="teal" />
-            <KPICard label="Revoked Today" value={187} color="coral" />
-            <KPICard label="Failed Operations" value={23} color="coral" onClick={() => setCurrentPage('trustops')} />
-          </div>
-          <div className="bg-card rounded-lg border border-border p-4">
-            <h3 className="text-sm font-semibold mb-3">Operations — Last 14 Days</h3>
-            <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={violationData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="day" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }} />
-                <Line type="monotone" dataKey="detected" stroke="hsl(var(--coral))" strokeWidth={2} dot={{ r: 3 }} name="Detected" />
-                <Line type="monotone" dataKey="remediated" stroke="hsl(var(--teal))" strokeWidth={2} dot={{ r: 3 }} name="Remediated" />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'risk' && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-5 gap-3">
-            <KPICard label="Critical PQC Risk" value="247K" color="coral" onClick={() => { setFilters({ pqcRisk: 'Critical' }); setCurrentPage('inventory'); }} />
-            <KPICard label="High PQC Risk" value="812K" color="amber" onClick={() => { setFilters({ pqcRisk: 'High' }); setCurrentPage('inventory'); }} />
-            <KPICard label="Medium Risk" value="1.4M" color="amber" />
-            <KPICard label="Low Risk" value="1.1M" color="teal" />
-            <KPICard label="Safe / Compliant" value="1.2M" color="teal" />
-          </div>
-          <div className="bg-card rounded-lg border border-border p-4">
-            <h3 className="text-sm font-semibold mb-3">Asset Type Distribution</h3>
-            <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie data={assetTypeDistribution} cx="50%" cy="50%" innerRadius={50} outerRadius={85} dataKey="value" paddingAngle={2}>
-                  {assetTypeDistribution.map((entry, index) => (
-                    <Cell key={index} fill={entry.color} cursor="pointer" onClick={() => { setFilters({ type: entry.name }); setCurrentPage('inventory'); }} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }} formatter={(value: number) => value.toLocaleString()} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="flex flex-wrap gap-3 mt-2">
-              {assetTypeDistribution.map((item, i) => (
-                <div key={i} className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
-                  {item.name}
                 </div>
-              ))}
-            </div>
+                <button onClick={() => { setFilters({ assetId: alert.assetId }); setCurrentPage('remediation'); }} className="text-[9px] px-1.5 py-0.5 rounded bg-coral/10 text-coral font-medium hover:bg-coral/20 flex-shrink-0">Fix</button>
+              </div>
+            ))}
           </div>
         </div>
-      )}
 
-      {activeTab === 'shortlived' && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-3">
-            <KPICard label="Short-Lived Certs (≤24h)" value="342K" color="teal" />
-            <KPICard label="Auto-Renewed (24h)" value="339K" color="teal" />
-            <KPICard label="Failed Renewals" value="1,247" color="coral" onClick={() => setCurrentPage('trustops')} />
+        {/* Upcoming Expirations */}
+        <div className="bg-card rounded-lg border border-border p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold">Upcoming Expirations</h3>
+            <button onClick={() => nav('inventory', { status: 'Expiring' })} className="text-[10px] text-teal hover:underline">View all →</button>
           </div>
-          <div className="bg-card rounded-lg border border-border p-4">
-            <h3 className="text-sm font-semibold mb-3">Short-Lived Certificate Activity</h3>
-            <p className="text-xs text-muted-foreground">Kubernetes workload certificates, Istio mTLS certs, SPIFFE/SVID identities, and other short-lived credentials managed by cert-manager and service mesh.</p>
+          <div className="space-y-1.5 max-h-[160px] overflow-y-auto scrollbar-thin">
+            {upcomingExpirations.map((item, i) => (
+              <div key={i} className="flex items-center justify-between py-1.5 border-b border-border last:border-0 cursor-pointer hover:bg-secondary/30 rounded px-1" onClick={() => { setFilters({ assetId: item.assetId }); setCurrentPage('inventory'); }}>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-medium truncate">{item.asset}</p>
+                  <p className="text-[9px] text-muted-foreground">{item.type}</p>
+                </div>
+                <DaysToExpiry days={item.days} />
+              </div>
+            ))}
           </div>
         </div>
-      )}
+      </div>
+
+      {/* Operations KPIs */}
+      <div className="grid grid-cols-6 gap-3">
+        {[
+          { icon: RotateCcw, label: 'Auto-Renewed (24h)', value: '3,842', color: 'text-teal' },
+          { icon: Clock, label: 'Pending Rotation', value: '1,247', color: 'text-amber' },
+          { icon: FileWarning, label: 'Policy Violations', value: '842', color: 'text-coral' },
+          { icon: Users, label: 'Orphaned Assets', value: '3,218', color: 'text-amber' },
+          { icon: AlertTriangle, label: 'Failed Operations', value: '23', color: 'text-coral' },
+          { icon: Shield, label: 'Policies Active', value: '148', color: 'text-teal' },
+        ].map(item => (
+          <div key={item.label} className="bg-card rounded-lg border border-border p-3">
+            <div className="flex items-center gap-2 mb-1">
+              <item.icon className={`w-3.5 h-3.5 ${item.color}`} />
+              <span className={`text-lg font-bold ${item.color}`}>{item.value}</span>
+            </div>
+            <p className="text-[10px] text-muted-foreground">{item.label}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
