@@ -179,6 +179,14 @@ export default function CriticalActionFeed() {
   const handleApprove = (item: ActionItem) => {
     resolveFeedItem(item.id);
     setExpanded(null);
+    if (item.licenseGated) {
+      const ticketId = `TKT-${1000 + Number(item.id) * 37}`;
+      toast.success(`Ticket ${ticketId} created`, {
+        description: `Assigned to release engineering · ${item.licenseGated.module} not licensed`,
+        action: { label: 'Open Tickets', onClick: () => setCurrentPage('tickets') },
+      });
+      return;
+    }
     const groupCount = item.remediationGroups?.length ?? 1;
     toast.success(
       groupCount > 1
