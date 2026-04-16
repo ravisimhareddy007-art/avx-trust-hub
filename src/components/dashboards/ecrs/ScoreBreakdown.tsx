@@ -20,7 +20,7 @@ export default function ScoreBreakdown({ score }: Props) {
       {open && (
         <div className="mt-2 space-y-2">
           <p className="text-[10px] text-muted-foreground leading-snug">
-            CVSS-inspired weighted model: <span className="text-foreground">Base</span> (algorithm + exposure) · <span className="text-foreground">Temporal</span> (age, rotation delay) · <span className="text-foreground">Environmental</span> (criticality, data sensitivity). Aggregated via weighted average + max-risk influence.
+            Weighted model: <span className="text-foreground">Base</span> (algorithm + exposure) · <span className="text-foreground">Temporal</span> (age, rotation delay) · <span className="text-foreground">Environmental</span> (criticality, data sensitivity). Aggregated via weighted average + max-risk influence.
           </p>
           <div className="flex h-2 rounded-full overflow-hidden">
             {breakdown.map(b => (

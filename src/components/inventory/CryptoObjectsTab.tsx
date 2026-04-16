@@ -5,7 +5,7 @@ import { useInventoryRegistry } from '@/context/InventoryRegistryContext';
 import { useAgent } from '@/context/AgentContext';
 import { Modal } from '@/components/shared/UIComponents';
 import { StatusBadge, EnvBadge, PQCBadge, DaysToExpiry, SeverityBadge } from '@/components/shared/UIComponents';
-import { Search, ChevronDown, ChevronRight, MoreVertical, X, Shield, ShieldOff, ChevronsRight, FileEdit } from 'lucide-react';
+import { Search, ChevronDown, ChevronRight, MoreVertical, X, Shield, ShieldOff, ChevronsRight, FileEdit, Info } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Props {
@@ -71,6 +71,78 @@ function RiskGauge({ score, size = 80 }: { score: number; size?: number }) {
       <text x={size/2} y={size/2 + 1} textAnchor="middle" dominantBaseline="middle" fill={color} fontSize={size * 0.28} fontWeight="bold">{score}</text>
       <text x={size/2} y={size/2 + size * 0.18} textAnchor="middle" fill="hsl(220, 15%, 55%)" fontSize={size * 0.1}>RISK</text>
     </svg>
+  );
+}
+
+function ExplainScore({ score, risk, weights, asset }: {
+  score: number;
+  risk: { algScore: number; expiryScore: number; exposureScore: number; depScore: number; ownerScore: number };
+  weights: { alg: number; expiry: number; exposure: number; dep: number; owner: number };
+  asset: CryptoAsset;
+}) {
+  const [open, setOpen] = useState(false);
+  const rows = [
+    { label: 'Algorithm vulnerability', score: risk.algScore, weight: weights.alg, why: `${asset.algorithm} · PQC risk: ${asset.pqcRisk}` },
+    { label: 'Expiry urgency', score: risk.expiryScore, weight: weights.expiry, why: asset.daysToExpiry <= 7 ? `Expires in ${asset.daysToExpiry}d (≤7d)` : asset.daysToExpiry <= 30 ? `Expires in ${asset.daysToExpiry}d (≤30d)` : `Expires in ${asset.daysToExpiry}d` },
+    { label: 'Internet exposure', score: risk.exposureScore, weight: weights.exposure, why: asset.environment === 'Production' ? 'Production-facing' : 'Internal environment' },
+    { label: 'Dependent assets', score: risk.depScore, weight: weights.dep, why: `${Math.round(risk.depScore / 20)} infra dependents` },
+    { label: 'Ownership gap', score: risk.ownerScore, weight: weights.owner, why: asset.owner === 'Unassigned' ? 'No owner assigned' : `Owned by ${asset.owner}` },
+  ];
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-teal transition-colors"
+      >
+        <Info className="w-3 h-3" /> Explain score
+      </button>
+      {open && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" onClick={() => setOpen(false)}>
+          <div className="absolute inset-0 bg-foreground/30 backdrop-blur-sm" />
+          <div className="relative bg-card border border-border rounded-lg shadow-2xl w-[440px] max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <div className="flex items-center gap-2">
+                <Info className="w-4 h-4 text-teal" />
+                <h3 className="text-sm font-semibold text-foreground">How is this score calculated?</h3>
+              </div>
+              <button onClick={() => setOpen(false)} className="p-1 hover:bg-secondary rounded"><X className="w-4 h-4 text-muted-foreground" /></button>
+            </div>
+            <div className="p-4 space-y-3">
+              <div className="bg-secondary/40 rounded p-2.5">
+                <p className="text-[10px] text-muted-foreground leading-relaxed">
+                  Aggregate <span className="text-foreground font-semibold">{score}</span> = weighted sum of 5 drivers below. Each driver is normalized 0–100, multiplied by its weight, then summed.
+                </p>
+              </div>
+              <div className="space-y-2">
+                {rows.map(r => {
+                  const contribution = Math.round(r.score * r.weight);
+                  return (
+                    <div key={r.label} className="border border-border rounded p-2.5 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-medium text-foreground">{r.label}</span>
+                        <span className="text-[10px] text-muted-foreground">weight {Math.round(r.weight * 100)}%</span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">{r.why}</p>
+                      <div className="flex items-center justify-between text-[10px]">
+                        <span className="text-muted-foreground">{r.score} × {r.weight.toFixed(2)}</span>
+                        <span className="font-semibold text-teal">+{contribution} pts</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex items-center justify-between pt-2 border-t border-border">
+                <span className="text-[11px] text-muted-foreground">Total</span>
+                <span className="text-sm font-bold text-foreground">{score} / 100</span>
+              </div>
+              <p className="text-[9px] text-muted-foreground/80 leading-relaxed pt-1">
+                Bands: <span className="text-teal">0–40 Low</span> · <span className="text-amber">41–70 Medium</span> · <span className="text-coral">71–100 High</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -355,22 +427,32 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                   ))}
                 </div>
 
-                {/* Risk gauge */}
-                <div className="flex justify-center">
-                  <RiskGauge score={detailAsset.pqcRisk === 'Critical' ? 85 : detailAsset.pqcRisk === 'High' ? 62 : 28} size={100} />
-                </div>
-
-                {/* Risk bars */}
+                {/* Risk gauge — derived from weighted breakdown */}
                 {(() => {
                   const risk = getIdentityRisk(detailAsset);
+                  // Weighted aggregate: algorithm 30%, expiry 20%, exposure 20%, dependents 15%, ownership 15%
+                  const weights = { alg: 0.30, expiry: 0.20, exposure: 0.20, dep: 0.15, owner: 0.15 };
+                  const aggregate = Math.round(
+                    risk.algScore * weights.alg +
+                    risk.expiryScore * weights.expiry +
+                    risk.exposureScore * weights.exposure +
+                    risk.depScore * weights.dep +
+                    risk.ownerScore * weights.owner
+                  );
                   return (
-                    <div className="space-y-3">
-                      <RiskBar label="Algorithm vulnerability" score={risk.algScore} driver={risk.algScore > 60 ? `${detailAsset.algorithm} is quantum-vulnerable` : 'Algorithm meets minimum standards'} />
-                      <RiskBar label="Expiry urgency" score={risk.expiryScore} driver={risk.expiryScore > 60 ? `Expires in ${detailAsset.daysToExpiry} days` : 'No urgent expiration'} />
-                      <RiskBar label="Internet exposure" score={risk.exposureScore} driver={detailAsset.environment === 'Production' ? 'Production-facing asset' : 'Internal environment'} />
-                      <RiskBar label="Dependent assets" score={risk.depScore} driver={`${getAssociatedAssets(detailAsset).length} infrastructure assets depend on this`} />
-                      <RiskBar label="Ownership gap" score={risk.ownerScore} driver={detailAsset.owner === 'Unassigned' ? 'No owner assigned' : `Owned by ${detailAsset.owner}`} />
-                    </div>
+                    <>
+                      <div className="flex flex-col items-center gap-1.5">
+                        <RiskGauge score={aggregate} size={100} />
+                        <ExplainScore score={aggregate} risk={risk} weights={weights} asset={detailAsset} />
+                      </div>
+                      <div className="space-y-3">
+                        <RiskBar label="Algorithm vulnerability" score={risk.algScore} driver={risk.algScore > 60 ? `${detailAsset.algorithm} is quantum-vulnerable` : 'Algorithm meets minimum standards'} />
+                        <RiskBar label="Expiry urgency" score={risk.expiryScore} driver={risk.expiryScore > 60 ? `Expires in ${detailAsset.daysToExpiry} days` : 'No urgent expiration'} />
+                        <RiskBar label="Internet exposure" score={risk.exposureScore} driver={detailAsset.environment === 'Production' ? 'Production-facing asset' : 'Internal environment'} />
+                        <RiskBar label="Dependent assets" score={risk.depScore} driver={`${getAssociatedAssets(detailAsset).length} infrastructure assets depend on this`} />
+                        <RiskBar label="Ownership gap" score={risk.ownerScore} driver={detailAsset.owner === 'Unassigned' ? 'No owner assigned' : `Owned by ${detailAsset.owner}`} />
+                      </div>
+                    </>
                   );
                 })()}
 
