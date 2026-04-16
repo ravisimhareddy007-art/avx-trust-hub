@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { mockAssets, CryptoAsset } from '@/data/mockData';
-import { mockITAssets } from '@/data/inventoryMockData';
+import { mockITAssets, mockGroups } from '@/data/inventoryMockData';
+import { Modal } from '@/components/shared/UIComponents';
 import { StatusBadge, EnvBadge, PQCBadge, DaysToExpiry, SeverityBadge } from '@/components/shared/UIComponents';
 import { Search, ChevronDown, ChevronRight, MoreVertical, X, Shield, ShieldOff } from 'lucide-react';
 import { toast } from 'sonner';
@@ -97,14 +98,33 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   const algorithms = [...new Set(mockAssets.map(a => a.algorithm))].sort();
   const getAssociatedAssets = (co: CryptoAsset) => mockITAssets.filter(a => a.cryptoObjectIds.includes(co.id));
 
+  const [actionModal, setActionModal] = useState<{ action: string; asset: CryptoAsset } | null>(null);
+  const [assignOwner, setAssignOwner] = useState('');
+  const [addToGroup, setAddToGroup] = useState('');
+
   const handleAction = (action: string, co: CryptoAsset) => {
     if (action === 'Create Ticket') {
       onCreateTicket({ objectName: co.name, objectType: co.type, algorithm: co.algorithm, status: co.status, daysToExpiry: co.daysToExpiry, environment: co.environment });
     } else if (action === 'View Full Detail') {
       setDetailAsset(co);
     } else {
-      toast.success(`${action} initiated for ${co.name}`);
+      setActionModal({ action, asset: co });
     }
+  };
+
+  const executeAction = () => {
+    if (!actionModal) return;
+    const { action, asset } = actionModal;
+    if (action === 'Assign Owner' && assignOwner) {
+      toast.success(`Owner "${assignOwner}" assigned to ${asset.name}`);
+    } else if (action === 'Add to Group' && addToGroup) {
+      toast.success(`${asset.name} added to group "${addToGroup}"`);
+    } else {
+      toast.success(`${action} initiated for ${asset.name}`);
+    }
+    setActionModal(null);
+    setAssignOwner('');
+    setAddToGroup('');
   };
 
   const getIdentityRisk = (co: CryptoAsset) => {
@@ -168,7 +188,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
 
         {/* Table */}
         <div className="bg-card rounded-lg border border-border overflow-hidden">
-          <div className="overflow-x-auto scrollbar-thin">
+          <div className="overflow-x-auto overflow-y-visible" style={{ maxHeight: 'calc(100vh - 300px)' }}>
             <table className="w-full text-xs">
               <thead className="bg-secondary/50">
                 <tr className="border-b border-border">
@@ -423,6 +443,57 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
           </div>
         </div>
       )}
+
+      {/* Action confirmation modal */}
+      <Modal open={!!actionModal} onClose={() => setActionModal(null)} title={actionModal ? `${actionModal.action} — ${actionModal.asset.name}` : ''}>
+        {actionModal && (
+          <div className="space-y-4">
+            {actionModal.action === 'Renew' && (
+              <div className="text-xs text-muted-foreground">
+                <p>This will initiate certificate renewal for <span className="font-semibold text-foreground">{actionModal.asset.name}</span>.</p>
+                <p className="mt-1">Algorithm: {actionModal.asset.algorithm} · Issuer: {actionModal.asset.caIssuer}</p>
+                <p>Current expiry: {actionModal.asset.expiryDate} ({actionModal.asset.daysToExpiry}d remaining)</p>
+              </div>
+            )}
+            {actionModal.action === 'Revoke' && (
+              <div className="bg-coral/5 border border-coral/20 rounded-lg p-3 text-xs text-muted-foreground">
+                <p className="text-coral font-semibold mb-1">⚠ Irreversible Action</p>
+                <p>Revoking <span className="font-semibold text-foreground">{actionModal.asset.name}</span> will immediately invalidate it across all {getAssociatedAssets(actionModal.asset).length} associated infrastructure assets.</p>
+              </div>
+            )}
+            {actionModal.action === 'Assign Owner' && (
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground">Select Owner</label>
+                <select value={assignOwner} onChange={e => setAssignOwner(e.target.value)} className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-xs">
+                  <option value="">Choose an owner...</option>
+                  {['Sarah Chen', 'Mike Rodriguez', 'Lisa Park', 'James Wilson', 'Platform Engineering', 'Security Operations', 'DevOps'].map(o => <option key={o}>{o}</option>)}
+                </select>
+              </div>
+            )}
+            {actionModal.action === 'Add to Group' && (
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground">Select Group</label>
+                <select value={addToGroup} onChange={e => setAddToGroup(e.target.value)} className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-xs">
+                  <option value="">Choose a group...</option>
+                  {mockGroups.map(g => <option key={g.id} value={g.name}>{g.name} ({g.objectCount} identities)</option>)}
+                </select>
+              </div>
+            )}
+            {actionModal.action === 'Rotate' && (
+              <div className="text-xs text-muted-foreground">
+                <p>Initiate key rotation for <span className="font-semibold text-foreground">{actionModal.asset.name}</span>.</p>
+                <p className="mt-1">Last rotated: {actionModal.asset.lastRotated} · Frequency: {actionModal.asset.rotationFrequency}</p>
+              </div>
+            )}
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setActionModal(null)} className="px-4 py-2 text-xs rounded-lg border border-border hover:bg-muted">Cancel</button>
+              <button onClick={executeAction} className={`px-4 py-2 text-xs rounded-lg text-primary-foreground ${actionModal.action === 'Revoke' ? 'bg-coral hover:bg-coral/90' : 'bg-teal hover:bg-teal-light'}`}>
+                {actionModal.action === 'Assign Owner' ? 'Assign' : actionModal.action === 'Add to Group' ? 'Add' : `Confirm ${actionModal.action}`}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
