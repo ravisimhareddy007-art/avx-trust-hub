@@ -97,14 +97,33 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   const algorithms = [...new Set(mockAssets.map(a => a.algorithm))].sort();
   const getAssociatedAssets = (co: CryptoAsset) => mockITAssets.filter(a => a.cryptoObjectIds.includes(co.id));
 
+  const [actionModal, setActionModal] = useState<{ action: string; asset: CryptoAsset } | null>(null);
+  const [assignOwner, setAssignOwner] = useState('');
+  const [addToGroup, setAddToGroup] = useState('');
+
   const handleAction = (action: string, co: CryptoAsset) => {
     if (action === 'Create Ticket') {
       onCreateTicket({ objectName: co.name, objectType: co.type, algorithm: co.algorithm, status: co.status, daysToExpiry: co.daysToExpiry, environment: co.environment });
     } else if (action === 'View Full Detail') {
       setDetailAsset(co);
     } else {
-      toast.success(`${action} initiated for ${co.name}`);
+      setActionModal({ action, asset: co });
     }
+  };
+
+  const executeAction = () => {
+    if (!actionModal) return;
+    const { action, asset } = actionModal;
+    if (action === 'Assign Owner' && assignOwner) {
+      toast.success(`Owner "${assignOwner}" assigned to ${asset.name}`);
+    } else if (action === 'Add to Group' && addToGroup) {
+      toast.success(`${asset.name} added to group "${addToGroup}"`);
+    } else {
+      toast.success(`${action} initiated for ${asset.name}`);
+    }
+    setActionModal(null);
+    setAssignOwner('');
+    setAddToGroup('');
   };
 
   const getIdentityRisk = (co: CryptoAsset) => {
