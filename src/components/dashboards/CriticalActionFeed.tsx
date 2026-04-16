@@ -244,9 +244,14 @@ export default function CriticalActionFeed() {
                           <Layers className="w-2.5 h-2.5" /> {item.remediationGroups.length} CA groups
                         </span>
                       )}
+                      {item.licenseGated && !isQueued && (
+                        <span className="text-[9.5px] font-semibold px-1.5 py-0.5 rounded bg-amber/15 text-amber border border-amber/30 flex items-center gap-0.5">
+                          <LockIcon className="w-2.5 h-2.5" /> Manual ticket only
+                        </span>
+                      )}
                       {isQueued && (
                         <span className="text-[9.5px] font-semibold px-1.5 py-0.5 rounded bg-teal/15 text-teal flex items-center gap-1">
-                          <Check className="w-2.5 h-2.5" /> Queued
+                          <Check className="w-2.5 h-2.5" /> {item.licenseGated ? 'Ticket created' : 'Queued'}
                         </span>
                       )}
                     </div>
