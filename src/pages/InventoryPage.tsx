@@ -102,8 +102,7 @@ export default function InventoryPage() {
       {/* Add Resource Modal */}
       <AddResourceModal
         open={addOpen}
-        onClose={() => { setAddOpen(false); setAddInitialKind(undefined); }}
-        initialKind={addInitialKind}
+        onClose={() => setAddOpen(false)}
       />
     </div>
   );
