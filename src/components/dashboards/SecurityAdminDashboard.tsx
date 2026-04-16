@@ -14,8 +14,8 @@ export default function SecurityAdminDashboard() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold">Posture Overview</h1>
-            <p className="text-[11px] text-muted-foreground">What needs you right now · click any item to act</p>
+            <h1 className="text-xl font-bold">Trust Posture & Risk Intelligence</h1>
+            <p className="text-[11px] text-muted-foreground">High-Impact Recommendations & Active Insights</p>
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span>Refreshed 0m ago</span>
