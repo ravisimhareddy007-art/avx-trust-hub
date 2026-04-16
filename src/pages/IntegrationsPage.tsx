@@ -1,7 +1,185 @@
 import React, { useState, useEffect } from 'react';
 import { connectors } from '@/data/mockData';
 import { toast } from 'sonner';
-import { Search, Eye, EyeOff, Wifi, Link, X, ChevronLeft, ChevronRight, Check, RefreshCw, Play } from 'lucide-react';
+import { Search, Eye, EyeOff, Wifi, Link, X, ChevronLeft, ChevronRight, Check, RefreshCw, Play, ArrowUpRight, AlertTriangle, CheckCircle2, Clock, Zap } from 'lucide-react';
+import { useNav } from '@/context/NavigationContext';
+
+// Capability metadata: what each integration category enables + downstream actions
+const categoryCapability: Record<string, {
+  capability: string;
+  descriptor: string;
+  managedLabel: (n: number) => string;
+  inventoryFilter: { tab?: string; type?: string; scope?: string };
+  onboardingCTA: string;
+  postActions: { label: string; action: string }[];
+}> = {
+  'Certificate Authorities': {
+    capability: 'Certificate lifecycle automation',
+    descriptor: 'Enables automated issuance, renewal & revocation',
+    managedLabel: n => `${formatNum(n)} certificates under management`,
+    inventoryFilter: { tab: 'identity', type: 'Certificate' },
+    onboardingCTA: 'Discover & onboard certificate endpoints',
+    postActions: [
+      { label: 'View managed certs', action: 'inventory' },
+      { label: 'Enable auto-renewal', action: 'policy' },
+    ],
+  },
+  'Cloud Platforms': {
+    capability: 'Cloud asset & key discovery',
+    descriptor: 'Enables ingestion of cloud certs, KMS keys & secrets',
+    managedLabel: n => `${formatNum(n)} cloud assets managed`,
+    inventoryFilter: { tab: 'infrastructure', scope: 'Cloud' },
+    onboardingCTA: 'Import compute assets for onboarding',
+    postActions: [
+      { label: 'View managed assets', action: 'inventory' },
+      { label: 'Start onboarding', action: 'discovery' },
+    ],
+  },
+  'HSM': {
+    capability: 'Hardware-backed key custody',
+    descriptor: 'Enables FIPS 140-2/3 key generation & protection',
+    managedLabel: n => `${formatNum(n)} keys protected`,
+    inventoryFilter: { tab: 'identity', type: 'Key' },
+    onboardingCTA: 'Bind keys to certificate profiles',
+    postActions: [
+      { label: 'View protected keys', action: 'inventory' },
+      { label: 'Bind to CA', action: 'policy' },
+    ],
+  },
+  'PAM / Secrets Management': {
+    capability: 'Secret rotation & vaulting',
+    descriptor: 'Enables centralized secret storage & rotation',
+    managedLabel: n => `${formatNum(n)} secrets vaulted`,
+    inventoryFilter: { tab: 'identity', type: 'Secret' },
+    onboardingCTA: 'Onboard secrets into rotation policy',
+    postActions: [
+      { label: 'View vaulted secrets', action: 'inventory' },
+      { label: 'Enable rotation', action: 'policy' },
+    ],
+  },
+  'ITSM / Ticketing': {
+    capability: 'Workflow & change management',
+    descriptor: 'Enables automated ticketing for renewals & incidents',
+    managedLabel: n => `${formatNum(n)} tickets routed`,
+    inventoryFilter: {},
+    onboardingCTA: 'Configure approval workflows',
+    postActions: [
+      { label: 'View tickets', action: 'tickets' },
+      { label: 'Edit workflow', action: 'policy' },
+    ],
+  },
+  'DDI (DNS / DHCP / IPAM)': {
+    capability: 'Network identity discovery',
+    descriptor: 'Enables host & endpoint resolution for cert binding',
+    managedLabel: n => `${formatNum(n)} hosts resolved`,
+    inventoryFilter: { tab: 'infrastructure', scope: 'Hosts' },
+    onboardingCTA: 'Discover hosts for cert deployment',
+    postActions: [
+      { label: 'View hosts', action: 'inventory' },
+      { label: 'Run discovery', action: 'discovery' },
+    ],
+  },
+  'Web Servers': {
+    capability: 'Endpoint cert deployment',
+    descriptor: 'Enables push-based cert install on web servers',
+    managedLabel: n => `${formatNum(n)} servers actively managed`,
+    inventoryFilter: { tab: 'infrastructure', scope: 'Hosts' },
+    onboardingCTA: 'Onboard servers for auto-deploy',
+    postActions: [
+      { label: 'View managed servers', action: 'inventory' },
+      { label: 'Push cert', action: 'policy' },
+    ],
+  },
+  'ADC / Load Balancers': {
+    capability: 'SSL profile & VIP automation',
+    descriptor: 'Enables cert binding on virtual servers & profiles',
+    managedLabel: n => `${formatNum(n)} VIPs / profiles managed`,
+    inventoryFilter: { tab: 'infrastructure', scope: 'Hosts' },
+    onboardingCTA: 'Onboard VIPs for cert rotation',
+    postActions: [
+      { label: 'View VIPs', action: 'inventory' },
+      { label: 'Bind cert', action: 'policy' },
+    ],
+  },
+  'Firewall': {
+    capability: 'Inline cert inspection',
+    descriptor: 'Enables TLS inspection cert distribution',
+    managedLabel: n => `${formatNum(n)} firewalls integrated`,
+    inventoryFilter: { tab: 'infrastructure', scope: 'Hosts' },
+    onboardingCTA: 'Distribute inspection certs',
+    postActions: [
+      { label: 'View firewalls', action: 'inventory' },
+      { label: 'Rotate cert', action: 'policy' },
+    ],
+  },
+  'WAF': {
+    capability: 'Edge cert lifecycle',
+    descriptor: 'Enables managed certs at the application edge',
+    managedLabel: n => `${formatNum(n)} edge certs managed`,
+    inventoryFilter: { tab: 'identity', type: 'Certificate' },
+    onboardingCTA: 'Onboard edge endpoints',
+    postActions: [
+      { label: 'View edge certs', action: 'inventory' },
+      { label: 'Renew', action: 'policy' },
+    ],
+  },
+  'SDN / NFV': {
+    capability: 'Software-defined fabric trust',
+    descriptor: 'Enables identity for virtualized network functions',
+    managedLabel: n => `${formatNum(n)} VNFs identified`,
+    inventoryFilter: { tab: 'infrastructure' },
+    onboardingCTA: 'Onboard VNF identities',
+    postActions: [
+      { label: 'View VNFs', action: 'inventory' },
+      { label: 'Issue cert', action: 'policy' },
+    ],
+  },
+  'DevOps / Automation': {
+    capability: 'Pipeline-driven cert delivery',
+    descriptor: 'Enables CI/CD-integrated cert provisioning',
+    managedLabel: n => `${formatNum(n)} pipelines wired`,
+    inventoryFilter: {},
+    onboardingCTA: 'Wire pipeline for cert provisioning',
+    postActions: [
+      { label: 'View workflows', action: 'automation' },
+      { label: 'Add pipeline', action: 'policy' },
+    ],
+  },
+};
+
+// Hierarchy: group categories into operational layers
+const layerGrouping: { layer: string; categories: string[] }[] = [
+  { layer: 'Certificate Authorities', categories: ['Certificate Authorities'] },
+  { layer: 'Secrets Managers / Key Vaults', categories: ['HSM', 'PAM / Secrets Management'] },
+  { layer: 'Cloud Platforms', categories: ['Cloud Platforms'] },
+  { layer: 'Load Balancers / ADCs / Network Devices', categories: ['ADC / Load Balancers', 'Web Servers', 'Firewall', 'WAF', 'SDN / NFV', 'DDI (DNS / DHCP / IPAM)'] },
+  { layer: 'Workflow & Delivery', categories: ['ITSM / Ticketing', 'DevOps / Automation'] },
+];
+
+function formatNum(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
+  if (n >= 1_000) return Math.round(n / 1_000) + 'K';
+  return String(n);
+}
+
+// Lightweight integration health derived from lastSync
+function deriveHealth(item: { status: string; lastSync: string }): { state: 'healthy' | 'delayed' | 'failed' | 'idle'; label: string; lastError?: string } {
+  if (item.status !== 'connected') return { state: 'idle', label: 'Not connected' };
+  const ls = (item.lastSync || '').toLowerCase();
+  // mock: anything mentioning hours over 12 = delayed; "failed" keyword = failed
+  if (ls.includes('fail')) return { state: 'failed', label: 'Sync failed', lastError: 'API rate limit exceeded' };
+  const hMatch = ls.match(/(\d+)\s*h/);
+  if (hMatch && parseInt(hMatch[1]) > 12) return { state: 'delayed', label: 'Sync delayed' };
+  return { state: 'healthy', label: 'Healthy' };
+}
+
+// Mock adoption % (assets actively managed vs discovered)
+function adoptionPct(name: string, assets: number): number | null {
+  if (!assets) return null;
+  // deterministic mock so it doesn't reshuffle on render
+  const seed = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+  return 55 + (seed % 41); // 55-95%
+}
 
 // Extended connector metadata with category info for 4-step lifecycle
 const connectorMeta: Record<string, {
@@ -397,6 +575,7 @@ function ConnectorConfigModal({ item, open, onClose }: { item: ConnectorItem | n
 export default function IntegrationsPage() {
   const [search, setSearch] = useState('');
   const [selectedConnector, setSelectedConnector] = useState<ConnectorItem | null>(null);
+  const { setCurrentPage, setFilters } = useNav();
 
   const categories: Record<string, ConnectorItem[]> = {
     'Certificate Authorities': connectors.ca,
@@ -416,12 +595,23 @@ export default function IntegrationsPage() {
   const totalConnected = Object.values(connectors).flat().filter(c => c.status === 'connected').length;
   const totalAvailable = Object.values(connectors).flat().length;
 
+  const handleAction = (action: string, cat: string) => {
+    const cap = categoryCapability[cat];
+    if (action === 'inventory') {
+      if (cap?.inventoryFilter) setFilters(cap.inventoryFilter as Record<string, string>);
+      setCurrentPage('inventory');
+    } else if (action === 'discovery') setCurrentPage('discovery-runs');
+    else if (action === 'policy') setCurrentPage('policy-builder');
+    else if (action === 'tickets') setCurrentPage('ticket-management');
+    else if (action === 'automation') setCurrentPage('automation');
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold">Integrations</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">{totalConnected} connected · {totalAvailable} available</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Control plane · {totalConnected} active capabilities · {totalAvailable} available</p>
         </div>
         <div className="relative w-64">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
@@ -431,32 +621,127 @@ export default function IntegrationsPage() {
         </div>
       </div>
 
-      {Object.entries(categories).map(([category, items]) => {
-        const filtered = search ? items.filter(i => i.name.toLowerCase().includes(search.toLowerCase())) : items;
-        if (filtered.length === 0) return null;
-        const connectedCount = filtered.filter(i => i.status === 'connected').length;
+      {layerGrouping.map(({ layer, categories: catNames }) => {
+        const layerCats = catNames.filter(c => categories[c]);
+        if (layerCats.length === 0) return null;
+        // gather all items in layer for filter check
+        const allItems = layerCats.flatMap(c => categories[c]);
+        const layerFiltered = search ? allItems.filter(i => i.name.toLowerCase().includes(search.toLowerCase())) : allItems;
+        if (layerFiltered.length === 0) return null;
+        const layerConnected = layerFiltered.filter(i => i.status === 'connected').length;
+
         return (
-          <div key={category}>
-            <h3 className="text-sm font-semibold mb-2">{category} <span className="text-[10px] text-muted-foreground font-normal ml-1">{connectedCount}/{filtered.length} connected</span></h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
-              {filtered.map(item => (
-                <div key={item.name} className="bg-card rounded-lg border border-border p-3 flex items-center justify-between hover:border-teal/30 transition-colors">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${item.status === 'connected' ? 'bg-teal' : 'bg-muted-foreground'}`} />
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium truncate">{item.name}</p>
-                      <p className="text-[10px] text-muted-foreground truncate">
-                        {item.status === 'connected' ? `${item.lastSync}${item.assets > 0 ? ` · ${item.assets >= 1000000 ? (item.assets / 1000000).toFixed(1) + 'M' : item.assets >= 1000 ? Math.round(item.assets / 1000) + 'K' : item.assets} assets` : ''}` : 'Not connected'}
-                      </p>
-                    </div>
-                  </div>
-                  <button onClick={() => setSelectedConnector(item)}
-                    className={`text-[10px] px-2 py-1 rounded flex-shrink-0 ml-2 ${item.status === 'connected' ? 'bg-muted text-muted-foreground hover:bg-muted/80' : 'bg-teal text-primary-foreground hover:bg-teal-light'}`}>
-                    {item.status === 'connected' ? 'Configure' : '+ Connect'}
-                  </button>
-                </div>
-              ))}
+          <div key={layer} className="space-y-3">
+            <div className="flex items-baseline gap-2 border-b border-border pb-1.5">
+              <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">{layer}</h2>
+              <span className="text-[10px] text-muted-foreground">{layerConnected}/{layerFiltered.length} active</span>
             </div>
+
+            {layerCats.map(cat => {
+              const items = categories[cat];
+              const filtered = search ? items.filter(i => i.name.toLowerCase().includes(search.toLowerCase())) : items;
+              if (filtered.length === 0) return null;
+              const cap = categoryCapability[cat];
+              return (
+                <div key={cat} className="space-y-2">
+                  <div className="flex items-baseline justify-between">
+                    <div>
+                      <h3 className="text-xs font-semibold text-foreground">{cat}</h3>
+                      {cap && <p className="text-[10px] text-muted-foreground">{cap.descriptor}</p>}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground">{filtered.filter(i => i.status === 'connected').length}/{filtered.length}</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {filtered.map(item => {
+                      const health = deriveHealth(item);
+                      const adoption = adoptionPct(item.name, item.assets);
+                      const isConnected = item.status === 'connected';
+                      return (
+                        <div key={item.name} className="group bg-card rounded-lg border border-border hover:border-teal/40 transition-colors p-3 flex flex-col gap-2.5">
+                          {/* Header: name + health */}
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-medium text-foreground truncate">{item.name}</p>
+                              {cap && <p className="text-[10px] text-teal/90 mt-0.5">{cap.capability}</p>}
+                            </div>
+                            {isConnected ? (
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                {health.state === 'healthy' && <CheckCircle2 className="w-3 h-3 text-teal" />}
+                                {health.state === 'delayed' && <Clock className="w-3 h-3 text-amber" />}
+                                {health.state === 'failed' && <AlertTriangle className="w-3 h-3 text-coral" />}
+                                <span className={`text-[10px] ${health.state === 'healthy' ? 'text-teal' : health.state === 'delayed' ? 'text-amber' : 'text-coral'}`}>{health.label}</span>
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground flex-shrink-0">Not connected</span>
+                            )}
+                          </div>
+
+                          {/* Powering / managed indicator */}
+                          {isConnected && cap && item.assets > 0 && (
+                            <button
+                              onClick={() => handleAction('inventory', cat)}
+                              className="flex items-center justify-between gap-2 px-2 py-1.5 bg-muted/40 hover:bg-muted/70 rounded text-left transition-colors"
+                            >
+                              <span className="text-[10px] text-foreground">{cap.managedLabel(item.assets)}</span>
+                              <ArrowUpRight className="w-3 h-3 text-muted-foreground group-hover:text-teal" />
+                            </button>
+                          )}
+
+                          {/* Adoption + last sync */}
+                          {isConnected && (
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                                <span>Last sync: {item.lastSync}</span>
+                                {adoption !== null && <span>{adoption}% adopted</span>}
+                              </div>
+                              {adoption !== null && (
+                                <div className="h-1 bg-muted rounded-full overflow-hidden">
+                                  <div className={`h-full ${adoption >= 80 ? 'bg-teal' : adoption >= 60 ? 'bg-amber' : 'bg-coral'}`} style={{ width: `${adoption}%` }} />
+                                </div>
+                              )}
+                              {health.lastError && (
+                                <p className="text-[10px] text-coral truncate">Last error: {health.lastError}</p>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Contextual actions */}
+                          <div className="flex items-center gap-1.5 pt-1 mt-auto border-t border-border/60">
+                            {isConnected && cap ? (
+                              <>
+                                {cap.postActions.map(a => (
+                                  <button
+                                    key={a.label}
+                                    onClick={() => handleAction(a.action, cat)}
+                                    className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-teal/10 hover:text-teal text-muted-foreground transition-colors"
+                                  >
+                                    {a.label}
+                                  </button>
+                                ))}
+                                <div className="flex-1" />
+                                <button onClick={() => setSelectedConnector(item)} className="text-[10px] text-muted-foreground hover:text-foreground">
+                                  Configure
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button onClick={() => setSelectedConnector(item)}
+                                  className="flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-teal text-primary-foreground hover:bg-teal/90 transition-colors">
+                                  <Zap className="w-3 h-3" /> Connect
+                                </button>
+                                {cap && (
+                                  <span className="text-[10px] text-muted-foreground truncate">→ {cap.onboardingCTA}</span>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         );
       })}
