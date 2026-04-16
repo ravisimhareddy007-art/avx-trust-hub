@@ -26,6 +26,7 @@ interface ActionItem {
   approveSummary: string;
   ageMins: number;
   remediationGroups?: RemediationGroup[];
+  licenseGated?: { module: string; reason: string };
 }
 
 const FEED: ActionItem[] = [
