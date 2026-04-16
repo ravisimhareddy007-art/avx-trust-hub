@@ -74,6 +74,78 @@ function RiskGauge({ score, size = 80 }: { score: number; size?: number }) {
   );
 }
 
+function ExplainScore({ score, risk, weights, asset }: {
+  score: number;
+  risk: { algScore: number; expiryScore: number; exposureScore: number; depScore: number; ownerScore: number };
+  weights: { alg: number; expiry: number; exposure: number; dep: number; owner: number };
+  asset: CryptoAsset;
+}) {
+  const [open, setOpen] = useState(false);
+  const rows = [
+    { label: 'Algorithm vulnerability', score: risk.algScore, weight: weights.alg, why: `${asset.algorithm} · PQC risk: ${asset.pqcRisk}` },
+    { label: 'Expiry urgency', score: risk.expiryScore, weight: weights.expiry, why: asset.daysToExpiry <= 7 ? `Expires in ${asset.daysToExpiry}d (≤7d)` : asset.daysToExpiry <= 30 ? `Expires in ${asset.daysToExpiry}d (≤30d)` : `Expires in ${asset.daysToExpiry}d` },
+    { label: 'Internet exposure', score: risk.exposureScore, weight: weights.exposure, why: asset.environment === 'Production' ? 'Production-facing' : 'Internal environment' },
+    { label: 'Dependent assets', score: risk.depScore, weight: weights.dep, why: `${Math.round(risk.depScore / 20)} infra dependents` },
+    { label: 'Ownership gap', score: risk.ownerScore, weight: weights.owner, why: asset.owner === 'Unassigned' ? 'No owner assigned' : `Owned by ${asset.owner}` },
+  ];
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-teal transition-colors"
+      >
+        <Info className="w-3 h-3" /> Explain score
+      </button>
+      {open && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" onClick={() => setOpen(false)}>
+          <div className="absolute inset-0 bg-foreground/30 backdrop-blur-sm" />
+          <div className="relative bg-card border border-border rounded-lg shadow-2xl w-[440px] max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <div className="flex items-center gap-2">
+                <Info className="w-4 h-4 text-teal" />
+                <h3 className="text-sm font-semibold text-foreground">How is this score calculated?</h3>
+              </div>
+              <button onClick={() => setOpen(false)} className="p-1 hover:bg-secondary rounded"><X className="w-4 h-4 text-muted-foreground" /></button>
+            </div>
+            <div className="p-4 space-y-3">
+              <div className="bg-secondary/40 rounded p-2.5">
+                <p className="text-[10px] text-muted-foreground leading-relaxed">
+                  Aggregate <span className="text-foreground font-semibold">{score}</span> = weighted sum of 5 drivers below. Each driver is normalized 0–100, multiplied by its weight, then summed.
+                </p>
+              </div>
+              <div className="space-y-2">
+                {rows.map(r => {
+                  const contribution = Math.round(r.score * r.weight);
+                  return (
+                    <div key={r.label} className="border border-border rounded p-2.5 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-medium text-foreground">{r.label}</span>
+                        <span className="text-[10px] text-muted-foreground">weight {Math.round(r.weight * 100)}%</span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">{r.why}</p>
+                      <div className="flex items-center justify-between text-[10px]">
+                        <span className="text-muted-foreground">{r.score} × {r.weight.toFixed(2)}</span>
+                        <span className="font-semibold text-teal">+{contribution} pts</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex items-center justify-between pt-2 border-t border-border">
+                <span className="text-[11px] text-muted-foreground">Total</span>
+                <span className="text-sm font-bold text-foreground">{score} / 100</span>
+              </div>
+              <p className="text-[9px] text-muted-foreground/80 leading-relaxed pt-1">
+                Bands: <span className="text-teal">0–40 Low</span> · <span className="text-amber">41–70 Medium</span> · <span className="text-coral">71–100 High</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('All');
