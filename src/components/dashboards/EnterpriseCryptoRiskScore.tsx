@@ -54,7 +54,7 @@ export default function EnterpriseCryptoRiskScore() {
           <Sparkles className="w-4 h-4 text-teal" />
           <h2 className="text-sm font-semibold text-foreground">Enterprise Crypto Risk Score</h2>
         </div>
-        <span className="text-[10px] text-muted-foreground">CVSS-inspired · updated 2m ago</span>
+        <span className="text-[10px] text-muted-foreground">updated 2m ago</span>
       </div>
 
       {/* Score gauge + verdict sentence */}
