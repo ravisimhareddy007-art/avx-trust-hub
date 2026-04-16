@@ -1,13 +1,18 @@
 import React, { useState, useMemo } from 'react';
-import { Shield, Key, Bot, Lock, Fingerprint, Globe, AlertTriangle, Clock, Sparkles, Loader2, Check, ChevronDown, ChevronUp, Layers } from 'lucide-react';
-import { useDashboard } from '@/context/DashboardContext';
-import { feedItemToDriver } from '@/context/DashboardContext';
+import { Shield, Key, Bot, Lock, Fingerprint, Globe, AlertTriangle, Clock, Sparkles, Check, ChevronDown, ChevronUp, Layers } from 'lucide-react';
+import { toast } from 'sonner';
+import { useDashboard, feedItemToDriver } from '@/context/DashboardContext';
+import { useNav } from '@/context/NavigationContext';
 
-interface WaveInfo {
-  waves: number;
-  perWave: number;
-  totalAffected: number;
-  unit: string;
+interface RemediationGroup {
+  ca: string;
+  caAccount: string;
+  count: number;
+  environment: string;
+  teams: string[];
+  method: 'acme-auto' | 'est-semi' | 'manual';
+  requiresApproval: boolean;
+  workflowTemplate: string;
 }
 
 interface ActionItem {
@@ -20,7 +25,7 @@ interface ActionItem {
   aiPlan: string;
   approveSummary: string;
   ageMins: number;
-  waveInfo?: WaveInfo;
+  remediationGroups?: RemediationGroup[];
 }
 
 const FEED: ActionItem[] = [
@@ -47,7 +52,10 @@ const FEED: ActionItem[] = [
     aiPlan: 'Bulk revoke 3,218 SSH keys (last used >180d, no owner). Quarantine for 30d before deletion. Notify last-known accessing IPs.',
     approveSummary: 'Quarantine 3,218 orphaned keys for 30 days.',
     ageMins: 95,
-    waveInfo: { waves: 4, perWave: 800, totalAffected: 3218, unit: 'keys' },
+    remediationGroups: [
+      { ca: 'N/A', caAccount: 'ssh-prod', count: 1847, environment: 'Production', teams: ['infra-ops'], method: 'manual', requiresApproval: true, workflowTemplate: 'SSH Key Rotation' },
+      { ca: 'N/A', caAccount: 'ssh-staging', count: 1371, environment: 'Staging', teams: ['dev-platform'], method: 'manual', requiresApproval: false, workflowTemplate: 'SSH Key Rotation' },
+    ],
   },
   {
     id: '4', category: 'Secrets', icon: Lock, severity: 'P1',
@@ -56,7 +64,11 @@ const FEED: ActionItem[] = [
     aiPlan: 'Open PRs to replace hardcoded secrets with Vault references. Rotate all 18,420 exposed values. Notify last-author per repo.',
     approveSummary: 'Rotate all 18,420 secrets and open replacement PRs.',
     ageMins: 130,
-    waveInfo: { waves: 6, perWave: 3070, totalAffected: 18420, unit: 'secrets' },
+    remediationGroups: [
+      { ca: 'HashiCorp Vault', caAccount: 'vault-prod', count: 9410, environment: 'Production', teams: ['platform-eng', 'data-eng'], method: 'acme-auto', requiresApproval: true, workflowTemplate: 'Secret Rotation' },
+      { ca: 'AWS Secrets Manager', caAccount: 'sm-app', count: 6280, environment: 'Production + Staging', teams: ['app-team'], method: 'acme-auto', requiresApproval: true, workflowTemplate: 'Secret Rotation' },
+      { ca: 'Azure Key Vault', caAccount: 'kv-shared', count: 2730, environment: 'Dev + Staging', teams: ['dev-platform'], method: 'acme-auto', requiresApproval: false, workflowTemplate: 'Secret Rotation' },
+    ],
   },
   {
     id: '5', category: 'K8s', icon: Globe, severity: 'P2',
@@ -70,10 +82,14 @@ const FEED: ActionItem[] = [
     id: '6', category: 'Certs', icon: Shield, severity: 'P2',
     title: '4,218 certificates use weak algorithms',
     detail: 'RSA-1024 / SHA-1 · NIST PQC migration required',
-    aiPlan: 'Stage PQC migration: re-issue 4,218 certs with ML-KEM-768 hybrid via DigiCert. Roll in waves of 200/day. Auto-rollback on TLS handshake failure.',
+    aiPlan: 'Stage PQC migration: re-issue 4,218 certs with ML-KEM-768 hybrid. Roll in waves, auto-rollback on TLS handshake failure.',
     approveSummary: 'Begin staged PQC migration of 4,218 certs.',
     ageMins: 240,
-    waveInfo: { waves: 21, perWave: 200, totalAffected: 4218, unit: 'certs' },
+    remediationGroups: [
+      { ca: 'DigiCert CertCentral', caAccount: 'payments-prod', count: 847, environment: 'Production', teams: ['payments-eng', 'billing-eng'], method: 'acme-auto', requiresApproval: true, workflowTemplate: 'Renew Certificate' },
+      { ca: 'Microsoft ADCS', caAccount: 'corp-pki', count: 2103, environment: 'Production + Staging', teams: ['infra-platform'], method: 'est-semi', requiresApproval: true, workflowTemplate: 'Re-enroll Certificate' },
+      { ca: "Let's Encrypt", caAccount: 'le-prod', count: 1268, environment: 'Dev + Staging', teams: ['dev-platform'], method: 'acme-auto', requiresApproval: false, workflowTemplate: 'Renew Certificate' },
+    ],
   },
   {
     id: '7', category: 'Code Sign', icon: Fingerprint, severity: 'P2',
@@ -87,16 +103,20 @@ const FEED: ActionItem[] = [
     id: '8', category: 'Secrets', icon: Lock, severity: 'P2',
     title: '42,180 API keys not rotated >90 days',
     detail: 'Vault + AWS Secrets Manager · production scope',
-    aiPlan: 'Schedule wave-based rotation of 42,180 API keys (5 waves over 5 days). Notify owning teams 24h before each wave.',
-    approveSummary: 'Schedule 5-wave rotation of 42,180 keys.',
+    aiPlan: 'Schedule rotation of 42,180 API keys grouped by vault. Notify owning teams 24h before each batch.',
+    approveSummary: 'Rotate 42,180 keys grouped by vault.',
     ageMins: 480,
-    waveInfo: { waves: 5, perWave: 8436, totalAffected: 42180, unit: 'keys' },
+    remediationGroups: [
+      { ca: 'HashiCorp Vault', caAccount: 'vault-prod', count: 18420, environment: 'Production', teams: ['platform-eng'], method: 'acme-auto', requiresApproval: true, workflowTemplate: 'API Key Rotation' },
+      { ca: 'AWS Secrets Manager', caAccount: 'sm-prod', count: 16280, environment: 'Production', teams: ['cloud-eng'], method: 'acme-auto', requiresApproval: true, workflowTemplate: 'API Key Rotation' },
+      { ca: 'Azure Key Vault', caAccount: 'kv-prod', count: 7480, environment: 'Production', teams: ['cloud-eng'], method: 'acme-auto', requiresApproval: false, workflowTemplate: 'API Key Rotation' },
+    ],
   },
   {
     id: '9', category: 'SSH', icon: Key, severity: 'P3',
     title: '14,720 keys stored outside HSM',
     detail: 'Filesystem & vault keystores · move to Thales/AWS CloudHSM',
-    aiPlan: 'Migrate 14,720 keys to AWS CloudHSM. Wrap, transfer, verify, then delete source. Maintenance window required for signing-svc.',
+    aiPlan: 'Migrate 14,720 keys to AWS CloudHSM. Wrap, transfer, verify, then delete source. Maintenance window required.',
     approveSummary: 'Migrate 14,720 keys into HSM (windowed).',
     ageMins: 720,
   },
@@ -107,7 +127,11 @@ const FEED: ActionItem[] = [
     aiPlan: 'Auto-assign sponsors based on token creator + service ownership graph. Send confirmation email to each sponsor with 7d objection window.',
     approveSummary: 'Auto-sponsor 44K tokens with confirmation flow.',
     ageMins: 1100,
-    waveInfo: { waves: 4, perWave: 11000, totalAffected: 44000, unit: 'tokens' },
+    remediationGroups: [
+      { ca: 'Okta', caAccount: 'okta-prod', count: 22000, environment: 'Production', teams: ['identity-team'], method: 'acme-auto', requiresApproval: true, workflowTemplate: 'Token Sponsor Assignment' },
+      { ca: 'Azure AD', caAccount: 'aad-corp', count: 14000, environment: 'Production', teams: ['identity-team'], method: 'acme-auto', requiresApproval: true, workflowTemplate: 'Token Sponsor Assignment' },
+      { ca: 'AWS IAM', caAccount: 'iam-prod', count: 8000, environment: 'Production', teams: ['cloud-eng'], method: 'acme-auto', requiresApproval: false, workflowTemplate: 'Token Sponsor Assignment' },
+    ],
   },
 ];
 
@@ -117,6 +141,12 @@ const SEV_STYLES: Record<ActionItem['severity'], string> = {
   P3: 'bg-purple/15 text-purple border-purple/30',
 };
 
+const METHOD_STYLES: Record<RemediationGroup['method'], { label: string; cls: string }> = {
+  'acme-auto':  { label: 'ACME auto', cls: 'bg-teal/15 text-teal' },
+  'est-semi':   { label: 'EST semi',  cls: 'bg-amber/15 text-amber' },
+  'manual':     { label: 'Manual',    cls: 'bg-purple/15 text-purple-light' },
+};
+
 function ageLabel(mins: number) {
   if (mins < 60) return `${mins}m`;
   if (mins < 1440) return `${Math.floor(mins / 60)}h`;
@@ -124,56 +154,78 @@ function ageLabel(mins: number) {
 }
 
 export default function CriticalActionFeed() {
-  const { hoveredDriver, resolvedFeedItems, resolvingFeedItems, resolveFeedItem } = useDashboard();
+  const { hoveredDriver, resolvedFeedItems, resolveFeedItem } = useDashboard();
+  const { setCurrentPage } = useNav();
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  // Soft narrative wiring: only highlight matching items, do NOT dim others
+  // Sort: pending first (preserve original order), queued/resolved at bottom
   const items = useMemo(() => {
-    return FEED.map(item => ({
+    const decorated = FEED.map(item => ({
       ...item,
       highlighted: hoveredDriver != null && feedItemToDriver[item.id] === hoveredDriver,
+      isQueued: resolvedFeedItems.has(item.id),
     }));
-  }, [hoveredDriver]);
+    return [
+      ...decorated.filter(i => !i.isQueued),
+      ...decorated.filter(i => i.isQueued),
+    ];
+  }, [hoveredDriver, resolvedFeedItems]);
+
+  const handleApprove = (item: ActionItem) => {
+    resolveFeedItem(item.id);
+    setExpanded(null);
+    const groupCount = item.remediationGroups?.length ?? 1;
+    toast.success(
+      groupCount > 1
+        ? `${groupCount} workflow requests submitted`
+        : 'Submitted to workflow queue',
+      {
+        description: 'View in Tickets',
+        action: { label: 'Open Tickets', onClick: () => setCurrentPage('tickets') },
+      },
+    );
+  };
 
   return (
     <div className="bg-card rounded-xl border border-border h-full flex flex-col">
-      {/* Header */}
       <div className="px-5 pt-5 pb-3 border-b border-border">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-coral" />
             <h2 className="text-sm font-semibold text-foreground">Critical Action Feed</h2>
-            <span className="text-[10px] text-muted-foreground">· ranked by impact × urgency · AI-executable</span>
+            <span className="text-[10px] text-muted-foreground">· ranked by impact × urgency · click row to inspect</span>
           </div>
           <span className="text-[10px] text-muted-foreground">{FEED.length} items</span>
         </div>
       </div>
 
-      {/* Feed */}
       <div className="flex-1 overflow-y-auto scrollbar-thin">
         <ul className="divide-y divide-border">
           {items.map(item => {
             const Icon = item.icon;
             const isExpanded = expanded === item.id;
-            const isResolving = resolvingFeedItems.has(item.id);
-            const isResolved = resolvedFeedItems.has(item.id);
+            const isQueued = item.isQueued;
 
             return (
               <li
                 key={item.id}
-                className={`px-5 py-3 transition-all border-l-2 ${
-                  isResolved
-                    ? 'bg-teal/5 border-l-teal/40'
+                className={`transition-all border-l-2 ${
+                  isQueued
+                    ? 'bg-secondary/20 border-l-teal/40 opacity-70'
                     : item.highlighted
                       ? 'bg-coral/[0.03] border-l-coral'
                       : 'border-l-transparent hover:bg-secondary/20'
                 }`}
               >
-                <div className="flex items-start gap-3">
+                <button
+                  onClick={() => !isQueued && setExpanded(isExpanded ? null : item.id)}
+                  disabled={isQueued}
+                  className="w-full text-left px-5 py-3 flex items-start gap-3 disabled:cursor-default"
+                >
                   <div className={`w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                    isResolved ? 'bg-teal/20' : 'bg-secondary/60'
+                    isQueued ? 'bg-teal/20' : 'bg-secondary/60'
                   }`}>
-                    {isResolved ? <Check className="w-3.5 h-3.5 text-teal" /> : <Icon className="w-3.5 h-3.5 text-foreground" />}
+                    {isQueued ? <Check className="w-3.5 h-3.5 text-teal" /> : <Icon className="w-3.5 h-3.5 text-foreground" />}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-0.5 flex-wrap">
@@ -182,79 +234,120 @@ export default function CriticalActionFeed() {
                       <span className="text-[9.5px] text-muted-foreground flex items-center gap-0.5">
                         <Clock className="w-2.5 h-2.5" /> {ageLabel(item.ageMins)} ago
                       </span>
-                      {item.waveInfo && (
+                      {item.remediationGroups && !isQueued && (
                         <span className="text-[9.5px] text-purple-light flex items-center gap-0.5">
-                          <Layers className="w-2.5 h-2.5" /> {item.waveInfo.waves}-wave plan
+                          <Layers className="w-2.5 h-2.5" /> {item.remediationGroups.length} CA groups
+                        </span>
+                      )}
+                      {isQueued && (
+                        <span className="text-[9.5px] font-semibold px-1.5 py-0.5 rounded bg-teal/15 text-teal flex items-center gap-1">
+                          <Check className="w-2.5 h-2.5" /> Queued
                         </span>
                       )}
                     </div>
                     <p className="text-[12px] font-medium text-foreground leading-snug">{item.title}</p>
                     <p className="text-[10.5px] text-muted-foreground mt-0.5 leading-snug">{item.detail}</p>
                   </div>
-
-                  {/* Right-side action */}
-                  {isResolved ? (
-                    <span className="flex-shrink-0 text-[10px] font-semibold px-2.5 py-1.5 rounded-md bg-teal/15 text-teal flex items-center gap-1">
-                      <Check className="w-3 h-3" /> Deployed
-                    </span>
-                  ) : isResolving ? (
-                    <span className="flex-shrink-0 text-[10px] font-semibold px-2.5 py-1.5 rounded-md bg-teal/10 text-teal flex items-center gap-1">
-                      <Loader2 className="w-3 h-3 animate-spin" /> Renewing…
-                    </span>
-                  ) : (
-                    <button
-                      onClick={() => setExpanded(isExpanded ? null : item.id)}
-                      className="flex-shrink-0 text-[10.5px] font-semibold px-2.5 py-1.5 rounded-md bg-teal text-primary-foreground hover:bg-teal-light transition-colors flex items-center gap-1"
-                    >
-                      <Sparkles className="w-3 h-3" /> AI: Fix this
-                      {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                    </button>
+                  {!isQueued && (
+                    isExpanded
+                      ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 mt-1" />
+                      : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 mt-1" />
                   )}
-                </div>
+                </button>
 
                 {/* Expanded AI execution panel */}
-                {isExpanded && !isResolving && !isResolved && (
-                  <div className="mt-2.5 ml-10 rounded-md bg-secondary/40 border border-teal/20 p-3 animate-in fade-in slide-in-from-top-1 duration-200">
-                    <p className="text-[9px] uppercase tracking-wider text-teal font-semibold mb-1 flex items-center gap-1">
-                      <Sparkles className="w-2.5 h-2.5" /> What AI will do
-                    </p>
-                    <p className="text-[11px] text-foreground leading-snug mb-2">{item.aiPlan}</p>
-                    <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">You're approving</p>
-                    <p className="text-[11px] text-foreground leading-snug mb-2.5">{item.approveSummary}</p>
+                {isExpanded && !isQueued && (
+                  <div className="px-5 pb-3 ml-10 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <div className="rounded-md bg-secondary/40 border border-teal/20 p-3">
+                      <p className="text-[9px] uppercase tracking-wider text-teal font-semibold mb-1 flex items-center gap-1">
+                        <Sparkles className="w-2.5 h-2.5" /> What AI will do
+                      </p>
+                      <p className="text-[11px] text-foreground leading-snug mb-2">{item.aiPlan}</p>
 
-                    {item.waveInfo && (
-                      <div className="mb-2.5 rounded bg-purple/10 border border-purple/30 px-2.5 py-1.5">
-                        <p className="text-[9px] uppercase tracking-wider text-purple-light font-semibold mb-0.5 flex items-center gap-1">
-                          <Layers className="w-2.5 h-2.5" /> Wave plan scope
-                        </p>
-                        <p className="text-[10.5px] text-foreground tabular-nums">
-                          Wave 1 of {item.waveInfo.waves} · {item.waveInfo.perWave.toLocaleString()} {item.waveInfo.unit} · today
-                          <span className="text-muted-foreground"> ({item.waveInfo.totalAffected.toLocaleString()} total over {item.waveInfo.waves} waves)</span>
-                        </p>
-                      </div>
-                    )}
-
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => { resolveFeedItem(item.id); setExpanded(null); }}
-                        className="flex-1 text-[11px] font-semibold py-1.5 rounded-md bg-teal text-primary-foreground hover:bg-teal-light"
-                      >
-                        {item.waveInfo ? 'Approve wave plan →' : 'Approve & Execute'}
-                      </button>
-                      <button
-                        onClick={() => setExpanded(null)}
-                        className="text-[11px] font-medium px-3 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary"
-                      >
-                        Review manually
-                      </button>
+                      {item.remediationGroups ? (
+                        <>
+                          <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5 mt-2">
+                            Remediation groups · one workflow request per row
+                          </p>
+                          <div className="rounded border border-border overflow-hidden mb-2.5 bg-card">
+                            <table className="w-full text-[10px]">
+                              <thead className="bg-secondary/40">
+                                <tr className="text-muted-foreground">
+                                  <th className="text-left px-2 py-1.5 font-medium">CA / Store</th>
+                                  <th className="text-left px-2 py-1.5 font-medium">Account</th>
+                                  <th className="text-right px-2 py-1.5 font-medium">Count</th>
+                                  <th className="text-left px-2 py-1.5 font-medium">Environment</th>
+                                  <th className="text-left px-2 py-1.5 font-medium">Teams</th>
+                                  <th className="text-left px-2 py-1.5 font-medium">Method</th>
+                                  <th className="text-left px-2 py-1.5 font-medium">Approval</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {item.remediationGroups.map((g, i) => {
+                                  const m = METHOD_STYLES[g.method];
+                                  return (
+                                    <tr key={i} className="border-t border-border">
+                                      <td className="px-2 py-1.5 text-foreground font-medium">{g.ca}</td>
+                                      <td className="px-2 py-1.5 text-muted-foreground font-mono">{g.caAccount}</td>
+                                      <td className="px-2 py-1.5 text-foreground tabular-nums text-right">{g.count.toLocaleString()}</td>
+                                      <td className="px-2 py-1.5 text-muted-foreground">{g.environment}</td>
+                                      <td className="px-2 py-1.5 text-muted-foreground">{g.teams.join(', ')}</td>
+                                      <td className="px-2 py-1.5">
+                                        <span className={`text-[9px] px-1.5 py-0.5 rounded ${m.cls}`}>{m.label}</span>
+                                      </td>
+                                      <td className="px-2 py-1.5">
+                                        {g.requiresApproval
+                                          ? <span className="text-[9px] text-coral">Required</span>
+                                          : <span className="text-[9px] text-teal">Not required</span>}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleApprove(item)}
+                              className="flex-1 text-[11px] font-semibold py-1.5 rounded-md bg-teal text-primary-foreground hover:bg-teal-light"
+                            >
+                              Submit as workflow requests →
+                            </button>
+                            <button
+                              onClick={() => setExpanded(null)}
+                              className="text-[11px] font-medium px-3 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary"
+                            >
+                              Review manually
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">You're approving</p>
+                          <p className="text-[11px] text-foreground leading-snug mb-2.5">{item.approveSummary}</p>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleApprove(item)}
+                              className="flex-1 text-[11px] font-semibold py-1.5 rounded-md bg-teal text-primary-foreground hover:bg-teal-light"
+                            >
+                              Approve & Execute
+                            </button>
+                            <button
+                              onClick={() => setExpanded(null)}
+                              className="text-[11px] font-medium px-3 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary"
+                            >
+                              Review manually
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 )}
 
-                {/* Live status after approve */}
-                {isResolved && (
-                  <p className="mt-1.5 ml-10 text-[10px] text-teal">
-                    {item.waveInfo ? `Wave 1/${item.waveInfo.waves} executed → next wave scheduled` : 'Renewing → Deployed → Ticket closed'} (#TKT-{1000 + Number(item.id) * 37})
+                {isQueued && (
+                  <p className="px-5 pb-2 ml-10 text-[10px] text-teal">
+                    Workflow request submitted · #TKT-{1000 + Number(item.id) * 37} · view in Tickets
                   </p>
                 )}
               </li>

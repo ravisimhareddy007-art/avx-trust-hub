@@ -1,6 +1,7 @@
 import React from 'react';
 import { PersonaProvider, usePersona } from '@/context/PersonaContext';
 import { NavigationProvider, useNav } from '@/context/NavigationContext';
+import { IntegrationsProvider } from '@/context/IntegrationsContext';
 import AppSidebar from '@/components/AppSidebar';
 import TopBar from '@/components/TopBar';
 import QuantumBanner from '@/components/QuantumBanner';
@@ -69,7 +70,9 @@ export default function Index() {
   return (
     <PersonaProvider>
       <NavigationProvider>
-        <AppShell />
+        <IntegrationsProvider>
+          <AppShell />
+        </IntegrationsProvider>
       </NavigationProvider>
     </PersonaProvider>
   );
