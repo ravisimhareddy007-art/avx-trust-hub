@@ -82,6 +82,13 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [assetStack, setAssetStack] = useState<ITAsset[]>([]);
   const { manualITAssets } = useInventoryRegistry();
+  const { setSelectedEntity } = useAgent();
+
+  // Sync infrastructure asset selection to Agent context
+  useEffect(() => {
+    if (selectedAsset) setSelectedEntity({ kind: 'infrastructure', id: selectedAsset.id, name: selectedAsset.name });
+    return () => { setSelectedEntity(null); };
+  }, [selectedAsset, setSelectedEntity]);
 
   // Manual assets first so they're immediately visible after add.
   const allAssets = useMemo(() => [...manualITAssets, ...mockITAssets], [manualITAssets]);
