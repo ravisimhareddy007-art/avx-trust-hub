@@ -7,9 +7,40 @@ import RiskDriversList from './ecrs/RiskDriversList';
 import WhatIfSimulator from './ecrs/WhatIfSimulator';
 import ScoreBreakdown from './ecrs/ScoreBreakdown';
 
-interface Props { onScoreClick?: () => void; }
+function ScoreGauge({ score, band }: { score: number; band: { hsl: string; label: string } }) {
+  const R = 52;
+  const cx = 64, cy = 64;
+  const startAngle = -220;
+  const totalDegrees = 260;
+  const filled = (score / 100) * totalDegrees;
 
-export default function EnterpriseCryptoRiskScore({ onScoreClick }: Props) {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const arcPath = (start: number, end: number) => {
+    const s = { x: cx + R * Math.cos(toRad(start)), y: cy + R * Math.sin(toRad(start)) };
+    const e = { x: cx + R * Math.cos(toRad(end)), y: cy + R * Math.sin(toRad(end)) };
+    const large = end - start > 180 ? 1 : 0;
+    return `M ${s.x} ${s.y} A ${R} ${R} 0 ${large} 1 ${e.x} ${e.y}`;
+  };
+
+  return (
+    <div className="relative flex flex-col items-center">
+      <svg width="128" height="128" viewBox="0 0 128 128">
+        <path d={arcPath(startAngle, startAngle + totalDegrees)} fill="none"
+          stroke="currentColor" strokeOpacity="0.1" strokeWidth="10" strokeLinecap="round" />
+        <path d={arcPath(startAngle, startAngle + filled)} fill="none"
+          stroke={band.hsl} strokeWidth="10" strokeLinecap="round"
+          style={{ transition: 'all 0.7s ease' }} />
+        <text x="64" y="60" textAnchor="middle" fontSize="28" fontWeight="bold"
+          fill={band.hsl} fontFamily="inherit"
+          style={{ transition: 'fill 0.7s ease' }}>{score}</text>
+        <text x="64" y="78" textAnchor="middle" fontSize="11" fill="currentColor"
+          fillOpacity="0.6" fontFamily="inherit">{band.label}</text>
+      </svg>
+    </div>
+  );
+}
+
+export default function EnterpriseCryptoRiskScore() {
   const { score } = useDashboard();
   const [simOpen, setSimOpen] = useState(false);
   const improving = SCORE_DELTA_7D < 0;
@@ -26,26 +57,9 @@ export default function EnterpriseCryptoRiskScore({ onScoreClick }: Props) {
         <span className="text-[10px] text-muted-foreground">CVSS-inspired · updated 2m ago</span>
       </div>
 
-      {/* Score + verdict sentence */}
+      {/* Score gauge + verdict sentence */}
       <div className="flex items-start gap-4 mb-4">
-        <button
-          onClick={onScoreClick}
-          className="flex flex-col items-center group"
-          title="Click for BU/App breakdown"
-        >
-          <span
-            className="text-[56px] font-bold leading-none tabular-nums transition-all"
-            style={{ color: band.hsl }}
-          >
-            {score}
-          </span>
-          <span
-            className="text-[11px] font-semibold mt-1 px-2 py-0.5 rounded"
-            style={{ background: `${band.hsl}20`, color: band.hsl }}
-          >
-            {band.label}
-          </span>
-        </button>
+        <ScoreGauge score={score} band={band} />
         <div className="flex-1 pt-1">
           <div
             className={`inline-flex items-center gap-1 text-[10.5px] font-semibold px-1.5 py-0.5 rounded mb-1.5 ${
@@ -62,7 +76,7 @@ export default function EnterpriseCryptoRiskScore({ onScoreClick }: Props) {
         </div>
       </div>
 
-      {/* Top 3 impact bars (replaces donut + 5 bands of millions) */}
+      {/* Top 3 impact bars */}
       <div className="mb-3">
         <ImpactBars />
       </div>

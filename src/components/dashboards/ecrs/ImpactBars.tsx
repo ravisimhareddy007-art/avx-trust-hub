@@ -1,8 +1,9 @@
 import React from 'react';
+import { ArrowRight } from 'lucide-react';
 import { drivers } from '@/data/ecrsData';
 import { useDashboard } from '@/context/DashboardContext';
+import { useNav } from '@/context/NavigationContext';
 
-// Top 3 contributors only — security admins can't act on 5 bands of millions of assets
 const TOP = drivers.slice(0, 3);
 const URGENCY_PHRASE: Record<string, string> = {
   'weak-algos': 'Fix this first',
@@ -14,7 +15,13 @@ const URGENCY_PHRASE: Record<string, string> = {
 
 export default function ImpactBars() {
   const { hoveredDriver, setHoveredDriver, driverImpactDelta } = useDashboard();
+  const { setCurrentPage, setFilters } = useNav();
   const maxImpact = Math.max(...TOP.map(d => d.impact));
+
+  const nav = (page: string, filters: Record<string, string>) => {
+    setFilters(filters);
+    setCurrentPage(page);
+  };
 
   return (
     <div className="space-y-2">
@@ -24,22 +31,24 @@ export default function ImpactBars() {
       <div className="space-y-1.5">
         {TOP.map(d => {
           const delta = driverImpactDelta[d.id] ?? 0;
-          const effective = Math.max(0, d.impact + delta); // delta is negative
+          const effective = Math.max(0, d.impact + delta);
           const widthPct = (effective / maxImpact) * 100;
           const isHovered = hoveredDriver === d.id;
           return (
-            <div
+            <button
               key={d.id}
               onMouseEnter={() => setHoveredDriver(d.id)}
               onMouseLeave={() => setHoveredDriver(null)}
-              className={`grid grid-cols-12 items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer transition-all ${
+              onClick={() => nav(d.page, d.filters)}
+              className={`w-full grid grid-cols-12 items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer transition-all text-left ${
                 isHovered ? 'bg-secondary/60 ring-1 ring-coral/40' : 'hover:bg-secondary/30'
               }`}
+              title={`View ${d.count.toLocaleString()} ${d.countLabel} in Inventory`}
             >
-              <span className="col-span-4 text-[11px] text-foreground truncate font-medium">
+              <span className="col-span-3 text-[11px] text-foreground truncate font-medium">
                 {d.name.replace(/\s*\(.*\)/, '')}
               </span>
-              <div className="col-span-4 h-2 rounded-full bg-secondary overflow-hidden">
+              <div className="col-span-3 h-2 rounded-full bg-secondary overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all duration-700"
                   style={{
@@ -56,10 +65,14 @@ export default function ImpactBars() {
                   <span className="ml-1 text-[9px] text-teal">({delta})</span>
                 )}
               </span>
-              <span className="col-span-2 text-[9.5px] text-muted-foreground text-right truncate">
+              <span className="col-span-2 text-[9.5px] text-muted-foreground truncate">
                 {URGENCY_PHRASE[d.id]}
               </span>
-            </div>
+              <span className="col-span-2 text-[9.5px] text-teal text-right truncate flex items-center justify-end gap-0.5 tabular-nums">
+                {d.count.toLocaleString()} {d.countLabel}
+                <ArrowRight className="w-2.5 h-2.5" />
+              </span>
+            </button>
           );
         })}
       </div>

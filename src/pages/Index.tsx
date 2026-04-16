@@ -43,6 +43,7 @@ function PageRouter() {
     'core-services': <CoreServicesPage />,
     'trustops': <TrustOpsPage />,
     'quantum': <QuantumPosturePage />,
+    'quantum-posture': <QuantumPosturePage />,
   };
 
   return (

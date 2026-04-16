@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ChevronRight, ArrowRight, Shield, Sparkles, Loader2, Check } from 'lucide-react';
+import { ChevronRight, ArrowRight, Shield, Sparkles, Loader2, Check, BookOpen, X } from 'lucide-react';
+import { toast } from 'sonner';
 import { drivers, urgencyMeta, RiskDriver } from '@/data/ecrsData';
 import { useNav } from '@/context/NavigationContext';
 import { useDashboard } from '@/context/DashboardContext';
@@ -17,16 +18,23 @@ export default function RiskDriversList() {
   const { setCurrentPage, setFilters } = useNav();
   const { hoveredDriver, setHoveredDriver } = useDashboard();
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [aiState, setAiState] = useState<Record<string, 'idle' | 'running' | 'done'>>({});
+  const [aiState, setAiState] = useState<Record<string, 'idle' | 'submitted' | 'guide'>>({});
 
   const nav = (p: string, f?: Record<string, string>) => {
     if (f) setFilters(f);
     setCurrentPage(p);
   };
 
-  const runAIBatch = (id: string) => {
-    setAiState(s => ({ ...s, [id]: 'running' }));
-    setTimeout(() => setAiState(s => ({ ...s, [id]: 'done' })), 2200);
+  const runAIAction = (d: RiskDriver) => {
+    if (d.aiAction.isExecutable) {
+      setAiState(s => ({ ...s, [d.id]: 'submitted' }));
+      toast.success('Workflow request submitted', {
+        description: `View in Tickets · routed to ${d.aiAction.route}`,
+        action: { label: 'Open', onClick: () => nav('tickets') },
+      });
+    } else {
+      setAiState(s => ({ ...s, [d.id]: 'guide' }));
+    }
   };
 
   return (
@@ -73,10 +81,21 @@ export default function RiskDriversList() {
                 <div className="px-2.5 pb-2 pt-0 space-y-1.5 border-t border-border/40">
                   <div className="pt-1.5">
                     <p className="text-[9px] uppercase tracking-wide text-muted-foreground mb-0.5">Impacted systems</p>
-                    <div className="flex flex-wrap gap-1">
-                      {d.systems.map(s => (
+                    <p className="text-[9px] text-muted-foreground mb-1 tabular-nums">
+                      {d.systems.totalCount.toLocaleString()} production systems affected
+                    </p>
+                    <div className="flex flex-wrap gap-1 items-center">
+                      {d.systems.named.map(s => (
                         <span key={s} className="text-[9.5px] px-1.5 py-0.5 rounded bg-card border border-border text-foreground font-mono">{s}</span>
                       ))}
+                      {d.systems.totalCount > d.systems.named.length && (
+                        <button
+                          onClick={() => nav(d.systems.page, d.systems.filters)}
+                          className="text-[9px] text-teal hover:underline"
+                        >
+                          +{(d.systems.totalCount - d.systems.named.length).toLocaleString()} more →
+                        </button>
+                      )}
                       {d.envs.map(e => (
                         <span key={e} className={`text-[9.5px] px-1.5 py-0.5 rounded ${e === 'Production' ? 'bg-coral/15 text-coral' : 'bg-purple/15 text-purple-light'}`}>
                           {e}
@@ -95,14 +114,14 @@ export default function RiskDriversList() {
                     </div>
                   </div>
 
-                  {/* AI batch execute panel */}
+                  {/* AI action panel */}
                   {ai === 'idle' && (
                     <div className="flex gap-1.5 pt-1">
                       <button
-                        onClick={() => runAIBatch(d.id)}
+                        onClick={() => runAIAction(d)}
                         className="flex-1 text-[10px] font-semibold py-1.5 rounded bg-teal text-primary-foreground hover:bg-teal-light flex items-center justify-center gap-1"
                       >
-                        <Sparkles className="w-3 h-3" /> AI: Fix top 10 now
+                        <Sparkles className="w-3 h-3" /> AI: {d.aiAction.label}
                       </button>
                       <button
                         onClick={() => nav(d.page, d.filters)}
@@ -112,19 +131,32 @@ export default function RiskDriversList() {
                       </button>
                     </div>
                   )}
-                  {ai === 'running' && (
-                    <div className="pt-1">
-                      <div className="text-[10px] text-foreground bg-teal/10 border border-teal/30 rounded px-2 py-1.5 flex items-center gap-1.5">
-                        <Loader2 className="w-3 h-3 text-teal animate-spin" />
-                        <span>AI executing batch · 10 highest-impact assets · queuing remediation tickets…</span>
-                      </div>
-                    </div>
-                  )}
-                  {ai === 'done' && (
+                  {ai === 'submitted' && (
                     <div className="pt-1">
                       <div className="text-[10px] text-foreground bg-teal/15 border border-teal/40 rounded px-2 py-1.5 flex items-center gap-1.5">
                         <Check className="w-3 h-3 text-teal" />
-                        <span>10 assets remediated · ticket #RMD-{Math.floor(Math.random() * 9000) + 1000} created</span>
+                        <span>Workflow submitted · routed to {d.aiAction.route} · ticket #RMD-{Math.floor(Math.random() * 9000) + 1000}</span>
+                      </div>
+                    </div>
+                  )}
+                  {ai === 'guide' && (
+                    <div className="pt-1">
+                      <div className="text-[10px] text-foreground bg-purple/10 border border-purple/30 rounded px-2.5 py-2 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <p className="text-[9px] uppercase tracking-wider text-purple-light font-semibold flex items-center gap-1">
+                            <BookOpen className="w-2.5 h-2.5" /> AI guidance
+                          </p>
+                          <button onClick={() => setAiState(s => ({ ...s, [d.id]: 'idle' }))} className="text-muted-foreground hover:text-foreground">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                        <p className="text-[10.5px] text-foreground leading-snug">{d.aiAction.description}</p>
+                        <button
+                          onClick={() => nav(d.aiAction.route)}
+                          className="text-[10px] font-semibold text-teal hover:underline flex items-center gap-1"
+                        >
+                          Open {d.aiAction.route} <ArrowRight className="w-2.5 h-2.5" />
+                        </button>
                       </div>
                     </div>
                   )}

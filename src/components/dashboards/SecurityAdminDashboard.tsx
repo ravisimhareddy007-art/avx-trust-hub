@@ -1,14 +1,12 @@
 import React from 'react';
-import { useNav } from '@/context/NavigationContext';
 import { RefreshCw } from 'lucide-react';
 import { DashboardProvider } from '@/context/DashboardContext';
 import EnterpriseCryptoRiskScore from './EnterpriseCryptoRiskScore';
 import CriticalActionFeed from './CriticalActionFeed';
 import IdentityHealthBands from './IdentityHealthBands';
+import QTHPostureStrip from './QTHPostureStrip';
 
 export default function SecurityAdminDashboard() {
-  const { setCurrentPage } = useNav();
-
   return (
     <DashboardProvider>
       <div className="space-y-4 max-h-[calc(100vh-120px)] overflow-y-auto scrollbar-thin pr-1">
@@ -24,17 +22,20 @@ export default function SecurityAdminDashboard() {
           </div>
         </div>
 
-        {/* Zone 1+2: ECRS (left) + Critical Action Feed (right) — narrative-wired */}
+        {/* Zone 1+2: ECRS (left) + Critical Action Feed (right) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           <div className="lg:col-span-5 min-h-[680px]">
-            <EnterpriseCryptoRiskScore onScoreClick={() => setCurrentPage('inventory')} />
+            <EnterpriseCryptoRiskScore />
           </div>
           <div className="lg:col-span-7 min-h-[680px]">
             <CriticalActionFeed />
           </div>
         </div>
 
-        {/* Zone 3: Identity Health Bands */}
+        {/* Zone 3: QTH Posture Strip */}
+        <QTHPostureStrip />
+
+        {/* Zone 4: Identity Health Bands */}
         <IdentityHealthBands />
       </div>
     </DashboardProvider>
