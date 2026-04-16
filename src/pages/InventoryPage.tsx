@@ -2,8 +2,11 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useNav } from '@/context/NavigationContext';
 import { mockAssets, CryptoAsset } from '@/data/mockData';
 import { StatusBadge, EnvBadge, PQCBadge, DaysToExpiry, Drawer, SeverityBadge, Modal } from '@/components/shared/UIComponents';
-import { Search, RefreshCw, RotateCcw, XCircle, Shield, User, Workflow, Key, ExternalLink, Monitor, Server, Bot, Lock, AlertTriangle, MoreVertical, Sparkles, GitBranch, Loader2 } from 'lucide-react';
+import { Search, RefreshCw, RotateCcw, XCircle, Shield, User, Workflow, Key, ExternalLink, Monitor, Server, Bot, Lock, AlertTriangle, MoreVertical, Sparkles, GitBranch, Loader2, LayoutGrid } from 'lucide-react';
 import { toast } from 'sonner';
+import GroupsPanel, { CryptoGroup, ConditionSet } from '@/components/inventory/GroupsPanel';
+import GroupDetailView from '@/components/inventory/GroupDetailView';
+import PolicyDrawer from '@/components/inventory/PolicyDrawer';
 
 const typeFilters = ['All', 'TLS Certificate', 'SSH Key', 'SSH Certificate', 'Code-Signing Certificate', 'K8s Workload Cert', 'Encryption Key', 'AI Agent Token', 'API Key / Secret'];
 
@@ -148,6 +151,24 @@ export default function InventoryPage() {
   const [actionModal, setActionModal] = useState<{ action: string; asset: CryptoAsset } | null>(null);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [depAsset, setDepAsset] = useState<CryptoAsset | null>(null);
+
+  // Groups state
+  const [sidebarView, setSidebarView] = useState<'filters' | 'groups'>('filters');
+  const [selectedGroup, setSelectedGroup] = useState<CryptoGroup | null>(null);
+
+  // Policy Drawer state
+  const [policyDrawerOpen, setPolicyDrawerOpen] = useState(false);
+  const [policyDrawerCtx, setPolicyDrawerCtx] = useState<{ groupId?: string; groupName?: string; conditions?: ConditionSet }>({});
+
+  const openPolicyDrawer = (groupId: string, groupName: string, conditions?: ConditionSet) => {
+    setPolicyDrawerCtx({ groupId, groupName, conditions });
+    setPolicyDrawerOpen(true);
+  };
+
+  const closePolicyDrawer = () => {
+    setPolicyDrawerOpen(false);
+    setPolicyDrawerCtx({});
+  };
 
   useEffect(() => {
     setTypeFilter(filters.type || 'All');
@@ -309,10 +330,14 @@ export default function InventoryPage() {
 
   const activeColumns = colDefs[typeFilter] || colDefs['All'];
 
-  // Bulk action handlers
   const handleBulkAction = (action: string) => {
     if (selectedRows.size === 0) {
       toast.info('Select assets first to perform bulk actions');
+      return;
+    }
+    if (action === 'Create Policy') {
+      setPolicyDrawerCtx({ groupName: `${selectedRows.size} selected assets` });
+      setPolicyDrawerOpen(true);
       return;
     }
     toast.success(`${action} initiated for ${selectedRows.size} assets`, { description: 'Workflow created — track in TrustOps.' });
@@ -320,142 +345,214 @@ export default function InventoryPage() {
   };
 
   return (
-    <div className="space-y-3">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <span className="text-sm text-muted-foreground">{filtered.length} of {mockAssets.length} assets</span>
-        </div>
-        <div className="flex items-center gap-2 text-xs">
-          {Object.keys(filters).length > 0 && (
-            <button onClick={() => setFilters({})} className="text-xs text-coral hover:underline">Clear filters</button>
-          )}
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex items-center gap-0 border-b border-border">
-        {typeFilters.map(t => {
-          const count = t === 'All' ? mockAssets.length : mockAssets.filter(a => a.type === t).length;
-          const shortLabel = t === 'All' ? 'All' : t === 'TLS Certificate' ? 'Certificates' : t === 'SSH Key' ? 'SSH Keys' : t === 'SSH Certificate' ? 'SSH Certs' : t === 'Code-Signing Certificate' ? 'Code Signing' : t === 'K8s Workload Cert' ? 'K8s Certs' : t === 'Encryption Key' ? 'Enc Keys' : t === 'AI Agent Token' ? 'AI Agents' : t === 'API Key / Secret' ? 'Secrets' : t;
-          return (
-            <button
-              key={t}
-              onClick={() => {
-                setTypeFilter(t);
-                if (t === 'All') {
-                  const { type, ...restFilters } = filters;
-                  setFilters(restFilters);
-                } else {
-                  setFilters({ ...filters, type: t });
-                }
-              }}
-              className={`px-4 py-2.5 text-xs font-medium border-b-2 transition-colors whitespace-nowrap flex items-center gap-2 ${
-                typeFilter === t
-                  ? 'border-teal text-teal'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {shortLabel}
-              <span className={`inline-flex items-center justify-center min-w-[20px] px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
-                typeFilter === t ? 'bg-teal/10 text-teal' : 'bg-muted text-muted-foreground'
-              }`}>{count}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Toolbar */}
-      <div className="bg-card rounded-lg border border-border px-3 py-2 flex items-center gap-2 flex-wrap">
-        {/* Search */}
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Type your search and press enter"
-            className="w-full pl-7 pr-3 py-1 bg-muted border border-border rounded text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal"
-          />
+    <div className="flex gap-4">
+      {/* Left sidebar — Groups / Filters */}
+      <div className="w-[220px] flex-shrink-0 space-y-3">
+        <div className="flex gap-1 border-b border-border">
+          <button onClick={() => { setSidebarView('filters'); setSelectedGroup(null); }}
+            className={`px-3 py-1.5 text-[10px] font-medium border-b-2 transition-colors ${sidebarView === 'filters' ? 'border-teal text-teal' : 'border-transparent text-muted-foreground'}`}>
+            Filters
+          </button>
+          <button onClick={() => setSidebarView('groups')}
+            className={`px-3 py-1.5 text-[10px] font-medium border-b-2 transition-colors flex items-center gap-1 ${sidebarView === 'groups' ? 'border-teal text-teal' : 'border-transparent text-muted-foreground'}`}>
+            <LayoutGrid className="w-3 h-3" /> Groups
+          </button>
         </div>
 
-        <div className="w-px h-6 bg-border" />
-
-        {/* Column count indicator */}
-        <span className="text-[10px] text-muted-foreground">{activeColumns.length} cols</span>
-
-        <div className="w-px h-6 bg-border" />
-
-        {/* Entry count + pagination */}
-        <span className="text-xs text-muted-foreground">{filtered.length} Entries</span>
-        <div className="flex items-center gap-1 ml-auto">
-          <button className="p-1 text-muted-foreground hover:text-foreground">‹</button>
-          <button className="p-1 text-muted-foreground hover:text-foreground">›</button>
-          <button onClick={() => {}} className="p-1 text-muted-foreground hover:text-foreground"><RefreshCw className="w-3.5 h-3.5" /></button>
-        </div>
-      </div>
-
-      {/* Green Bulk Actions Bar — replaces dropdown */}
-      {selectedRows.size > 0 && (
-        <div className="bg-teal/10 border border-teal/30 rounded-lg px-4 py-2 flex items-center gap-3">
-          <span className="text-xs font-semibold text-teal">{selectedRows.size} selected</span>
-          <div className="w-px h-5 bg-teal/30" />
-          {['Bulk Renew', 'Bulk Rotate', 'Bulk Revoke', 'Assign Owner', 'Export CSV'].map(action => (
-            <button
-              key={action}
-              onClick={() => handleBulkAction(action)}
-              className={`px-2.5 py-1 text-[10px] font-medium rounded transition-colors ${
-                action === 'Bulk Revoke'
-                  ? 'bg-coral/10 text-coral hover:bg-coral/20'
-                  : action === 'Export CSV'
-                  ? 'bg-muted text-muted-foreground hover:text-foreground hover:bg-secondary'
-                  : 'bg-teal/20 text-teal hover:bg-teal/30'
-              }`}
-            >
-              {action}
-            </button>
-          ))}
-          <button onClick={() => setSelectedRows(new Set())} className="text-[10px] text-muted-foreground hover:text-foreground ml-auto">Clear</button>
-        </div>
-      )}
-
-      {/* Table */}
-      <div className="bg-card rounded-lg border border-border overflow-hidden">
-        <div className="overflow-x-auto scrollbar-thin">
-          <table className="w-full text-xs">
-            <thead className="bg-secondary/50">
-              <tr className="border-b border-border">
-                <th className="w-8 py-2 px-2"><input type="checkbox" onChange={e => setSelectedRows(e.target.checked ? new Set(filtered.map(a => a.id)) : new Set())} className="rounded" /></th>
-                <th className="w-6 py-2 px-1"></th>
-                {activeColumns.map(col => (
-                  <th key={col.id} className="text-left py-2 px-2 font-medium text-muted-foreground whitespace-nowrap">{col.label}</th>
+        {sidebarView === 'filters' && (
+          <div className="space-y-3">
+            <div>
+              <p className="text-[10px] text-muted-foreground font-medium mb-1">Environment</p>
+              <div className="space-y-1">
+                {['Production', 'Staging', 'Development'].map(env => (
+                  <button key={env} onClick={() => setFilters({ ...filters, environment: filters.environment === env ? '' : env })}
+                    className={`w-full text-left px-2 py-1.5 rounded text-[10px] transition-colors ${filters.environment === env ? 'bg-teal/10 text-teal' : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}>
+                    {env}
+                  </button>
                 ))}
-                <th className="w-10 py-2 px-2"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(asset => (
-                <tr key={asset.id} className="border-b border-border hover:bg-secondary/30 cursor-pointer transition-colors" onClick={() => { setSelectedAsset(asset); setDrawerTab('overview'); }}>
-                  <td className="py-2 px-2" onClick={e => e.stopPropagation()}>
-                    <input type="checkbox" checked={selectedRows.has(asset.id)} onChange={() => toggleRow(asset.id)} className="rounded" />
-                  </td>
-                  <td className="py-2 px-1 text-muted-foreground">▸</td>
-                  {activeColumns.map(col => (
-                    <td key={col.id} className="py-2 px-2">{col.render(asset)}</td>
-                  ))}
-                  <td className="py-2 px-2" onClick={e => e.stopPropagation()}>
-                    <AssetRowMenu asset={asset} onAction={handleAction} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {filtered.length === 0 && (
-          <div className="py-12 text-center text-sm text-muted-foreground">
-            No assets found matching your filters.{' '}
-            <button onClick={() => { setFilters({}); setTypeFilter('All'); setSearch(''); }} className="text-teal hover:underline">Clear all filters</button>
+              </div>
+            </div>
+            <div>
+              <p className="text-[10px] text-muted-foreground font-medium mb-1">Status</p>
+              <div className="space-y-1">
+                {['Active', 'Expiring', 'Expired', 'Orphaned'].map(s => (
+                  <button key={s} onClick={() => setFilters({ ...filters, status: filters.status === s ? '' : s })}
+                    className={`w-full text-left px-2 py-1.5 rounded text-[10px] transition-colors ${filters.status === s ? 'bg-teal/10 text-teal' : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-[10px] text-muted-foreground font-medium mb-1">PQC Risk</p>
+              <div className="space-y-1">
+                {['Critical', 'High', 'Medium', 'Low'].map(r => (
+                  <button key={r} onClick={() => setFilters({ ...filters, pqcRisk: filters.pqcRisk === r ? '' : r })}
+                    className={`w-full text-left px-2 py-1.5 rounded text-[10px] transition-colors ${filters.pqcRisk === r ? 'bg-teal/10 text-teal' : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}>
+                    {r}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {Object.values(filters).some(v => v) && (
+              <button onClick={() => setFilters({})} className="text-[10px] text-coral hover:underline">Clear all filters</button>
+            )}
           </div>
+        )}
+
+        {sidebarView === 'groups' && (
+          <GroupsPanel
+            onSelectGroup={g => setSelectedGroup(g)}
+            selectedGroupId={selectedGroup?.id}
+            onOpenPolicyDrawer={openPolicyDrawer}
+          />
+        )}
+      </div>
+
+      {/* Main content */}
+      <div className="flex-1 min-w-0 space-y-3">
+        {/* Group Detail View replaces main content when a group is selected */}
+        {selectedGroup ? (
+          <GroupDetailView
+            group={selectedGroup}
+            onBack={() => setSelectedGroup(null)}
+            onOpenPolicyDrawer={openPolicyDrawer}
+          />
+        ) : (
+          <>
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-sm text-muted-foreground">{filtered.length} of {mockAssets.length} assets</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                {Object.keys(filters).length > 0 && (
+                  <button onClick={() => setFilters({})} className="text-xs text-coral hover:underline">Clear filters</button>
+                )}
+              </div>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex items-center gap-0 border-b border-border overflow-x-auto">
+              {typeFilters.map(t => {
+                const count = t === 'All' ? mockAssets.length : mockAssets.filter(a => a.type === t).length;
+                const shortLabel = t === 'All' ? 'All' : t === 'TLS Certificate' ? 'Certificates' : t === 'SSH Key' ? 'SSH Keys' : t === 'SSH Certificate' ? 'SSH Certs' : t === 'Code-Signing Certificate' ? 'Code Signing' : t === 'K8s Workload Cert' ? 'K8s Certs' : t === 'Encryption Key' ? 'Enc Keys' : t === 'AI Agent Token' ? 'AI Agents' : t === 'API Key / Secret' ? 'Secrets' : t;
+                return (
+                  <button
+                    key={t}
+                    onClick={() => {
+                      setTypeFilter(t);
+                      if (t === 'All') {
+                        const { type, ...restFilters } = filters;
+                        setFilters(restFilters);
+                      } else {
+                        setFilters({ ...filters, type: t });
+                      }
+                    }}
+                    className={`px-3 py-2.5 text-xs font-medium border-b-2 transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+                      typeFilter === t
+                        ? 'border-teal text-teal'
+                        : 'border-transparent text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {shortLabel}
+                    <span className={`inline-flex items-center justify-center min-w-[18px] px-1 py-0.5 rounded-full text-[10px] font-semibold ${
+                      typeFilter === t ? 'bg-teal/10 text-teal' : 'bg-muted text-muted-foreground'
+                    }`}>{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Toolbar */}
+            <div className="bg-card rounded-lg border border-border px-3 py-2 flex items-center gap-2 flex-wrap">
+              <div className="relative flex-1 max-w-xs">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Search..."
+                  className="w-full pl-7 pr-3 py-1 bg-muted border border-border rounded text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal"
+                />
+              </div>
+              <div className="w-px h-6 bg-border" />
+              <span className="text-[10px] text-muted-foreground">{activeColumns.length} cols</span>
+              <div className="w-px h-6 bg-border" />
+              <span className="text-xs text-muted-foreground">{filtered.length} Entries</span>
+              <div className="flex items-center gap-1 ml-auto">
+                <button className="p-1 text-muted-foreground hover:text-foreground">‹</button>
+                <button className="p-1 text-muted-foreground hover:text-foreground">›</button>
+                <button onClick={() => {}} className="p-1 text-muted-foreground hover:text-foreground"><RefreshCw className="w-3.5 h-3.5" /></button>
+              </div>
+            </div>
+
+            {/* Bulk Actions Bar */}
+            {selectedRows.size > 0 && (
+              <div className="bg-teal/10 border border-teal/30 rounded-lg px-4 py-2 flex items-center gap-3">
+                <span className="text-xs font-semibold text-teal">{selectedRows.size} selected</span>
+                <div className="w-px h-5 bg-teal/30" />
+                {['Bulk Renew', 'Bulk Rotate', 'Bulk Revoke', 'Create Policy', 'Assign Owner', 'Export CSV'].map(action => (
+                  <button
+                    key={action}
+                    onClick={() => handleBulkAction(action)}
+                    className={`px-2.5 py-1 text-[10px] font-medium rounded transition-colors ${
+                      action === 'Bulk Revoke'
+                        ? 'bg-coral/10 text-coral hover:bg-coral/20'
+                        : action === 'Export CSV'
+                        ? 'bg-muted text-muted-foreground hover:text-foreground hover:bg-secondary'
+                        : action === 'Create Policy'
+                        ? 'bg-purple/10 text-purple hover:bg-purple/20'
+                        : 'bg-teal/20 text-teal hover:bg-teal/30'
+                    }`}
+                  >
+                    {action}
+                  </button>
+                ))}
+                <button onClick={() => setSelectedRows(new Set())} className="text-[10px] text-muted-foreground hover:text-foreground ml-auto">Clear</button>
+              </div>
+            )}
+
+            {/* Table */}
+            <div className="bg-card rounded-lg border border-border overflow-hidden">
+              <div className="overflow-x-auto scrollbar-thin">
+                <table className="w-full text-xs">
+                  <thead className="bg-secondary/50">
+                    <tr className="border-b border-border">
+                      <th className="w-8 py-2 px-2"><input type="checkbox" onChange={e => setSelectedRows(e.target.checked ? new Set(filtered.map(a => a.id)) : new Set())} className="rounded" /></th>
+                      <th className="w-6 py-2 px-1"></th>
+                      {activeColumns.map(col => (
+                        <th key={col.id} className="text-left py-2 px-2 font-medium text-muted-foreground whitespace-nowrap">{col.label}</th>
+                      ))}
+                      <th className="w-10 py-2 px-2"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map(asset => (
+                      <tr key={asset.id} className="border-b border-border hover:bg-secondary/30 cursor-pointer transition-colors" onClick={() => { setSelectedAsset(asset); setDrawerTab('overview'); }}>
+                        <td className="py-2 px-2" onClick={e => e.stopPropagation()}>
+                          <input type="checkbox" checked={selectedRows.has(asset.id)} onChange={() => toggleRow(asset.id)} className="rounded" />
+                        </td>
+                        <td className="py-2 px-1 text-muted-foreground">▸</td>
+                        {activeColumns.map(col => (
+                          <td key={col.id} className="py-2 px-2">{col.render(asset)}</td>
+                        ))}
+                        <td className="py-2 px-2" onClick={e => e.stopPropagation()}>
+                          <AssetRowMenu asset={asset} onAction={handleAction} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {filtered.length === 0 && (
+                <div className="py-12 text-center text-sm text-muted-foreground">
+                  No assets found matching your filters.{' '}
+                  <button onClick={() => { setFilters({}); setTypeFilter('All'); setSearch(''); }} className="text-teal hover:underline">Clear all filters</button>
+                </div>
+              )}
+            </div>
+          </>
         )}
       </div>
 
@@ -463,7 +560,6 @@ export default function InventoryPage() {
       <Drawer open={!!selectedAsset} onClose={() => setSelectedAsset(null)} title={selectedAsset?.name || ''}>
         {selectedAsset && (
           <div>
-            {/* Tabs */}
             <div className="flex gap-1 mb-4 border-b border-border">
               {['overview', 'history', 'policy', 'actions', 'dependencies', 'ai'].map(tab => (
                 <button key={tab} onClick={() => setDrawerTab(tab)} className={`px-3 py-2 text-xs font-medium capitalize border-b-2 transition-colors ${drawerTab === tab ? 'border-teal text-teal' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
@@ -645,6 +741,8 @@ export default function InventoryPage() {
                 ) : (
                   <p className="text-xs text-muted-foreground py-4 text-center">No policy violations for this asset.</p>
                 )}
+                <button onClick={() => { setPolicyDrawerCtx({ groupName: selectedAsset.name }); setPolicyDrawerOpen(true); }}
+                  className="w-full text-center py-2 text-xs text-teal hover:underline">+ Create policy for this asset</button>
               </div>
             )}
 
@@ -734,6 +832,15 @@ export default function InventoryPage() {
       <Modal open={!!depAsset} onClose={() => setDepAsset(null)} title={`Dependencies — ${depAsset?.name || ''}`}>
         {depAsset && <AIDependencyPanel asset={depAsset} onClose={() => setDepAsset(null)} />}
       </Modal>
+
+      {/* Policy Builder Drawer */}
+      <PolicyDrawer
+        open={policyDrawerOpen}
+        onClose={closePolicyDrawer}
+        groupId={policyDrawerCtx.groupId}
+        groupName={policyDrawerCtx.groupName}
+        preConditions={policyDrawerCtx.conditions}
+      />
     </div>
   );
 }
