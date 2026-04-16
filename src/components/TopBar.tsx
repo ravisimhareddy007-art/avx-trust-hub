@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNav } from '@/context/NavigationContext';
 import { useAgent } from '@/context/AgentContext';
-import { Bell, Infinity as InfinityIcon, User, AlertTriangle } from 'lucide-react';
+import { Bell, Infinity as InfinityIcon, User } from 'lucide-react';
 
 const breadcrumbMap: Record<string, string> = {
   'dashboards': 'Insights',
