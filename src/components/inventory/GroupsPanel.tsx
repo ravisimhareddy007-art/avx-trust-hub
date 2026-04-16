@@ -160,7 +160,7 @@ const seedGroups: CryptoGroup[] = [
     policyIds: [], riskScore: 82, lastEvaluated: '2 min ago', createdAt: '2026-04-10',
   },
   {
-    id: 'grp-002', name: 'Expiring in 30 Days', description: 'All crypto objects expiring within 30 days',
+    id: 'grp-002', name: 'Expiring in 30 Days', description: 'All identities expiring within 30 days',
     type: 'Dynamic', conditions: { logic: 'AND', conditions: [
       { id: 'c3', dimension: 'Days to expiry', operator: '<', value: '30' },
     ]},
@@ -303,7 +303,7 @@ export function ConditionBuilder({
       {/* Live preview */}
       {showPreview && conditionSet.conditions.length > 0 && (
         <div className="border border-teal/20 rounded-lg p-3">
-          <p className="text-xs font-medium text-teal mb-2">{matchCount} crypto objects match</p>
+          <p className="text-xs font-medium text-teal mb-2">{matchCount} identities match</p>
           {matchedAssets.length > 0 ? (
             <table className="w-full text-[10px]">
               <thead><tr className="text-muted-foreground border-b border-border">

@@ -8,8 +8,8 @@ import TicketDrawer from '@/components/inventory/TicketDrawer';
 import { Server, Key, LayoutGrid } from 'lucide-react';
 
 const tabs = [
-  { key: 'it-assets', label: 'IT Assets', icon: Server },
-  { key: 'crypto-objects', label: 'Crypto Objects', icon: Key },
+  { key: 'it-assets', label: 'Infrastructure', icon: Server },
+  { key: 'crypto-objects', label: 'Identities', icon: Key },
   { key: 'groups', label: 'Groups', icon: LayoutGrid },
 ] as const;
 

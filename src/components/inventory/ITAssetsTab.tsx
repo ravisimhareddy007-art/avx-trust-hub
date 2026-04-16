@@ -46,7 +46,7 @@ function RiskBar({ label, score, driver }: { label: string; score: number; drive
   );
 }
 
-// Row menu for crypto objects inside asset detail
+// Row menu for identities inside asset detail
 function CryptoRowMenu({ asset, onAction }: { asset: CryptoAsset; onAction: (action: string) => void }) {
   const [open, setOpen] = useState(false);
   const actions = ['Renew', 'Revoke', 'Assign Owner', 'Add to Group', 'Create Ticket', 'View Full Detail'];
@@ -107,79 +107,49 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
     }
   };
 
-  // Get crypto objects for an IT asset
-  const getCryptoObjects = (asset: ITAsset): CryptoAsset[] => {
+  // Get identities for an infrastructure asset
+  const getIdentities = (asset: ITAsset): CryptoAsset[] => {
     return asset.cryptoObjectIds.map(id => mockAssets.find(a => a.id === id)).filter(Boolean) as CryptoAsset[];
   };
 
   return (
-    <div className="flex gap-0 h-full relative">
-      {/* Left sidebar filters */}
-      <div className="w-[200px] flex-shrink-0 border-r border-border p-3 space-y-3 overflow-y-auto">
-        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Filters</p>
-
-        <div>
-          <p className="text-[10px] text-muted-foreground mb-1">Asset Type</p>
-          <div className="space-y-0.5">
-            {uniqueTypes.map(t => (
-              <button key={t} onClick={() => setTypeFilter(typeFilter === t ? '' : t)}
-                className={`w-full text-left px-2 py-1 rounded text-[10px] transition-colors ${typeFilter === t ? 'bg-teal/10 text-teal' : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}>
-                {assetTypeIcons[t] || '📋'} {t}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <p className="text-[10px] text-muted-foreground mb-1">Environment</p>
-          {['Production', 'Staging', 'Development'].map(e => (
-            <button key={e} onClick={() => setEnvFilter(envFilter === e ? '' : e)}
-              className={`w-full text-left px-2 py-1 rounded text-[10px] transition-colors ${envFilter === e ? 'bg-teal/10 text-teal' : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}>
-              {e}
-            </button>
-          ))}
-        </div>
-
-        <div>
-          <p className="text-[10px] text-muted-foreground mb-1">Owner Team</p>
-          <div className="space-y-0.5 max-h-[120px] overflow-y-auto scrollbar-thin">
-            {uniqueTeams.map(t => (
-              <button key={t} onClick={() => setTeamFilter(teamFilter === t ? '' : t)}
-                className={`w-full text-left px-2 py-1 rounded text-[10px] transition-colors ${teamFilter === t ? 'bg-teal/10 text-teal' : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}>
-                {t}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <p className="text-[10px] text-muted-foreground mb-1">Risk Score</p>
-          <div className="space-y-0.5">
-            {[{ label: 'Critical (>70)', range: [71, 100] as [number, number] }, { label: 'Moderate (40-70)', range: [40, 70] as [number, number] }, { label: 'Low (<40)', range: [0, 39] as [number, number] }].map(r => (
-              <button key={r.label} onClick={() => setRiskRange(riskRange[0] === r.range[0] ? [0, 100] : r.range)}
-                className={`w-full text-left px-2 py-1 rounded text-[10px] transition-colors ${riskRange[0] === r.range[0] && riskRange[1] === r.range[1] ? 'bg-teal/10 text-teal' : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}>
-                {r.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {(envFilter || typeFilter || teamFilter || riskRange[0] !== 0 || riskRange[1] !== 100) && (
-          <button onClick={() => { setEnvFilter(''); setTypeFilter(''); setTeamFilter(''); setRiskRange([0, 100]); }} className="text-[10px] text-coral hover:underline">
-            Clear all filters
-          </button>
-        )}
-      </div>
-
+    <div className="flex flex-col h-full relative">
       {/* Main table */}
       <div className="flex-1 min-w-0 p-3 space-y-3 overflow-y-auto">
         {/* Search bar */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search IT assets..."
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search infrastructure..."
               className="w-full pl-7 pr-3 py-1.5 bg-muted border border-border rounded text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal" />
           </div>
+          <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="px-2 py-1.5 bg-muted border border-border rounded text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal">
+            <option value="">All Types</option>
+            {uniqueTypes.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+          <select value={envFilter} onChange={e => setEnvFilter(e.target.value)} className="px-2 py-1.5 bg-muted border border-border rounded text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal">
+            <option value="">All Envs</option>
+            {['Production', 'Staging', 'Development'].map(e => <option key={e} value={e}>{e}</option>)}
+          </select>
+          <select value={teamFilter} onChange={e => setTeamFilter(e.target.value)} className="px-2 py-1.5 bg-muted border border-border rounded text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal">
+            <option value="">All Teams</option>
+            {uniqueTeams.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+          <select value={`${riskRange[0]}-${riskRange[1]}`} onChange={e => {
+            const v = e.target.value;
+            if (v === '0-100') setRiskRange([0, 100]);
+            else if (v === '71-100') setRiskRange([71, 100]);
+            else if (v === '40-70') setRiskRange([40, 70]);
+            else setRiskRange([0, 39]);
+          }} className="px-2 py-1.5 bg-muted border border-border rounded text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal">
+            <option value="0-100">All Risk</option>
+            <option value="71-100">Critical (&gt;70)</option>
+            <option value="40-70">Moderate (40-70)</option>
+            <option value="0-39">Low (&lt;40)</option>
+          </select>
+          {(envFilter || typeFilter || teamFilter || riskRange[0] !== 0 || riskRange[1] !== 100) && (
+            <button onClick={() => { setEnvFilter(''); setTypeFilter(''); setTeamFilter(''); setRiskRange([0, 100]); }} className="text-[10px] text-coral hover:underline">Clear</button>
+          )}
           <span className="text-[10px] text-muted-foreground">{filtered.length} assets</span>
         </div>
 
@@ -193,7 +163,7 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                   <th className="text-left py-2 px-2 font-medium text-muted-foreground">Type</th>
                   <th className="text-left py-2 px-2 font-medium text-muted-foreground">Env</th>
                   <th className="text-left py-2 px-2 font-medium text-muted-foreground">Owner</th>
-                  <th className="text-center py-2 px-2 font-medium text-muted-foreground">Crypto</th>
+                  <th className="text-center py-2 px-2 font-medium text-muted-foreground">Identities</th>
                   <th className="text-center py-2 px-2 font-medium text-muted-foreground">Risk</th>
                   <th className="text-center py-2 px-2 font-medium text-muted-foreground">Violations</th>
                   <th className="text-left py-2 px-2 font-medium text-muted-foreground">Policy</th>
@@ -231,7 +201,7 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
               </tbody>
             </table>
           </div>
-          {filtered.length === 0 && <div className="py-12 text-center text-sm text-muted-foreground">No IT assets match your filters.</div>}
+          {filtered.length === 0 && <div className="py-12 text-center text-sm text-muted-foreground">No infrastructure assets match your filters.</div>}
         </div>
       </div>
 
@@ -317,17 +287,17 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                 })()}
               </div>
 
-              {/* Column 2 — Crypto Objects */}
+              {/* Column 2 — Identities */}
               <div className="p-4 overflow-y-auto scrollbar-thin">
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs font-semibold text-foreground">Crypto Objects ({getCryptoObjects(selectedAsset).length})</p>
+                  <p className="text-xs font-semibold text-foreground">Identities ({getIdentities(selectedAsset).length})</p>
                 </div>
                 <div className="space-y-0">
                   {/* Header */}
                   <div className="grid grid-cols-[24px_1fr_80px_60px_55px_50px_36px_36px_28px] gap-1 text-[10px] font-medium text-muted-foreground py-1.5 border-b border-border px-1">
                     <span></span><span>Common Name</span><span>Type</span><span>Algorithm</span><span>Expiry</span><span>Days</span><span>Policy</span><span>Viol.</span><span></span>
                   </div>
-                  {getCryptoObjects(selectedAsset).map(co => (
+                  {getIdentities(selectedAsset).map(co => (
                     <React.Fragment key={co.id}>
                       <div className="grid grid-cols-[24px_1fr_80px_60px_55px_50px_36px_36px_28px] gap-1 items-center text-[10px] py-2 border-b border-border/50 hover:bg-secondary/30 px-1 cursor-pointer"
                         onClick={() => setExpandedRow(expandedRow === co.id ? null : co.id)}>

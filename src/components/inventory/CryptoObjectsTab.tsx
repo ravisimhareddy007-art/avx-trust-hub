@@ -92,56 +92,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   };
 
   return (
-    <div className="flex gap-0 h-full relative">
-      {/* Left sidebar filters */}
-      <div className="w-[200px] flex-shrink-0 border-r border-border p-3 space-y-3 overflow-y-auto">
-        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Filters</p>
-
-        <div>
-          <p className="text-[10px] text-muted-foreground mb-1">Algorithm</p>
-          <div className="space-y-0.5 max-h-[100px] overflow-y-auto scrollbar-thin">
-            {algorithms.map(a => (
-              <button key={a} onClick={() => setAlgFilter(algFilter === a ? '' : a)}
-                className={`w-full text-left px-2 py-1 rounded text-[10px] transition-colors ${algFilter === a ? 'bg-teal/10 text-teal' : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}>{a}</button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <p className="text-[10px] text-muted-foreground mb-1">Environment</p>
-          {['Production', 'Staging', 'Development'].map(e => (
-            <button key={e} onClick={() => setEnvFilter(envFilter === e ? '' : e)}
-              className={`w-full text-left px-2 py-1 rounded text-[10px] transition-colors ${envFilter === e ? 'bg-teal/10 text-teal' : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}>{e}</button>
-          ))}
-        </div>
-
-        <div>
-          <p className="text-[10px] text-muted-foreground mb-1">Status</p>
-          {['Active', 'Expiring', 'Expired', 'Orphaned', 'Revoked'].map(s => (
-            <button key={s} onClick={() => setStatusFilter(statusFilter === s ? '' : s)}
-              className={`w-full text-left px-2 py-1 rounded text-[10px] transition-colors ${statusFilter === s ? 'bg-teal/10 text-teal' : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}>{s}</button>
-          ))}
-        </div>
-
-        <div>
-          <p className="text-[10px] text-muted-foreground mb-1">PQC Risk</p>
-          {['Critical', 'High', 'Medium', 'Low'].map(r => (
-            <button key={r} onClick={() => setPqcFilter(pqcFilter === r ? '' : r)}
-              className={`w-full text-left px-2 py-1 rounded text-[10px] transition-colors ${pqcFilter === r ? 'bg-teal/10 text-teal' : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}>{r}</button>
-          ))}
-        </div>
-
-        <div>
-          <p className="text-[10px] text-muted-foreground mb-1">Owner</p>
-          <button onClick={() => setOwnerFilter(ownerFilter === 'Unassigned' ? '' : 'Unassigned')}
-            className={`w-full text-left px-2 py-1 rounded text-[10px] transition-colors ${ownerFilter === 'Unassigned' ? 'bg-teal/10 text-teal' : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}>Unassigned only</button>
-        </div>
-
-        {(algFilter || envFilter || statusFilter || pqcFilter || ownerFilter) && (
-          <button onClick={() => { setAlgFilter(''); setEnvFilter(''); setStatusFilter(''); setPqcFilter(''); setOwnerFilter(''); }} className="text-[10px] text-coral hover:underline">Clear all</button>
-        )}
-      </div>
-
+    <div className="flex flex-col h-full relative">
       {/* Main content */}
       <div className="flex-1 min-w-0 p-3 space-y-3 overflow-y-auto">
         {/* Type tabs */}
@@ -158,14 +109,37 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
           })}
         </div>
 
-        {/* Search */}
-        <div className="flex items-center gap-2">
+        {/* Search + filter dropdowns */}
+        <div className="flex items-center gap-2 flex-wrap">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search crypto objects..."
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search identities..."
               className="w-full pl-7 pr-3 py-1.5 bg-muted border border-border rounded text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal" />
           </div>
-          <span className="text-[10px] text-muted-foreground">{filtered.length} objects</span>
+          <select value={algFilter} onChange={e => setAlgFilter(e.target.value)} className="px-2 py-1.5 bg-muted border border-border rounded text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal">
+            <option value="">All Algorithms</option>
+            {algorithms.map(a => <option key={a} value={a}>{a}</option>)}
+          </select>
+          <select value={envFilter} onChange={e => setEnvFilter(e.target.value)} className="px-2 py-1.5 bg-muted border border-border rounded text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal">
+            <option value="">All Envs</option>
+            {['Production', 'Staging', 'Development'].map(e => <option key={e} value={e}>{e}</option>)}
+          </select>
+          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="px-2 py-1.5 bg-muted border border-border rounded text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal">
+            <option value="">All Status</option>
+            {['Active', 'Expiring', 'Expired', 'Orphaned', 'Revoked'].map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+          <select value={pqcFilter} onChange={e => setPqcFilter(e.target.value)} className="px-2 py-1.5 bg-muted border border-border rounded text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal">
+            <option value="">All PQC Risk</option>
+            {['Critical', 'High', 'Medium', 'Low'].map(r => <option key={r} value={r}>{r}</option>)}
+          </select>
+          <select value={ownerFilter} onChange={e => setOwnerFilter(e.target.value)} className="px-2 py-1.5 bg-muted border border-border rounded text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal">
+            <option value="">All Owners</option>
+            <option value="Unassigned">Unassigned only</option>
+          </select>
+          {(algFilter || envFilter || statusFilter || pqcFilter || ownerFilter) && (
+            <button onClick={() => { setAlgFilter(''); setEnvFilter(''); setStatusFilter(''); setPqcFilter(''); setOwnerFilter(''); }} className="text-[10px] text-coral hover:underline">Clear</button>
+          )}
+          <span className="text-[10px] text-muted-foreground ml-auto">{filtered.length} identities</span>
         </div>
 
         {/* Table */}
@@ -216,7 +190,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                       <tr><td colSpan={14} className="p-0">
                         <div className="bg-secondary/30 px-4 py-3 grid grid-cols-3 gap-4">
                           <div>
-                            <p className="text-[10px] font-semibold text-foreground mb-1.5">Associated IT Assets</p>
+                            <p className="text-[10px] font-semibold text-foreground mb-1.5">Associated Infrastructure</p>
                             {getAssociatedAssets(co).length > 0 ? getAssociatedAssets(co).map(a => (
                               <div key={a.id} className="flex items-center gap-2 text-[10px] py-1">
                                 <span className="text-foreground">{a.name}</span>
@@ -254,7 +228,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
               </tbody>
             </table>
           </div>
-          {filtered.length === 0 && <div className="py-12 text-center text-sm text-muted-foreground">No crypto objects match your filters.</div>}
+          {filtered.length === 0 && <div className="py-12 text-center text-sm text-muted-foreground">No identities match your filters.</div>}
         </div>
       </div>
 
@@ -316,14 +290,14 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                 </div>
               </div>
 
-              {/* Right: associated IT assets + mini topology */}
+              {/* Right: associated infrastructure + mini topology */}
               <div className="p-4 space-y-4 overflow-y-auto scrollbar-thin">
                 <div className="bg-amber/5 border border-amber/20 rounded-lg p-3 text-[10px] text-muted-foreground">
                   This object is shared across <span className="font-semibold text-foreground">{getAssociatedAssets(detailAsset).length}</span> assets. Expiry or failure impacts all of them.
                 </div>
 
                 <div>
-                  <p className="text-xs font-semibold mb-2">Associated IT Assets</p>
+                  <p className="text-xs font-semibold mb-2">Associated Infrastructure</p>
                   <div className="space-y-1">
                     {getAssociatedAssets(detailAsset).map(a => (
                       <div key={a.id} className="flex items-center gap-2 bg-secondary/50 rounded p-2 text-[10px]">
@@ -333,7 +307,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                         <span className="ml-auto text-muted-foreground">{a.ownerTeam}</span>
                       </div>
                     ))}
-                    {getAssociatedAssets(detailAsset).length === 0 && <p className="text-[10px] text-muted-foreground">No associated IT assets found.</p>}
+                    {getAssociatedAssets(detailAsset).length === 0 && <p className="text-[10px] text-muted-foreground">No associated infrastructure found.</p>}
                   </div>
                 </div>
               </div>

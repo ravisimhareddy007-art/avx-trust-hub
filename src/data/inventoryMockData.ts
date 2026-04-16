@@ -40,15 +40,15 @@ export function getAssetRiskDrivers(asset: ITAsset) {
     cryptoHealth: { score: Math.min(100, s + Math.floor(Math.random() * 15) - 7), driver: s > 70 ? `${Math.floor(Math.random() * 3) + 1} RSA-2048 certs with no migration plan` : 'All algorithms meet minimum standards' },
     expiryExposure: { score: Math.min(100, s + Math.floor(Math.random() * 20) - 10), driver: s > 60 ? `Nearest expiry in ${Math.floor(Math.random() * 14) + 1} days` : 'No urgent expirations' },
     policyCoverage: { score: 100 - asset.policyCoverage, driver: asset.policyCoverage < 80 ? `${100 - asset.policyCoverage}% of objects lack active policy` : 'All objects covered by policy' },
-    blastRadius: { score: Math.min(100, asset.cryptoObjectIds.length * 15), driver: `${asset.cryptoObjectIds.length} crypto dependencies shared across infrastructure` },
+    blastRadius: { score: Math.min(100, asset.cryptoObjectIds.length * 15), driver: `${asset.cryptoObjectIds.length} identity dependencies shared across infrastructure` },
   };
 }
 
 // AI narrative per asset
 export function getAssetAINarrative(asset: ITAsset): string {
-  if (asset.riskScore > 80) return `${asset.name} is critically exposed. ${asset.criticalViolations} active violations are driving the risk score, with ${asset.cryptoObjectIds.length} crypto objects — several using quantum-vulnerable algorithms. Immediate action: renew expiring certificates and assign owners to orphaned keys.`;
-  if (asset.riskScore > 60) return `${asset.name} has moderate exposure primarily driven by ${asset.policyCoverage < 50 ? 'low policy coverage' : 'approaching certificate expirations'}. ${asset.cryptoObjectIds.length} crypto objects are associated. Recommended: attach compliance policies to uncovered objects.`;
-  return `${asset.name} is well-managed with ${asset.policyCoverage}% policy coverage across ${asset.cryptoObjectIds.length} crypto objects. No urgent actions required — continue monitoring.`;
+  if (asset.riskScore > 80) return `${asset.name} is critically exposed. ${asset.criticalViolations} active violations are driving the risk score, with ${asset.cryptoObjectIds.length} identities — several using quantum-vulnerable algorithms. Immediate action: renew expiring certificates and assign owners to orphaned keys.`;
+  if (asset.riskScore > 60) return `${asset.name} has moderate exposure primarily driven by ${asset.policyCoverage < 50 ? 'low policy coverage' : 'approaching certificate expirations'}. ${asset.cryptoObjectIds.length} identities are associated. Recommended: attach compliance policies to uncovered identities.`;
+  return `${asset.name} is well-managed with ${asset.policyCoverage}% policy coverage across ${asset.cryptoObjectIds.length} identities. No urgent actions required — continue monitoring.`;
 }
 
 // Blast radius relationships
@@ -70,13 +70,13 @@ export function getBlastRadius(assetId: string, cryptoAssets: any[]): { nodes: B
 
   const ring0: BlastRadiusNode = { id: asset.id, name: asset.name, type: 'asset', ring: 0, riskScore: asset.riskScore };
 
-  // Ring 1: crypto objects
+  // Ring 1: identities
   const ring1: BlastRadiusNode[] = asset.cryptoObjectIds.map((cid: string) => {
     const co = cryptoAssets.find((a: any) => a.id === cid);
     return { id: cid, name: co?.name || cid, type: 'crypto' as const, ring: 1 as const, daysToExpiry: co?.daysToExpiry, violations: co?.policyViolations, cryptoType: co?.type };
   });
 
-  // Ring 2: sibling assets sharing crypto objects
+  // Ring 2: sibling assets sharing identities
   const siblings = mockITAssets.filter(a => a.id !== assetId && a.cryptoObjectIds.some(c => asset.cryptoObjectIds.includes(c)));
   const ring2: BlastRadiusNode[] = siblings.map(s => ({
     id: s.id, name: s.name, type: 'asset' as const, ring: 2 as const, riskScore: s.riskScore,
