@@ -575,6 +575,7 @@ function ConnectorConfigModal({ item, open, onClose }: { item: ConnectorItem | n
 export default function IntegrationsPage() {
   const [search, setSearch] = useState('');
   const [selectedConnector, setSelectedConnector] = useState<ConnectorItem | null>(null);
+  const { setCurrentPage, setFilters } = useNav();
 
   const categories: Record<string, ConnectorItem[]> = {
     'Certificate Authorities': connectors.ca,
@@ -594,12 +595,23 @@ export default function IntegrationsPage() {
   const totalConnected = Object.values(connectors).flat().filter(c => c.status === 'connected').length;
   const totalAvailable = Object.values(connectors).flat().length;
 
+  const handleAction = (action: string, cat: string) => {
+    const cap = categoryCapability[cat];
+    if (action === 'inventory') {
+      if (cap?.inventoryFilter) setFilters(cap.inventoryFilter as Record<string, string>);
+      setCurrentPage('inventory');
+    } else if (action === 'discovery') setCurrentPage('discovery-runs');
+    else if (action === 'policy') setCurrentPage('policy-builder');
+    else if (action === 'tickets') setCurrentPage('ticket-management');
+    else if (action === 'automation') setCurrentPage('automation');
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold">Integrations</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">{totalConnected} connected · {totalAvailable} available</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Control plane · {totalConnected} active capabilities · {totalAvailable} available</p>
         </div>
         <div className="relative w-64">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
@@ -609,32 +621,127 @@ export default function IntegrationsPage() {
         </div>
       </div>
 
-      {Object.entries(categories).map(([category, items]) => {
-        const filtered = search ? items.filter(i => i.name.toLowerCase().includes(search.toLowerCase())) : items;
-        if (filtered.length === 0) return null;
-        const connectedCount = filtered.filter(i => i.status === 'connected').length;
+      {layerGrouping.map(({ layer, categories: catNames }) => {
+        const layerCats = catNames.filter(c => categories[c]);
+        if (layerCats.length === 0) return null;
+        // gather all items in layer for filter check
+        const allItems = layerCats.flatMap(c => categories[c]);
+        const layerFiltered = search ? allItems.filter(i => i.name.toLowerCase().includes(search.toLowerCase())) : allItems;
+        if (layerFiltered.length === 0) return null;
+        const layerConnected = layerFiltered.filter(i => i.status === 'connected').length;
+
         return (
-          <div key={category}>
-            <h3 className="text-sm font-semibold mb-2">{category} <span className="text-[10px] text-muted-foreground font-normal ml-1">{connectedCount}/{filtered.length} connected</span></h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
-              {filtered.map(item => (
-                <div key={item.name} className="bg-card rounded-lg border border-border p-3 flex items-center justify-between hover:border-teal/30 transition-colors">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${item.status === 'connected' ? 'bg-teal' : 'bg-muted-foreground'}`} />
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium truncate">{item.name}</p>
-                      <p className="text-[10px] text-muted-foreground truncate">
-                        {item.status === 'connected' ? `${item.lastSync}${item.assets > 0 ? ` · ${item.assets >= 1000000 ? (item.assets / 1000000).toFixed(1) + 'M' : item.assets >= 1000 ? Math.round(item.assets / 1000) + 'K' : item.assets} assets` : ''}` : 'Not connected'}
-                      </p>
-                    </div>
-                  </div>
-                  <button onClick={() => setSelectedConnector(item)}
-                    className={`text-[10px] px-2 py-1 rounded flex-shrink-0 ml-2 ${item.status === 'connected' ? 'bg-muted text-muted-foreground hover:bg-muted/80' : 'bg-teal text-primary-foreground hover:bg-teal-light'}`}>
-                    {item.status === 'connected' ? 'Configure' : '+ Connect'}
-                  </button>
-                </div>
-              ))}
+          <div key={layer} className="space-y-3">
+            <div className="flex items-baseline gap-2 border-b border-border pb-1.5">
+              <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">{layer}</h2>
+              <span className="text-[10px] text-muted-foreground">{layerConnected}/{layerFiltered.length} active</span>
             </div>
+
+            {layerCats.map(cat => {
+              const items = categories[cat];
+              const filtered = search ? items.filter(i => i.name.toLowerCase().includes(search.toLowerCase())) : items;
+              if (filtered.length === 0) return null;
+              const cap = categoryCapability[cat];
+              return (
+                <div key={cat} className="space-y-2">
+                  <div className="flex items-baseline justify-between">
+                    <div>
+                      <h3 className="text-xs font-semibold text-foreground">{cat}</h3>
+                      {cap && <p className="text-[10px] text-muted-foreground">{cap.descriptor}</p>}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground">{filtered.filter(i => i.status === 'connected').length}/{filtered.length}</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {filtered.map(item => {
+                      const health = deriveHealth(item);
+                      const adoption = adoptionPct(item.name, item.assets);
+                      const isConnected = item.status === 'connected';
+                      return (
+                        <div key={item.name} className="group bg-card rounded-lg border border-border hover:border-teal/40 transition-colors p-3 flex flex-col gap-2.5">
+                          {/* Header: name + health */}
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-medium text-foreground truncate">{item.name}</p>
+                              {cap && <p className="text-[10px] text-teal/90 mt-0.5">{cap.capability}</p>}
+                            </div>
+                            {isConnected ? (
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                {health.state === 'healthy' && <CheckCircle2 className="w-3 h-3 text-teal" />}
+                                {health.state === 'delayed' && <Clock className="w-3 h-3 text-amber" />}
+                                {health.state === 'failed' && <AlertTriangle className="w-3 h-3 text-coral" />}
+                                <span className={`text-[10px] ${health.state === 'healthy' ? 'text-teal' : health.state === 'delayed' ? 'text-amber' : 'text-coral'}`}>{health.label}</span>
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground flex-shrink-0">Not connected</span>
+                            )}
+                          </div>
+
+                          {/* Powering / managed indicator */}
+                          {isConnected && cap && item.assets > 0 && (
+                            <button
+                              onClick={() => handleAction('inventory', cat)}
+                              className="flex items-center justify-between gap-2 px-2 py-1.5 bg-muted/40 hover:bg-muted/70 rounded text-left transition-colors"
+                            >
+                              <span className="text-[10px] text-foreground">{cap.managedLabel(item.assets)}</span>
+                              <ArrowUpRight className="w-3 h-3 text-muted-foreground group-hover:text-teal" />
+                            </button>
+                          )}
+
+                          {/* Adoption + last sync */}
+                          {isConnected && (
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                                <span>Last sync: {item.lastSync}</span>
+                                {adoption !== null && <span>{adoption}% adopted</span>}
+                              </div>
+                              {adoption !== null && (
+                                <div className="h-1 bg-muted rounded-full overflow-hidden">
+                                  <div className={`h-full ${adoption >= 80 ? 'bg-teal' : adoption >= 60 ? 'bg-amber' : 'bg-coral'}`} style={{ width: `${adoption}%` }} />
+                                </div>
+                              )}
+                              {health.lastError && (
+                                <p className="text-[10px] text-coral truncate">Last error: {health.lastError}</p>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Contextual actions */}
+                          <div className="flex items-center gap-1.5 pt-1 mt-auto border-t border-border/60">
+                            {isConnected && cap ? (
+                              <>
+                                {cap.postActions.map(a => (
+                                  <button
+                                    key={a.label}
+                                    onClick={() => handleAction(a.action, cat)}
+                                    className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-teal/10 hover:text-teal text-muted-foreground transition-colors"
+                                  >
+                                    {a.label}
+                                  </button>
+                                ))}
+                                <div className="flex-1" />
+                                <button onClick={() => setSelectedConnector(item)} className="text-[10px] text-muted-foreground hover:text-foreground">
+                                  Configure
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button onClick={() => setSelectedConnector(item)}
+                                  className="flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-teal text-primary-foreground hover:bg-teal/90 transition-colors">
+                                  <Zap className="w-3 h-3" /> Connect
+                                </button>
+                                {cap && (
+                                  <span className="text-[10px] text-muted-foreground truncate">→ {cap.onboardingCTA}</span>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         );
       })}
