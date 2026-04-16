@@ -433,16 +433,31 @@ function NewScanTab({ existing, onSaved }: { existing: Profile | null; onSaved: 
       </div>
 
       {/* Action buttons */}
-      <div className="flex gap-2">
-        <button onClick={handleStart}
-          className="flex items-center gap-2 px-5 py-2 rounded-lg bg-teal text-primary-foreground text-xs font-semibold hover:bg-teal-light">
-          <Play className="w-3.5 h-3.5" /> Start Discovery
-        </button>
-        {saveAsProfile && (
-          <button onClick={handleSaveOnly}
-            className="flex items-center gap-2 px-5 py-2 rounded-lg border border-teal/40 text-teal text-xs font-medium hover:bg-teal/10">
-            Save Profile Only
-          </button>
+      <div className="flex gap-2 sticky bottom-0 bg-background/95 backdrop-blur py-2 -mx-1 px-1 border-t border-border">
+        {isEditing ? (
+          <>
+            <button onClick={handleUpdate}
+              className="flex items-center gap-2 px-5 py-2 rounded-lg bg-teal text-primary-foreground text-xs font-semibold hover:bg-teal-light">
+              <Check className="w-3.5 h-3.5" /> Save Changes
+            </button>
+            <button onClick={handleStart}
+              className="flex items-center gap-2 px-5 py-2 rounded-lg border border-teal/40 text-teal text-xs font-medium hover:bg-teal/10">
+              <Play className="w-3.5 h-3.5" /> Save & Run Now
+            </button>
+          </>
+        ) : (
+          <>
+            <button onClick={handleStart}
+              className="flex items-center gap-2 px-5 py-2 rounded-lg bg-teal text-primary-foreground text-xs font-semibold hover:bg-teal-light">
+              <Play className="w-3.5 h-3.5" /> Start Discovery
+            </button>
+            {saveAsProfile && (
+              <button onClick={handleSaveOnly}
+                className="flex items-center gap-2 px-5 py-2 rounded-lg border border-teal/40 text-teal text-xs font-medium hover:bg-teal/10">
+                Save Profile Only
+              </button>
+            )}
+          </>
         )}
         <button onClick={() => { setDiscoveryName(''); setDescription(''); setSaveAsProfile(false); setProfileName(''); }}
           className="px-5 py-2 rounded-lg border border-border text-xs font-medium text-muted-foreground hover:bg-secondary">
