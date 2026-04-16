@@ -96,7 +96,7 @@ const scanCategories: ScanCategory[] = [
     description: 'Import crypto inventory from vulnerability scanners, CMDBs, and CBOM sources',
     types: [
       { value: 'CMDB / ETL Import', description: 'Import asset and certificate data from vulnerability scanners and CMDBs. Extracts crypto findings into unified inventory.', config: 'cmdb', discovers: ['Scanner Cert Findings', 'CMDB Asset Records', 'Certificate Metadata'] },
-      { value: 'CBOM Import', description: 'Import Cryptographic Bill of Materials from CycloneDX or SPDX. Compatible with IBM Guardium, Fortanix Key Insight, Anchore, Grype, Syft.', config: 'cbom', discovers: ['Cryptographic Components', 'Algorithm Inventory', 'Key Usages', 'PQC Readiness Data'] },
+      { value: 'CBOM Import', description: 'Import Cryptographic Bill of Materials from CycloneDX or SPDX. Compatible with Fortanix Key Insight, Anchore, Grype, Syft, and other SCA tools.', config: 'cbom', discovers: ['Cryptographic Components', 'Algorithm Inventory', 'Key Usages', 'PQC Readiness Data'] },
     ]
   },
 ];
@@ -117,7 +117,7 @@ const mockProfiles: Profile[] = [
   { id: 'p4', name: 'K8s Cluster Sweep', category: 'Cloud & Container', types: ['Kubernetes API Scan', 'Container Registry Scan'], schedule: 'Every 6h', lastRun: '30m ago', nextRun: 'in 5.5h', status: 'Healthy', discovered: 12847 },
   { id: 'p5', name: 'Source + IaC Scan', category: 'Endpoint & Source', types: ['Source Code Scan', 'IaC / SBOM Scan'], schedule: 'Daily 01:00', lastRun: '5h ago', nextRun: 'in 19h', status: 'Healthy', discovered: 3218 },
   { id: 'p6', name: 'Vulnerability Import', category: 'Import & ETL', types: ['CMDB / ETL Import'], schedule: 'Weekly Sunday', lastRun: '3d ago', nextRun: 'in 4d', status: 'Healthy', discovered: 892341 },
-  { id: 'p7', name: 'CBOM Ingest — IBM Guardium', category: 'Import & ETL', types: ['CBOM Import'], schedule: 'Weekly Monday', lastRun: '6d ago', nextRun: 'in 1d', status: 'Warning', discovered: 42180 },
+  { id: 'p7', name: 'Internal TLS Network Scan', category: 'Active Scanning', types: ['Network TLS Scan'], schedule: 'Weekly Monday', lastRun: '6d ago', nextRun: 'in 1d', status: 'Warning', discovered: 42180 },
 ];
 
 // ============================================================================
