@@ -99,6 +99,10 @@ const FEED: ActionItem[] = [
     aiPlan: 'Block 142 unsigned artifacts at registry. Alert release engineers. Add policy gate to CI for the 3 affected branches.',
     approveSummary: 'Block unsigned builds and gate CI on 3 branches.',
     ageMins: 320,
+    licenseGated: {
+      module: 'Code Signing+',
+      reason: 'Automated remediation requires a Code Signing+ module license. You can still create a ticket for your release engineering team to action manually.',
+    },
   },
   {
     id: '8', category: 'Secrets', icon: Lock, severity: 'P2',
