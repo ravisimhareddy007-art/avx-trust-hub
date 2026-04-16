@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { mockITAssets, ITAsset, getAssetRiskDrivers, getAssetAINarrative, getAssetViolations, getBlastRadius } from '@/data/inventoryMockData';
 import { mockAssets, CryptoAsset } from '@/data/mockData';
 import { useInventoryRegistry } from '@/context/InventoryRegistryContext';
+import { useAgent } from '@/context/AgentContext';
 import { StatusBadge, EnvBadge, DaysToExpiry, SeverityBadge } from '@/components/shared/UIComponents';
 import { Search, Server, Database, Globe, Shield, ShieldOff, ChevronDown, ChevronRight, MoreVertical, X, Ticket, RefreshCw, XCircle, RotateCcw, User, Plus, FileEdit } from 'lucide-react';
 import { toast } from 'sonner';

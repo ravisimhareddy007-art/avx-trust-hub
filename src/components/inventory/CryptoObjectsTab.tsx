@@ -1,7 +1,8 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { mockAssets, CryptoAsset } from '@/data/mockData';
 import { mockITAssets, mockGroups } from '@/data/inventoryMockData';
 import { useInventoryRegistry } from '@/context/InventoryRegistryContext';
+import { useAgent } from '@/context/AgentContext';
 import { Modal } from '@/components/shared/UIComponents';
 import { StatusBadge, EnvBadge, PQCBadge, DaysToExpiry, SeverityBadge } from '@/components/shared/UIComponents';
 import { Search, ChevronDown, ChevronRight, MoreVertical, X, Shield, ShieldOff, ChevronsRight, FileEdit } from 'lucide-react';
