@@ -11,7 +11,7 @@ import {
 import { StatusBadge } from '@/components/shared/UIComponents';
 import { users, auditLog } from '@/data/mockData';
 
-type PillarTab = 'license' | 'health' | 'multitenancy' | 'telemetry' | 'users' | 'infra-integrations' | 'infrastructure';
+type PillarTab = 'license' | 'health' | 'multitenancy' | 'telemetry' | 'users' | 'infra-integrations' | 'infrastructure' | 'mcp';
 
 export default function CoreServicesPage() {
   const [pillar, setPillar] = useState<PillarTab>('license');
@@ -24,6 +24,7 @@ export default function CoreServicesPage() {
     { id: 'users', label: 'Users & RBAC', icon: Users },
     { id: 'infra-integrations', label: 'Integrations', icon: Plug },
     { id: 'infrastructure', label: 'Infrastructure', icon: Server },
+    { id: 'mcp', label: 'MCP Server', icon: Globe },
   ];
 
   return (
@@ -44,6 +45,7 @@ export default function CoreServicesPage() {
       {pillar === 'users' && <UserManagement />}
       {pillar === 'infra-integrations' && <InfraIntegrations />}
       {pillar === 'infrastructure' && <InfrastructureResources />}
+      {pillar === 'mcp' && <MCPServerPanel />}
     </div>
   );
 }
@@ -850,7 +852,170 @@ function InfrastructureResources() {
   );
 }
 
-/* ─── SHARED ─── */
+/* ─── MCP SERVER PANEL ─── */
+function MCPServerPanel() {
+  const [activeCategory, setActiveCategory] = useState('discovery');
+  
+  const categories: { id: string; label: string; tools: { name: string; params: string; desc: string; approval?: boolean }[] }[] = [
+    { id: 'discovery', label: 'Discovery & Inventory', tools: [
+      { name: 'avx_inventory_query', params: 'filter, fields, sort, page', desc: 'Query UCO inventory with full filter DSL — type, expiry, algorithm, owner, status' },
+      { name: 'avx_scan_trigger', params: 'scope, vectors, profile', desc: 'Trigger discovery scan across networks, clouds, or K8s namespaces' },
+      { name: 'avx_cert_detail', params: 'fingerprint | cn', desc: 'Return full UCO object for a specific credential' },
+      { name: 'avx_shadow_list', params: '()', desc: 'Return all shadow certs with deployment locations and CA origin gap' },
+    ]},
+    { id: 'policy', label: 'Policy & Compliance', tools: [
+      { name: 'avx_violations_list', params: 'severity, framework, limit', desc: 'List active policy violations with remediation context' },
+      { name: 'avx_policy_generate', params: 'description: string', desc: 'Natural language → Rego rule, validated and ready to deploy' },
+      { name: 'avx_compliance_report', params: 'framework', desc: 'Return compliance scorecard: passing/failing controls per framework' },
+      { name: 'avx_policy_simulate', params: 'rule_draft, sample_size', desc: 'Dry-run a new rule against live inventory — preview violations before activation' },
+    ]},
+    { id: 'lifecycle', label: 'Lifecycle Actions', tools: [
+      { name: 'avx_cert_renew', params: 'fingerprint, ca, approval?', desc: 'Renew via connected CA. approval=true triggers human-in-loop gate', approval: true },
+      { name: 'avx_key_rotate', params: 'ucoid, target_algo, approval?', desc: 'Rotate SSH key or encryption key to specified algorithm', approval: true },
+      { name: 'avx_bulk_renew', params: 'filter, ca, dry_run?', desc: 'Renew all certs matching filter. dry_run returns scope without executing', approval: true },
+      { name: 'avx_cert_revoke', params: 'fingerprint, reason', desc: 'Revoke cert via CA + push CRL update. Always requires approval.', approval: true },
+    ]},
+    { id: 'pqc', label: 'PQC & Posture', tools: [
+      { name: 'avx_posture_score', params: 'scope?, breakdown?', desc: 'Return current posture score — org-wide or scoped to team/env/cloud' },
+      { name: 'avx_posture_simulate', params: 'action_description', desc: "What-if posture simulation: 'rotate all RSA-2048 in payments' → new score" },
+      { name: 'avx_pqc_queue', params: 'limit, harvest_risk?', desc: 'Return QTH migration queue, ordered by AI-ranked priority' },
+      { name: 'avx_pqc_migrate', params: 'fingerprint, target_algo, approval?', desc: 'Execute QTH PQC migration. Hybrid cert issuance + CBOM update', approval: true },
+    ]},
+    { id: 'agents', label: 'Eos AI Agent Tools', tools: [
+      { name: 'avx_agent_register', params: 'name, type, scope, sponsor', desc: 'Register a new AI agent identity with scoped permissions' },
+      { name: 'avx_agent_list', params: 'filter?', desc: 'List all registered AI agents with trust scores' },
+      { name: 'avx_agent_suspend', params: 'agent_id, reason', desc: 'Suspend agent identity pending review', approval: true },
+      { name: 'avx_agent_audit', params: 'agent_id, range?', desc: 'Return audit trail for agent credential usage' },
+    ]},
+  ];
+
+  const activeCat = categories.find(c => c.id === activeCategory)!;
+
+  const connectedAgents = [
+    { name: 'Claude (Anthropic)', status: 'Connected', calls: '12,847', lastCall: '2m ago' },
+    { name: 'SOC Analyst Copilot', status: 'Connected', calls: '8,420', lastCall: '5m ago' },
+    { name: 'CI/CD Pipeline Bot', status: 'Connected', calls: '24,180', lastCall: '30s ago' },
+    { name: 'Cursor Agent', status: 'Inactive', calls: '342', lastCall: '2d ago' },
+    { name: 'PQC Migration Agent', status: 'Connected', calls: '1,247', lastCall: '15m ago' },
+  ];
+
+  return (
+    <div className="space-y-4">
+      {/* Overview Cards */}
+      <div className="grid grid-cols-4 gap-3">
+        <MetricCard label="Total MCP Tools" value="40+" icon={Globe} />
+        <MetricCard label="Connected Agents" value="4" icon={Box} />
+        <MetricCard label="Tool Calls (24h)" value="45,689" icon={Activity} />
+        <MetricCard label="Human-in-Loop Gates" value="12" icon={Shield} />
+      </div>
+
+      {/* Architecture Summary */}
+      <div className="bg-card rounded-lg border border-teal/30 p-4">
+        <h3 className="text-sm font-semibold mb-2">AVX MCP Server — Agentic AI Integration</h3>
+        <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+          The entire Trust Control Platform exposed as a structured tool catalogue. Any MCP-compatible AI agent can govern machine identities via natural-language tool calls.
+        </p>
+        <div className="grid grid-cols-6 gap-2 text-[10px]">
+          {[
+            { label: 'Transport', value: 'JSON-RPC 2.0 / HTTPS (SSE)' },
+            { label: 'Auth', value: 'mTLS + OAuth2 Bearer' },
+            { label: 'Schema', value: 'JSON Schema Draft-07' },
+            { label: 'Audit', value: 'Immutable append-only' },
+            { label: 'Rate Limit', value: 'Per-agent token quota' },
+            { label: 'Human Gate', value: 'Configurable per tool' },
+          ].map(s => (
+            <div key={s.label} className="bg-secondary/50 rounded p-2">
+              <p className="text-muted-foreground">{s.label}</p>
+              <p className="font-medium text-foreground mt-0.5">{s.value}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Tool Catalogue */}
+      <div className="bg-card rounded-lg border border-border overflow-hidden">
+        <div className="px-4 py-3 border-b border-border">
+          <h3 className="text-sm font-semibold">Tool Catalogue — 40+ Named Tools</h3>
+          <p className="text-[10px] text-muted-foreground">Every platform capability as a structured tool. AI agents call by name; AVX handles auth, execution, and audit.</p>
+        </div>
+        <div className="flex">
+          <div className="w-44 border-r border-border bg-secondary/30 py-1">
+            {categories.map(cat => (
+              <button key={cat.id} onClick={() => setActiveCategory(cat.id)}
+                className={`w-full text-left px-3 py-2 text-xs transition-colors ${activeCategory === cat.id ? 'bg-teal/10 text-teal font-medium border-r-2 border-teal' : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}>
+                {cat.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex-1 p-3 space-y-2">
+            {activeCat.tools.map(tool => (
+              <div key={tool.name} className="bg-secondary/30 rounded-lg p-3 border border-border">
+                <div className="flex items-center gap-2 mb-1">
+                  <code className="text-[11px] font-mono font-semibold text-teal">{tool.name}</code>
+                  <span className="text-[9px] text-muted-foreground font-mono">({tool.params})</span>
+                  {tool.approval && <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-amber/10 text-amber font-medium">requires approval</span>}
+                </div>
+                <p className="text-[10px] text-muted-foreground">{tool.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Connected Agents */}
+      <div className="bg-card rounded-lg border border-border overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <h3 className="text-sm font-semibold">Connected AI Agents</h3>
+          <button onClick={() => toast.info('Agent registration flow opened')} className="text-[10px] px-3 py-1.5 rounded bg-teal text-primary-foreground hover:bg-teal-light flex items-center gap-1"><Plus className="w-3 h-3" /> Register Agent</button>
+        </div>
+        <table className="w-full text-xs">
+          <thead className="bg-muted/50"><tr className="border-b border-border">
+            {['Agent', 'Status', 'Tool Calls', 'Last Call', 'Actions'].map(h => <th key={h} className="text-left py-2 px-3 font-medium text-muted-foreground">{h}</th>)}
+          </tr></thead>
+          <tbody>
+            {connectedAgents.map((a, i) => (
+              <tr key={i} className="border-b border-border hover:bg-muted/30">
+                <td className="py-2 px-3 font-medium">{a.name}</td>
+                <td className="py-2 px-3"><StatusBadge status={a.status === 'Connected' ? 'Active' : 'Inactive'} /></td>
+                <td className="py-2 px-3 text-muted-foreground font-mono text-[10px]">{a.calls}</td>
+                <td className="py-2 px-3 text-muted-foreground">{a.lastCall}</td>
+                <td className="py-2 px-3">
+                  <div className="flex gap-1">
+                    <button onClick={() => toast.info(`Viewing ${a.name} audit trail`)} className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80">Audit</button>
+                    {a.status === 'Connected' && <button onClick={() => toast.info(`Suspending ${a.name}`)} className="text-[10px] px-2 py-1 rounded bg-coral/10 text-coral hover:bg-coral/20">Suspend</button>}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Agentic Flow Examples */}
+      <div className="bg-card rounded-lg border border-border p-4">
+        <h3 className="text-sm font-semibold mb-3">Agentic Flow Examples</h3>
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { title: 'SOC Analyst Copilot', mode: 'INTERACTIVE', example: '"Which certs expire in 7 days with no owner?"', flow: 'avx_inventory_query → avx_cert_detail → User reviews → avx_cert_renew' },
+            { title: 'CI/CD Pipeline Bot', mode: 'AUTONOMOUS', example: 'On PR merge: validate cert compliance', flow: 'avx_policy_simulate → avx_violations_list → Block merge if violations' },
+            { title: 'PQC Migration Agent', mode: 'HUMAN-APPROVED', example: 'Migrate payment certs to ML-DSA-65', flow: 'avx_pqc_queue → avx_posture_simulate → Human approval → avx_pqc_migrate' },
+          ].map(f => (
+            <div key={f.title} className="bg-secondary/30 rounded-lg p-3 border border-border">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs font-semibold text-foreground">{f.title}</span>
+                <span className={`text-[8px] px-1.5 py-0.5 rounded-full font-medium ${f.mode === 'AUTONOMOUS' ? 'bg-teal/10 text-teal' : f.mode === 'INTERACTIVE' ? 'bg-purple/10 text-purple' : 'bg-amber/10 text-amber'}`}>{f.mode}</span>
+              </div>
+              <p className="text-[10px] text-muted-foreground italic mb-1">{f.example}</p>
+              <p className="text-[9px] text-muted-foreground font-mono">{f.flow}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 function MetricCard({ label, value, icon: Icon, accent }: { label: string; value: string; icon: React.ElementType; accent?: boolean }) {
   return (
     <div className="bg-card rounded-lg border border-border p-4">
