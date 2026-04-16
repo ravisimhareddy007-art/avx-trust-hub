@@ -64,7 +64,31 @@ export default function TrustOpsPage() {
         {/* Action Queue - Left 60% */}
         <div className="col-span-3 space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold">Action Queue</h2>
+          <h2 className="text-sm font-semibold">Action Queue</h2>
+          {/* AI Anomaly Detection — contextual to TrustOps */}
+          <div className="bg-card rounded-lg border border-amber/20 p-3 mb-2">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="w-3.5 h-3.5 text-amber" />
+              <span className="text-[10px] font-semibold text-amber">AI Anomaly Detection</span>
+              <span className="text-[8px] px-1.5 py-0.5 bg-amber/10 text-amber rounded-full">Live</span>
+            </div>
+            <div className="space-y-1.5">
+              {[
+                { agent: 'ci-deploy-bot-7', issue: '14× normal credential velocity', severity: 'Critical' },
+                { agent: 'data-pipeline-agent', issue: 'Accessing out-of-scope secrets', severity: 'High' },
+                { agent: 'ml-trainer-9', issue: 'Bulk token generation at 3AM', severity: 'Medium' },
+              ].map((a, i) => (
+                <div key={i} className="flex items-center justify-between text-[10px] py-1 border-b border-border last:border-0">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-1.5 h-1.5 rounded-full ${a.severity === 'Critical' ? 'bg-coral' : a.severity === 'High' ? 'bg-amber' : 'bg-amber/50'}`} />
+                    <span className="font-medium">{a.agent}</span>
+                    <span className="text-muted-foreground">{a.issue}</span>
+                  </div>
+                  <button onClick={() => toast.success(`Agent ${a.agent} suspended pending review`)} className="px-1.5 py-0.5 rounded bg-coral/10 text-coral hover:bg-coral/20">Suspend</button>
+                </div>
+              ))}
+            </div>
+          </div>
             <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground cursor-pointer">
               <Sparkles className="w-3 h-3 text-teal" />
               AI prioritized

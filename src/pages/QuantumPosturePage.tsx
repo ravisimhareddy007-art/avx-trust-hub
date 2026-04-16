@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNav } from '@/context/NavigationContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { toast } from 'sonner';
-import { Download, Sparkles } from 'lucide-react';
+import { Download, Sparkles, Bot, ArrowRight } from 'lucide-react';
 
 const stages = ['Discover', 'Assess', 'Plan', 'Migrate', 'Monitor'];
 const algoBreakdown = [
@@ -125,9 +125,40 @@ export default function QuantumPosturePage() {
               ))}
             </div>
           </div>
-          <button onClick={() => toast.success('AI migration plan generated')} className="flex items-center gap-1 px-3 py-2 rounded-lg bg-teal text-primary-foreground text-xs hover:bg-teal-light"><Sparkles className="w-3 h-3" /> Let Infinity AI generate optimal migration sequence</button>
+      {/* AI PQC Prioritiser — contextual AI for this page */}
+      <div className="bg-card rounded-lg border border-teal/20 p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Sparkles className="w-4 h-4 text-teal" />
+          <h3 className="text-sm font-semibold">AI PQC Migration Prioritiser</h3>
+          <span className="text-[9px] px-1.5 py-0.5 bg-teal/10 text-teal rounded-full">Contextual AI</span>
         </div>
-      )}
+        <p className="text-[10px] text-muted-foreground mb-3">AI-ranked migration queue: asset × algorithm × target PQC algo × deadline, weighted by harvest risk × business criticality.</p>
+        <div className="space-y-2">
+          {[
+            { rank: 1, group: 'Payment TLS Certs', count: 847, risk: 'CRITICAL', target: 'ML-DSA-65', days: '12 days', reason: 'Harvest risk HIGH — PCI-DSS scope, handles financial data' },
+            { rank: 2, group: 'Auth Gateway Certs', count: 312, risk: 'HIGH', target: 'ML-KEM-768', days: '8 days', reason: 'SSO/OAuth tokens — lateral movement vector if compromised' },
+            { rank: 3, group: 'K8s Ingress Certs', count: 1247, risk: 'HIGH', target: 'ML-DSA-65', days: '21 days', reason: 'Public-facing endpoints, high blast radius' },
+          ].map(item => (
+            <div key={item.rank} className="flex items-center gap-3 bg-secondary/30 rounded-lg p-2.5">
+              <span className="w-6 h-6 rounded-full bg-teal/10 text-teal text-[10px] font-bold flex items-center justify-center">#{item.rank}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium">{item.group}</span>
+                  <span className="text-[9px] px-1.5 py-0.5 bg-coral/10 text-coral rounded">{item.risk}</span>
+                  <span className="text-[9px] text-muted-foreground">{item.count.toLocaleString()} assets → {item.target}</span>
+                </div>
+                <p className="text-[9px] text-muted-foreground mt-0.5">{item.reason}</p>
+              </div>
+              <button onClick={() => { setFilters({ pqcRisk: 'Critical' }); setCurrentPage('remediation'); }} className="text-[9px] px-2 py-1 rounded bg-teal text-primary-foreground hover:bg-teal-light flex items-center gap-1">
+                Migrate <ArrowRight className="w-2.5 h-2.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+      <button onClick={() => toast.success('AI migration plan generated — optimal sequence computed for 12,847 assets')} className="flex items-center gap-1 px-3 py-2 rounded-lg bg-teal text-primary-foreground text-xs hover:bg-teal-light"><Sparkles className="w-3 h-3" /> Generate Full AI Migration Plan</button>
+    </div>
+  )}
 
       {stage === 3 && (
         <div className="space-y-4">
