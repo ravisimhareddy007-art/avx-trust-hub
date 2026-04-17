@@ -5,8 +5,9 @@ import { useInventoryRegistry } from '@/context/InventoryRegistryContext';
 import { useAgent } from '@/context/AgentContext';
 import { Modal } from '@/components/shared/UIComponents';
 import { StatusBadge, EnvBadge, PQCBadge, DaysToExpiry, SeverityBadge } from '@/components/shared/UIComponents';
-import { Search, ChevronDown, ChevronRight, MoreVertical, X, Shield, ShieldOff, ChevronsRight, FileEdit, Info } from 'lucide-react';
+import { Search, ChevronDown, ChevronRight, MoreVertical, X, Shield, ShieldOff, ChevronsRight, FileEdit, Info, Upload } from 'lucide-react';
 import { toast } from 'sonner';
+import DeployToDeviceModal from '@/components/integrations/DeployToDeviceModal';
 
 interface Props {
   onCreateTicket: (ctx: any) => void;
@@ -151,6 +152,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   const [typeFilter, setTypeFilter] = useState('All');
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [detailAsset, setDetailAsset] = useState<CryptoAsset | null>(null);
+  const [deployFromCert, setDeployFromCert] = useState<CryptoAsset | null>(null);
   const [algFilter, setAlgFilter] = useState('');
   const [envFilter, setEnvFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -396,7 +398,17 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
             <div className="sticky top-0 bg-card border-b border-border px-4 py-3 flex items-center gap-2 z-10">
               <span className="text-xs font-medium text-foreground truncate">{detailAsset.name}</span>
               <span className="text-[10px] text-muted-foreground">({detailAsset.type})</span>
-              <button onClick={() => setDetailAsset(null)} className="ml-auto p-1 hover:bg-secondary rounded"><X className="w-4 h-4 text-muted-foreground" /></button>
+              <div className="ml-auto flex items-center gap-2">
+                {(detailAsset.type === 'TLS Certificate' || detailAsset.type === 'K8s Workload Cert') && (
+                  <button
+                    onClick={() => setDeployFromCert(detailAsset)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal text-primary-foreground rounded-md text-xs font-medium hover:bg-teal/90 transition-colors"
+                  >
+                    <Upload className="w-3.5 h-3.5" /> Deploy to Device
+                  </button>
+                )}
+                <button onClick={() => setDetailAsset(null)} className="p-1 hover:bg-secondary rounded"><X className="w-4 h-4 text-muted-foreground" /></button>
+              </div>
             </div>
 
             {/* Three column layout — matching Infrastructure design */}
@@ -615,6 +627,12 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
           </div>
         )}
       </Modal>
+
+      <DeployToDeviceModal
+        open={!!deployFromCert}
+        onClose={() => setDeployFromCert(null)}
+        cert={deployFromCert}
+      />
     </div>
   );
 }
