@@ -282,8 +282,6 @@ export const connectors = {
     { name: 'Citrix ADC', status: 'disconnected', lastSync: 'Never', assets: 0 },
     { name: 'A10 Networks', status: 'disconnected', lastSync: 'Never', assets: 0 },
     { name: 'AVI Networks', status: 'disconnected', lastSync: 'Never', assets: 0 },
-    { name: 'HAProxy', status: 'connected', lastSync: '15 min ago', assets: 45000 },
-    { name: 'NGINX', status: 'connected', lastSync: '15 min ago', assets: 89000 },
     { name: 'Brocade', status: 'disconnected', lastSync: 'Never', assets: 0 },
     { name: 'Cisco', status: 'connected', lastSync: '1 hour ago', assets: 56000 },
     { name: 'Radware', status: 'disconnected', lastSync: 'Never', assets: 0 },
