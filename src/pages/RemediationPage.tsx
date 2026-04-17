@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNav } from '@/context/NavigationContext';
 import { mockAssets, CryptoAsset } from '@/data/mockData';
 import { StatusBadge, SeverityBadge, Modal } from '@/components/shared/UIComponents';
@@ -7,8 +7,9 @@ import {
   RefreshCw, RotateCcw, XCircle, Shield, Search, Download, CheckCircle2,
   Clock, AlertTriangle, MoreVertical, Eye, Key, Lock, FileCode, Bot, Server,
   ArrowRight, User, Workflow, CheckCircle, Plus, Ticket, LockKeyhole,
-  Terminal, Code, Database, Cpu, Sparkles
+  Terminal, Code, Database, Cpu, Sparkles, AlertCircle, Send
 } from 'lucide-react';
+import CertDeploymentsView from '@/components/remediation/CertDeploymentsView';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
