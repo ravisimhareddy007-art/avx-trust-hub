@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { mockDevices, OnboardedDevice, DeviceType } from '@/data/deviceMockData';
-import { Search, Plus, Server, CheckCircle2, AlertTriangle, XCircle, Upload, RefreshCw } from 'lucide-react';
+import { Search, Plus, Server, CheckCircle2, AlertTriangle, XCircle, Wifi, RefreshCw, ArrowUpRight } from 'lucide-react';
 import DeviceDetailDrawer from './DeviceDetailDrawer';
 import { toast } from 'sonner';
+import { useNav } from '@/context/NavigationContext';
 
 // Onboarding-target catalog: lists what device TYPES can be onboarded.
 // Each tile leads to onboarding form (mocked as toast for now — Add Device flow).
@@ -42,6 +43,7 @@ export default function DeploymentTargetsView() {
   const [search, setSearch] = useState('');
   const [selectedDevice, setSelectedDevice] = useState<OnboardedDevice | null>(null);
   const [showCatalog, setShowCatalog] = useState(false);
+  const { setCurrentPage, setFilters } = useNav();
 
   const filteredDevices = useMemo(() => {
     if (!search) return mockDevices;
@@ -75,18 +77,24 @@ export default function DeploymentTargetsView() {
 
   return (
     <div className="space-y-4">
-      {/* Header strip — push semantics */}
+      {/* Header strip — connectivity & health (NOT execution) */}
       <div className="bg-card border border-border rounded-lg p-3 flex items-center gap-4">
         <div className="flex items-center gap-2 px-2.5 py-1 rounded bg-teal/10 text-teal">
-          <Upload className="w-3.5 h-3.5" />
-          <span className="text-[10px] font-semibold uppercase tracking-wide">Push · Deploy</span>
+          <Wifi className="w-3.5 h-3.5" />
+          <span className="text-[10px] font-semibold uppercase tracking-wide">Connectivity & Health</span>
         </div>
         <div className="grid grid-cols-4 gap-4 flex-1">
           <div><p className="text-[9px] text-muted-foreground uppercase tracking-wide">Onboarded</p><p className="text-sm font-bold text-foreground">{stats.total}</p></div>
           <div><p className="text-[9px] text-muted-foreground uppercase tracking-wide">Healthy</p><p className="text-sm font-bold text-teal">{stats.healthy}</p></div>
           <div><p className="text-[9px] text-muted-foreground uppercase tracking-wide">Drift / failed</p><p className="text-sm font-bold text-amber">{stats.drift + stats.failed}</p></div>
-          <div><p className="text-[9px] text-muted-foreground uppercase tracking-wide">Certs deployed</p><p className="text-sm font-bold text-foreground">{stats.certs}</p></div>
+          <div><p className="text-[9px] text-muted-foreground uppercase tracking-wide">Certs discovered</p><p className="text-sm font-bold text-foreground">{stats.certs}</p></div>
         </div>
+        <button
+          onClick={() => { setCurrentPage('remediation'); setFilters({ module: 'clm', view: 'deployments' }); }}
+          className="inline-flex items-center gap-1 text-[10px] px-2.5 py-1.5 border border-border rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        >
+          View deployments <ArrowUpRight className="w-3 h-3" />
+        </button>
         <button onClick={handleSyncAll} className="inline-flex items-center gap-1 text-[10px] px-2.5 py-1.5 border border-border rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
           <RefreshCw className="w-3 h-3" /> Sync all
         </button>
