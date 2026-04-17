@@ -574,11 +574,15 @@ function ConnectorConfigModal({ item, open, onClose }: { item: ConnectorItem | n
   );
 }
 
+type IntegrationView = 'sources' | 'targets';
+
 export default function IntegrationsPage() {
   const [search, setSearch] = useState('');
   const [selectedConnector, setSelectedConnector] = useState<ConnectorItem | null>(null);
+  const [view, setView] = useState<IntegrationView>('sources');
   const { setCurrentPage, setFilters } = useNav();
 
+  // SOURCES only — pulls, issues, discovers. Push/deploy targets live in DeploymentTargetsView.
   const categories: Record<string, ConnectorItem[]> = {
     'Certificate Authorities': connectors.ca,
     'Cloud Platforms': connectors.cloud,
@@ -586,16 +590,11 @@ export default function IntegrationsPage() {
     'PAM / Secrets Management': connectors.pam,
     'ITSM / Ticketing': connectors.itsm,
     'DDI (DNS / DHCP / IPAM)': connectors.ddi,
-    'Web Servers': connectors.servers,
-    'ADC / Load Balancers': connectors.adc,
-    'Firewall': connectors.firewall,
-    'WAF': connectors.waf,
-    'SDN / NFV': connectors.sdn,
     'DevOps / Automation': connectors.devops,
   };
 
-  const totalConnected = Object.values(connectors).flat().filter(c => c.status === 'connected').length;
-  const totalAvailable = Object.values(connectors).flat().length;
+  const totalSourcesConnected = Object.values(categories).flat().filter(c => c.status === 'connected').length;
+  const totalSourcesAvailable = Object.values(categories).flat().length;
 
   const handleAction = (action: string, cat: string) => {
     const cap = categoryCapability[cat];
@@ -613,15 +612,44 @@ export default function IntegrationsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold">Integrations</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">Control plane · {totalConnected} active capabilities · {totalAvailable} available</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Where certs come from (Sources) · Where certs go (Deployment Targets)
+          </p>
         </div>
-        <div className="relative w-64">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-          <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search integrations..."
-            className="w-full pl-8 pr-3 py-1.5 bg-muted border border-border rounded text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal" />
-        </div>
+        {view === 'sources' && (
+          <div className="relative w-64">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Search sources..."
+              className="w-full pl-8 pr-3 py-1.5 bg-muted border border-border rounded text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal" />
+          </div>
+        )}
       </div>
+
+      {/* Segmented control: Sources (Pull) vs Deployment Targets (Push) */}
+      <div className="inline-flex items-center bg-muted rounded-lg p-0.5 border border-border">
+        <button
+          onClick={() => setView('sources')}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+            view === 'sources' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Download className="w-3.5 h-3.5" />
+          Sources — Issue & Discover
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground ml-1">{totalSourcesConnected}/{totalSourcesAvailable}</span>
+        </button>
+        <button
+          onClick={() => setView('targets')}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+            view === 'targets' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Upload className="w-3.5 h-3.5" />
+          Deployment Targets — Push & Install
+        </button>
+      </div>
+
+      {view === 'targets' && <DeploymentTargetsView />}
 
       {layerGrouping.map(({ layer, categories: catNames }) => {
         const layerCats = catNames.filter(c => categories[c]);
