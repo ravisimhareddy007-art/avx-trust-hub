@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { connectors } from '@/data/mockData';
 import { toast } from 'sonner';
-import { Search, Eye, EyeOff, Wifi, Link, X, ChevronLeft, ChevronRight, Check, RefreshCw, Play, ArrowUpRight, AlertTriangle, CheckCircle2, Clock, Zap } from 'lucide-react';
+import { Search, Eye, EyeOff, Wifi, Link, X, ChevronLeft, ChevronRight, Check, RefreshCw, Play, ArrowUpRight, AlertTriangle, CheckCircle2, Clock, Zap, Download, Upload } from 'lucide-react';
 import { useNav } from '@/context/NavigationContext';
+import DeploymentTargetsView from '@/components/integrations/DeploymentTargetsView';
 
 // Capability metadata: what each integration category enables + downstream actions
 const categoryCapability: Record<string, {
