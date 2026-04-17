@@ -501,7 +501,11 @@ export default function RemediationPage() {
                 <currentModule.icon className="w-5 h-5 text-teal" />
                 {currentModule.label}
               </h1>
-              <p className="text-xs text-muted-foreground mt-0.5">{items.length} items need attention</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {activeModule === 'clm' && clmView === 'deployments'
+                  ? 'Track certificate deployment workflows · execution layer'
+                  : `${items.length} items need attention`}
+              </p>
             </div>
             <div className="flex items-center gap-2">
               {activeModule !== 'all' && currentModule.provisionLabel && (
@@ -512,6 +516,36 @@ export default function RemediationPage() {
             </div>
           </div>
 
+          {/* Issues / Deployments segmented (CLM only — devices are a CLM-scoped concept) */}
+          {activeModule === 'clm' && (
+            <div className="inline-flex items-center bg-muted rounded-lg p-0.5 border border-border">
+              <button
+                onClick={() => setClmView('issues')}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  clmView === 'issues' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <AlertCircle className="w-3.5 h-3.5" />
+                Issues
+              </button>
+              <button
+                onClick={() => setClmView('deployments')}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  clmView === 'deployments' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Send className="w-3.5 h-3.5" />
+                Deployments
+              </button>
+            </div>
+          )}
+
+          {activeModule === 'clm' && clmView === 'deployments' ? (
+            <CertDeploymentsView />
+          ) : (
+            <>
+            </>
+          )}
           {/* Issue filters */}
           <div className="flex items-center gap-1.5 flex-wrap">
             {issueFilters.map(f => (
