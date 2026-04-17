@@ -46,8 +46,9 @@ export default function DeployToDeviceModal({ open, onClose, cert, device }: Pro
       toast.error('Select a certificate and at least one target device');
       return;
     }
-    toast.success(`Deployment workflow created — ${certName} → ${targetCount} device${targetCount > 1 ? 's' : ''}`, {
-      description: `${replaceExisting ? 'Replacing existing binding' : 'New binding'} · ${restartService ? 'Service restart enabled' : 'No restart'}`,
+    const depId = `DEP-2026-${String(Math.floor(Math.random() * 9000) + 1000)}`;
+    toast.success(`Deployment ${depId} started — ${certName} → ${targetCount} device${targetCount > 1 ? 's' : ''}`, {
+      description: `Tracked in Remediation → Certificates → Deployments. ${replaceExisting ? 'Replacing binding' : 'New binding'}${restartService ? ' · restart enabled' : ''}.`,
     });
     onClose();
   };

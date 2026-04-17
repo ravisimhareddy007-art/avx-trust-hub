@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { OnboardedDevice } from '@/data/deviceMockData';
-import { X, RefreshCw, Upload, CheckCircle2, AlertTriangle, XCircle, Activity } from 'lucide-react';
+import { X, RefreshCw, ArrowUpRight, CheckCircle2, AlertTriangle, XCircle, Activity } from 'lucide-react';
 import { toast } from 'sonner';
-import DeployToDeviceModal from './DeployToDeviceModal';
+import { useNav } from '@/context/NavigationContext';
 
 interface Props {
   open: boolean;
@@ -18,8 +18,8 @@ function HealthBadge({ health }: { health: OnboardedDevice['health'] }) {
 }
 
 export default function DeviceDetailDrawer({ open, onClose, device }: Props) {
-  const [deployOpen, setDeployOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const { setCurrentPage, setFilters } = useNav();
 
   if (!open || !device) return null;
 
@@ -91,10 +91,14 @@ export default function DeviceDetailDrawer({ open, onClose, device }: Props) {
 
             <div className="space-y-1.5 pt-2 border-t border-border">
               <button
-                onClick={() => setDeployOpen(true)}
-                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-teal text-primary-foreground rounded-lg text-xs font-medium hover:bg-teal/90 transition-colors"
+                onClick={() => {
+                  setCurrentPage('remediation');
+                  setFilters({ module: 'clm', view: 'deployments', deviceId: device.id });
+                  onClose();
+                }}
+                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 border border-border rounded-lg text-xs text-foreground hover:bg-muted transition-colors"
               >
-                <Upload className="w-3.5 h-3.5" /> Deploy New Certificate
+                <ArrowUpRight className="w-3.5 h-3.5" /> View Deployments
               </button>
               <button
                 onClick={handleSync}
@@ -103,6 +107,7 @@ export default function DeviceDetailDrawer({ open, onClose, device }: Props) {
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} /> Sync / Pull Current State
               </button>
+              <p className="text-[9px] text-muted-foreground text-center pt-1">Deployments are executed from Remediation → Certificates</p>
             </div>
           </div>
 
@@ -168,11 +173,6 @@ export default function DeviceDetailDrawer({ open, onClose, device }: Props) {
         </div>
       </div>
 
-      <DeployToDeviceModal
-        open={deployOpen}
-        onClose={() => setDeployOpen(false)}
-        device={device}
-      />
     </div>
   );
 }
