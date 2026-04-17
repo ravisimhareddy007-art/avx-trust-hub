@@ -398,7 +398,17 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
             <div className="sticky top-0 bg-card border-b border-border px-4 py-3 flex items-center gap-2 z-10">
               <span className="text-xs font-medium text-foreground truncate">{detailAsset.name}</span>
               <span className="text-[10px] text-muted-foreground">({detailAsset.type})</span>
-              <button onClick={() => setDetailAsset(null)} className="ml-auto p-1 hover:bg-secondary rounded"><X className="w-4 h-4 text-muted-foreground" /></button>
+              <div className="ml-auto flex items-center gap-2">
+                {(detailAsset.type === 'TLS Certificate' || detailAsset.type === 'K8s Workload Cert') && (
+                  <button
+                    onClick={() => setDeployFromCert(detailAsset)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal text-primary-foreground rounded-md text-xs font-medium hover:bg-teal/90 transition-colors"
+                  >
+                    <Upload className="w-3.5 h-3.5" /> Deploy to Device
+                  </button>
+                )}
+                <button onClick={() => setDetailAsset(null)} className="p-1 hover:bg-secondary rounded"><X className="w-4 h-4 text-muted-foreground" /></button>
+              </div>
             </div>
 
             {/* Three column layout — matching Infrastructure design */}
