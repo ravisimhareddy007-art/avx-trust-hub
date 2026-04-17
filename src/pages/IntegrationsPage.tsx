@@ -627,28 +627,7 @@ export default function IntegrationsPage() {
         )}
       </div>
 
-      {/* Segmented control: Sources (Pull) vs Managed Systems (Connectivity) */}
-      <div className="inline-flex items-center bg-muted rounded-lg p-0.5 border border-border">
-        <button
-          onClick={() => setView('sources')}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-            view === 'sources' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <Download className="w-3.5 h-3.5" />
-          Sources — Issue & Discover
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground ml-1">{totalSourcesConnected}/{totalSourcesAvailable}</span>
-        </button>
-        <button
-          onClick={() => setView('targets')}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-            view === 'targets' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <Upload className="w-3.5 h-3.5" />
-          Managed Systems — Connectivity & Health
-        </button>
-      </div>
+      {/* View switching is handled by the nested sidebar items (Sources / Managed Systems) */}
 
       {view === 'targets' && <DeploymentTargetsView />}
 
