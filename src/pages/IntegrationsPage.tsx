@@ -579,8 +579,9 @@ type IntegrationView = 'sources' | 'targets';
 export default function IntegrationsPage() {
   const [search, setSearch] = useState('');
   const [selectedConnector, setSelectedConnector] = useState<ConnectorItem | null>(null);
-  const [view, setView] = useState<IntegrationView>('sources');
-  const { setCurrentPage, setFilters } = useNav();
+  const { setCurrentPage, setFilters, currentPage } = useNav();
+  const view: IntegrationView = currentPage === 'integrations-targets' ? 'targets' : 'sources';
+  const setView = (v: IntegrationView) => setCurrentPage(v === 'targets' ? 'integrations-targets' : 'integrations-sources');
 
   // SOURCES only — pulls, issues, discovers. Push/deploy targets live in DeploymentTargetsView.
   const categories: Record<string, ConnectorItem[]> = {
