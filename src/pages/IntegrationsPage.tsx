@@ -148,13 +148,14 @@ const categoryCapability: Record<string, {
   },
 };
 
-// Hierarchy: group categories into operational layers
+// Hierarchy: SOURCES only — categories that ISSUE / DISCOVER / PULL certificates.
+// Deployment targets (push/install) are handled by DeploymentTargetsView.
 const layerGrouping: { layer: string; categories: string[] }[] = [
   { layer: 'Certificate Authorities', categories: ['Certificate Authorities'] },
   { layer: 'Secrets Managers / Key Vaults', categories: ['HSM', 'PAM / Secrets Management'] },
   { layer: 'Cloud Platforms', categories: ['Cloud Platforms'] },
-  { layer: 'Load Balancers / ADCs / Network Devices', categories: ['ADC / Load Balancers', 'Web Servers', 'Firewall', 'WAF', 'SDN / NFV', 'DDI (DNS / DHCP / IPAM)'] },
-  { layer: 'Workflow & Delivery', categories: ['ITSM / Ticketing', 'DevOps / Automation'] },
+  { layer: 'Discovery Sources', categories: ['DDI (DNS / DHCP / IPAM)', 'DevOps / Automation'] },
+  { layer: 'Workflow & Delivery', categories: ['ITSM / Ticketing'] },
 ];
 
 function formatNum(n: number): string {
