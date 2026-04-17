@@ -51,7 +51,7 @@ const personaOptions: { value: Persona; label: string }[] = [
 export default function AppSidebar() {
   const { persona, setPersona } = usePersona();
   const { setCurrentPage, setFilters } = useNav();
-  const [expandedGroups, setExpandedGroups] = useState<string[]>(['inventory-section']);
+  const [expandedGroups, setExpandedGroups] = useState<string[]>(['inventory-section', 'integrations']);
   const [personaOpen, setPersonaOpen] = useState(false);
   const [activeNavId, setActiveNavId] = useState<string>('dashboard');
 
