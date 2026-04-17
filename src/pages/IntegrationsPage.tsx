@@ -612,9 +612,13 @@ export default function IntegrationsPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold">Integrations</h1>
+          <h1 className="text-xl font-bold">
+            Integrations <span className="text-muted-foreground font-normal">/ {view === 'sources' ? 'Sources' : 'Managed Systems'}</span>
+          </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Sources issue & discover certs · Managed Systems provide connectivity & health · Execution lives in Remediation
+            {view === 'sources'
+              ? 'Sources issue & discover certs · Execution lives in Remediation'
+              : 'Managed Systems provide connectivity & health · Deployments live in Remediation'}
           </p>
         </div>
         {view === 'sources' && (
