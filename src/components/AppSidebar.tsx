@@ -29,7 +29,16 @@ const navItems: NavItem[] = [
   { id: 'policy-builder', label: 'POLICIES', icon: ScrollText, page: 'policy-builder' },
   { id: 'remediation', label: 'REMEDIATION', icon: Wrench, page: 'remediation' },
   { id: 'tickets', label: 'TICKETS', icon: Ticket, page: 'tickets' },
-  { id: 'integrations', label: 'INTEGRATIONS', icon: Link2, page: 'integrations' },
+  {
+    id: 'integrations',
+    label: 'INTEGRATIONS',
+    icon: Link2,
+    page: 'integrations-sources',
+    children: [
+      { id: 'integrations-sources', label: 'Sources', page: 'integrations-sources' },
+      { id: 'integrations-managed', label: 'Managed Systems', page: 'integrations-targets' },
+    ],
+  },
   { id: 'core-services', label: 'PLATFORM CORE', icon: Cog, page: 'core-services' },
 ];
 
