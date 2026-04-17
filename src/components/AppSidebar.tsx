@@ -124,9 +124,16 @@ export default function AppSidebar() {
             {item.children ? (
               <>
                 <button
-                  onClick={() => toggleGroup(item.id)}
+                  onClick={() => {
+                    if (item.page) {
+                      handleNavClick(item.children![0].id, item.children![0].page);
+                      if (!expandedGroups.includes(item.id)) toggleGroup(item.id);
+                    } else {
+                      toggleGroup(item.id);
+                    }
+                  }}
                   className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-[11px] font-semibold uppercase tracking-wide transition-colors ${
-                    isChildActive(item) ? 'text-primary-foreground' : 'text-sidebar-foreground hover:text-primary-foreground'
+                    isChildActive(item) ? 'text-teal' : 'text-sidebar-foreground hover:text-primary-foreground'
                   }`}
                 >
                   <item.icon className="w-4 h-4" />
