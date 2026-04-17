@@ -416,6 +416,15 @@ export default function RemediationPage() {
   const [wizardItem, setWizardItem] = useState<RemediationItem | null>(null);
   const [provisionModule, setProvisionModule] = useState<ModuleDef | null>(null);
   const [ticketModule, setTicketModule] = useState<ModuleDef | null>(null);
+  const [clmView, setClmView] = useState<'issues' | 'deployments'>('issues');
+
+  // Honor cross-link filters set by Integrations / Device drawer.
+  useEffect(() => {
+    if (filters.module === 'clm') {
+      setActiveModule('clm');
+      if (filters.view === 'deployments') setClmView('deployments');
+    }
+  }, [filters.module, filters.view]);
 
   const currentModule = modules.find(m => m.id === activeModule)!;
   const isLocked = activeModule !== 'all' && !currentModule.licensed;
