@@ -579,8 +579,9 @@ type IntegrationView = 'sources' | 'targets';
 export default function IntegrationsPage() {
   const [search, setSearch] = useState('');
   const [selectedConnector, setSelectedConnector] = useState<ConnectorItem | null>(null);
-  const [view, setView] = useState<IntegrationView>('sources');
-  const { setCurrentPage, setFilters } = useNav();
+  const { setCurrentPage, setFilters, currentPage } = useNav();
+  const view: IntegrationView = currentPage === 'integrations-targets' ? 'targets' : 'sources';
+  const setView = (v: IntegrationView) => setCurrentPage(v === 'targets' ? 'integrations-targets' : 'integrations-sources');
 
   // SOURCES only — pulls, issues, discovers. Push/deploy targets live in DeploymentTargetsView.
   const categories: Record<string, ConnectorItem[]> = {
@@ -611,9 +612,13 @@ export default function IntegrationsPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold">Integrations</h1>
+          <h1 className="text-xl font-bold">
+            Integrations <span className="text-muted-foreground font-normal">/ {view === 'sources' ? 'Sources' : 'Managed Systems'}</span>
+          </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Sources issue & discover certs · Managed Systems provide connectivity & health · Execution lives in Remediation
+            {view === 'sources'
+              ? 'Sources issue & discover certs · Execution lives in Remediation'
+              : 'Managed Systems provide connectivity & health · Deployments live in Remediation'}
           </p>
         </div>
         {view === 'sources' && (
@@ -626,28 +631,7 @@ export default function IntegrationsPage() {
         )}
       </div>
 
-      {/* Segmented control: Sources (Pull) vs Managed Systems (Connectivity) */}
-      <div className="inline-flex items-center bg-muted rounded-lg p-0.5 border border-border">
-        <button
-          onClick={() => setView('sources')}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-            view === 'sources' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <Download className="w-3.5 h-3.5" />
-          Sources — Issue & Discover
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground ml-1">{totalSourcesConnected}/{totalSourcesAvailable}</span>
-        </button>
-        <button
-          onClick={() => setView('targets')}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-            view === 'targets' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <Upload className="w-3.5 h-3.5" />
-          Managed Systems — Connectivity & Health
-        </button>
-      </div>
+      {/* View switching is handled by the nested sidebar items (Sources / Managed Systems) */}
 
       {view === 'targets' && <DeploymentTargetsView />}
 

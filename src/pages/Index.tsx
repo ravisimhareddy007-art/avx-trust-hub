@@ -43,6 +43,8 @@ function PageRouter() {
     'remediation': <RemediationPage />,
     'tickets': <TicketManagementPage />,
     'integrations': <IntegrationsPage />,
+    'integrations-sources': <IntegrationsPage />,
+    'integrations-targets': <IntegrationsPage />,
     'core-services': <CoreServicesPage />,
     'trustops': <TrustOpsPage />,
     'quantum': <QuantumPosturePage />,

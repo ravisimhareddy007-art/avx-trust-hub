@@ -29,7 +29,16 @@ const navItems: NavItem[] = [
   { id: 'policy-builder', label: 'POLICIES', icon: ScrollText, page: 'policy-builder' },
   { id: 'remediation', label: 'REMEDIATION', icon: Wrench, page: 'remediation' },
   { id: 'tickets', label: 'TICKETS', icon: Ticket, page: 'tickets' },
-  { id: 'integrations', label: 'INTEGRATIONS', icon: Link2, page: 'integrations' },
+  {
+    id: 'integrations',
+    label: 'INTEGRATIONS',
+    icon: Link2,
+    page: 'integrations-sources',
+    children: [
+      { id: 'integrations-sources', label: 'Sources', page: 'integrations-sources' },
+      { id: 'integrations-managed', label: 'Managed Systems', page: 'integrations-targets' },
+    ],
+  },
   { id: 'core-services', label: 'PLATFORM CORE', icon: Cog, page: 'core-services' },
 ];
 
@@ -42,7 +51,7 @@ const personaOptions: { value: Persona; label: string }[] = [
 export default function AppSidebar() {
   const { persona, setPersona } = usePersona();
   const { setCurrentPage, setFilters } = useNav();
-  const [expandedGroups, setExpandedGroups] = useState<string[]>(['inventory-section']);
+  const [expandedGroups, setExpandedGroups] = useState<string[]>(['inventory-section', 'integrations']);
   const [personaOpen, setPersonaOpen] = useState(false);
   const [activeNavId, setActiveNavId] = useState<string>('dashboard');
 
@@ -115,9 +124,16 @@ export default function AppSidebar() {
             {item.children ? (
               <>
                 <button
-                  onClick={() => toggleGroup(item.id)}
+                  onClick={() => {
+                    if (item.page) {
+                      handleNavClick(item.children![0].id, item.children![0].page);
+                      if (!expandedGroups.includes(item.id)) toggleGroup(item.id);
+                    } else {
+                      toggleGroup(item.id);
+                    }
+                  }}
                   className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-[11px] font-semibold uppercase tracking-wide transition-colors ${
-                    isChildActive(item) ? 'text-primary-foreground' : 'text-sidebar-foreground hover:text-primary-foreground'
+                    isChildActive(item) ? 'text-teal' : 'text-sidebar-foreground hover:text-primary-foreground'
                   }`}
                 >
                   <item.icon className="w-4 h-4" />
