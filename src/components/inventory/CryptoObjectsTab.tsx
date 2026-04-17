@@ -5,8 +5,9 @@ import { useInventoryRegistry } from '@/context/InventoryRegistryContext';
 import { useAgent } from '@/context/AgentContext';
 import { Modal } from '@/components/shared/UIComponents';
 import { StatusBadge, EnvBadge, PQCBadge, DaysToExpiry, SeverityBadge } from '@/components/shared/UIComponents';
-import { Search, ChevronDown, ChevronRight, MoreVertical, X, Shield, ShieldOff, ChevronsRight, FileEdit, Info } from 'lucide-react';
+import { Search, ChevronDown, ChevronRight, MoreVertical, X, Shield, ShieldOff, ChevronsRight, FileEdit, Info, Upload } from 'lucide-react';
 import { toast } from 'sonner';
+import DeployToDeviceModal from '@/components/integrations/DeployToDeviceModal';
 
 interface Props {
   onCreateTicket: (ctx: any) => void;
