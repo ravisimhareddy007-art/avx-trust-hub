@@ -271,11 +271,17 @@ export const connectors = {
     { name: 'VitalQIP', status: 'disconnected', lastSync: 'Never', assets: 0 },
   ],
   servers: [
-    { name: 'Apache', status: 'connected', lastSync: '30 min ago', assets: 145000 },
-    { name: 'IBM WebSphere', status: 'connected', lastSync: '1 hour ago', assets: 67000 },
+    { name: 'Apache HTTP Server', status: 'connected', lastSync: '30 min ago', assets: 145000 },
+    { name: 'NGINX', status: 'connected', lastSync: '15 min ago', assets: 89000 },
     { name: 'Microsoft IIS', status: 'connected', lastSync: '45 min ago', assets: 230000 },
+    { name: 'HAProxy', status: 'connected', lastSync: '15 min ago', assets: 45000 },
+    { name: 'IBM WebSphere', status: 'connected', lastSync: '1 hour ago', assets: 67000 },
     { name: 'Oracle WebLogic', status: 'disconnected', lastSync: 'Never', assets: 0 },
     { name: 'Tomcat', status: 'connected', lastSync: '20 min ago', assets: 89000 },
+  ],
+  k8sTargets: [
+    { name: 'Kubernetes (Deployment)', status: 'connected', lastSync: '5 min ago', assets: 124 },
+    { name: 'OpenShift (Deployment)', status: 'disconnected', lastSync: 'Never', assets: 0 },
   ],
   adc: [
     { name: 'F5 BIG-IP', status: 'connected', lastSync: '30 min ago', assets: 120000 },
