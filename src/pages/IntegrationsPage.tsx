@@ -651,7 +651,7 @@ export default function IntegrationsPage() {
 
       {view === 'targets' && <DeploymentTargetsView />}
 
-      {layerGrouping.map(({ layer, categories: catNames }) => {
+      {view === 'sources' && layerGrouping.map(({ layer, categories: catNames }) => {
         const layerCats = catNames.filter(c => categories[c]);
         if (layerCats.length === 0) return null;
         // gather all items in layer for filter check
