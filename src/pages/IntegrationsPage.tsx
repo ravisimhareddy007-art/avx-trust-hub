@@ -613,7 +613,7 @@ export default function IntegrationsPage() {
         <div>
           <h1 className="text-xl font-bold">Integrations</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Where certs come from (Sources) · Where certs go (Deployment Targets)
+            Sources issue & discover certs · Managed Systems provide connectivity & health · Execution lives in Remediation
           </p>
         </div>
         {view === 'sources' && (
@@ -626,7 +626,7 @@ export default function IntegrationsPage() {
         )}
       </div>
 
-      {/* Segmented control: Sources (Pull) vs Deployment Targets (Push) */}
+      {/* Segmented control: Sources (Pull) vs Managed Systems (Connectivity) */}
       <div className="inline-flex items-center bg-muted rounded-lg p-0.5 border border-border">
         <button
           onClick={() => setView('sources')}
@@ -645,7 +645,7 @@ export default function IntegrationsPage() {
           }`}
         >
           <Upload className="w-3.5 h-3.5" />
-          Deployment Targets — Push & Install
+          Managed Systems — Connectivity & Health
         </button>
       </div>
 
