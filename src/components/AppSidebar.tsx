@@ -123,23 +123,36 @@ export default function AppSidebar() {
           <div key={item.id} className="mb-0.5">
             {item.children ? (
               <>
-                <button
-                  onClick={() => {
-                    if (item.page) {
-                      handleNavClick(item.children![0].id, item.children![0].page);
-                      if (!expandedGroups.includes(item.id)) toggleGroup(item.id);
-                    } else {
-                      toggleGroup(item.id);
-                    }
-                  }}
+                <div
                   className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-[11px] font-semibold uppercase tracking-wide transition-colors ${
                     isChildActive(item) ? 'text-teal' : 'text-sidebar-foreground hover:text-primary-foreground'
                   }`}
                 >
-                  <item.icon className="w-4 h-4" />
-                  <span className="flex-1 text-left">{item.label}</span>
-                  {expandedGroups.includes(item.id) ? <span className="text-muted-foreground">—</span> : <ChevronRight className="w-3 h-3 text-muted-foreground" />}
-                </button>
+                  <button
+                    onClick={() => {
+                      if (item.page) {
+                        handleNavClick(item.children![0].id, item.children![0].page);
+                        if (!expandedGroups.includes(item.id)) toggleGroup(item.id);
+                      } else {
+                        toggleGroup(item.id);
+                      }
+                    }}
+                    className="flex items-center gap-2 flex-1 text-left"
+                  >
+                    <item.icon className="w-4 h-4" />
+                    <span className="flex-1">{item.label}</span>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleGroup(item.id);
+                    }}
+                    aria-label={expandedGroups.includes(item.id) ? `Collapse ${item.label}` : `Expand ${item.label}`}
+                    className="p-0.5 rounded hover:bg-navy-light text-muted-foreground"
+                  >
+                    {expandedGroups.includes(item.id) ? <span className="text-xs">—</span> : <ChevronRight className="w-3 h-3" />}
+                  </button>
+                </div>
                 {expandedGroups.includes(item.id) && (
                   <div className="ml-4 mt-0.5 space-y-0.5 border-l border-navy-lighter pl-3">
                     {item.children.map(child => (
