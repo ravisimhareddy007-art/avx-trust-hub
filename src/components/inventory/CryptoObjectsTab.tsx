@@ -627,6 +627,12 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
           </div>
         )}
       </Modal>
+
+      <DeployToDeviceModal
+        open={!!deployFromCert}
+        onClose={() => setDeployFromCert(null)}
+        cert={deployFromCert}
+      />
     </div>
   );
 }
