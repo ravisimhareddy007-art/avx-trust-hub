@@ -168,7 +168,7 @@ function ageLabel(mins: number) {
   return `${Math.floor(mins / 1440)}d`;
 }
 
-type FilterKey = 'All' | 'Certificates' | 'Secrets' | 'SSH Keys' | 'AI Tokens' | 'Infrastructure';
+type FilterKey = 'All' | 'Certificates' | 'Secrets' | 'SSH Keys' | 'AI Tokens' | 'Infrastructure' | 'Quantum';
 
 const FILTER_MAP: Record<FilterKey, ActionItem['category'][] | null> = {
   'All': null,
@@ -177,9 +177,10 @@ const FILTER_MAP: Record<FilterKey, ActionItem['category'][] | null> = {
   'SSH Keys': ['SSH'],
   'AI Tokens': ['AI'],
   'Infrastructure': ['K8s', 'Code Sign'],
+  'Quantum': ['PQC'],
 };
 
-const FILTERS: FilterKey[] = ['All', 'Certificates', 'Secrets', 'SSH Keys', 'AI Tokens', 'Infrastructure'];
+const FILTERS: FilterKey[] = ['All', 'Certificates', 'Secrets', 'SSH Keys', 'AI Tokens', 'Infrastructure', 'Quantum'];
 
 export default function CriticalActionFeed() {
   const { hoveredDriver, resolvedFeedItems, resolveFeedItem } = useDashboard();
