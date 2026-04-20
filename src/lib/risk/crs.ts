@@ -76,11 +76,38 @@ export function getCrsFactors(a: CryptoAsset): CrsFactor[] {
   ];
 }
 
-export function computeCRS(a: CryptoAsset): number {
-  const fs = getCrsFactors(a);
-  const totalW = fs.reduce((s, f) => s + f.weight, 0);
-  const raw = fs.reduce((s, f) => s + f.raw * (f.weight / totalW), 0);
-  return Math.min(100, Math.round(raw));
+export type RiskClass = 'operational' | 'quantum' | 'both';
+
+export interface CrsBreakdown {
+  crs: number;
+  factors: CrsFactor[];
+  riskClass: RiskClass;
+}
+
+export function getRiskClass(a: CryptoAsset): RiskClass {
+  const QUANTUM_VULNERABLE = ['RSA-1024', 'RSA-2048', 'RSA-3072', 'RSA-4096', 'ECC P-256', 'ECC P-384', 'ECDSA', 'ECDH', 'DSA', 'DH', 'Ed25519'];
+  const isQuantum = QUANTUM_VULNERABLE.some(alg =>
+    a.algorithm.includes(alg.split('-')[0]) || a.algorithm === alg
+  );
+  const isOperational = (
+    a.status === 'Expired' ||
+    a.status === 'Orphaned' ||
+    (a.daysToExpiry >= 0 && a.daysToExpiry <= 30) ||
+    a.policyViolations > 0 ||
+    a.owner === 'Unassigned' ||
+    ALG_RAW[a.algorithm] >= 85
+  );
+  if (isOperational && isQuantum) return 'both';
+  if (isQuantum) return 'quantum';
+  return 'operational';
+}
+
+export function computeCRS(a: CryptoAsset): CrsBreakdown {
+  const factors = getCrsFactors(a);
+  const totalW = factors.reduce((s, f) => s + f.weight, 0);
+  const raw = factors.reduce((s, f) => s + f.raw * (f.weight / totalW), 0);
+  const crs = Math.min(100, Math.round(raw));
+  return { crs, factors, riskClass: getRiskClass(a) };
 }
 
 export function getFactorContribution(f: CrsFactor, factors: CrsFactor[]): number {

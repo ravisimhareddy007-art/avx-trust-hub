@@ -6,7 +6,7 @@
 
 import { mockAssets, type CryptoAsset } from '@/data/mockData';
 import type { ITAsset } from '@/data/inventoryMockData';
-import { computeCRS } from './crs';
+import { computeCRS, getRiskClass } from './crs';
 import { severityFor } from './types';
 
 function percentile(sorted: number[], p: number): number {
@@ -23,6 +23,8 @@ export interface ArsBreakdown {
   count: number;
   critCount: number;
   highCount: number;
+  operationalCount: number;
+  quantumCount: number;
   topObjects: { id: string; name: string; crs: number; reason: string }[];
 }
 
@@ -32,16 +34,24 @@ export function computeARS(asset: ITAsset, allObjects: CryptoAsset[] = mockAsset
     .filter(Boolean) as CryptoAsset[];
 
   if (objs.length === 0) {
-    return { ars: 0, max: 0, p90: 0, p75: 0, count: 0, critCount: 0, highCount: 0, topObjects: [] };
+    return { ars: 0, max: 0, p90: 0, p75: 0, count: 0, critCount: 0, highCount: 0, operationalCount: 0, quantumCount: 0, topObjects: [] };
   }
 
-  const scored = objs.map(o => ({ o, crs: computeCRS(o) }));
+  const scored = objs.map(o => ({ o, crs: computeCRS(o).crs }));
   const sorted = [...scored.map(x => x.crs)].sort((a, b) => a - b); // ascending
   const max = Math.max(...sorted);
   const p90 = percentile(sorted, 90);
   const p75 = percentile(sorted, 75);
   const critCount = scored.filter(x => severityFor(x.crs) === 'Critical').length;
   const highCount = scored.filter(x => severityFor(x.crs) === 'High').length;
+  const operationalCount = scored.filter(x => {
+    const rc = x.o ? getRiskClass(x.o) : 'operational';
+    return rc === 'operational' || rc === 'both';
+  }).length;
+  const quantumCount = scored.filter(x => {
+    const rc = x.o ? getRiskClass(x.o) : 'operational';
+    return rc === 'quantum' || rc === 'both';
+  }).length;
 
   const ars = Math.min(
     100,
@@ -70,7 +80,7 @@ export function computeARS(asset: ITAsset, allObjects: CryptoAsset[] = mockAsset
           : `${x.o.policyViolations} policy violations`,
     }));
 
-  return { ars, max, p90, p75, count: objs.length, critCount, highCount, topObjects };
+  return { ars, max, p90, p75, count: objs.length, critCount, highCount, operationalCount, quantumCount, topObjects };
 }
 
 // Memoised per-asset ARS — cheap enough to recompute, but cache so list sorts

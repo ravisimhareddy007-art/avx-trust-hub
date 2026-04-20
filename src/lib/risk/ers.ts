@@ -15,12 +15,23 @@ const BI_WEIGHT: Record<BusinessImpact, number> = {
   Low:      1,
 };
 
+function quantumWeight(): number {
+  const currentYear = new Date().getFullYear();
+  const deadlineYear = 2030;
+  const startYear = 2024;
+  const progress = Math.min(1, Math.max(0, (currentYear - startYear) / (deadlineYear - startYear)));
+  // Increases from 0.15 in 2024 to 0.35 in 2030
+  return 0.15 + progress * 0.20;
+}
+
 export interface ErsBreakdown {
   ers: number;
   weightedAvg: number;     // pre-floor weighted average
   floorApplied: boolean;
   floorAsset?: { id: string; name: string; ars: number; bi: BusinessImpact };
   severity: Severity;
+  quantumComponent: number;
+  quantumWeight: number;
   topAssets: { id: string; name: string; ars: number; bi: BusinessImpact; rps: number; contribution: number }[];
   driverBuckets: { id: string; label: string; pts: number; count: number; filters: Record<string, string>; page: string }[];
 }
@@ -29,6 +40,25 @@ interface ScoredAsset {
   asset: ITAsset;
   ars: number;
   bi: BusinessImpact;
+}
+
+function computeQuantumRiskComponent(scored: ScoredAsset[]): number {
+  let quantumWeightedSum = 0;
+  let totalW = 0;
+  scored.forEach(x => {
+    const objs = x.asset.cryptoObjectIds
+      .map(id => mockAssets.find(a => a.id === id))
+      .filter(Boolean);
+    const quantumVulnCount = objs.filter(o =>
+      o && /RSA|ECC|ECDSA|ECDH|DSA/.test(o.algorithm)
+    ).length;
+    const totalObjs = objs.length || 1;
+    const quantumExposurePct = quantumVulnCount / totalObjs;
+    const w = BI_WEIGHT[x.bi];
+    quantumWeightedSum += quantumExposurePct * 100 * w;
+    totalW += w;
+  });
+  return totalW > 0 ? Math.round(quantumWeightedSum / totalW) : 0;
 }
 
 function buildDriverBuckets(scored: ScoredAsset[], weightedAvg: number): ErsBreakdown['driverBuckets'] {
@@ -81,7 +111,11 @@ export function computeERS(
   const topCritical = criticalProd.sort((a, b) => b.ars - a.ars)[0];
   const floor = topCritical ? Math.round(topCritical.ars * 0.85) : 0;
   const floorApplied = topCritical !== undefined && floor > weightedAvg;
-  const ers = Math.min(100, Math.max(weightedAvg, floor));
+  const qWeight = quantumWeight();
+  const opsWeight = 1 - qWeight;
+  const quantumComponent = computeQuantumRiskComponent(scored);
+  const blended = Math.round(weightedAvg * opsWeight + quantumComponent * qWeight);
+  const ers = Math.min(100, Math.max(blended, floor));
 
   // Top contributing assets ranked by ERS-point contribution.
   const topAssets = [...scored]
@@ -104,6 +138,8 @@ export function computeERS(
       ? { id: topCritical.asset.id, name: topCritical.asset.name, ars: topCritical.ars, bi: topCritical.bi }
       : undefined,
     severity: severityFor(ers),
+    quantumComponent,
+    quantumWeight: qWeight,
     topAssets,
     driverBuckets: buildDriverBuckets(scored, weightedAvg),
   };
