@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Shield, Key, Bot, Lock, Fingerprint, Globe, AlertTriangle, Clock, Sparkles, Check, ChevronDown, ChevronUp, Layers, Ticket, Lock as LockIcon } from 'lucide-react';
+import { Shield, Key, Bot, Lock, Fingerprint, Globe, AlertTriangle, Clock, Sparkles, Check, ChevronDown, ChevronUp, Layers, Ticket, Lock as LockIcon, Atom } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDashboard, feedItemToDriver } from '@/context/DashboardContext';
 import { useNav } from '@/context/NavigationContext';
@@ -17,7 +17,7 @@ interface RemediationGroup {
 
 interface ActionItem {
   id: string;
-  category: 'Certs' | 'SSH' | 'AI' | 'Secrets' | 'Code Sign' | 'K8s';
+  category: 'Certs' | 'SSH' | 'AI' | 'Secrets' | 'Code Sign' | 'K8s' | 'PQC';
   icon: React.ComponentType<{ className?: string }>;
   severity: 'P1' | 'P2' | 'P3';
   title: string;
@@ -27,6 +27,7 @@ interface ActionItem {
   ageMins: number;
   remediationGroups?: RemediationGroup[];
   licenseGated?: { module: string; reason: string };
+  isPqc?: boolean;
 }
 
 const FEED: ActionItem[] = [
@@ -137,6 +138,15 @@ const FEED: ActionItem[] = [
       { ca: 'Azure AD', caAccount: 'aad-corp', count: 14000, environment: 'Production', teams: ['identity-team'], method: 'acme-auto', requiresApproval: true, workflowTemplate: 'Token Sponsor Assignment' },
       { ca: 'AWS IAM', caAccount: 'iam-prod', count: 8000, environment: 'Production', teams: ['cloud-eng'], method: 'acme-auto', requiresApproval: false, workflowTemplate: 'Token Sponsor Assignment' },
     ],
+  },
+  {
+    id: 'pqc-1', category: 'PQC', icon: Atom, severity: 'P2',
+    title: '847 production certs use RSA-2048 and expire after 2030',
+    detail: 'DigiCert · payments team · post-NIST-deadline exposure',
+    aiPlan: 'Generate ML-KEM-768 hybrid migration plan for 847 certs. Group by CA account and team. Submit to QTH queue for staged rollout.',
+    approveSummary: 'Add 847 quantum-vulnerable certs to QTH migration queue.',
+    ageMins: 60,
+    isPqc: true,
   },
 ];
 
