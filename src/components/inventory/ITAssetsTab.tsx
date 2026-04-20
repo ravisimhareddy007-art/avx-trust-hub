@@ -220,50 +220,73 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
             <table className="w-full text-xs">
               <thead className="bg-secondary/50">
                 <tr className="border-b border-border">
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Asset Name</th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">
+                    <button onClick={() => setSortKey('name')} className={`inline-flex items-center gap-1 hover:text-foreground ${sortKey==='name'?'text-foreground':''}`}>
+                      Asset Name <ArrowUpDown className="w-2.5 h-2.5" />
+                    </button>
+                  </th>
                   <th className="text-left py-2 px-2 font-medium text-muted-foreground">Type</th>
                   <th className="text-left py-2 px-2 font-medium text-muted-foreground">Env</th>
-                  <th className="text-left py-2 px-2 font-medium text-muted-foreground">Owner</th>
                   <th className="text-center py-2 px-2 font-medium text-muted-foreground">Identities</th>
-                  <th className="text-center py-2 px-2 font-medium text-muted-foreground">Risk</th>
-                  <th className="text-center py-2 px-2 font-medium text-muted-foreground">Violations</th>
+                  <th className="text-center py-2 px-2 font-medium text-muted-foreground">
+                    <button onClick={() => setSortKey('ars')} className={`inline-flex items-center gap-1 hover:text-foreground ${sortKey==='ars'?'text-foreground':''}`}>
+                      ARS <ArrowUpDown className="w-2.5 h-2.5" />
+                    </button>
+                  </th>
+                  <th className="text-left py-2 px-2 font-medium text-muted-foreground">
+                    <button onClick={() => setSortKey('bi')} className={`inline-flex items-center gap-1 hover:text-foreground ${sortKey==='bi'?'text-foreground':''}`}>
+                      Business Impact <ArrowUpDown className="w-2.5 h-2.5" />
+                    </button>
+                  </th>
+                  <th className="text-center py-2 px-2 font-medium text-muted-foreground">
+                    <button onClick={() => setSortKey('rps')} className={`inline-flex items-center gap-1 hover:text-foreground ${sortKey==='rps'?'text-foreground':''}`} title="Remediation Priority Score = ARS × Business Impact">
+                      RPS <ArrowUpDown className="w-2.5 h-2.5" />
+                    </button>
+                  </th>
+                  <th className="text-left py-2 px-2 font-medium text-muted-foreground">Owner</th>
                   <th className="text-left py-2 px-2 font-medium text-muted-foreground">Policy</th>
-                  <th className="text-left py-2 px-2 font-medium text-muted-foreground">Last Seen</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(asset => {
-                  const riskColor = asset.riskScore > 70 ? 'bg-coral/10 text-coral' : asset.riskScore > 40 ? 'bg-amber/10 text-amber' : 'bg-teal/10 text-teal';
-                  return (
-                    <tr key={asset.id} onClick={() => openAssetDetail(asset)}
-                      className="border-b border-border hover:bg-secondary/30 cursor-pointer transition-colors">
-                      <td className="py-2 px-3">
-                        <div className="flex items-center gap-2">
-                          <span>{assetTypeIcons[asset.type] || '📋'}</span>
-                          <span className="font-medium text-foreground truncate max-w-[200px]">{asset.name}</span>
-                          {isManual(asset) && (
-                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-teal/15 text-teal text-[9px] font-semibold" title="Discovery Vector: Manual Entry">
-                              <FileEdit className="w-2.5 h-2.5" /> Manual
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-2 px-2 text-muted-foreground">{asset.type}</td>
-                      <td className="py-2 px-2"><EnvBadge env={asset.environment} /></td>
-                      <td className="py-2 px-2 text-muted-foreground">{asset.ownerTeam}</td>
-                      <td className="py-2 px-2 text-center text-foreground font-medium">{asset.cryptoObjectIds.length}</td>
-                      <td className="py-2 px-2 text-center"><span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${riskColor}`}>{asset.riskScore}</span></td>
-                      <td className="py-2 px-2 text-center">{asset.criticalViolations > 0 ? <span className="inline-flex items-center justify-center min-w-[18px] px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-coral/10 text-coral">{asset.criticalViolations}</span> : <span className="text-muted-foreground">0</span>}</td>
-                      <td className="py-2 px-2">
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-16 h-1.5 bg-secondary rounded-full overflow-hidden"><div className="h-full bg-teal rounded-full" style={{ width: `${asset.policyCoverage}%` }} /></div>
-                          <span className="text-[10px] text-muted-foreground">{asset.policyCoverage}%</span>
-                        </div>
-                      </td>
-                      <td className="py-2 px-2 text-muted-foreground text-[10px]">{asset.lastSeen}</td>
-                    </tr>
-                  );
-                })}
+                {filtered.map(({ asset, ars, bi, rps }) => (
+                  <tr key={asset.id} onClick={() => openAssetDetail(asset)}
+                    className="border-b border-border hover:bg-secondary/30 cursor-pointer transition-colors">
+                    <td className="py-2 px-3">
+                      <div className="flex items-center gap-2">
+                        <span>{assetTypeIcons[asset.type] || '📋'}</span>
+                        <span className="font-medium text-foreground truncate max-w-[200px]">{asset.name}</span>
+                        {isManual(asset) && (
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-teal/15 text-teal text-[9px] font-semibold" title="Discovery Vector: Manual Entry">
+                            <FileEdit className="w-2.5 h-2.5" /> Manual
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-2 px-2 text-muted-foreground">{asset.type}</td>
+                    <td className="py-2 px-2"><EnvBadge env={asset.environment} /></td>
+                    <td className="py-2 px-2 text-center text-foreground font-medium">{asset.cryptoObjectIds.length}</td>
+                    <td className="py-2 px-2 text-center" onClick={e => { e.stopPropagation(); setRiskDrawerAsset(asset); }}>
+                      <ArsBadge score={ars} />
+                    </td>
+                    <td className="py-2 px-2">
+                      <BusinessImpactEditor
+                        value={bi}
+                        onChange={v => setBI(asset.id, v)}
+                        onOpenJustification={() => setRiskDrawerAsset(asset)}
+                      />
+                    </td>
+                    <td className="py-2 px-2 text-center">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tabular-nums bg-secondary text-foreground" title="Remediation Priority Score">{rps}</span>
+                    </td>
+                    <td className="py-2 px-2 text-muted-foreground">{asset.ownerTeam}</td>
+                    <td className="py-2 px-2">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-16 h-1.5 bg-secondary rounded-full overflow-hidden"><div className="h-full bg-teal rounded-full" style={{ width: `${asset.policyCoverage}%` }} /></div>
+                        <span className="text-[10px] text-muted-foreground">{asset.policyCoverage}%</span>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
