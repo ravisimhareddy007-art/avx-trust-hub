@@ -80,17 +80,25 @@ function CryptoRowMenu({ asset, onAction }: { asset: CryptoAsset; onAction: (act
   );
 }
 
+type SortKey = 'rps' | 'ars' | 'name' | 'bi';
+
 export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Props) {
   const [search, setSearch] = useState('');
   const [envFilter, setEnvFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [teamFilter, setTeamFilter] = useState('');
+  const [biFilter, setBiFilter] = useState('');
   const [riskRange, setRiskRange] = useState<[number, number]>([0, 100]);
+  const [sortKey, setSortKey] = useState<SortKey>('rps');
   const [selectedAsset, setSelectedAsset] = useState<ITAsset | null>(null);
+  const [riskDrawerAsset, setRiskDrawerAsset] = useState<ITAsset | null>(null);
+  const [riskDrawerObject, setRiskDrawerObject] = useState<CryptoAsset | null>(null);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [assetStack, setAssetStack] = useState<ITAsset[]>([]);
   const { manualITAssets } = useInventoryRegistry();
   const { setSelectedEntity } = useAgent();
+  const { biMap, setBI } = useRisk();
+  const { filters: navFilters } = useNav();
 
   // Sync infrastructure asset selection to Agent context
   useEffect(() => {
@@ -98,18 +106,48 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
     return () => { setSelectedEntity(null); };
   }, [selectedAsset, setSelectedEntity]);
 
+  // Open risk drawer when navigated with assetId (e.g. from ERS dashboard).
+  useEffect(() => {
+    if (navFilters.assetId) {
+      const target = mockITAssets.find(a => a.id === navFilters.assetId);
+      if (target) setRiskDrawerAsset(target);
+    }
+  }, [navFilters.assetId]);
+
   // Manual assets first so they're immediately visible after add.
   const allAssets = useMemo(() => [...manualITAssets, ...mockITAssets], [manualITAssets]);
 
+  // Compute ARS / BI / RPS once per asset for sorting + display.
+  const enriched = useMemo(() => allAssets.map(a => {
+    const ars = arsFor(a).ars;
+    const bi = biMap[a.id] ?? 'Moderate';
+    return { asset: a, ars, bi, rps: computeRPS(ars, bi) };
+  }), [allAssets, biMap]);
+
   const filtered = useMemo(() => {
-    let result = [...allAssets];
-    if (search) result = result.filter(a => a.name.toLowerCase().includes(search.toLowerCase()));
-    if (envFilter) result = result.filter(a => a.environment === envFilter);
-    if (typeFilter) result = result.filter(a => a.type === typeFilter);
-    if (teamFilter) result = result.filter(a => a.ownerTeam === teamFilter);
-    result = result.filter(a => a.riskScore >= riskRange[0] && a.riskScore <= riskRange[1]);
-    return result;
-  }, [allAssets, search, envFilter, typeFilter, teamFilter, riskRange]);
+    let result = enriched;
+    if (search) result = result.filter(x => x.asset.name.toLowerCase().includes(search.toLowerCase()));
+    if (envFilter) result = result.filter(x => x.asset.environment === envFilter);
+    if (typeFilter) result = result.filter(x => x.asset.type === typeFilter);
+    if (teamFilter) result = result.filter(x => x.asset.ownerTeam === teamFilter);
+    if (biFilter) result = result.filter(x => x.bi === biFilter);
+    result = result.filter(x => x.ars >= riskRange[0] && x.ars <= riskRange[1]);
+
+    const sorted = [...result];
+    sorted.sort((a, b) => {
+      switch (sortKey) {
+        case 'name': return a.asset.name.localeCompare(b.asset.name);
+        case 'ars':  return b.ars - a.ars;
+        case 'bi':   {
+          const order: Record<string, number> = { Critical: 0, High: 1, Moderate: 2, Low: 3 };
+          return order[a.bi] - order[b.bi];
+        }
+        case 'rps':
+        default:     return b.rps - a.rps;
+      }
+    });
+    return sorted;
+  }, [enriched, search, envFilter, typeFilter, teamFilter, biFilter, riskRange, sortKey]);
 
   const uniqueTeams = [...new Set(allAssets.map(a => a.ownerTeam))];
   const uniqueTypes = [...new Set(allAssets.map(a => a.type))];
