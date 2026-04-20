@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { usePersona, Persona } from '@/context/PersonaContext';
 import { useNav } from '@/context/NavigationContext';
 import {
-  LayoutDashboard, Search, Package, Shield,
+  LayoutDashboard, Search, Package, Shield, AlertTriangle,
   ChevronDown, ChevronRight, Users,
   Link2, Lock, ScrollText, Cog, Wrench, Ticket
 } from 'lucide-react';
@@ -27,6 +27,7 @@ const navItems: NavItem[] = [
   { id: 'discovery', label: 'DISCOVERY', icon: Search, page: 'discovery' },
   { id: 'inventory', label: 'INVENTORY', icon: Package, page: 'inventory' },
   { id: 'policy-builder', label: 'POLICIES', icon: ScrollText, page: 'policy-builder' },
+  { id: 'violations', label: 'VIOLATIONS', icon: AlertTriangle, page: 'violations' },
   { id: 'remediation', label: 'REMEDIATION', icon: Wrench, page: 'remediation' },
   { id: 'tickets', label: 'TICKETS', icon: Ticket, page: 'tickets' },
   {

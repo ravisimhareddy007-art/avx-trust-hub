@@ -21,6 +21,7 @@ import SettingsPage from '@/pages/SettingsPage';
 import RemediationPage from '@/pages/RemediationPage';
 import TicketManagementPage from '@/pages/TicketManagementPage';
 import IntegrationsPage from '@/pages/IntegrationsPage';
+import ViolationsPage from '@/pages/ViolationsPage';
 
 function DashboardPage() {
   const { persona } = usePersona();
@@ -42,6 +43,7 @@ function PageRouter() {
     'inventory': <InventoryPage />,
     'policy-builder': <PolicyBuilderPage />,
     'remediation': <RemediationPage />,
+    'violations': <ViolationsPage />,
     'tickets': <TicketManagementPage />,
     'integrations': <IntegrationsPage />,
     'integrations-sources': <IntegrationsPage />,
