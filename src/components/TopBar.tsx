@@ -100,7 +100,7 @@ export default function TopBar() {
         </div>
       </div>
 
-      <HelpDrawer open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <HelpDrawer open={helpOpen} onClose={() => setHelpOpen(false)} contextPage={currentPage} />
     </div>
   );
 }
