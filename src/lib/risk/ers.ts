@@ -138,6 +138,8 @@ export function computeERS(
       ? { id: topCritical.asset.id, name: topCritical.asset.name, ars: topCritical.ars, bi: topCritical.bi }
       : undefined,
     severity: severityFor(ers),
+    quantumComponent,
+    quantumWeight: qWeight,
     topAssets,
     driverBuckets: buildDriverBuckets(scored, weightedAvg),
   };
