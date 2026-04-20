@@ -30,11 +30,11 @@ export const DEFAULT_WEIGHTS: ECRSWeights = {
 // Calibrated so computeECRS(CURRENT_FACTOR_SCORES, DEFAULT_WEIGHTS) === 64.
 // In production these come from the backend telemetry pipeline.
 export const CURRENT_FACTOR_SCORES: ECRSFactor[] = [
-  { id: 'algorithmRisk',  label: 'Algorithm Risk',  rawScore: 82, color: 'hsl(var(--coral))',  desc: 'Deprecated ciphers, short keys, SHA-1' },
-  { id: 'lifecycleRisk',  label: 'Lifecycle Risk',  rawScore: 74, color: 'hsl(var(--amber))',  desc: 'Expiry, missed rotations, stale keys' },
-  { id: 'exposureRisk',   label: 'Exposure Risk',   rawScore: 62, color: 'hsl(var(--purple))', desc: 'Non-HSM storage, public surface' },
-  { id: 'accessRisk',     label: 'Access Risk',     rawScore: 55, color: 'hsl(15 72% 62%)',    desc: 'Over-privileged tokens, weak scopes' },
-  { id: 'complianceRisk', label: 'Compliance Risk', rawScore: 68, color: 'hsl(var(--teal))',   desc: 'Policy & standard violations' },
+  { id: 'algorithmRisk',  label: 'Algorithm Risk',  rawScore: 75, color: 'hsl(var(--coral))',  desc: 'Deprecated ciphers, short keys, SHA-1' },
+  { id: 'lifecycleRisk',  label: 'Lifecycle Risk',  rawScore: 68, color: 'hsl(var(--amber))',  desc: 'Expiry, missed rotations, stale keys' },
+  { id: 'exposureRisk',   label: 'Exposure Risk',   rawScore: 55, color: 'hsl(var(--purple))', desc: 'Non-HSM storage, public surface' },
+  { id: 'accessRisk',     label: 'Access Risk',     rawScore: 50, color: 'hsl(15 72% 62%)',    desc: 'Over-privileged tokens, weak scopes' },
+  { id: 'complianceRisk', label: 'Compliance Risk', rawScore: 60, color: 'hsl(var(--teal))',   desc: 'Policy & standard violations' },
 ];
 
 const ACM = 1.0; // Asset Criticality Multiplier — 1.05 for prod/PCI scope
