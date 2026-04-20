@@ -190,7 +190,7 @@ export default function CriticalActionFeed() {
 
   // Per-filter counts for chip badges (computed once, ignores filter state)
   const counts = useMemo(() => {
-    const c: Record<FilterKey, number> = { 'All': 0, 'Certificates': 0, 'Secrets': 0, 'SSH Keys': 0, 'AI Tokens': 0, 'Infrastructure': 0 };
+    const c: Record<FilterKey, number> = { 'All': 0, 'Certificates': 0, 'Secrets': 0, 'SSH Keys': 0, 'AI Tokens': 0, 'Infrastructure': 0, 'Quantum': 0 };
     FEED.forEach(item => {
       c['All']++;
       (Object.keys(FILTER_MAP) as FilterKey[]).forEach(k => {
