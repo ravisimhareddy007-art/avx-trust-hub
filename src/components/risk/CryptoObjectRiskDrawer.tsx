@@ -10,8 +10,7 @@ interface Props { object: CryptoAsset | null; onClose: () => void; }
 export default function CryptoObjectRiskDrawer({ object, onClose }: Props) {
   const data = useMemo(() => {
     if (!object) return null;
-    const factors = getCrsFactors(object);
-    const crs = computeCRS(object);
+    const { crs, factors } = computeCRS(object);
     return { factors, crs };
   }, [object]);
   if (!object || !data) return null;
