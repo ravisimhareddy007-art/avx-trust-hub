@@ -250,7 +250,7 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                     </button>
                   </th>
                   <th className="text-left py-2 px-2 font-medium text-muted-foreground">Owner</th>
-                  <th className="text-left py-2 px-2 font-medium text-muted-foreground">Policy</th>
+                  <th className="text-center py-2 px-2 font-medium text-muted-foreground" title="Active policy violations on this asset">Violations</th>
                 </tr>
               </thead>
               <tbody>
@@ -285,11 +285,26 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tabular-nums bg-secondary text-foreground" title="Remediation Priority Score">{rps}</span>
                     </td>
                     <td className="py-2 px-2 text-muted-foreground">{asset.ownerTeam}</td>
-                    <td className="py-2 px-2">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-16 h-1.5 bg-secondary rounded-full overflow-hidden"><div className="h-full bg-teal rounded-full" style={{ width: `${asset.policyCoverage}%` }} /></div>
-                        <span className="text-[10px] text-muted-foreground">{asset.policyCoverage}%</span>
-                      </div>
+                    <td className="py-2 px-2 text-center" onClick={e => e.stopPropagation()}>
+                      {(() => {
+                        const vs = getAssetViolations(asset);
+                        const crit = vs.filter(v => v.severity === 'Critical').length;
+                        if (vs.length === 0) {
+                          return <span className="text-[10px] text-muted-foreground">—</span>;
+                        }
+                        return (
+                          <button
+                            onClick={() => setViolationsAsset(asset)}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold tabular-nums bg-coral/15 text-coral hover:bg-coral hover:text-primary-foreground transition-colors"
+                            title={`${vs.length} violation${vs.length === 1 ? '' : 's'} — click to view & remediate`}
+                          >
+                            {vs.length}
+                            {crit > 0 && (
+                              <span className="text-[8.5px] font-bold opacity-80">·{crit} crit</span>
+                            )}
+                          </button>
+                        );
+                      })()}
                     </td>
                   </tr>
                 ))}
@@ -493,6 +508,10 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
       <CryptoObjectRiskDrawer
         object={riskDrawerObject}
         onClose={() => setRiskDrawerObject(null)}
+      />
+      <ViolationsDrawer
+        asset={violationsAsset}
+        onClose={() => setViolationsAsset(null)}
       />
     </div>
   );
