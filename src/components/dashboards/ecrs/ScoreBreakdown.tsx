@@ -1,11 +1,22 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, Info } from 'lucide-react';
-import { breakdown } from '@/data/ecrsData';
+import { useDashboard } from '@/context/DashboardContext';
 
 interface Props { score: number; }
 
 export default function ScoreBreakdown({ score }: Props) {
   const [open, setOpen] = useState(false);
+  const { factors, normalisedWeight } = useDashboard();
+
+  // Live breakdown: % values are derived from current weights so the panel
+  // and the score always agree.
+  const items = factors.map(f => ({
+    cat: f.label,
+    pct: normalisedWeight(f.id),
+    color: f.color,
+    desc: f.desc,
+  }));
+
   return (
     <div>
       <button
@@ -23,12 +34,12 @@ export default function ScoreBreakdown({ score }: Props) {
             Weighted model: <span className="text-foreground">Base</span> (algorithm + exposure) · <span className="text-foreground">Temporal</span> (age, rotation delay) · <span className="text-foreground">Environmental</span> (criticality, data sensitivity). Aggregated via weighted average + max-risk influence.
           </p>
           <div className="flex h-2 rounded-full overflow-hidden">
-            {breakdown.map(b => (
+            {items.map(b => (
               <div key={b.cat} style={{ width: `${b.pct}%`, background: b.color }} title={`${b.cat}: ${b.pct}%`} />
             ))}
           </div>
           <div className="space-y-1">
-            {breakdown.map(b => (
+            {items.map(b => (
               <div key={b.cat} className="flex items-center justify-between text-[10px] px-1.5 py-1 rounded hover:bg-secondary/30">
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span className="w-1.5 h-1.5 rounded-sm flex-shrink-0" style={{ background: b.color }} />

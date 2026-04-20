@@ -1,13 +1,24 @@
 import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
-import { SCORE } from '@/data/ecrsData';
+import {
+  ECRSWeights,
+  ECRSFactor,
+  RemediationItem,
+  DEFAULT_WEIGHTS,
+  CURRENT_FACTOR_SCORES,
+  REMEDIATION_ITEMS,
+  computeECRS,
+  computeProjectedScore,
+  getFactorContribution,
+  getNormalisedWeight,
+} from '@/lib/ecrs';
 
 // Maps driver IDs <-> feed item IDs for the narrative thread
 export const driverToFeedItems: Record<string, string[]> = {
-  'weak-algos':         ['6'],            // RSA-1024 / SHA-1 cert migration
-  'expiring-certs':     ['1', '5'],       // wildcard expiry, k8s renewals
-  'non-rotated-secrets':['8', '4'],       // 90d rotation, hardcoded secrets
-  'non-hsm-keys':       ['9'],            // keys outside HSM
-  'overpriv-ai-tokens': ['2', '10'],      // gpt-orchestrator, unsponsored AI
+  'weak-algos':         ['6'],
+  'expiring-certs':     ['1', '5'],
+  'non-rotated-secrets':['8', '4'],
+  'non-hsm-keys':       ['9'],
+  'overpriv-ai-tokens': ['2', '10'],
 };
 
 export const feedItemToDriver: Record<string, string> = Object.entries(driverToFeedItems)
@@ -22,20 +33,29 @@ export const feedItemImpact: Record<string, number> = {
   '6': 4, '7': 1, '8': 3, '9': 2, '10': 2,
 };
 
-// Score increment per resolved feed item (per spec: -2 score per resolved item)
-const SCORE_DECREMENT_PER_RESOLVE = 2;
-
 interface DashCtx {
   // hover wiring: driver row <-> ECRS bar + feed filter
   hoveredDriver: string | null;
   setHoveredDriver: (id: string | null) => void;
 
-  // live state
-  score: number;
-  driverImpactDelta: Record<string, number>; // negative = shrink amount
+  // ECRS — single source of truth
+  weights: ECRSWeights;
+  setWeights: (w: ECRSWeights) => void;
+  factors: ECRSFactor[];
+  score: number;                              // derived from weights + factors
+  factorContribution: (id: keyof ECRSWeights) => number;
+  normalisedWeight: (id: keyof ECRSWeights) => number;
+
+  // Remediation simulator
+  selectedRemediations: string[];
+  toggleRemediation: (id: string) => void;
+  remediationItems: RemediationItem[];
+  projectedScore: number;
+
+  // Feed-driven shrink (kept for existing UI)
+  driverImpactDelta: Record<string, number>;
   resolvedFeedItems: Set<string>;
   resolvingFeedItems: Set<string>;
-
   resolveFeedItem: (itemId: string) => void;
 }
 
@@ -43,43 +63,72 @@ const Ctx = createContext<DashCtx | null>(null);
 
 export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [hoveredDriver, setHoveredDriver] = useState<string | null>(null);
-  const [score, setScore] = useState(SCORE);
+  const [weights, setWeights] = useState<ECRSWeights>(DEFAULT_WEIGHTS);
+  const [selectedRemediations, setSelectedRemediations] = useState<string[]>([]);
   const [driverImpactDelta, setDriverImpactDelta] = useState<Record<string, number>>({});
   const [resolvedFeedItems, setResolved] = useState<Set<string>>(new Set());
   const [resolvingFeedItems, setResolving] = useState<Set<string>>(new Set());
+
+  const factors = CURRENT_FACTOR_SCORES;
+  const score = useMemo(() => computeECRS(factors, weights), [factors, weights]);
+
+  const projectedScore = useMemo(
+    () => computeProjectedScore(
+      score,
+      REMEDIATION_ITEMS.filter(r => selectedRemediations.includes(r.id))
+    ),
+    [score, selectedRemediations]
+  );
+
+  const toggleRemediation = useCallback((id: string) => {
+    setSelectedRemediations(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  }, []);
+
+  const factorContribution = useCallback(
+    (id: keyof ECRSWeights) => {
+      const f = factors.find(x => x.id === id);
+      return f ? getFactorContribution(f, weights) : 0;
+    },
+    [factors, weights]
+  );
+
+  const normalisedWeight = useCallback(
+    (id: keyof ECRSWeights) => getNormalisedWeight(id, weights),
+    [weights]
+  );
 
   const resolveFeedItem = useCallback((itemId: string) => {
     if (resolvedFeedItems.has(itemId) || resolvingFeedItems.has(itemId)) return;
     setResolving(prev => new Set(prev).add(itemId));
 
-    // Simulate AI execution (renew → deploy → close)
     setTimeout(() => {
       const driver = feedItemToDriver[itemId];
       const impact = feedItemImpact[itemId] ?? 1;
-
-      // Animate score down (lower = better) — fixed -2 per resolve per spec
-      setScore(prev => Math.max(0, prev - SCORE_DECREMENT_PER_RESOLVE));
-
       if (driver) {
         setDriverImpactDelta(prev => ({
           ...prev,
           [driver]: (prev[driver] ?? 0) - impact,
         }));
       }
-
-      setResolving(prev => {
-        const n = new Set(prev); n.delete(itemId); return n;
-      });
+      setResolving(prev => { const n = new Set(prev); n.delete(itemId); return n; });
       setResolved(prev => new Set(prev).add(itemId));
     }, 1800);
   }, [resolvedFeedItems, resolvingFeedItems]);
 
   const value = useMemo(() => ({
     hoveredDriver, setHoveredDriver,
-    score, driverImpactDelta,
+    weights, setWeights,
+    factors, score,
+    factorContribution, normalisedWeight,
+    selectedRemediations, toggleRemediation, remediationItems: REMEDIATION_ITEMS, projectedScore,
+    driverImpactDelta,
     resolvedFeedItems, resolvingFeedItems,
     resolveFeedItem,
-  }), [hoveredDriver, score, driverImpactDelta, resolvedFeedItems, resolvingFeedItems, resolveFeedItem]);
+  }), [hoveredDriver, weights, factors, score, factorContribution, normalisedWeight,
+       selectedRemediations, toggleRemediation, projectedScore,
+       driverImpactDelta, resolvedFeedItems, resolvingFeedItems, resolveFeedItem]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

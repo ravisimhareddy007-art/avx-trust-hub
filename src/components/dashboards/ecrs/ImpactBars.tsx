@@ -3,6 +3,7 @@ import { ArrowRight } from 'lucide-react';
 import { drivers } from '@/data/ecrsData';
 import { useDashboard } from '@/context/DashboardContext';
 import { useNav } from '@/context/NavigationContext';
+import { DRIVER_TO_FACTOR } from '@/lib/ecrs';
 
 const TOP = drivers.slice(0, 3);
 const URGENCY_PHRASE: Record<string, string> = {
@@ -14,9 +15,17 @@ const URGENCY_PHRASE: Record<string, string> = {
 };
 
 export default function ImpactBars() {
-  const { hoveredDriver, setHoveredDriver, driverImpactDelta } = useDashboard();
+  const { hoveredDriver, setHoveredDriver, driverImpactDelta, factorContribution } = useDashboard();
   const { setCurrentPage, setFilters } = useNav();
-  const maxImpact = Math.max(...TOP.map(d => d.impact));
+
+  // Each driver's headline pts = the live ECRS contribution of its mapped
+  // factor, so changing weights moves these in lock-step with the gauge.
+  const driverPts = (id: string) => {
+    const f = DRIVER_TO_FACTOR[id];
+    return f ? factorContribution(f) : 0;
+  };
+
+  const maxImpact = Math.max(...TOP.map(d => driverPts(d.id))) || 1;
 
   const nav = (page: string, filters: Record<string, string>) => {
     setFilters(filters);
@@ -30,8 +39,9 @@ export default function ImpactBars() {
       </p>
       <div className="space-y-1.5">
         {TOP.map(d => {
+          const base = driverPts(d.id);
           const delta = driverImpactDelta[d.id] ?? 0;
-          const effective = Math.max(0, d.impact + delta);
+          const effective = Math.max(0, base + delta);
           const widthPct = (effective / maxImpact) * 100;
           const isHovered = hoveredDriver === d.id;
           return (

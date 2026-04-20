@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, Wand2, ArrowRight } from 'lucide-react';
 import { actionOptions, urgencyMeta, scoreBand } from '@/data/ecrsData';
 import { useNav } from '@/context/NavigationContext';
+import { computeProjectedScore } from '@/lib/ecrs';
 
 interface Props { score: number; }
 
@@ -16,8 +17,11 @@ export default function WhatIfSimulator({ score }: Props) {
     setPicked(next);
   };
 
-  const reduction = actionOptions.filter(a => picked.has(a.id)).reduce((s, a) => s + a.reduction, 0);
-  const projected = Math.max(0, score - reduction);
+  const selected = actionOptions
+    .filter(a => picked.has(a.id))
+    .map(a => ({ id: a.id, label: a.title, pointReduction: a.reduction, effort: a.effort, urgency: a.urgency }));
+  const reduction = selected.reduce((s, r) => s + r.pointReduction, 0);
+  const projected = computeProjectedScore(score, selected);
   const projBand = scoreBand(projected);
   const totalDays = Math.max(0, ...actionOptions.filter(a => picked.has(a.id)).map(a => a.durationDays));
 
