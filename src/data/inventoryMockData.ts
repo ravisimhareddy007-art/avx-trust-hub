@@ -104,18 +104,124 @@ export function getBlastRadius(assetId: string, cryptoAssets: any[]): { nodes: B
 }
 
 // Violations for asset detail
+// violationType is fundamental: 'classic' = operational (expiry, ownership, rotation, storage),
+// 'pqc' = quantum-vulnerable algorithm flagged for NIST 2030 deadline.
+// A single credential can have BOTH simultaneously and they're tracked independently.
+export type ViolationType = 'classic' | 'pqc';
+
 export interface AssetViolation {
   objectName: string;
-  severity: 'Critical' | 'High' | 'Medium';
+  objectId?: string;
+  severity: 'Critical' | 'High' | 'Medium' | 'Low';
   type: string;
+  violationType: ViolationType;
+  // PQC-only fields
+  algorithm?: string;
+  expiryYear?: number;
+  yearsPastDeadline?: number;
+  harvestRisk?: 'Active' | 'Passive' | 'Unknown';
+}
+
+// Quantum-vulnerable algorithms (broken vs vulnerable)
+const QUANTUM_BROKEN = ['RSA-1024', 'SHA-1', 'MD5', 'DH-1024'];
+const QUANTUM_VULNERABLE = [
+  ...QUANTUM_BROKEN,
+  'RSA-2048', 'RSA-4096', 'ECDSA-P256', 'ECDSA-P384',
+  'ECC P-256', 'ECC P-384', 'DH-2048',
+];
+
+export function isQuantumVulnerable(algorithm: string): boolean {
+  return QUANTUM_VULNERABLE.includes(algorithm);
+}
+
+// PQC severity inverts classic logic: long-lived quantum-vulnerable certs are MORE severe.
+export function pqcSeverity(opts: {
+  algorithm: string;
+  expiryYear: number;
+  isProduction: boolean;
+  isDataEncryption?: boolean;
+}): 'Critical' | 'High' | 'Medium' | 'Low' | 'none' {
+  const { algorithm, expiryYear, isProduction, isDataEncryption } = opts;
+  if (!isQuantumVulnerable(algorithm)) return 'none';
+  if (expiryYear < 2027) return 'Low';
+  if (QUANTUM_BROKEN.includes(algorithm) && expiryYear >= 2030) return 'Critical';
+  if (QUANTUM_BROKEN.includes(algorithm)) return 'High';
+  if (isDataEncryption && isProduction && expiryYear >= 2030) return 'Critical';
+  if (expiryYear >= 2030 && isProduction) return 'High';
+  if (expiryYear >= 2028 && isProduction) return 'Medium';
+  return 'Low';
 }
 
 export function getAssetViolations(asset: ITAsset): AssetViolation[] {
   const violations: AssetViolation[] = [];
-  if (asset.riskScore > 70) violations.push({ objectName: asset.cryptoObjectIds[0], severity: 'Critical', type: 'Certificate expiring in < 7 days' });
-  if (asset.criticalViolations > 1) violations.push({ objectName: asset.cryptoObjectIds[1] || asset.cryptoObjectIds[0], severity: 'High', type: 'Weak algorithm (RSA-2048)' });
-  if (asset.policyCoverage < 50) violations.push({ objectName: asset.cryptoObjectIds[0], severity: 'Medium', type: 'No policy coverage' });
-  if (asset.criticalViolations > 2) violations.push({ objectName: asset.cryptoObjectIds[2] || asset.cryptoObjectIds[0], severity: 'Critical', type: 'PQC-vulnerable algorithm' });
+
+  // ── Classic / operational violations ─────────────────────────────────
+  if (asset.riskScore > 70) {
+    violations.push({
+      objectName: asset.cryptoObjectIds[0],
+      objectId: asset.cryptoObjectIds[0],
+      severity: 'Critical',
+      type: 'Certificate expiring in < 7 days',
+      violationType: 'classic',
+    });
+  }
+  if (asset.criticalViolations > 1) {
+    violations.push({
+      objectName: asset.cryptoObjectIds[1] || asset.cryptoObjectIds[0],
+      objectId: asset.cryptoObjectIds[1] || asset.cryptoObjectIds[0],
+      severity: 'High',
+      type: 'Rotation overdue (>180 days)',
+      violationType: 'classic',
+    });
+  }
+  if (asset.policyCoverage < 50) {
+    violations.push({
+      objectName: asset.cryptoObjectIds[0],
+      objectId: asset.cryptoObjectIds[0],
+      severity: 'Medium',
+      type: 'No assigned owner',
+      violationType: 'classic',
+    });
+  }
+  if (asset.criticalViolations > 2) {
+    violations.push({
+      objectName: asset.cryptoObjectIds[2] || asset.cryptoObjectIds[0],
+      objectId: asset.cryptoObjectIds[2] || asset.cryptoObjectIds[0],
+      severity: 'High',
+      type: 'Key stored outside HSM',
+      violationType: 'classic',
+    });
+  }
+
+  // ── PQC / quantum-risk violations ────────────────────────────────────
+  // Synthesised based on asset profile so demo data shows the duality.
+  const isProd = asset.environment === 'Production';
+  const seedAlgs = ['RSA-2048', 'ECC P-256', 'SHA-1'];
+  const expiryYears = [2031, 2029, 2032];
+  asset.cryptoObjectIds.slice(0, 2).forEach((cid, idx) => {
+    const algorithm = seedAlgs[idx % seedAlgs.length];
+    const expiryYear = expiryYears[idx % expiryYears.length];
+    const sev = pqcSeverity({
+      algorithm,
+      expiryYear,
+      isProduction: isProd,
+      isDataEncryption: idx === 0,
+    });
+    if (sev !== 'none') {
+      violations.push({
+        objectName: cid,
+        objectId: cid,
+        severity: sev,
+        type: `Quantum-vulnerable: ${algorithm} past NIST 2030`,
+        violationType: 'pqc',
+        algorithm,
+        expiryYear,
+        yearsPastDeadline: Math.max(0, expiryYear - 2030),
+        harvestRisk: idx === 0 ? 'Active' : 'Passive',
+      });
+    }
+  });
+
   return violations;
 }
 

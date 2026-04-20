@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Shield, Key, Bot, Lock, Fingerprint, Globe, AlertTriangle, Clock, Sparkles, Check, ChevronDown, ChevronUp, Layers, Ticket, Lock as LockIcon } from 'lucide-react';
+import { Shield, Key, Bot, Lock, Fingerprint, Globe, AlertTriangle, Clock, Sparkles, Check, ChevronDown, ChevronUp, Layers, Ticket, Lock as LockIcon, Atom } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDashboard, feedItemToDriver } from '@/context/DashboardContext';
 import { useNav } from '@/context/NavigationContext';
@@ -17,7 +17,7 @@ interface RemediationGroup {
 
 interface ActionItem {
   id: string;
-  category: 'Certs' | 'SSH' | 'AI' | 'Secrets' | 'Code Sign' | 'K8s';
+  category: 'Certs' | 'SSH' | 'AI' | 'Secrets' | 'Code Sign' | 'K8s' | 'PQC';
   icon: React.ComponentType<{ className?: string }>;
   severity: 'P1' | 'P2' | 'P3';
   title: string;
@@ -27,6 +27,7 @@ interface ActionItem {
   ageMins: number;
   remediationGroups?: RemediationGroup[];
   licenseGated?: { module: string; reason: string };
+  isPqc?: boolean;
 }
 
 const FEED: ActionItem[] = [
@@ -138,6 +139,15 @@ const FEED: ActionItem[] = [
       { ca: 'AWS IAM', caAccount: 'iam-prod', count: 8000, environment: 'Production', teams: ['cloud-eng'], method: 'acme-auto', requiresApproval: false, workflowTemplate: 'Token Sponsor Assignment' },
     ],
   },
+  {
+    id: 'pqc-1', category: 'PQC', icon: Atom, severity: 'P2',
+    title: '847 production certs use RSA-2048 and expire after 2030',
+    detail: 'DigiCert · payments team · post-NIST-deadline exposure',
+    aiPlan: 'Generate ML-KEM-768 hybrid migration plan for 847 certs. Group by CA account and team. Submit to QTH queue for staged rollout.',
+    approveSummary: 'Add 847 quantum-vulnerable certs to QTH migration queue.',
+    ageMins: 60,
+    isPqc: true,
+  },
 ];
 
 const SEV_STYLES: Record<ActionItem['severity'], string> = {
@@ -158,7 +168,7 @@ function ageLabel(mins: number) {
   return `${Math.floor(mins / 1440)}d`;
 }
 
-type FilterKey = 'All' | 'Certificates' | 'Secrets' | 'SSH Keys' | 'AI Tokens' | 'Infrastructure';
+type FilterKey = 'All' | 'Certificates' | 'Secrets' | 'SSH Keys' | 'AI Tokens' | 'Infrastructure' | 'Quantum';
 
 const FILTER_MAP: Record<FilterKey, ActionItem['category'][] | null> = {
   'All': null,
@@ -167,9 +177,10 @@ const FILTER_MAP: Record<FilterKey, ActionItem['category'][] | null> = {
   'SSH Keys': ['SSH'],
   'AI Tokens': ['AI'],
   'Infrastructure': ['K8s', 'Code Sign'],
+  'Quantum': ['PQC'],
 };
 
-const FILTERS: FilterKey[] = ['All', 'Certificates', 'Secrets', 'SSH Keys', 'AI Tokens', 'Infrastructure'];
+const FILTERS: FilterKey[] = ['All', 'Certificates', 'Secrets', 'SSH Keys', 'AI Tokens', 'Infrastructure', 'Quantum'];
 
 export default function CriticalActionFeed() {
   const { hoveredDriver, resolvedFeedItems, resolveFeedItem } = useDashboard();
@@ -179,7 +190,7 @@ export default function CriticalActionFeed() {
 
   // Per-filter counts for chip badges (computed once, ignores filter state)
   const counts = useMemo(() => {
-    const c: Record<FilterKey, number> = { 'All': 0, 'Certificates': 0, 'Secrets': 0, 'SSH Keys': 0, 'AI Tokens': 0, 'Infrastructure': 0 };
+    const c: Record<FilterKey, number> = { 'All': 0, 'Certificates': 0, 'Secrets': 0, 'SSH Keys': 0, 'AI Tokens': 0, 'Infrastructure': 0, 'Quantum': 0 };
     FEED.forEach(item => {
       c['All']++;
       (Object.keys(FILTER_MAP) as FilterKey[]).forEach(k => {
