@@ -99,6 +99,8 @@ export default function TopBar() {
           <User className="w-4 h-4 text-teal" />
         </div>
       </div>
+
+      <HelpDrawer open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   );
 }
