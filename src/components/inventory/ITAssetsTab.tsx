@@ -478,6 +478,20 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
           </div>
         </div>
       )}
+
+      {/* Risk drawers — Asset (ARS + BI editor + audit) and Crypto Object (CRS) */}
+      <AssetRiskDrawer
+        asset={riskDrawerAsset}
+        onClose={() => setRiskDrawerAsset(null)}
+        onOpenObject={(id) => {
+          const obj = mockAssets.find(a => a.id === id);
+          if (obj) setRiskDrawerObject(obj);
+        }}
+      />
+      <CryptoObjectRiskDrawer
+        object={riskDrawerObject}
+        onClose={() => setRiskDrawerObject(null)}
+      />
     </div>
   );
 }
