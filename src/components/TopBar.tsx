@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNav } from '@/context/NavigationContext';
 import { useAgent } from '@/context/AgentContext';
-import { Bell, Infinity as InfinityIcon, User } from 'lucide-react';
+import { Bell, Infinity as InfinityIcon, User, HelpCircle } from 'lucide-react';
+import HelpDrawer from '@/components/help/HelpDrawer';
 
 const breadcrumbMap: Record<string, string> = {
   'dashboards': '',
@@ -25,6 +26,7 @@ export default function TopBar() {
   const { currentPage, setCurrentPage } = useNav();
   const { drawerOpen, setDrawerOpen, undoStack } = useAgent();
   const [showNotifications, setShowNotifications] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const activeUndo = undoStack.filter(u => !u.rolledBack).length;
 
   return (
@@ -54,6 +56,15 @@ export default function TopBar() {
           {activeUndo > 0 && (
             <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber rounded-full text-[9px] text-background flex items-center justify-center font-bold">{activeUndo}</span>
           )}
+        </button>
+
+        {/* Help */}
+        <button
+          onClick={() => setHelpOpen(true)}
+          className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+          title="Help & Documentation"
+        >
+          <HelpCircle className="w-4 h-4" />
         </button>
 
         {/* Notification Bell */}
