@@ -378,20 +378,51 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                   <p className="text-[10px] text-muted-foreground leading-relaxed">{getAssetAINarrative(selectedAsset)}</p>
                 </div>
 
-                {/* Violations */}
+                {/* Violations — split into Operational + Quantum Risk */}
                 {(() => {
                   const violations = getAssetViolations(selectedAsset);
+                  const classic = violations.filter(v => v.violationType === 'classic');
+                  const pqc = violations.filter(v => v.violationType === 'pqc');
                   if (violations.length === 0) return null;
                   return (
-                    <div className="space-y-1.5">
-                      <p className="text-[10px] font-semibold text-foreground">Active Violations</p>
-                      {violations.slice(0, 5).map((v, i) => (
-                        <div key={i} className="flex items-center gap-2 text-[10px] py-1 border-b border-border/50 last:border-0">
-                          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${v.severity === 'Critical' ? 'bg-coral' : v.severity === 'High' ? 'bg-amber' : 'bg-purple'}`} />
-                          <span className="text-foreground truncate flex-1">{v.type}</span>
-                          <button onClick={() => toast.success('Fix initiated')} className="text-teal hover:underline flex-shrink-0">Fix</button>
+                    <div className="space-y-3">
+                      {classic.length > 0 && (
+                        <div className="space-y-1.5">
+                          <p className="text-[10px] font-semibold text-coral flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3" /> Operational Violations ({classic.length})
+                          </p>
+                          {classic.slice(0, 4).map((v, i) => (
+                            <div key={`c-${i}`} className="flex items-center gap-2 text-[10px] py-1 border-b border-border/50 last:border-0">
+                              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                                v.severity === 'Critical' ? 'bg-coral' :
+                                v.severity === 'High' ? 'bg-amber' : 'bg-purple'
+                              }`} />
+                              <span className="text-foreground truncate flex-1">{v.type}</span>
+                              <button onClick={() => setViolationsAsset(selectedAsset)} className="text-teal hover:underline flex-shrink-0">Fix</button>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      )}
+                      {pqc.length > 0 && (
+                        <div className="space-y-1.5 pt-2 border-t border-border/50">
+                          <p className="text-[10px] font-semibold text-purple-light flex items-center gap-1">
+                            <Shield className="w-3 h-3" /> Quantum Risk ({pqc.length})
+                            <span className="ml-auto text-[8.5px] font-semibold px-1 py-0.5 rounded bg-purple/15 text-purple-light">NIST 2030</span>
+                          </p>
+                          {pqc.slice(0, 4).map((v, i) => (
+                            <div key={`p-${i}`} className="text-[10px] py-1 border-b border-border/50 last:border-0">
+                              <div className="flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'hsl(280 65% 55%)' }} />
+                                <span className="text-foreground font-mono flex-1 truncate">{v.algorithm}</span>
+                                <button onClick={() => setViolationsAsset(selectedAsset)} className="text-purple-light hover:underline flex-shrink-0">QTH</button>
+                              </div>
+                              <p className="text-[9px] text-muted-foreground ml-3.5 mt-0.5">
+                                Expires {v.expiryYear} · {(v.yearsPastDeadline ?? 0) > 0 ? `+${v.yearsPastDeadline}y past` : 'at'} NIST deadline
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
                 })()}

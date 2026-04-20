@@ -525,24 +525,75 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                   </div>
                 )}
 
-                {/* Violations */}
-                {detailAsset.policyViolations > 0 && (
-                  <div className="mt-4 space-y-1.5">
-                    <p className="text-xs font-semibold text-foreground">Active Violations</p>
-                    <div className="flex items-center gap-2 text-[10px] py-1.5 border-b border-border/50">
-                      <span className="w-1.5 h-1.5 rounded-full bg-coral flex-shrink-0" />
-                      <span className="text-foreground flex-1">{detailAsset.algorithm} is quantum-vulnerable</span>
-                      <button onClick={() => toast.success('Fix initiated')} className="text-teal hover:underline flex-shrink-0">Fix</button>
+                {/* Violations — split into Operational + Quantum Risk */}
+                {(() => {
+                  const isPqc = ['RSA-1024','RSA-2048','RSA-4096','ECDSA-P256','ECDSA-P384','ECC P-256','ECC P-384','SHA-1','MD5','DH-1024','DH-2048'].includes(detailAsset.algorithm);
+                  const expYear = detailAsset.expiryDate && detailAsset.expiryDate !== 'N/A'
+                    ? new Date(detailAsset.expiryDate).getFullYear() : 0;
+                  const hasClassic = detailAsset.policyViolations > 0 || (detailAsset.daysToExpiry >= 0 && detailAsset.daysToExpiry <= 30) || detailAsset.owner === 'Unassigned';
+                  const yearsPast = Math.max(0, expYear - 2030);
+                  if (!hasClassic && !isPqc) return null;
+                  return (
+                    <div className="mt-4 space-y-3">
+                      {hasClassic && (
+                        <div className="space-y-1.5">
+                          <p className="text-xs font-semibold text-coral flex items-center gap-1.5">
+                            <span className="inline-block w-2 h-2 rounded-full bg-coral" />
+                            Operational Violations
+                          </p>
+                          {detailAsset.daysToExpiry >= 0 && detailAsset.daysToExpiry <= 30 && (
+                            <div className="flex items-center gap-2 text-[10px] py-1.5 border-b border-border/50">
+                              <span className="w-1.5 h-1.5 rounded-full bg-coral flex-shrink-0" />
+                              <span className="text-foreground flex-1">Expires in {detailAsset.daysToExpiry} days</span>
+                              <button onClick={() => toast.success('Renewal initiated via Cert+')} className="text-teal hover:underline flex-shrink-0">Renew</button>
+                            </div>
+                          )}
+                          {detailAsset.owner === 'Unassigned' && (
+                            <div className="flex items-center gap-2 text-[10px] py-1.5 border-b border-border/50">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber flex-shrink-0" />
+                              <span className="text-foreground flex-1">No owner assigned</span>
+                              <button onClick={() => toast.success('Owner assignment workflow opened')} className="text-teal hover:underline flex-shrink-0">Assign Owner</button>
+                            </div>
+                          )}
+                          {detailAsset.policyViolations > 0 && detailAsset.lastRotated && (
+                            <div className="flex items-center gap-2 text-[10px] py-1.5 border-b border-border/50">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber flex-shrink-0" />
+                              <span className="text-foreground flex-1">Rotation policy violation</span>
+                              <button onClick={() => toast.success('Rotation initiated')} className="text-teal hover:underline flex-shrink-0">Rotate</button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {isPqc && (
+                        <div className="space-y-1.5 pt-2 border-t border-border/50">
+                          <p className="text-xs font-semibold text-purple-light flex items-center gap-1.5">
+                            <span className="inline-block w-2 h-2 rounded-full" style={{ background: 'hsl(280 65% 55%)' }} />
+                            Quantum Risk
+                            <span className="ml-1 text-[9px] font-semibold px-1 py-0.5 rounded bg-purple/15 text-purple-light">NIST 2030</span>
+                          </p>
+                          <div className="rounded-md bg-purple/5 border border-purple/20 p-2 text-[10px] leading-snug text-foreground">
+                            <span className="font-mono font-semibold">{detailAsset.algorithm}</span> is quantum-vulnerable.
+                            {expYear > 0 && (
+                              <> This credential expires in <span className="font-semibold">{expYear}</span>
+                                {yearsPast > 0
+                                  ? <> — <span className="text-coral font-semibold">{yearsPast} year{yearsPast === 1 ? '' : 's'} past</span> NIST migration deadline.</>
+                                  : <> at the NIST migration deadline.</>}
+                              </>
+                            )}
+                            <div className="mt-2 flex items-center justify-end">
+                              <button
+                                onClick={() => toast.success(`${detailAsset.name} added to QTH migration queue`)}
+                                className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded bg-purple/20 text-purple-light hover:bg-purple-light hover:text-primary-foreground transition-colors"
+                              >
+                                Add to QTH Queue →
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    {detailAsset.daysToExpiry >= 0 && detailAsset.daysToExpiry <= 30 && (
-                      <div className="flex items-center gap-2 text-[10px] py-1.5 border-b border-border/50">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber flex-shrink-0" />
-                        <span className="text-foreground flex-1">Expires in {detailAsset.daysToExpiry} days</span>
-                        <button onClick={() => toast.success('Renewal initiated')} className="text-teal hover:underline flex-shrink-0">Renew</button>
-                      </div>
-                    )}
-                  </div>
-                )}
+                  );
+                })()}
               </div>
 
               {/* Column 3 — Event History + Quick Actions */}
