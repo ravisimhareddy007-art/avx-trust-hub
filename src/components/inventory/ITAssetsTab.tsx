@@ -196,6 +196,10 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
             <option value="">All Teams</option>
             {uniqueTeams.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
+          <select value={biFilter} onChange={e => setBiFilter(e.target.value)} className="px-2 py-1.5 bg-muted border border-border rounded text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal">
+            <option value="">All Business Impact</option>
+            {['Critical', 'High', 'Moderate', 'Low'].map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
           <select value={`${riskRange[0]}-${riskRange[1]}`} onChange={e => {
             const v = e.target.value;
             if (v === '0-100') setRiskRange([0, 100]);
@@ -203,15 +207,15 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
             else if (v === '40-70') setRiskRange([40, 70]);
             else setRiskRange([0, 39]);
           }} className="px-2 py-1.5 bg-muted border border-border rounded text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal">
-            <option value="0-100">All Risk</option>
+            <option value="0-100">All ARS</option>
             <option value="71-100">Critical (&gt;70)</option>
             <option value="40-70">Moderate (40-70)</option>
             <option value="0-39">Low (&lt;40)</option>
           </select>
-          {(envFilter || typeFilter || teamFilter || riskRange[0] !== 0 || riskRange[1] !== 100) && (
-            <button onClick={() => { setEnvFilter(''); setTypeFilter(''); setTeamFilter(''); setRiskRange([0, 100]); }} className="text-[10px] text-coral hover:underline">Clear</button>
+          {(envFilter || typeFilter || teamFilter || biFilter || riskRange[0] !== 0 || riskRange[1] !== 100) && (
+            <button onClick={() => { setEnvFilter(''); setTypeFilter(''); setTeamFilter(''); setBiFilter(''); setRiskRange([0, 100]); }} className="text-[10px] text-coral hover:underline">Clear</button>
           )}
-          <span className="text-[10px] text-muted-foreground">{filtered.length} assets</span>
+          <span className="text-[10px] text-muted-foreground">{filtered.length} assets · sorted by {sortKey.toUpperCase()}</span>
         </div>
 
         {/* Table */}
