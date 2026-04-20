@@ -94,6 +94,7 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
   const [selectedAsset, setSelectedAsset] = useState<ITAsset | null>(null);
   const [riskDrawerAsset, setRiskDrawerAsset] = useState<ITAsset | null>(null);
   const [riskDrawerObject, setRiskDrawerObject] = useState<CryptoAsset | null>(null);
+  const [violationsAsset, setViolationsAsset] = useState<ITAsset | null>(null);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [assetStack, setAssetStack] = useState<ITAsset[]>([]);
   const { manualITAssets } = useInventoryRegistry();
