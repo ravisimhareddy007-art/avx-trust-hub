@@ -1,0 +1,127 @@
+// Level 3 — Enterprise Risk Score (ERS): rollup across all assets,
+// criticality-weighted, with a floor rule that prevents averaging-out
+// of a single Critical-impact asset on fire.
+
+import { mockITAssets, type ITAsset } from '@/data/inventoryMockData';
+import { mockAssets } from '@/data/mockData';
+import { arsFor } from './ars';
+import { BI_MULTIPLIER, severityFor, type BusinessImpact, type Severity } from './types';
+
+// Weights used in the criticality-weighted average.
+const BI_WEIGHT: Record<BusinessImpact, number> = {
+  Critical: 4,
+  High:     3,
+  Moderate: 2,
+  Low:      1,
+};
+
+export interface ErsBreakdown {
+  ers: number;
+  weightedAvg: number;     // pre-floor weighted average
+  floorApplied: boolean;
+  floorAsset?: { id: string; name: string; ars: number; bi: BusinessImpact };
+  severity: Severity;
+  topAssets: { id: string; name: string; ars: number; bi: BusinessImpact; rps: number; contribution: number }[];
+  driverBuckets: { id: string; label: string; pts: number; count: number; filters: Record<string, string>; page: string }[];
+}
+
+interface ScoredAsset {
+  asset: ITAsset;
+  ars: number;
+  bi: BusinessImpact;
+}
+
+function buildDriverBuckets(scored: ScoredAsset[], weightedAvg: number): ErsBreakdown['driverBuckets'] {
+  // Aggregate the top crypto-object reasons across the whole estate so the
+  // CISO sees ranked drivers, not 35K rows.
+  const algoCount  = mockAssets.filter(o => /RSA-1024|RSA-2048|SHA-1/.test(o.algorithm)).length;
+  const expCount   = mockAssets.filter(o => o.daysToExpiry >= 0 && o.daysToExpiry <= 7).length;
+  const orphaned   = mockAssets.filter(o => o.owner === 'Unassigned' || o.status === 'Orphaned').length;
+  const overpriv   = mockAssets.filter(o => o.agentMeta?.permissionRisk === 'Over-privileged').length;
+  const pqcVuln    = mockAssets.filter(o => o.pqcRisk === 'Critical').length;
+
+  // Pts = portion of weightedAvg attributable to each bucket (rough heuristic).
+  const total = algoCount + expCount + orphaned + overpriv + pqcVuln || 1;
+  const slice = (n: number) => Math.round((n / total) * weightedAvg * 0.45);
+
+  return [
+    { id: 'weak-algos',     label: 'Weak algorithms (RSA-1024 / 2048, SHA-1)', pts: slice(algoCount), count: algoCount, page: 'inventory', filters: { tab: 'identities', algorithm: 'weak' } },
+    { id: 'expiring',       label: 'Certificates expiring in ≤7 days',         pts: slice(expCount),  count: expCount,  page: 'inventory', filters: { tab: 'identities', status: 'Expiring' } },
+    { id: 'pqc-vulnerable', label: 'PQC-vulnerable objects',                   pts: slice(pqcVuln),   count: pqcVuln,   page: 'quantum-posture', filters: {} },
+    { id: 'orphaned',       label: 'Orphaned / unowned keys',                  pts: slice(orphaned),  count: orphaned,  page: 'inventory', filters: { tab: 'identities', owner: 'Unassigned' } },
+    { id: 'over-privileged',label: 'Over-privileged AI agent tokens',          pts: slice(overpriv),  count: overpriv,  page: 'inventory', filters: { tab: 'identities', type: 'AI Agent Token' } },
+  ]
+    .filter(d => d.count > 0)
+    .sort((a, b) => b.pts - a.pts)
+    .slice(0, 5);
+}
+
+export function computeERS(
+  assets: ITAsset[],
+  bi: Record<string, BusinessImpact>
+): ErsBreakdown {
+  const scored: ScoredAsset[] = assets.map(a => ({
+    asset: a,
+    ars: arsFor(a).ars,
+    bi: bi[a.id] ?? defaultBI(a),
+  }));
+
+  // Criticality-weighted average.
+  const totalW = scored.reduce((s, x) => s + BI_WEIGHT[x.bi], 0) || 1;
+  const weightedAvg = Math.round(
+    scored.reduce((s, x) => s + x.ars * BI_WEIGHT[x.bi], 0) / totalW
+  );
+
+  // Floor rule: ERS cannot fall below 40% of the highest ARS among Critical
+  // production assets. Prevents a sea of low-impact green from masking one
+  // burning Critical asset.
+  const criticalProd = scored.filter(
+    x => x.bi === 'Critical' && x.asset.environment === 'Production'
+  );
+  const topCritical = criticalProd.sort((a, b) => b.ars - a.ars)[0];
+  const floor = topCritical ? Math.round(topCritical.ars * 0.85) : 0;
+  const floorApplied = topCritical !== undefined && floor > weightedAvg;
+  const ers = Math.min(100, Math.max(weightedAvg, floor));
+
+  // Top contributing assets ranked by ERS-point contribution.
+  const topAssets = [...scored]
+    .map(x => ({
+      id: x.asset.id,
+      name: x.asset.name,
+      ars: x.ars,
+      bi: x.bi,
+      rps: Math.round(x.ars * BI_MULTIPLIER[x.bi]),
+      contribution: Math.round((x.ars * BI_WEIGHT[x.bi]) / totalW),
+    }))
+    .sort((a, b) => b.contribution - a.contribution)
+    .slice(0, 6);
+
+  return {
+    ers,
+    weightedAvg,
+    floorApplied,
+    floorAsset: topCritical
+      ? { id: topCritical.asset.id, name: topCritical.asset.name, ars: topCritical.ars, bi: topCritical.bi }
+      : undefined,
+    severity: severityFor(ers),
+    topAssets,
+    driverBuckets: buildDriverBuckets(scored, weightedAvg),
+  };
+}
+
+// Default Business Impact heuristic: derived from environment + asset type until
+// the user overrides it via the inline editor or drawer.
+export function defaultBI(asset: ITAsset): BusinessImpact {
+  if (asset.environment !== 'Production') return asset.environment === 'Staging' ? 'Moderate' : 'Low';
+  // Production: use the existing risk + type signal as a starting point.
+  if (/Vault|HSM|Database|API Gateway/.test(asset.type)) return 'Critical';
+  if (asset.criticalViolations >= 2 || asset.riskScore >= 80) return 'Critical';
+  if (asset.riskScore >= 60) return 'High';
+  return 'Moderate';
+}
+
+export function ersDefault(): ErsBreakdown {
+  const bi: Record<string, BusinessImpact> = {};
+  mockITAssets.forEach(a => { bi[a.id] = defaultBI(a); });
+  return computeERS(mockITAssets, bi);
+}

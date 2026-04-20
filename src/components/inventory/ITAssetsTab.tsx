@@ -3,10 +3,18 @@ import { mockITAssets, ITAsset, getAssetRiskDrivers, getAssetAINarrative, getAss
 import { mockAssets, CryptoAsset } from '@/data/mockData';
 import { useInventoryRegistry } from '@/context/InventoryRegistryContext';
 import { useAgent } from '@/context/AgentContext';
+import { useRisk } from '@/context/RiskContext';
+import { useNav } from '@/context/NavigationContext';
+import { arsFor } from '@/lib/risk/ars';
+import { computeRPS } from '@/lib/risk/rps';
 import { StatusBadge, EnvBadge, DaysToExpiry, SeverityBadge } from '@/components/shared/UIComponents';
-import { Search, Server, Database, Globe, Shield, ShieldOff, ChevronDown, ChevronRight, MoreVertical, X, Ticket, RefreshCw, XCircle, RotateCcw, User, Plus, FileEdit } from 'lucide-react';
+import { Search, Server, Database, Globe, Shield, ShieldOff, ChevronDown, ChevronRight, MoreVertical, X, Ticket, RefreshCw, XCircle, RotateCcw, User, Plus, FileEdit, ArrowUpDown } from 'lucide-react';
 import { toast } from 'sonner';
 import BlastRadiusTopology from './BlastRadiusTopology';
+import BusinessImpactEditor from '@/components/risk/BusinessImpactEditor';
+import ArsBadge from '@/components/risk/ArsBadge';
+import AssetRiskDrawer from '@/components/risk/AssetRiskDrawer';
+import CryptoObjectRiskDrawer from '@/components/risk/CryptoObjectRiskDrawer';
 
 interface Props {
   onCreateTicket: (ctx: any) => void;
@@ -72,17 +80,25 @@ function CryptoRowMenu({ asset, onAction }: { asset: CryptoAsset; onAction: (act
   );
 }
 
+type SortKey = 'rps' | 'ars' | 'name' | 'bi';
+
 export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Props) {
   const [search, setSearch] = useState('');
   const [envFilter, setEnvFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [teamFilter, setTeamFilter] = useState('');
+  const [biFilter, setBiFilter] = useState('');
   const [riskRange, setRiskRange] = useState<[number, number]>([0, 100]);
+  const [sortKey, setSortKey] = useState<SortKey>('rps');
   const [selectedAsset, setSelectedAsset] = useState<ITAsset | null>(null);
+  const [riskDrawerAsset, setRiskDrawerAsset] = useState<ITAsset | null>(null);
+  const [riskDrawerObject, setRiskDrawerObject] = useState<CryptoAsset | null>(null);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [assetStack, setAssetStack] = useState<ITAsset[]>([]);
   const { manualITAssets } = useInventoryRegistry();
   const { setSelectedEntity } = useAgent();
+  const { biMap, setBI } = useRisk();
+  const { filters: navFilters } = useNav();
 
   // Sync infrastructure asset selection to Agent context
   useEffect(() => {
@@ -90,18 +106,48 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
     return () => { setSelectedEntity(null); };
   }, [selectedAsset, setSelectedEntity]);
 
+  // Open risk drawer when navigated with assetId (e.g. from ERS dashboard).
+  useEffect(() => {
+    if (navFilters.assetId) {
+      const target = mockITAssets.find(a => a.id === navFilters.assetId);
+      if (target) setRiskDrawerAsset(target);
+    }
+  }, [navFilters.assetId]);
+
   // Manual assets first so they're immediately visible after add.
   const allAssets = useMemo(() => [...manualITAssets, ...mockITAssets], [manualITAssets]);
 
+  // Compute ARS / BI / RPS once per asset for sorting + display.
+  const enriched = useMemo(() => allAssets.map(a => {
+    const ars = arsFor(a).ars;
+    const bi = biMap[a.id] ?? 'Moderate';
+    return { asset: a, ars, bi, rps: computeRPS(ars, bi) };
+  }), [allAssets, biMap]);
+
   const filtered = useMemo(() => {
-    let result = [...allAssets];
-    if (search) result = result.filter(a => a.name.toLowerCase().includes(search.toLowerCase()));
-    if (envFilter) result = result.filter(a => a.environment === envFilter);
-    if (typeFilter) result = result.filter(a => a.type === typeFilter);
-    if (teamFilter) result = result.filter(a => a.ownerTeam === teamFilter);
-    result = result.filter(a => a.riskScore >= riskRange[0] && a.riskScore <= riskRange[1]);
-    return result;
-  }, [allAssets, search, envFilter, typeFilter, teamFilter, riskRange]);
+    let result = enriched;
+    if (search) result = result.filter(x => x.asset.name.toLowerCase().includes(search.toLowerCase()));
+    if (envFilter) result = result.filter(x => x.asset.environment === envFilter);
+    if (typeFilter) result = result.filter(x => x.asset.type === typeFilter);
+    if (teamFilter) result = result.filter(x => x.asset.ownerTeam === teamFilter);
+    if (biFilter) result = result.filter(x => x.bi === biFilter);
+    result = result.filter(x => x.ars >= riskRange[0] && x.ars <= riskRange[1]);
+
+    const sorted = [...result];
+    sorted.sort((a, b) => {
+      switch (sortKey) {
+        case 'name': return a.asset.name.localeCompare(b.asset.name);
+        case 'ars':  return b.ars - a.ars;
+        case 'bi':   {
+          const order: Record<string, number> = { Critical: 0, High: 1, Moderate: 2, Low: 3 };
+          return order[a.bi] - order[b.bi];
+        }
+        case 'rps':
+        default:     return b.rps - a.rps;
+      }
+    });
+    return sorted;
+  }, [enriched, search, envFilter, typeFilter, teamFilter, biFilter, riskRange, sortKey]);
 
   const uniqueTeams = [...new Set(allAssets.map(a => a.ownerTeam))];
   const uniqueTypes = [...new Set(allAssets.map(a => a.type))];
@@ -150,6 +196,10 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
             <option value="">All Teams</option>
             {uniqueTeams.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
+          <select value={biFilter} onChange={e => setBiFilter(e.target.value)} className="px-2 py-1.5 bg-muted border border-border rounded text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal">
+            <option value="">All Business Impact</option>
+            {['Critical', 'High', 'Moderate', 'Low'].map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
           <select value={`${riskRange[0]}-${riskRange[1]}`} onChange={e => {
             const v = e.target.value;
             if (v === '0-100') setRiskRange([0, 100]);
@@ -157,15 +207,15 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
             else if (v === '40-70') setRiskRange([40, 70]);
             else setRiskRange([0, 39]);
           }} className="px-2 py-1.5 bg-muted border border-border rounded text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal">
-            <option value="0-100">All Risk</option>
+            <option value="0-100">All ARS</option>
             <option value="71-100">Critical (&gt;70)</option>
             <option value="40-70">Moderate (40-70)</option>
             <option value="0-39">Low (&lt;40)</option>
           </select>
-          {(envFilter || typeFilter || teamFilter || riskRange[0] !== 0 || riskRange[1] !== 100) && (
-            <button onClick={() => { setEnvFilter(''); setTypeFilter(''); setTeamFilter(''); setRiskRange([0, 100]); }} className="text-[10px] text-coral hover:underline">Clear</button>
+          {(envFilter || typeFilter || teamFilter || biFilter || riskRange[0] !== 0 || riskRange[1] !== 100) && (
+            <button onClick={() => { setEnvFilter(''); setTypeFilter(''); setTeamFilter(''); setBiFilter(''); setRiskRange([0, 100]); }} className="text-[10px] text-coral hover:underline">Clear</button>
           )}
-          <span className="text-[10px] text-muted-foreground">{filtered.length} assets</span>
+          <span className="text-[10px] text-muted-foreground">{filtered.length} assets · sorted by {sortKey.toUpperCase()}</span>
         </div>
 
         {/* Table */}
@@ -174,50 +224,73 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
             <table className="w-full text-xs">
               <thead className="bg-secondary/50">
                 <tr className="border-b border-border">
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Asset Name</th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">
+                    <button onClick={() => setSortKey('name')} className={`inline-flex items-center gap-1 hover:text-foreground ${sortKey==='name'?'text-foreground':''}`}>
+                      Asset Name <ArrowUpDown className="w-2.5 h-2.5" />
+                    </button>
+                  </th>
                   <th className="text-left py-2 px-2 font-medium text-muted-foreground">Type</th>
                   <th className="text-left py-2 px-2 font-medium text-muted-foreground">Env</th>
-                  <th className="text-left py-2 px-2 font-medium text-muted-foreground">Owner</th>
                   <th className="text-center py-2 px-2 font-medium text-muted-foreground">Identities</th>
-                  <th className="text-center py-2 px-2 font-medium text-muted-foreground">Risk</th>
-                  <th className="text-center py-2 px-2 font-medium text-muted-foreground">Violations</th>
+                  <th className="text-center py-2 px-2 font-medium text-muted-foreground">
+                    <button onClick={() => setSortKey('ars')} className={`inline-flex items-center gap-1 hover:text-foreground ${sortKey==='ars'?'text-foreground':''}`}>
+                      ARS <ArrowUpDown className="w-2.5 h-2.5" />
+                    </button>
+                  </th>
+                  <th className="text-left py-2 px-2 font-medium text-muted-foreground">
+                    <button onClick={() => setSortKey('bi')} className={`inline-flex items-center gap-1 hover:text-foreground ${sortKey==='bi'?'text-foreground':''}`}>
+                      Business Impact <ArrowUpDown className="w-2.5 h-2.5" />
+                    </button>
+                  </th>
+                  <th className="text-center py-2 px-2 font-medium text-muted-foreground">
+                    <button onClick={() => setSortKey('rps')} className={`inline-flex items-center gap-1 hover:text-foreground ${sortKey==='rps'?'text-foreground':''}`} title="Remediation Priority Score = ARS × Business Impact">
+                      RPS <ArrowUpDown className="w-2.5 h-2.5" />
+                    </button>
+                  </th>
+                  <th className="text-left py-2 px-2 font-medium text-muted-foreground">Owner</th>
                   <th className="text-left py-2 px-2 font-medium text-muted-foreground">Policy</th>
-                  <th className="text-left py-2 px-2 font-medium text-muted-foreground">Last Seen</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(asset => {
-                  const riskColor = asset.riskScore > 70 ? 'bg-coral/10 text-coral' : asset.riskScore > 40 ? 'bg-amber/10 text-amber' : 'bg-teal/10 text-teal';
-                  return (
-                    <tr key={asset.id} onClick={() => openAssetDetail(asset)}
-                      className="border-b border-border hover:bg-secondary/30 cursor-pointer transition-colors">
-                      <td className="py-2 px-3">
-                        <div className="flex items-center gap-2">
-                          <span>{assetTypeIcons[asset.type] || '📋'}</span>
-                          <span className="font-medium text-foreground truncate max-w-[200px]">{asset.name}</span>
-                          {isManual(asset) && (
-                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-teal/15 text-teal text-[9px] font-semibold" title="Discovery Vector: Manual Entry">
-                              <FileEdit className="w-2.5 h-2.5" /> Manual
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-2 px-2 text-muted-foreground">{asset.type}</td>
-                      <td className="py-2 px-2"><EnvBadge env={asset.environment} /></td>
-                      <td className="py-2 px-2 text-muted-foreground">{asset.ownerTeam}</td>
-                      <td className="py-2 px-2 text-center text-foreground font-medium">{asset.cryptoObjectIds.length}</td>
-                      <td className="py-2 px-2 text-center"><span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${riskColor}`}>{asset.riskScore}</span></td>
-                      <td className="py-2 px-2 text-center">{asset.criticalViolations > 0 ? <span className="inline-flex items-center justify-center min-w-[18px] px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-coral/10 text-coral">{asset.criticalViolations}</span> : <span className="text-muted-foreground">0</span>}</td>
-                      <td className="py-2 px-2">
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-16 h-1.5 bg-secondary rounded-full overflow-hidden"><div className="h-full bg-teal rounded-full" style={{ width: `${asset.policyCoverage}%` }} /></div>
-                          <span className="text-[10px] text-muted-foreground">{asset.policyCoverage}%</span>
-                        </div>
-                      </td>
-                      <td className="py-2 px-2 text-muted-foreground text-[10px]">{asset.lastSeen}</td>
-                    </tr>
-                  );
-                })}
+                {filtered.map(({ asset, ars, bi, rps }) => (
+                  <tr key={asset.id} onClick={() => openAssetDetail(asset)}
+                    className="border-b border-border hover:bg-secondary/30 cursor-pointer transition-colors">
+                    <td className="py-2 px-3">
+                      <div className="flex items-center gap-2">
+                        <span>{assetTypeIcons[asset.type] || '📋'}</span>
+                        <span className="font-medium text-foreground truncate max-w-[200px]">{asset.name}</span>
+                        {isManual(asset) && (
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-teal/15 text-teal text-[9px] font-semibold" title="Discovery Vector: Manual Entry">
+                            <FileEdit className="w-2.5 h-2.5" /> Manual
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-2 px-2 text-muted-foreground">{asset.type}</td>
+                    <td className="py-2 px-2"><EnvBadge env={asset.environment} /></td>
+                    <td className="py-2 px-2 text-center text-foreground font-medium">{asset.cryptoObjectIds.length}</td>
+                    <td className="py-2 px-2 text-center" onClick={e => { e.stopPropagation(); setRiskDrawerAsset(asset); }}>
+                      <ArsBadge score={ars} />
+                    </td>
+                    <td className="py-2 px-2">
+                      <BusinessImpactEditor
+                        value={bi}
+                        onChange={v => setBI(asset.id, v)}
+                        onOpenJustification={() => setRiskDrawerAsset(asset)}
+                      />
+                    </td>
+                    <td className="py-2 px-2 text-center">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tabular-nums bg-secondary text-foreground" title="Remediation Priority Score">{rps}</span>
+                    </td>
+                    <td className="py-2 px-2 text-muted-foreground">{asset.ownerTeam}</td>
+                    <td className="py-2 px-2">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-16 h-1.5 bg-secondary rounded-full overflow-hidden"><div className="h-full bg-teal rounded-full" style={{ width: `${asset.policyCoverage}%` }} /></div>
+                        <span className="text-[10px] text-muted-foreground">{asset.policyCoverage}%</span>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -405,6 +478,20 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
           </div>
         </div>
       )}
+
+      {/* Risk drawers — Asset (ARS + BI editor + audit) and Crypto Object (CRS) */}
+      <AssetRiskDrawer
+        asset={riskDrawerAsset}
+        onClose={() => setRiskDrawerAsset(null)}
+        onOpenObject={(id) => {
+          const obj = mockAssets.find(a => a.id === id);
+          if (obj) setRiskDrawerObject(obj);
+        }}
+      />
+      <CryptoObjectRiskDrawer
+        object={riskDrawerObject}
+        onClose={() => setRiskDrawerObject(null)}
+      />
     </div>
   );
 }

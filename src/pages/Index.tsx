@@ -3,6 +3,7 @@ import { PersonaProvider, usePersona } from '@/context/PersonaContext';
 import { NavigationProvider, useNav } from '@/context/NavigationContext';
 import { IntegrationsProvider, useIntegrations } from '@/context/IntegrationsContext';
 import { InventoryRegistryProvider } from '@/context/InventoryRegistryContext';
+import { RiskProvider } from '@/context/RiskContext';
 import { AgentProvider } from '@/context/AgentContext';
 import AppSidebar from '@/components/AppSidebar';
 import TopBar from '@/components/TopBar';
@@ -86,9 +87,11 @@ export default function Index() {
       <NavigationProvider>
         <IntegrationsProvider>
           <InventoryRegistryProvider>
-            <AgentBoundary>
-              <AppShell />
-            </AgentBoundary>
+            <RiskProvider>
+              <AgentBoundary>
+                <AppShell />
+              </AgentBoundary>
+            </RiskProvider>
           </InventoryRegistryProvider>
         </IntegrationsProvider>
       </NavigationProvider>
