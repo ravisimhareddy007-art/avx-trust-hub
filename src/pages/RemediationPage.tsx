@@ -418,13 +418,19 @@ export default function RemediationPage() {
   const [ticketModule, setTicketModule] = useState<ModuleDef | null>(null);
   const [clmView, setClmView] = useState<'issues' | 'deployments'>('issues');
 
-  // Honor cross-link filters set by Integrations / Device drawer.
+  // Honor cross-link filters set by Integrations / Device drawer / Inventory violations.
   useEffect(() => {
     if (filters.module === 'clm') {
       setActiveModule('clm');
       if (filters.view === 'deployments') setClmView('deployments');
     }
-  }, [filters.module, filters.view]);
+    if (filters.category && ['expiry', 'pqc', 'orphaned', 'policy'].includes(filters.category)) {
+      setActiveFilter(filters.category as FilterId);
+    }
+    if (filters.assetId) {
+      setSearch(filters.assetId);
+    }
+  }, [filters.module, filters.view, filters.category, filters.assetId]);
 
   const currentModule = modules.find(m => m.id === activeModule)!;
   const isLocked = activeModule !== 'all' && !currentModule.licensed;
