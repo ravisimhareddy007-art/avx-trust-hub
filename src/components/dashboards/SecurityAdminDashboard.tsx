@@ -1,7 +1,7 @@
 import React from 'react';
 import { RefreshCw } from 'lucide-react';
 import { DashboardProvider } from '@/context/DashboardContext';
-import EnterpriseCryptoRiskScore from './EnterpriseCryptoRiskScore';
+import EnterpriseRiskScore from './ers/EnterpriseRiskScore';
 import CriticalActionFeed from './CriticalActionFeed';
 import IdentityHealthBands from './IdentityHealthBands';
 import QTHPostureStrip from './QTHPostureStrip';
@@ -26,7 +26,7 @@ export default function SecurityAdminDashboard() {
         {/* Zone 1+2: ECRS (left) + Critical Action Feed (right) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           <div className="lg:col-span-5 min-h-[680px]">
-            <EnterpriseCryptoRiskScore />
+            <EnterpriseRiskScore />
           </div>
           <div className="lg:col-span-7 min-h-[680px]">
             <CriticalActionFeed />
