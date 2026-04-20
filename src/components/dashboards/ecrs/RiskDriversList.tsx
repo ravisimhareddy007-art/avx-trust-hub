@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { drivers, urgencyMeta, RiskDriver } from '@/data/ecrsData';
 import { useNav } from '@/context/NavigationContext';
 import { useDashboard } from '@/context/DashboardContext';
+import { DRIVER_TO_FACTOR } from '@/lib/ecrs';
 
 function UrgencyChip({ u }: { u: RiskDriver['urgency'] }) {
   const m = urgencyMeta[u];
@@ -16,9 +17,15 @@ function UrgencyChip({ u }: { u: RiskDriver['urgency'] }) {
 
 export default function RiskDriversList() {
   const { setCurrentPage, setFilters } = useNav();
-  const { hoveredDriver, setHoveredDriver } = useDashboard();
+  const { hoveredDriver, setHoveredDriver, factorContribution } = useDashboard();
   const [expanded, setExpanded] = useState<string | null>(null);
   const [aiState, setAiState] = useState<Record<string, 'idle' | 'submitted' | 'guide'>>({});
+
+  // Live driver pts = ECRS contribution of mapped factor.
+  const driverPts = (id: string) => {
+    const f = DRIVER_TO_FACTOR[id];
+    return f ? factorContribution(f) : 0;
+  };
 
   const nav = (p: string, f?: Record<string, string>) => {
     if (f) setFilters(f);
@@ -63,7 +70,7 @@ export default function RiskDriversList() {
                 onClick={() => setExpanded(isOpen ? null : d.id)}
                 className="w-full flex items-center gap-2 text-left px-2.5 py-1.5"
               >
-                <span className="text-[10px] font-bold text-coral tabular-nums w-10 flex-shrink-0">+{d.impact} pts</span>
+                <span className="text-[10px] font-bold text-coral tabular-nums w-10 flex-shrink-0">+{driverPts(d.id)} pts</span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] text-foreground truncate">{d.name}</span>
