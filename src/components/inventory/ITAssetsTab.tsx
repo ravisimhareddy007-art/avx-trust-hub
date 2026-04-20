@@ -3,10 +3,18 @@ import { mockITAssets, ITAsset, getAssetRiskDrivers, getAssetAINarrative, getAss
 import { mockAssets, CryptoAsset } from '@/data/mockData';
 import { useInventoryRegistry } from '@/context/InventoryRegistryContext';
 import { useAgent } from '@/context/AgentContext';
+import { useRisk } from '@/context/RiskContext';
+import { useNav } from '@/context/NavigationContext';
+import { arsFor } from '@/lib/risk/ars';
+import { computeRPS } from '@/lib/risk/rps';
 import { StatusBadge, EnvBadge, DaysToExpiry, SeverityBadge } from '@/components/shared/UIComponents';
-import { Search, Server, Database, Globe, Shield, ShieldOff, ChevronDown, ChevronRight, MoreVertical, X, Ticket, RefreshCw, XCircle, RotateCcw, User, Plus, FileEdit } from 'lucide-react';
+import { Search, Server, Database, Globe, Shield, ShieldOff, ChevronDown, ChevronRight, MoreVertical, X, Ticket, RefreshCw, XCircle, RotateCcw, User, Plus, FileEdit, ArrowUpDown } from 'lucide-react';
 import { toast } from 'sonner';
 import BlastRadiusTopology from './BlastRadiusTopology';
+import BusinessImpactEditor from '@/components/risk/BusinessImpactEditor';
+import ArsBadge from '@/components/risk/ArsBadge';
+import AssetRiskDrawer from '@/components/risk/AssetRiskDrawer';
+import CryptoObjectRiskDrawer from '@/components/risk/CryptoObjectRiskDrawer';
 
 interface Props {
   onCreateTicket: (ctx: any) => void;
