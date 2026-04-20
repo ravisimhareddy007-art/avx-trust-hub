@@ -12,9 +12,23 @@ import {
 interface Props {
   open: boolean;
   onClose: () => void;
+  contextPage?: string;
 }
 
-export default function HelpDrawer({ open, onClose }: Props) {
+const PAGE_TO_CATEGORY: Record<string, string> = {
+  'dashboards': 'Dashboard',
+  'discovery': 'Discovery',
+  'inventory': 'Inventory',
+  'policy-builder': 'Policies',
+  'quantum': 'Quantum Posture',
+  'integrations': 'Integrations',
+  'remediation': 'Remediation',
+  'tickets': 'Tickets',
+  'violations': 'Violations',
+  'settings': 'Platform Core',
+};
+
+export default function HelpDrawer({ open, onClose, contextPage }: Props) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -29,14 +43,15 @@ export default function HelpDrawer({ open, onClose }: Props) {
     return () => window.removeEventListener('keydown', handler);
   }, [open, onClose]);
 
-  // Reset state when closed
+  // Set context category when opened, reset when closed
   useEffect(() => {
-    if (!open) {
+    if (open) {
+      const mapped = contextPage ? PAGE_TO_CATEGORY[contextPage] : null;
+      setCategory(mapped || null);
       setQuery('');
-      setCategory(null);
       setSelectedId(null);
     }
-  }, [open]);
+  }, [open, contextPage]);
 
   const categoryCounts = useMemo(() => {
     const map: Record<string, number> = {};
