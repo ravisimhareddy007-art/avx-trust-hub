@@ -15,6 +15,7 @@ import BusinessImpactEditor from '@/components/risk/BusinessImpactEditor';
 import ArsBadge from '@/components/risk/ArsBadge';
 import AssetRiskDrawer from '@/components/risk/AssetRiskDrawer';
 import CryptoObjectRiskDrawer from '@/components/risk/CryptoObjectRiskDrawer';
+import ViolationsDrawer from '@/components/risk/ViolationsDrawer';
 
 interface Props {
   onCreateTicket: (ctx: any) => void;
