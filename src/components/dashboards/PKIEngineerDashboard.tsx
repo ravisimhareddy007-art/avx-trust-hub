@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { RefreshCw, LayoutDashboard, Wrench, ShieldCheck, ChevronDown } from 'lucide-react';
+import CLMKPIStrip from './clm/CLMKPIStrip';
+import CAHealthStrip from './clm/CAHealthStrip';
 
 type CLMTab = 'overview' | 'operations' | 'risk';
 
