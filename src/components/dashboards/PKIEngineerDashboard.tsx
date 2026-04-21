@@ -86,12 +86,8 @@ export default function PKIEngineerDashboard() {
         {/* OVERVIEW */}
         {tab === 'overview' && (
           <div className="space-y-4 pr-1">
-            <div className="bg-card rounded-xl border border-border p-8 text-center">
-              <p className="text-sm font-semibold text-foreground mb-1">Overview</p>
-              <p className="text-xs text-muted-foreground">
-                KPI Strip · 30-Day Expiry Calendar · CA Health Strip
-              </p>
-            </div>
+            <CLMKPIStrip />
+            <CAHealthStrip />
           </div>
         )}
 
