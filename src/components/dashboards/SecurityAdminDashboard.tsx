@@ -9,6 +9,8 @@ import InfrastructurePostureStrip from './InfrastructurePostureStrip';
 import OperationsKPIStrip from './operations/OperationsKPIStrip';
 import ExpiryForecast from './operations/ExpiryForecast';
 import TriageQueue from './operations/TriageQueue';
+import CryptoReadinessSummary from './readiness/CryptoReadinessSummary';
+import AlgorithmConcentration from './readiness/AlgorithmConcentration';
 
 type DashTab = 'posture' | 'operations' | 'readiness';
 
@@ -93,16 +95,8 @@ export default function SecurityAdminDashboard() {
           {/* ── READINESS TAB ─────────────────────────────────────── */}
           {tab === 'readiness' && (
             <div className="space-y-4 pr-1">
-              {/* Placeholder -- new components go here */}
-              <div className="bg-card rounded-xl border border-border p-8 text-center">
-                <p className="text-sm font-semibold text-foreground mb-1">
-                  Readiness
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Algorithm Concentration · Crypto Agility · PQC Migration · 
-                  7-day Forecast · Hardcoded Systems
-                </p>
-              </div>
+              <CryptoReadinessSummary />
+              <AlgorithmConcentration />
             </div>
           )}
 
