@@ -6,6 +6,8 @@ import ExpiryCalendar from './clm/ExpiryCalendar';
 import RenewalPipeline from './clm/RenewalPipeline';
 import CLMActionTrend from './clm/CLMActionTrend';
 import FailedRenewals from './clm/FailedRenewals';
+import NonStandardCerts from './clm/NonStandardCerts';
+import AlgorithmStrength from './clm/AlgorithmStrength';
 
 type CLMTab = 'overview' | 'operations' | 'risk';
 
@@ -108,12 +110,8 @@ export default function PKIEngineerDashboard() {
         {/* RISK & CRYPTO */}
         {tab === 'risk' && (
           <div className="space-y-4 pr-1">
-            <div className="bg-card rounded-xl border border-border p-8 text-center">
-              <p className="text-sm font-semibold text-foreground mb-1">Risk & Crypto</p>
-              <p className="text-xs text-muted-foreground">
-                Non-Standard Certs · Algorithm Strength · SLC Compliance · Cipher Suites · Scan Coverage
-              </p>
-            </div>
+            <NonStandardCerts />
+            <AlgorithmStrength />
           </div>
         )}
 
