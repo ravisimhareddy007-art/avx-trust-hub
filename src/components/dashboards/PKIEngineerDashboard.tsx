@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { RefreshCw, LayoutDashboard, Wrench, ShieldCheck, ChevronDown } from 'lucide-react';
+import { RefreshCw, LayoutDashboard, Wrench, ShieldCheck, ChevronDown, Clock } from 'lucide-react';
 import CLMKPIStrip from './clm/CLMKPIStrip';
 import CAHealthStrip from './clm/CAHealthStrip';
 import ExpiryCalendar from './clm/ExpiryCalendar';
@@ -11,7 +11,7 @@ import AlgorithmStrength from './clm/AlgorithmStrength';
 import SLCCompliance from './clm/SLCCompliance';
 import ScanCoverage from './clm/ScanCoverage';
 
-type CLMTab = 'overview' | 'operations' | 'risk';
+type CLMTab = 'overview' | 'operations' | 'risk' | 'slc';
 
 const CERT_TYPES = ['All Certificates', 'TLS / SSL', 'Code Signing', 'K8s Workload', 'SSH Certificate'];
 const CA_FILTERS = ['All CAs', 'DigiCert', 'Entrust', "Let's Encrypt", 'MSCA Enterprise'];
@@ -20,6 +20,7 @@ const TABS: { id: CLMTab; label: string; icon: React.ElementType }[] = [
   { id: 'overview',    label: 'Overview',      icon: LayoutDashboard },
   { id: 'operations', label: 'Operations',     icon: Wrench },
   { id: 'risk',       label: 'Risk & Crypto',  icon: ShieldCheck },
+  { id: 'slc', label: 'Short-Lived Certs', icon: Clock },
 ];
 
 export default function PKIEngineerDashboard() {
@@ -118,6 +119,19 @@ export default function PKIEngineerDashboard() {
             <ScanCoverage />
           </div>
         )}
+        
+        {/* SHORT LIVED CERTS */}
+  {tab === 'slc' && (
+  <div className="space-y-4 pr-1">
+    <div className="bg-card rounded-xl border border-border p-8 text-center">
+      <p className="text-sm font-semibold text-foreground mb-1">Short-Lived Certificates</p>
+      <p className="text-xs text-muted-foreground">
+        SLC Compliance · Age Distribution · Push Status · 
+        Key Algorithm · Key Length · Trend
+      </p>
+    </div>
+  </div>
+)}
 
       </div>
     </div>
