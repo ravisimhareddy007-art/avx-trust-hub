@@ -11,6 +11,7 @@ import ExpiryForecast from './operations/ExpiryForecast';
 import TriageQueue from './operations/TriageQueue';
 import CryptoReadinessSummary from './readiness/CryptoReadinessSummary';
 import AlgorithmConcentration from './readiness/AlgorithmConcentration';
+import PQCMigrationPanel from './readiness/PQCMigrationPanel';
 
 type DashTab = 'posture' | 'operations' | 'readiness';
 
@@ -97,6 +98,7 @@ export default function SecurityAdminDashboard() {
             <div className="space-y-4 pr-1">
               <CryptoReadinessSummary />
               <AlgorithmConcentration />
+              <PQCMigrationPanel />
             </div>
           )}
 
