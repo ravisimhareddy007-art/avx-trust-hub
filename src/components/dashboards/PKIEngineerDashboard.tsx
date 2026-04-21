@@ -8,6 +8,8 @@ import CLMActionTrend from './clm/CLMActionTrend';
 import FailedRenewals from './clm/FailedRenewals';
 import NonStandardCerts from './clm/NonStandardCerts';
 import AlgorithmStrength from './clm/AlgorithmStrength';
+import SLCCompliance from './clm/SLCCompliance';
+import ScanCoverage from './clm/ScanCoverage';
 
 type CLMTab = 'overview' | 'operations' | 'risk';
 
@@ -112,6 +114,8 @@ export default function PKIEngineerDashboard() {
           <div className="space-y-4 pr-1">
             <NonStandardCerts />
             <AlgorithmStrength />
+            <SLCCompliance />
+            <ScanCoverage />
           </div>
         )}
 
