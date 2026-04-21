@@ -38,9 +38,6 @@ export default function PKIEngineerDashboard() {
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
             Certificate Lifecycle Management
           </h1>
-          <p className="text-xs text-muted-foreground mt-1">
-            CLM Engineer · Certificate operations view
-          </p>
         </div>
         <div className="flex items-center gap-2">
           {/* Cert type filter */}
