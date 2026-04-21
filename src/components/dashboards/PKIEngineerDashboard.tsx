@@ -10,6 +10,7 @@ import NonStandardCerts from './clm/NonStandardCerts';
 import AlgorithmStrength from './clm/AlgorithmStrength';
 import SLCCompliance from './clm/SLCCompliance';
 import ScanCoverage from './clm/ScanCoverage';
+import SLCDashboard from './clm/SLCDashboard';
 
 type CLMTab = 'overview' | 'operations' | 'risk' | 'slc';
 
@@ -121,17 +122,7 @@ export default function PKIEngineerDashboard() {
         )}
         
         {/* SHORT LIVED CERTS */}
-  {tab === 'slc' && (
-  <div className="space-y-4 pr-1">
-    <div className="bg-card rounded-xl border border-border p-8 text-center">
-      <p className="text-sm font-semibold text-foreground mb-1">Short-Lived Certificates</p>
-      <p className="text-xs text-muted-foreground">
-        SLC Compliance · Age Distribution · Push Status · 
-        Key Algorithm · Key Length · Trend
-      </p>
-    </div>
-  </div>
-)}
+        {tab === 'slc' && <SLCDashboard />}
 
       </div>
     </div>
