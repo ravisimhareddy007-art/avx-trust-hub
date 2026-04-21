@@ -3,6 +3,9 @@ import { RefreshCw, LayoutDashboard, Wrench, ShieldCheck, ChevronDown } from 'lu
 import CLMKPIStrip from './clm/CLMKPIStrip';
 import CAHealthStrip from './clm/CAHealthStrip';
 import ExpiryCalendar from './clm/ExpiryCalendar';
+import RenewalPipeline from './clm/RenewalPipeline';
+import CLMActionTrend from './clm/CLMActionTrend';
+import FailedRenewals from './clm/FailedRenewals';
 
 type CLMTab = 'overview' | 'operations' | 'risk';
 
@@ -96,12 +99,9 @@ export default function PKIEngineerDashboard() {
         {/* OPERATIONS */}
         {tab === 'operations' && (
           <div className="space-y-4 pr-1">
-            <div className="bg-card rounded-xl border border-border p-8 text-center">
-              <p className="text-sm font-semibold text-foreground mb-1">Operations</p>
-              <p className="text-xs text-muted-foreground">
-                Renewal Pipeline · CLM Action Trend · Failed Renewals · Provisioning Queue
-              </p>
-            </div>
+            <RenewalPipeline />
+            <CLMActionTrend />
+            <FailedRenewals />
           </div>
         )}
 
