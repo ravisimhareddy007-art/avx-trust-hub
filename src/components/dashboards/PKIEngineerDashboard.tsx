@@ -97,7 +97,7 @@ export default function PKIEngineerDashboard() {
         {tab === 'overview' && (
           <div className="space-y-4 pr-1">
             <CLMKPIStrip />
-            <ExpiryCalendar />
+            <CLMActionTrend />
             <CAHealthStrip />
           </div>
         )}
@@ -106,7 +106,7 @@ export default function PKIEngineerDashboard() {
         {tab === 'operations' && (
           <div className="space-y-4 pr-1">
             <RenewalPipeline />
-            <CLMActionTrend />
+            <ExpiryCalendar />
             <FailedRenewals />
           </div>
         )}
