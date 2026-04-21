@@ -46,7 +46,7 @@ const navItems: NavItem[] = [
 const personaOptions: { value: Persona; label: string }[] = [
   { value: 'security-admin', label: 'Security Admin' },
   { value: 'compliance-officer', label: 'Compliance Officer' },
-  { value: 'pki-engineer', label: 'PKI Engineer' },
+  { value: 'pki-engineer', label: 'CLM Engineer' },
 ];
 
 export default function AppSidebar() {
