@@ -6,6 +6,7 @@ import CriticalActionFeed from './CriticalActionFeed';
 import IdentityHealthBands from './IdentityHealthBands';
 import QTHPostureStrip from './QTHPostureStrip';
 import InfrastructurePostureStrip from './InfrastructurePostureStrip';
+import OperationsKPIStrip from './operations/OperationsKPIStrip';
 
 type DashTab = 'posture' | 'operations' | 'readiness';
 
@@ -81,16 +82,7 @@ export default function SecurityAdminDashboard() {
           {/* ── OPERATIONS TAB ────────────────────────────────────── */}
           {tab === 'operations' && (
             <div className="space-y-4 pr-1">
-              {/* Placeholder -- new components go here */}
-              <div className="bg-card rounded-xl border border-border p-8 text-center">
-                <p className="text-sm font-semibold text-foreground mb-1">
-                  Operations
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  MTTR · Expiry Forecast · Triage Queue · Approvals · 
-                  Secrets Exposure · Orphaned Credentials
-                </p>
-              </div>
+              <OperationsKPIStrip />
             </div>
           )}
 
