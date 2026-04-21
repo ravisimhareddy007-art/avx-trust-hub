@@ -11,7 +11,7 @@ interface PersonaContextType {
 const labels: Record<Persona, string> = {
   'security-admin': 'Security Admin',
   'compliance-officer': 'Compliance Officer',
-  'pki-engineer': 'PKI Engineer',
+  'pki-engineer': 'CLM Engineer',
 };
 
 const PersonaContext = createContext<PersonaContextType>({
