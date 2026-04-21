@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { RefreshCw, LayoutDashboard, Wrench, ShieldCheck, ChevronDown } from 'lucide-react';
 import CLMKPIStrip from './clm/CLMKPIStrip';
 import CAHealthStrip from './clm/CAHealthStrip';
+import ExpiryCalendar from './clm/ExpiryCalendar';
 
 type CLMTab = 'overview' | 'operations' | 'risk';
 
@@ -87,6 +88,7 @@ export default function PKIEngineerDashboard() {
         {tab === 'overview' && (
           <div className="space-y-4 pr-1">
             <CLMKPIStrip />
+            <ExpiryCalendar />
             <CAHealthStrip />
           </div>
         )}
