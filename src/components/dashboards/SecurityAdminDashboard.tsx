@@ -8,6 +8,7 @@ import QTHPostureStrip from './QTHPostureStrip';
 import InfrastructurePostureStrip from './InfrastructurePostureStrip';
 import OperationsKPIStrip from './operations/OperationsKPIStrip';
 import ExpiryForecast from './operations/ExpiryForecast';
+import TriageQueue from './operations/TriageQueue';
 
 type DashTab = 'posture' | 'operations' | 'readiness';
 
@@ -85,6 +86,7 @@ export default function SecurityAdminDashboard() {
             <div className="space-y-4 pr-1">
               <OperationsKPIStrip />
               <ExpiryForecast />
+              <TriageQueue />
             </div>
           )}
 
