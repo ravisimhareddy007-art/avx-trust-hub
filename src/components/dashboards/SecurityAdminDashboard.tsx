@@ -1,5 +1,5 @@
-import React from 'react';
-import { RefreshCw } from 'lucide-react';
+import React, { useState } from 'react';
+import { RefreshCw, LayoutDashboard, Wrench, Zap } from 'lucide-react';
 import { DashboardProvider } from '@/context/DashboardContext';
 import EnterpriseRiskScore from './ers/EnterpriseRiskScore';
 import CriticalActionFeed from './CriticalActionFeed';
@@ -7,40 +7,110 @@ import IdentityHealthBands from './IdentityHealthBands';
 import QTHPostureStrip from './QTHPostureStrip';
 import InfrastructurePostureStrip from './InfrastructurePostureStrip';
 
+type DashTab = 'posture' | 'operations' | 'readiness';
+
+const TABS: { id: DashTab; label: string; icon: React.ElementType }[] = [
+  { id: 'posture',    label: 'Posture',    icon: LayoutDashboard },
+  { id: 'operations', label: 'Operations', icon: Wrench },
+  { id: 'readiness',  label: 'Readiness',  icon: Zap },
+];
+
 export default function SecurityAdminDashboard() {
+  const [tab, setTab] = useState<DashTab>('posture');
+
   return (
     <DashboardProvider>
-      <div className="space-y-4 max-h-[calc(100vh-120px)] overflow-y-auto scrollbar-thin pr-1">
-        {/* Primary page header — single entry point, no competing labels */}
-        <div className="flex items-end justify-between pt-1">
+      <div className="space-y-0 max-h-[calc(100vh-120px)] flex flex-col">
+
+        {/* Page header */}
+        <div className="flex items-end justify-between pt-1 pb-3 flex-shrink-0">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Trust Posture & Risk Intelligence</h1>
-            <p className="text-xs text-muted-foreground mt-1">High-Impact Recommendations & Active Insights</p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              Trust Posture & Risk Intelligence
+            </h1>
+            <p className="text-xs text-muted-foreground mt-1">
+              Security Admin · Enterprise view
+            </p>
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span>Refreshed 0m ago</span>
-            <button className="p-1 hover:text-foreground"><RefreshCw className="w-3.5 h-3.5" /></button>
+            <button className="p-1 hover:text-foreground">
+              <RefreshCw className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
 
-        {/* Zone 1+2: ECRS (left) + Critical Action Feed (right) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          <div className="lg:col-span-5 min-h-[680px]">
-            <EnterpriseRiskScore />
-          </div>
-          <div className="lg:col-span-7 min-h-[680px]">
-            <CriticalActionFeed />
-          </div>
+        {/* Tab bar */}
+        <div className="flex items-center border-b border-border flex-shrink-0">
+          {TABS.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`flex items-center gap-2 px-5 py-2.5 text-xs font-medium border-b-2 transition-colors ${
+                tab === t.id
+                  ? 'border-teal text-teal'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <t.icon className="w-3.5 h-3.5" />
+              {t.label}
+            </button>
+          ))}
         </div>
 
-        {/* Zone 3: QTH Posture Strip */}
-        <QTHPostureStrip />
+        {/* Tab content */}
+        <div className="flex-1 overflow-y-auto scrollbar-thin pt-4">
 
-        {/* Zone 4: Identity Health Bands */}
-        <IdentityHealthBands />
+          {/* ── POSTURE TAB ───────────────────────────────────────── */}
+          {tab === 'posture' && (
+            <div className="space-y-4 pr-1">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                <div className="lg:col-span-5 min-h-[680px]">
+                  <EnterpriseRiskScore />
+                </div>
+                <div className="lg:col-span-7 min-h-[680px]">
+                  <CriticalActionFeed />
+                </div>
+              </div>
+              <QTHPostureStrip />
+              <IdentityHealthBands />
+              <InfrastructurePostureStrip />
+            </div>
+          )}
 
-        {/* Zone 5 (bottom): Infrastructure Posture Bands */}
-        <InfrastructurePostureStrip />
+          {/* ── OPERATIONS TAB ────────────────────────────────────── */}
+          {tab === 'operations' && (
+            <div className="space-y-4 pr-1">
+              {/* Placeholder -- new components go here */}
+              <div className="bg-card rounded-xl border border-border p-8 text-center">
+                <p className="text-sm font-semibold text-foreground mb-1">
+                  Operations
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  MTTR · Expiry Forecast · Triage Queue · Approvals · 
+                  Secrets Exposure · Orphaned Credentials
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* ── READINESS TAB ─────────────────────────────────────── */}
+          {tab === 'readiness' && (
+            <div className="space-y-4 pr-1">
+              {/* Placeholder -- new components go here */}
+              <div className="bg-card rounded-xl border border-border p-8 text-center">
+                <p className="text-sm font-semibold text-foreground mb-1">
+                  Readiness
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Algorithm Concentration · Crypto Agility · PQC Migration · 
+                  7-day Forecast · Hardcoded Systems
+                </p>
+              </div>
+            </div>
+          )}
+
+        </div>
       </div>
     </DashboardProvider>
   );
