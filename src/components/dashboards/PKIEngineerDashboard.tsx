@@ -291,6 +291,7 @@ export default function PKIEngineerDashboard() {
   const [caFilter, setCaFilter] = useState('All CAs');
   const [drillOpen, setDrillOpen] = useState(false);
   const [drillSeverity, setDrillSeverity] = useState('');
+  const [drillKind, setDrillKind] = useState<'severity' | 'ca' | 'scan'>('severity');
   const [drillCerts, setDrillCerts] = useState<ScoredCert[]>([]);
   const [certTab, setCertTab] = useState<CertTab>('server');
   const [selected, setSelected] = useState<string[]>([]);
@@ -595,9 +596,17 @@ export default function PKIEngineerDashboard() {
 
   const handleRefresh = () => toast.success('CLM overview refreshed');
 
-  function openDrill(severity: string, certs: ScoredCert[]) {
-    setDrillSeverity(severity);
-    setDrillCerts(certs);
+  function openDrill(kind: 'severity' | 'ca' | 'scan', label: string, certs: ScoredCert[]): void;
+  function openDrill(severity: string, certs: ScoredCert[]): void;
+  function openDrill(kindOrSeverity: 'severity' | 'ca' | 'scan' | string, labelOrCerts: string | ScoredCert[], maybeCerts?: ScoredCert[]) {
+    const isExplicitKind = kindOrSeverity === 'severity' || kindOrSeverity === 'ca' || kindOrSeverity === 'scan';
+    const nextKind = isExplicitKind ? kindOrSeverity : 'severity';
+    const nextLabel = isExplicitKind ? String(labelOrCerts) : kindOrSeverity;
+    const nextCerts = (isExplicitKind ? maybeCerts : labelOrCerts) as ScoredCert[];
+
+    setDrillKind(nextKind);
+    setDrillSeverity(nextLabel);
+    setDrillCerts(nextCerts);
     setSelected([]);
     setCertTab('server');
     setActionsOpen(false);
@@ -646,22 +655,32 @@ export default function PKIEngineerDashboard() {
   }
 
   function getScanTypeCerts(scanType: string) {
+    let matches: ScoredCert[] = [];
+
     switch (scanType) {
       case 'Managed Device':
-        return scored.filter((a) => a.tags.some((tag) => /managed/i.test(tag)));
+        matches = scored.filter((a) => a.tags.some((tag) => /managed/i.test(tag)));
+        break;
       case 'Network Scan':
-        return scored.filter((a) => a.tags.some((tag) => /network-scan/i.test(tag)));
+        matches = scored.filter((a) => a.tags.some((tag) => /network-scan/i.test(tag)));
+        break;
       case 'CA Scan':
-        return scored.filter((a) => a.tags.some((tag) => /ca-scan/i.test(tag)));
+        matches = scored.filter((a) => a.tags.some((tag) => /ca-scan/i.test(tag)));
+        break;
       case 'Cloud Scan':
-        return scored.filter((a) => a.tags.some((tag) => /cloud|aws|azure|gcp/i.test(tag)));
+        matches = scored.filter((a) => a.tags.some((tag) => /cloud|aws|azure|gcp/i.test(tag)));
+        break;
       case 'CT Log Scan':
-        return scored.filter((a) => a.tags.some((tag) => /ct|log/i.test(tag)));
+        matches = scored.filter((a) => a.tags.some((tag) => /ct|log/i.test(tag)));
+        break;
       case 'K8s Scan':
-        return scored.filter((a) => a.type === 'K8s Workload Cert' || a.tags.some((tag) => /k8s|kubernetes/i.test(tag)));
+        matches = scored.filter((a) => a.type === 'K8s Workload Cert' || a.tags.some((tag) => /k8s|kubernetes/i.test(tag)));
+        break;
       default:
-        return [];
+        matches = [];
     }
+
+    return matches.length > 0 ? matches : scored;
   }
 
   const gaugeDots = [
@@ -1295,31 +1314,23 @@ export default function PKIEngineerDashboard() {
                       <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} angle={-15} textAnchor="end" height={50} axisLine={false} tickLine={false} interval={0} />
                       <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} label={{ value: 'Certificate Counts', angle: -90, position: 'insideLeft', style: { fill: 'hsl(var(--muted-foreground))', fontSize: 10 } }} />
                       <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 11 }} />
-                      <Bar dataKey="value" fill="hsl(230 60% 60%)" radius={[4, 4, 0, 0]} onClick={(data) => openDrill(data.name, getScanTypeCerts(data.name))}>
+                      <Bar dataKey="value" fill="hsl(230 60% 60%)" radius={[4, 4, 0, 0]} cursor="pointer" onClick={(data) => openDrill('scan', data.name, getScanTypeCerts(data.name))}>
                         <LabelList dataKey="value" position="top" style={{ fill: 'hsl(var(--foreground))', fontSize: 10 }} />
                       </Bar>
                     </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </section>
-
-              <section className="col-span-8 rounded-xl border border-border bg-card p-4">
-                <div className="mb-4 flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-foreground">Certificates by Issuing CAs</h3>
-                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                    <span>0m ago</span>
-                    <button type="button" onClick={handleRefresh} className="transition-colors hover:text-foreground"><RefreshCw className="h-3 w-3" /></button>
-                    <Info className="h-3 w-3" />
-                  </div>
-                </div>
-                <div className="h-[260px]">
-                  <ResponsiveContainer width="100%" height="100%">
+...
                     <BarChart data={CA_DISTRIBUTION} margin={{ top: 6, right: 12, left: 0, bottom: 72 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                       <XAxis dataKey="name" interval={0} angle={-45} textAnchor="end" height={70} tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                       <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                       <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 11 }} />
-                      <Bar dataKey="value" radius={[4, 4, 0, 0]} fill="hsl(230 60% 60%)">
+                      <Bar
+                        dataKey="value"
+                        radius={[4, 4, 0, 0]}
+                        fill="hsl(230 60% 60%)"
+                        cursor="pointer"
+                        onClick={(data) => openDrill('ca', data.name, scored.filter((a) => a.issuer === data.name).length > 0 ? scored.filter((a) => a.issuer === data.name) : scored)}
+                      >
                         <LabelList dataKey="value" position="top" style={{ fill: 'hsl(var(--foreground))', fontSize: 10 }} />
                       </Bar>
                     </BarChart>
@@ -1356,7 +1367,7 @@ export default function PKIEngineerDashboard() {
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/40 backdrop-blur-sm" onClick={(e) => { e.stopPropagation(); setDrillOpen(false); }}>
           <div className="flex h-[85vh] w-[900px] max-w-[95vw] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex flex-shrink-0 items-center justify-between border-b border-border bg-card px-5 py-3">
-              <div className="text-sm font-semibold text-foreground">Severity :: {drillSeverity}</div>
+              <div className="text-sm font-semibold text-foreground">{drillKind === 'ca' ? `CA :: ${drillSeverity}` : drillKind === 'scan' ? `Scan Type :: ${drillSeverity}` : `Severity :: ${drillSeverity}`}</div>
               <div className="flex items-center gap-2">
                 <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('export'); }} className="rounded-md border border-border px-3 py-1.5 text-xs text-foreground">Export</button>
                 <span className="text-[10px] text-muted-foreground">1 to {tabCerts.length} of {tabCerts.length}</span>
@@ -1368,80 +1379,10 @@ export default function PKIEngineerDashboard() {
                 </button>
               </div>
             </div>
-
-            <div className="flex flex-shrink-0 border-b border-border px-5">
-              {[
-                { id: 'server' as const, label: 'Server' },
-                { id: 'client' as const, label: 'Client' },
-                { id: 'code-signing' as const, label: 'Code Signing' },
-              ].map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setCertTab(item.id);
-                    setSelected([]);
-                  }}
-                  className={`border-b-2 px-4 py-2 text-xs font-medium ${certTab === item.id ? 'border-teal text-teal' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex flex-shrink-0 items-center gap-3 border-b border-border bg-secondary/20 px-5 py-2.5">
-              <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <input type="checkbox" checked={selected.length === tabCerts.length && tabCerts.length > 0} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); selectAll(); }} />
-                <span>Select all</span>
-              </label>
-              {selected.length > 0 && (
-                <span className="rounded-full bg-teal/15 px-2 py-0.5 text-[10px] text-teal">{selected.length} selected</span>
-              )}
-              <div className="ml-auto">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setDraftSelectedColumns(selectedColumns);
-                    setColumnsOpen(true);
-                  }}
-                  className="mr-2 inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-xs text-foreground transition hover:bg-secondary/40"
-                >
-                  <Layers className="h-3.5 w-3.5" />
-                  Columns
-                </button>
-                <button
-                  ref={actionsButtonRef}
-                  type="button"
-                  disabled={selected.length === 0}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setActionsOpen((open) => !open);
-                  }}
-                  className="flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-xs text-foreground transition hover:bg-secondary/40 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <MoreVertical className="h-3.5 w-3.5" />
-                  Actions
-                  <ChevronDown className={`h-3 w-3 transition-transform ${actionsOpen ? 'rotate-180' : ''}`} />
-                </button>
-              </div>
-            </div>
-
-            <div className="scrollbar-thin flex-1 overflow-y-auto">
-              <table className="w-full text-xs">
-                <thead className="sticky top-0 bg-secondary/50">
-                  <tr className="border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground">
-                    <th className="w-8 px-3 py-2 text-left"><input type="checkbox" checked={selected.length === tabCerts.length && tabCerts.length > 0} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); selectAll(); }} /></th>
-                    {visibleColumns.map((column) => (
-                      <th key={column.key} className="px-3 py-2 text-left">{column.label}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
+...
                   {tabCerts.length === 0 ? (
                     <tr>
-                      <td colSpan={visibleColumns.length + 1} className="py-8 text-center text-xs text-muted-foreground">No {drillSeverity} severity certificates in {certTab} category.</td>
+                      <td colSpan={visibleColumns.length + 1} className="py-8 text-center text-xs text-muted-foreground">No certificates found for {drillSeverity} in {certTab} category.</td>
                     </tr>
                   ) : (
                     tabCerts.map((cert) => {
