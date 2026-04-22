@@ -43,8 +43,6 @@ function lifecycleRaw(a: CryptoAsset): { v: number; why: string } {
 function exposureRaw(a: CryptoAsset): { v: number; why: string } {
   if (a.environment === 'Production' && a.tags.some(t => /pci|production|edge|wildcard/i.test(t)))
     return { v: 80, why: 'Prod-facing / wildcard / regulated scope' };
-  if (a.environment === 'Production') return { v: 55, why: 'Production exposure' };
-  if (a.environment === 'Staging')    return { v: 30, why: 'Staging exposure' };
   if (a.type === 'AI Agent Token') {
     const sensitiveServices = ['Active Directory', 'Firewall', 'PII', 'CrowdStrike', 'HSM', 'Splunk'];
     const matched = sensitiveServices.filter(s => a.agentMeta?.servicesAccessed?.some(svc => svc.includes(s)));
@@ -55,6 +53,8 @@ function exposureRaw(a: CryptoAsset): { v: number; why: string } {
     if (serviceCount > 6 && a.environment === 'Production') return { v: 60, why: `Wide service access (${serviceCount} services) in production` };
     if (a.environment === 'Production') return { v: 50, why: 'Production AI agent' };
   }
+  if (a.environment === 'Production') return { v: 55, why: 'Production exposure' };
+  if (a.environment === 'Staging')    return { v: 30, why: 'Staging exposure' };
   return { v: 15, why: 'Internal / dev only' };
 }
 
@@ -68,14 +68,6 @@ function accessRaw(a: CryptoAsset): { v: number; why: string } {
 }
 
 function complianceRaw(a: CryptoAsset): { v: number; why: string } {
-  // Use pqcRisk as a proxy for compliance posture vs PQC mandates.
-  switch (a.pqcRisk) {
-    case 'Critical': return { v: 90, why: 'PQC-vulnerable · NIST 2030 deadline' };
-    case 'High':     return { v: 65, why: 'PQC-at-risk · migration window open' };
-    case 'Medium':   return { v: 40, why: 'PQC-watch · monitor for downgrade' };
-    case 'Low':      return { v: 20, why: 'Compliant with current standards' };
-    case 'Safe':     return { v: 5,  why: 'PQC-safe algorithm' };
-  }
   if (a.type === 'AI Agent Token') {
     const noActivity = !a.agentMeta?.lastActivity || a.agentMeta.lastActivity.includes('days ago');
     const highVolume = (a.agentMeta?.actionsPerDay || 0) > 10000;
@@ -85,6 +77,14 @@ function complianceRaw(a: CryptoAsset): { v: number; why: string } {
     if (noActivity) return { v: 55, why: 'No recent activity recorded — audit trail incomplete' };
     if (a.autoRenewal && (a.agentMeta?.actionsPerDay || 0) > 0) return { v: 15, why: 'Active agent with auto-rotation — audit trail traceable' };
     return { v: 35, why: 'Partial audit trail — activity logged but rotation is manual' };
+  }
+  // Use pqcRisk as a proxy for compliance posture vs PQC mandates.
+  switch (a.pqcRisk) {
+    case 'Critical': return { v: 90, why: 'PQC-vulnerable · NIST 2030 deadline' };
+    case 'High':     return { v: 65, why: 'PQC-at-risk · migration window open' };
+    case 'Medium':   return { v: 40, why: 'PQC-watch · monitor for downgrade' };
+    case 'Low':      return { v: 20, why: 'Compliant with current standards' };
+    case 'Safe':     return { v: 5,  why: 'PQC-safe algorithm' };
   }
 }
 
