@@ -6,6 +6,8 @@ export type Page =
   | 'remediation-ssh'
   | 'remediation-ai'
   | 'remediation-secrets'
+  | 'cert-holistic-view'
+  | 'work-order-status'
   | string;
 
 export const remediationPages: Page[] = [
@@ -14,6 +16,8 @@ export const remediationPages: Page[] = [
   'remediation-ssh',
   'remediation-ai',
   'remediation-secrets',
+  'cert-holistic-view',
+  'work-order-status',
 ];
 
 interface NavigationContextType {
