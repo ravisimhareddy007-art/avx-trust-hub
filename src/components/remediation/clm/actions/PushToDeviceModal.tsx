@@ -76,9 +76,9 @@ function statusMeta(asset: CryptoAsset) {
   if (asset.status === 'Revoked') return { dot: 'bg-foreground', badge: 'bg-foreground/10 text-foreground', label: 'Revoked' };
   if (asset.status === 'Expired') return { dot: 'bg-coral', badge: 'bg-coral/10 text-coral', label: 'Expired' };
   if (asset.tags.includes('push-failed')) return { dot: 'bg-muted-foreground', badge: 'bg-muted text-muted-foreground', label: 'Push Failed' };
-  if (asset.daysToExpiry <= 10) return { dot: 'bg-orange-500', badge: 'bg-orange-500/10 text-orange-500', label: 'Expires 10d' };
+  if (asset.daysToExpiry <= 10) return { dot: 'bg-warning-strong', badge: 'bg-warning-strong/10 text-warning-strong', label: 'Expires 10d' };
   if (asset.daysToExpiry <= 30) return { dot: 'bg-amber', badge: 'bg-amber/10 text-amber', label: 'Expires 30d' };
-  if (asset.daysToExpiry <= 90) return { dot: 'bg-blue-500', badge: 'bg-blue-500/10 text-blue-500', label: 'Expires 90d' };
+  if (asset.daysToExpiry <= 90) return { dot: 'bg-info', badge: 'bg-info/10 text-info', label: 'Expires 90d' };
   return { dot: 'bg-teal', badge: 'bg-teal/10 text-teal', label: 'Valid' };
 }
 
@@ -669,9 +669,9 @@ export default function PushToDeviceModal({ open, onClose, onSubmit }: Props) {
                       <div className="mt-3 grid gap-2 text-[11px] text-muted-foreground">
                         <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-teal" /> Green: Valid</div>
                         <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-coral" /> Red: Expired</div>
-                        <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-blue-500" /> Blue: Expires 90d</div>
+                        <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-info" /> Blue: Expires 90d</div>
                         <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-amber" /> Yellow: Expires 30d</div>
-                        <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-orange-500" /> Orange: Expires 10d</div>
+                        <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-warning-strong" /> Orange: Expires 10d</div>
                         <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-foreground" /> Black: Revoked</div>
                         <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-muted-foreground" /> Gray: Push Failed</div>
                       </div>
