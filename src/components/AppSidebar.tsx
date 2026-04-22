@@ -23,6 +23,31 @@ interface NavItem {
   page?: string;
 }
 
+interface NavSubItemProps {
+  label: string;
+  count?: number;
+  isActive: boolean;
+  onClick: () => void;
+}
+
+const NavSubItem = ({ label, count, isActive, onClick }: NavSubItemProps) => (
+  <div
+    onClick={onClick}
+    className={`flex items-center justify-between pl-6 pr-3 py-1.5 cursor-pointer rounded-md mx-2 text-sm transition-colors ${
+      isActive
+        ? 'text-teal bg-teal/10 font-medium'
+        : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
+    }`}
+  >
+    <span>{label}</span>
+    {typeof count === 'number' && (
+      <span className="text-xs bg-white/10 text-muted-foreground px-1.5 py-0.5 rounded-full">
+        {count}
+      </span>
+    )}
+  </div>
+);
+
 const navItems: NavItem[] = [
   { id: 'dashboard', label: 'DASHBOARD', icon: LayoutDashboard, page: 'dashboards' },
   { id: 'discovery', label: 'DISCOVERY', icon: Search, page: 'discovery' },
@@ -173,22 +198,13 @@ export default function AppSidebar() {
                 {expandedGroups.includes(item.id) && (
                   <div className="ml-4 mt-0.5 space-y-0.5 border-l border-navy-lighter pl-3">
                     {item.children.map(child => (
-                      <button
+                      <NavSubItem
                         key={child.id}
+                        label={child.label}
+                        count={child.count}
+                        isActive={isActive(child.id, child.page)}
                         onClick={() => handleNavClick(child.id, child.page, child.type)}
-                        className={`w-full text-left px-3 py-1.5 rounded-md text-xs transition-colors ${
-                          isActive(child.id, child.page) ? 'bg-teal/10 text-teal font-medium' : 'text-sidebar-foreground hover:bg-navy-light hover:text-primary-foreground'
-                        }`}
-                      >
-                        <span className="flex items-center justify-between gap-2">
-                          <span>{child.label}</span>
-                          {typeof child.count === 'number' && (
-                            <span className="min-w-[20px] px-1.5 py-0.5 rounded-full bg-navy-light text-[10px] font-semibold text-muted-foreground text-center">
-                              {child.count}
-                            </span>
-                          )}
-                        </span>
-                      </button>
+                      />
                     ))}
                   </div>
                 )}
