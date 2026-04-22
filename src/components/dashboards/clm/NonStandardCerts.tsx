@@ -2,6 +2,7 @@ import React from 'react';
 import { FileX, Globe, HelpCircle, Building, AlertTriangle, Unlink, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { mockAssets } from '@/data/mockData';
+import type { CertCounts } from './types';
 
 const certAssets = mockAssets.filter(a =>
   a.type === 'TLS Certificate' || a.type === 'Code-Signing Certificate' ||
@@ -33,6 +34,7 @@ const tiles = [
 
 type NonStandardCertsProps = {
   openModal?: (title: string, certs: any[]) => void;
+  certCounts: CertCounts;
 };
 
 export default function NonStandardCerts({ openModal }: NonStandardCertsProps) {

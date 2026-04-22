@@ -11,6 +11,7 @@ import {
   Send, Key, Ruler, SlidersHorizontal, ChevronDown, XCircle,
   ArrowRight, ExternalLink,
 } from 'lucide-react';
+import type { CertCounts } from './types';
 
 const T = {
   teal:   'hsl(160 70% 37%)',
@@ -125,6 +126,7 @@ function SLCGauge({ score }: { score: number }) {
 
 type SLCDashboardProps = {
   openModal?: (title: string, certs: any[]) => void;
+  certCounts: CertCounts;
 };
 
 export default function SLCDashboard({ openModal }: SLCDashboardProps) {

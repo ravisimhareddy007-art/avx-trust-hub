@@ -3,11 +3,13 @@ import { Info, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { ESTATE_SUMMARY, mockAssets } from '@/data/mockData';
 import { useNav } from '@/context/NavigationContext';
+import type { CertCounts } from './types';
 
 const allCerts = mockAssets.filter((a) => a.type.includes('Certificate'));
 
 type OperationsStatusBandsProps = {
   openModal?: (title: string, certs: any[]) => void;
+  certCounts: CertCounts;
 };
 
 type Segment = {
@@ -71,7 +73,7 @@ function CompactBandCard({
   );
 }
 
-export default function OperationsStatusBands({ openModal }: OperationsStatusBandsProps) {
+export default function OperationsStatusBands({ openModal, certCounts }: OperationsStatusBandsProps) {
   const { setCurrentPage, setFilters } = useNav();
 
   const openInventory = (filterValue: string) => {
@@ -128,7 +130,7 @@ export default function OperationsStatusBands({ openModal }: OperationsStatusBan
       color: 'hsl(var(--purple))',
       trackClass: 'bg-purple-light',
       pattern: 'modal',
-      action: () => openGuardedModal('Non-Automated Renewals', allCerts.filter((a) => !a.autoRenewal)),
+      action: () => openGuardedModal('Non-Automated Renewals', certCounts.noAutoRenewal),
     },
   ];
 
@@ -152,7 +154,7 @@ export default function OperationsStatusBands({ openModal }: OperationsStatusBan
       color: 'hsl(var(--purple))',
       trackClass: 'bg-purple-light',
       pattern: 'modal',
-      action: () => openGuardedModal('Auto Push Not Configured', allCerts.filter((a) => !a.autoRenewal)),
+      action: () => openGuardedModal('Auto Push Not Configured', certCounts.noAutoRenewal),
     },
   ];
 
