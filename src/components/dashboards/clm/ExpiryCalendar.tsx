@@ -1,4 +1,5 @@
 import React from 'react';
+import { toast } from 'sonner';
 import { mockAssets } from '@/data/mockData';
 import { useNav } from '@/context/NavigationContext';
 
@@ -17,12 +18,17 @@ export default function ExpiryCalendar({ openModal }: ExpiryCalendarProps) {
   );
 
   const today = new Date();
+  const scaleMultiplier = Math.round(14847 / certAssets.length);
 
   const days = Array.from({ length: 30 }, (_, i) => {
     const matching = certAssets.filter(a => a.daysToExpiry === i);
-    const covered = matching.filter(a => a.autoRenewal === true).length;
-    const atRisk = matching.filter(a => !a.autoRenewal).length;
-    const total = matching.length;
+    const coveredBase = matching.filter(a => a.autoRenewal === true).length;
+    const atRiskBase = matching.filter(a => !a.autoRenewal).length;
+    const totalBase = matching.length;
+
+    const covered = totalBase > 0 ? coveredBase * scaleMultiplier : 0;
+    const atRisk = totalBase > 0 ? atRiskBase * scaleMultiplier : 0;
+    const total = totalBase > 0 ? totalBase * scaleMultiplier : 0;
 
     const d = new Date(today);
     d.setDate(d.getDate() + i);
@@ -31,7 +37,7 @@ export default function ExpiryCalendar({ openModal }: ExpiryCalendarProps) {
     else if (i === 1) label = 'Tomorrow';
     else label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-    return { day: i, label, total, covered, atRisk };
+    return { day: i, label, total, covered, atRisk, matching };
   });
 
   const totalCovered = days.reduce((s, d) => s + d.covered, 0);
@@ -46,7 +52,6 @@ export default function ExpiryCalendar({ openModal }: ExpiryCalendarProps) {
 
   return (
     <div className="bg-card border border-border rounded-xl p-5">
-      {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-foreground">30-Day Expiry Forecast</h3>
         <div className="flex items-center gap-2">
@@ -59,16 +64,23 @@ export default function ExpiryCalendar({ openModal }: ExpiryCalendarProps) {
         </div>
       </div>
 
-      {/* Grid */}
       <div className="grid grid-cols-6 gap-1.5">
         {days.map(d => (
           <div
             key={d.day}
             onClick={() => {
-              if (d.total === 0) return;
-              const dayCerts = certAssets.filter(a => a.daysToExpiry === d.day);
+              if (d.total === 0) {
+                toast.info('No certificates in this category');
+                return;
+              }
+              const dayCerts = d.matching;
               if (d.atRisk > 0) {
-                openModal?.(`Expiring ${d.label}`, dayCerts.filter(a => !a.autoRenewal).length ? dayCerts.filter(a => !a.autoRenewal) : dayCerts);
+                const atRiskCerts = dayCerts.filter(a => !a.autoRenewal);
+                if (!atRiskCerts.length && !dayCerts.length) {
+                  toast.info('No certificates in this category');
+                  return;
+                }
+                openModal?.(`Expiring ${d.label}`, atRiskCerts.length ? atRiskCerts : dayCerts);
                 return;
               }
               setFilters({ daysToExpiry: d.day.toString(), type: 'TLS Certificate' });
@@ -94,7 +106,6 @@ export default function ExpiryCalendar({ openModal }: ExpiryCalendarProps) {
         ))}
       </div>
 
-      {/* Summary */}
       {totalAtRisk > 0 && (
         <p
           onClick={() => setCurrentPage('remediation')}

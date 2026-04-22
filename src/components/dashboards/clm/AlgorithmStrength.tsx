@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrowRight, ExternalLink, ShieldAlert } from 'lucide-react';
+import { toast } from 'sonner';
 import { mockAssets } from '@/data/mockData';
 import { useNav } from '@/context/NavigationContext';
 
@@ -78,9 +79,23 @@ export default function AlgorithmStrength({ openModal }: AlgorithmStrengthProps)
   const { setCurrentPage, setFilters } = useNav();
   const total = certAssets.length;
 
-  const openInventory = (extra: Record<string, string> = {}) => {
+  const showEmpty = () => toast.info('No certificates in this category');
+
+  const openInventory = (count: number, extra: Record<string, string> = {}) => {
+    if (count === 0) {
+      showEmpty();
+      return;
+    }
     setFilters({ type: 'TLS Certificate', ...extra });
     setCurrentPage('inventory');
+  };
+
+  const openGuardedModal = (title: string, certs: typeof certAssets) => {
+    if (!certs || certs.length === 0) {
+      showEmpty();
+      return;
+    }
+    openModal?.(title, certs);
   };
 
   const sigCounts = SIG_BUCKETS.map(b => {
@@ -113,20 +128,25 @@ export default function AlgorithmStrength({ openModal }: AlgorithmStrengthProps)
   const qvCerts = certAssets.filter(a => qvAlgs.includes(a.algorithm));
   const qvCount = qvCerts.length;
 
-  const handleSignatureClick = (label: string) => {
+  const handleSignatureClick = (label: string, count: number) => {
+    if (count === 0) {
+      showEmpty();
+      return;
+    }
+
     if (label === 'Disallowed') {
-      openModal?.('Disallowed Algorithms', certAssets.filter(a => ['RSA-1024', 'SHA-1'].includes(a.algorithm)));
+      openGuardedModal('Disallowed Algorithms', certAssets.filter(a => ['RSA-1024', 'SHA-1'].includes(a.algorithm)));
       return;
     }
     if (label === 'Legacy') {
-      openModal?.('Legacy Algorithms', certAssets.filter(a => ['RSA-2048', 'RSA-3072'].includes(a.algorithm)));
+      openGuardedModal('Legacy Algorithms', certAssets.filter(a => ['RSA-2048', 'RSA-3072'].includes(a.algorithm)));
       return;
     }
     if (label === 'Approved') {
-      openInventory({ algorithmGroup: 'approved' });
+      openInventory(count, { algorithmGroup: 'approved' });
       return;
     }
-    openInventory({ algorithmGroup: 'pqc-safe' });
+    openInventory(count, { algorithmGroup: 'pqc-safe' });
   };
 
   return (
@@ -138,20 +158,20 @@ export default function AlgorithmStrength({ openModal }: AlgorithmStrengthProps)
 
       <div className="mb-5">
         <p className="text-xs text-muted-foreground mb-2">Signature Algorithm Distribution</p>
-        <StackedBar segments={sigCounts.map(s => ({ pct: s.pct, barColor: s.barColor, onClick: () => handleSignatureClick(s.label), actionable: true }))} />
+        <StackedBar segments={sigCounts.map(s => ({ pct: s.pct, barColor: s.barColor, onClick: s.count > 0 ? () => handleSignatureClick(s.label, s.count) : () => showEmpty(), actionable: s.count > 0 }))} />
         <LegendRow items={sigCounts.map((item) => ({
           label: item.label,
           count: item.count,
           pct: item.pct,
           color: item.color,
-          actionable: true,
+          actionable: item.count > 0,
           pattern: item.label === 'Disallowed' || item.label === 'Legacy' ? 'modal' : 'inventory',
-          onClick: () => handleSignatureClick(item.label),
+          onClick: () => handleSignatureClick(item.label, item.count),
         }))} />
         {qvCount > 0 && (
           <button
             type="button"
-            onClick={() => openModal?.('Quantum-Vulnerable Certs', qvCerts)}
+            onClick={() => openGuardedModal('Quantum-Vulnerable Certs', qvCerts)}
             className="group mt-2 inline-flex items-center gap-1 text-xs text-amber transition-colors hover:text-foreground"
           >
             <span>⚠ {qvCount} of {total} certs use quantum-vulnerable algorithms (RSA/ECC)</span>

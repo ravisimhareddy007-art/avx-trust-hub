@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrowRight, Clock } from 'lucide-react';
+import { toast } from 'sonner';
 import { mockAssets } from '@/data/mockData';
 
 interface Stage {
@@ -10,11 +11,11 @@ interface Stage {
 }
 
 const stages: Stage[] = [
-  { label: 'Detected expiring', count: 847, color: 'text-coral' },
-  { label: 'Renewal initiated', count: 634, color: 'text-amber', stalled: true },
-  { label: 'Submitted to CA', count: 521, color: 'text-purple-light' },
-  { label: 'Issued by CA', count: 489, color: 'text-teal' },
-  { label: 'Deployed', count: 312, color: 'text-teal' },
+  { label: 'Detected expiring', count: 1284, color: 'text-coral' },
+  { label: 'Renewal initiated', count: 967, color: 'text-amber', stalled: true },
+  { label: 'Submitted to CA', count: 834, color: 'text-purple-light' },
+  { label: 'Issued by CA', count: 756, color: 'text-teal' },
+  { label: 'Deployed', count: 498, color: 'text-teal' },
 ];
 
 type RenewalPipelineProps = {
@@ -31,15 +32,25 @@ export default function RenewalPipeline({ openModal }: RenewalPipelineProps) {
       case 'Renewal initiated':
         return allCerts.filter((a) => a.autoRenewal && a.daysToExpiry <= 90);
       case 'Submitted to CA':
-        return allCerts.slice(0, 521);
+        return allCerts.slice(0, 834);
       case 'Issued by CA':
-        return allCerts.slice(0, 489);
+        return allCerts.slice(0, 756);
       case 'Deployed':
-        return allCerts.slice(0, 312);
+        return allCerts.slice(0, 498);
       default:
         return allCerts;
     }
   };
+
+  const handleOpen = (title: string, certs: any[], count: number) => {
+    if (count === 0 || !certs || certs.length === 0) {
+      toast.info('No certificates in this category');
+      return;
+    }
+    openModal?.(title, certs);
+  };
+
+  const noRenewalPlanCerts = allCerts.filter((a) => !a.autoRenewal);
 
   return (
     <div className="bg-card border border-border rounded-xl p-5">
@@ -49,31 +60,35 @@ export default function RenewalPipeline({ openModal }: RenewalPipelineProps) {
       </div>
 
       <div className="flex items-center gap-1">
-        {stages.map((s, i) => (
-          <React.Fragment key={s.label}>
-            <div
-              onClick={() => openModal?.(s.label.replace(/(^\w)|\s\w/g, (m) => m.toUpperCase()), getStageCerts(s.label))}
-              className={`group flex-1 rounded-lg border border-border bg-secondary/30 p-3 text-center cursor-pointer transition-all hover:bg-secondary/40 ${i === stages.length - 1 ? 'bg-teal/10 border-teal/30' : ''}`}
-            >
-              <p className="text-[10px] text-muted-foreground mb-1 leading-tight">{s.label}</p>
-              <div className="flex items-center justify-center gap-1">
-                <span className={`text-xl font-bold ${s.color}`}>{s.count.toLocaleString()}</span>
-                {s.stalled && <Clock className="w-3 h-3 text-amber" />}
-                <ArrowRight className="h-3 w-3 text-teal opacity-0 transition-opacity group-hover:opacity-100" />
+        {stages.map((s, i) => {
+          const certs = getStageCerts(s.label);
+          const isInteractive = s.count > 0;
+          return (
+            <React.Fragment key={s.label}>
+              <div
+                onClick={isInteractive ? () => handleOpen(s.label.replace(/(^\w)|\s\w/g, (m) => m.toUpperCase()), certs, s.count) : undefined}
+                className={`group flex-1 rounded-lg border border-border bg-secondary/30 p-3 text-center transition-all ${isInteractive ? 'cursor-pointer hover:bg-secondary/40' : 'cursor-default'} ${i === stages.length - 1 ? 'bg-teal/10 border-teal/30' : ''}`}
+              >
+                <p className="text-[10px] text-muted-foreground mb-1 leading-tight">{s.label}</p>
+                <div className="flex items-center justify-center gap-1">
+                  <span className={`text-xl font-bold ${s.color}`}>{s.count.toLocaleString()}</span>
+                  {s.stalled && <Clock className="w-3 h-3 text-amber" />}
+                  {isInteractive ? <ArrowRight className="h-3 w-3 text-teal opacity-0 transition-opacity group-hover:opacity-100" /> : null}
+                </div>
               </div>
-            </div>
-            {i < stages.length - 1 && (
-              <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-            )}
-          </React.Fragment>
-        ))}
+              {i < stages.length - 1 && (
+                <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+              )}
+            </React.Fragment>
+          );
+        })}
       </div>
 
       <p
-        onClick={() => openModal?.('No Renewal Plan', allCerts.filter((a) => !a.autoRenewal))}
+        onClick={() => handleOpen('No Renewal Plan', noRenewalPlanCerts, 786)}
         className="mt-3 inline-flex cursor-pointer items-center gap-1 text-xs text-coral hover:underline"
       >
-        ⚠ 535 certs have no renewal plan and are not in this pipeline
+        ⚠ 786 certs have no renewal plan and are not in this pipeline
       </p>
     </div>
   );

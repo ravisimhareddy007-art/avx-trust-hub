@@ -11,10 +11,10 @@ interface CARow {
 }
 
 const caData: CARow[] = [
-  { name: 'DigiCert', status: 'Healthy', issuedToday: 42, failRate: '0.3%', quota: 84 },
-  { name: 'Entrust', status: 'Healthy', issuedToday: 18, failRate: '0.1%', quota: 52 },
-  { name: 'MSCA Enterprise', status: 'Warning', issuedToday: 12, failRate: '2.1%', quota: 67 },
-  { name: "Let's Encrypt", status: 'Healthy', issuedToday: 89, failRate: '0.2%', quota: 'N/A' },
+  { name: 'DigiCert', status: 'Healthy', issuedToday: 234, failRate: '0.3%', quota: 84 },
+  { name: 'Entrust', status: 'Healthy', issuedToday: 89, failRate: '0.1%', quota: 52 },
+  { name: 'MSCA Enterprise', status: 'Warning', issuedToday: 67, failRate: '2.1%', quota: 67 },
+  { name: "Let's Encrypt", status: 'Healthy', issuedToday: 412, failRate: '0.2%', quota: 'N/A' },
 ];
 
 function StatusDot({ status }: { status: 'Healthy' | 'Warning' | 'Error' }) {
@@ -50,13 +50,11 @@ export default function CAHealthStrip() {
 
   return (
     <div className="bg-card border border-border rounded-xl p-5">
-      {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-foreground">CA Health</h3>
         <span className="text-xs text-muted-foreground">4 connected</span>
       </div>
 
-      {/* Table */}
       <table className="w-full text-sm">
         <thead>
           <tr className="text-xs text-muted-foreground border-b border-border">

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Search } from 'lucide-react';
+import { toast } from 'sonner';
 import { mockAssets } from '@/data/mockData';
 import { useNav } from '@/context/NavigationContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
@@ -40,7 +41,11 @@ export default function ScanCoverage() {
     ? Math.round((tagCounts.find(t => t.key === 'network-scan')!.count / total) * 100)
     : 28;
 
-  const openInventory = (sourceKey: string) => {
+  const openInventory = (sourceKey: string, count: number) => {
+    if (count === 0) {
+      toast.info('No certificates in this category');
+      return;
+    }
     setFilters({ type: 'TLS Certificate', discoverySource: sourceKey });
     setCurrentPage('inventory');
   };
@@ -67,7 +72,7 @@ export default function ScanCoverage() {
               fontSize: '11px',
             }}
           />
-          <Bar dataKey="count" radius={[0, 4, 4, 0]} fill="hsl(var(--teal))" cursor="pointer" onClick={(entry) => openInventory(entry.key)}>
+          <Bar dataKey="count" radius={[0, 4, 4, 0]} fill="hsl(var(--teal))" cursor="pointer" onClick={(entry: any) => openInventory(entry.key, entry.count)}>
             <LabelList dataKey="count" position="right" style={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
           </Bar>
         </BarChart>

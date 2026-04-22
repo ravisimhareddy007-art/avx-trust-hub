@@ -1,5 +1,6 @@
 import React from 'react';
 import { FileX, Globe, HelpCircle, Building, AlertTriangle, Unlink, ArrowRight } from 'lucide-react';
+import { toast } from 'sonner';
 import { mockAssets } from '@/data/mockData';
 
 const certAssets = mockAssets.filter(a =>
@@ -16,7 +17,7 @@ function computeCounts() {
   let unassociated = certAssets.filter(a => a.dependencyCount === 0).length;
 
   if (selfSigned + wildcard + unknownCA + rootCAIssued + sanMismatch + unassociated === 0) {
-    return { selfSigned: 5, wildcard: 3, unknownCA: 8, rootCAIssued: 3, sanMismatch: 7, unassociated: 4 };
+    return { selfSigned: 234, wildcard: 89, unknownCA: 412, rootCAIssued: 67, sanMismatch: 156, unassociated: 43 };
   }
   return { selfSigned, wildcard, unknownCA, rootCAIssued, sanMismatch, unassociated };
 }
@@ -55,6 +56,21 @@ export default function NonStandardCerts({ openModal }: NonStandardCertsProps) {
     }
   };
 
+  const handleTileClick = (label: string, key: typeof tiles[number]['key'], count: number) => {
+    if (count === 0) {
+      toast.info('No certificates in this category');
+      return;
+    }
+
+    const certs = getTileCerts(key);
+    if (!certs || certs.length === 0) {
+      toast.info('No certificates in this category');
+      return;
+    }
+
+    openModal?.(`Non-Standard: ${label}`, certs);
+  };
+
   return (
     <div className="bg-card border border-border rounded-xl p-5">
       <div className="flex items-center justify-between mb-4">
@@ -65,15 +81,16 @@ export default function NonStandardCerts({ openModal }: NonStandardCertsProps) {
         {tiles.map(t => {
           const count = counts[t.key];
           const Icon = t.icon;
+          const isInteractive = count > 0;
           return (
             <div
               key={t.key}
-              onClick={() => openModal?.(`Non-Standard: ${t.label}`, getTileCerts(t.key))}
-              className={`group rounded-lg border p-4 cursor-pointer hover:bg-secondary/40 transition-all ${getTint(count)}`}
+              onClick={isInteractive ? () => handleTileClick(t.label, t.key, count) : undefined}
+              className={`group rounded-lg border p-4 ${getTint(count)} ${isInteractive ? 'cursor-pointer hover:bg-secondary/40 transition-all' : 'cursor-default'}`}
             >
               <div className="mb-2 flex items-center justify-between">
                 <Icon className="w-4 h-4 text-muted-foreground" />
-                <ArrowRight className="h-3 w-3 text-teal opacity-0 transition-opacity group-hover:opacity-100" />
+                {isInteractive ? <ArrowRight className="h-3 w-3 text-teal opacity-0 transition-opacity group-hover:opacity-100" /> : null}
               </div>
               <p className={`text-2xl font-bold ${count > 3 ? 'text-coral' : count >= 1 ? 'text-amber' : 'text-muted-foreground'}`}>{count}</p>
               <p className="text-[10px] text-muted-foreground mt-1">{t.label}</p>
