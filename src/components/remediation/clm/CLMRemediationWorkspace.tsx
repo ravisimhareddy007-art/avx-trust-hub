@@ -35,6 +35,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import EnrollCertificateWizard from './actions/EnrollCertificateWizard';
+import PushToDeviceModal from './actions/PushToDeviceModal';
 import { clmCertificates, clmIssueFilters, clmIssues, policyRequestsSeed, sslCheckMock } from './mockData';
 import { ClmIssueAction, ClmIssueFilter, ClmIssueRow, ClmTab, PolicyActionType, PolicyRequestRow } from './types';
 
@@ -45,7 +46,6 @@ interface Props {
 
 type EnvironmentFilter = 'All' | 'Production' | 'Staging' | 'Development';
 type QueueFilter = 'All' | 'Pending' | 'In Progress' | 'Completed' | 'Failed';
-type CredentialMode = 'password' | 'ssh-key';
 type ValidityUnit = 'Days' | 'Months' | 'Years';
 
 const proactiveCards = [
@@ -333,7 +333,7 @@ const ExecutionLogDrawer = ({ request, open, onClose }: { request: PolicyRequest
   );
 };
 
-const OverflowMenu = ({ row, onAction }: { row: ClmIssueRow; onAction: (action: ClmIssueAction, row: ClmIssueRow) => void }) => {
+const OverflowMenu = ({ row, onAction, onPush }: { row: ClmIssueRow; onAction: (action: ClmIssueAction, row: ClmIssueRow) => void; onPush: (row: ClmIssueRow) => void }) => {
   const [open, setOpen] = useState(false);
   const actions = row.menuActions;
 
@@ -363,6 +363,17 @@ const OverflowMenu = ({ row, onAction }: { row: ClmIssueRow; onAction: (action: 
                 </button>
               );
             })}
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                onPush(row);
+              }}
+              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs text-foreground hover:bg-secondary"
+            >
+              <Upload className="h-3.5 w-3.5 text-muted-foreground" />
+              Push to Device
+            </button>
           </div>
         </>
       )}
@@ -504,164 +515,6 @@ function GenerateCSRModal({ open, onClose }: { open: boolean; onClose: () => voi
           <button type="button" onClick={generate} className="rounded-md bg-teal px-4 py-2 text-xs font-medium text-primary-foreground hover:bg-teal-light">
             Generate CSR
           </button>
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
-function PushToDeviceModal({ open, onClose, onSubmit }: { open: boolean; onClose: () => void; onSubmit: (request: PolicyRequestRow) => void }) {
-  const [step, setStep] = useState(1);
-  const [selectedCert, setSelectedCert] = useState(clmCertificates[0]?.id ?? '');
-  const [certSearch, setCertSearch] = useState('');
-  const [host, setHost] = useState('nginx-prod-01');
-  const [deviceType, setDeviceType] = useState(deviceTypes[2]);
-  const [username, setUsername] = useState('svc-certpush');
-  const [password, setPassword] = useState('');
-  const [credentialMode, setCredentialMode] = useState<CredentialMode>('password');
-  const [sshKey, setSshKey] = useState('');
-  const [running, setRunning] = useState(false);
-  const [progressIndex, setProgressIndex] = useState(0);
-
-  const filteredCertificates = useMemo(() => {
-    return clmCertificates.filter((cert) => cert.name.toLowerCase().includes(certSearch.toLowerCase()));
-  }, [certSearch]);
-
-  const selectedCertificate = clmCertificates.find((cert) => cert.id === selectedCert) ?? clmCertificates[0];
-  const progressStages = ['Connecting to target', 'Pushing certificate bundle', 'Verifying deployment'];
-
-  useEffect(() => {
-    if (!running) return undefined;
-    if (progressIndex >= progressStages.length) {
-      const request: PolicyRequestRow = {
-        id: `REQ-${Math.floor(41050 + Math.random() * 100)}`,
-        action: 'Push to Device',
-        certificateTarget: `${selectedCertificate.name} -> ${host}`,
-        requestedBy: 'Current User',
-        created: 'Just now',
-        status: 'Pending',
-        subject: selectedCertificate.name,
-        targetCA: selectedCertificate.caIssuer,
-        stages: [
-          { label: 'Enrollment Request', timestamp: 'Just now', status: 'done', details: [{ label: 'Certificate', value: selectedCertificate.name }, { label: 'Target', value: host }] },
-          { label: 'Request Creation', timestamp: 'Queued', status: 'active', details: [{ label: 'Device Type', value: deviceType }] },
-          { label: 'CA Submission', timestamp: 'Pending', status: 'pending', details: [{ label: 'Credential Mode', value: credentialMode === 'password' ? 'Username + Password' : 'SSH Key' }] },
-          { label: 'Certificate Issued', timestamp: 'Pending', status: 'pending', details: [{ label: 'Result', value: 'Awaiting completion' }] },
-        ],
-      };
-      onSubmit(request);
-      toast.success('Certificate push completed.');
-      setRunning(false);
-      setProgressIndex(0);
-      onClose();
-      return undefined;
-    }
-
-    const timer = window.setTimeout(() => setProgressIndex((value) => value + 1), 600);
-    return () => window.clearTimeout(timer);
-  }, [running, progressIndex, progressStages.length, selectedCertificate, host, deviceType, credentialMode, onClose, onSubmit]);
-
-  useEffect(() => {
-    if (!open) {
-      setStep(1);
-      setRunning(false);
-      setProgressIndex(0);
-    }
-  }, [open]);
-
-  return (
-    <Modal open={open} onClose={onClose} title="Push to Device">
-      <div className="space-y-4">
-        <div className="inline-flex rounded-md border border-border bg-background/30 p-1 text-xs">
-          {[1, 2, 3].map((value) => (
-            <div key={value} className={`rounded px-3 py-1 ${step === value ? 'bg-card text-foreground' : 'text-muted-foreground'}`}>Step {value}</div>
-          ))}
-        </div>
-
-        {step === 1 && (
-          <div className="space-y-3">
-            <FormField label="Certificate selector">
-              <Input value={certSearch} onChange={(event) => setCertSearch(event.target.value)} placeholder="Search certificate inventory" />
-            </FormField>
-            <div className="max-h-48 space-y-2 overflow-auto rounded-lg border border-border bg-background/30 p-2">
-              {filteredCertificates.map((cert) => (
-                <button
-                  key={cert.id}
-                  type="button"
-                  onClick={() => setSelectedCert(cert.id)}
-                  className={`flex w-full items-center justify-between rounded-md border px-3 py-2 text-left ${selectedCert === cert.id ? 'border-teal bg-teal/5' : 'border-transparent hover:border-border hover:bg-card'}`}
-                >
-                  <div>
-                    <p className="font-medium text-foreground">{cert.name}</p>
-                    <p className="text-[11px] text-muted-foreground">Expiry {cert.expiryDate} · {cert.caIssuer}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {step === 2 && (
-          <div className="grid gap-4">
-            <FormField label="Hostname or IP">
-              <Input value={host} onChange={(event) => setHost(event.target.value)} />
-            </FormField>
-            <FormSelect label="Device type" value={deviceType} onChange={setDeviceType} options={deviceTypes} />
-          </div>
-        )}
-
-        {step === 3 && (
-          <div className="space-y-4">
-            <FormField label="Username">
-              <Input value={username} onChange={(event) => setUsername(event.target.value)} />
-            </FormField>
-            <div>
-              <Label>Credentials</Label>
-              <div className="mt-2 inline-flex rounded-md border border-border bg-background/30 p-1 text-xs">
-                <button type="button" onClick={() => setCredentialMode('password')} className={`rounded px-3 py-1 ${credentialMode === 'password' ? 'bg-card text-foreground' : 'text-muted-foreground'}`}>
-                  Username + Password
-                </button>
-                <button type="button" onClick={() => setCredentialMode('ssh-key')} className={`rounded px-3 py-1 ${credentialMode === 'ssh-key' ? 'bg-card text-foreground' : 'text-muted-foreground'}`}>
-                  SSH Key
-                </button>
-              </div>
-            </div>
-            {credentialMode === 'password' ? (
-              <FormField label="Password">
-                <Input type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
-              </FormField>
-            ) : (
-              <FormField label="SSH Key">
-                <Textarea value={sshKey} onChange={(event) => setSshKey(event.target.value)} className="min-h-[120px] font-mono text-xs" />
-              </FormField>
-            )}
-          </div>
-        )}
-
-        {running && (
-          <div className="space-y-2 rounded-lg border border-border bg-background/40 p-3">
-            {progressStages.map((label, index) => (
-              <div key={label} className="flex items-center gap-2 text-xs">
-                <span className={`h-2.5 w-2.5 rounded-full ${index < progressIndex ? 'bg-teal' : index === progressIndex ? 'animate-pulse bg-amber' : 'bg-muted'}`} />
-                <span className={index <= progressIndex ? 'text-foreground' : 'text-muted-foreground'}>{label}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="flex items-center justify-between border-t border-border pt-4">
-          <button type="button" onClick={() => (step === 1 ? onClose() : setStep((value) => value - 1))} className="rounded-md border border-border px-4 py-2 text-xs font-medium hover:bg-secondary">
-            Back
-          </button>
-          {step < 3 ? (
-            <button type="button" onClick={() => setStep((value) => value + 1)} className="rounded-md bg-teal px-4 py-2 text-xs font-medium text-primary-foreground hover:bg-teal-light">
-              Next
-            </button>
-          ) : (
-            <button type="button" onClick={() => { setRunning(true); setProgressIndex(0); }} className="rounded-md bg-teal px-4 py-2 text-xs font-medium text-primary-foreground hover:bg-teal-light">
-              Push Certificate
-            </button>
-          )}
         </div>
       </div>
     </Modal>
@@ -838,6 +691,7 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
   const [csrOpen, setCsrOpen] = useState(false);
   const [pushOpen, setPushOpen] = useState(false);
   const [sslDrawerOpen, setSslDrawerOpen] = useState(false);
+  const [pushSeedRow, setPushSeedRow] = useState<ClmIssueRow | null>(null);
 
   const issueCounts = useMemo(() => getIssueCounts(), []);
 
@@ -906,6 +760,12 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
   const launchIssueNewCertificate = () => {
     onTabChange('actions');
     setEnrollOpen(true);
+  };
+
+  const launchPushToDevice = (row?: ClmIssueRow) => {
+    if (row) setPushSeedRow(row);
+    onTabChange('actions');
+    setPushOpen(true);
   };
 
   const addPolicyRequest = (request: PolicyRequestRow) => {
@@ -1018,7 +878,7 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
                           </button>
                         </td>
                         <td className="px-3 py-3 align-top">
-                          <OverflowMenu row={row} onAction={handleAction} />
+                          <OverflowMenu row={row} onAction={handleAction} onPush={launchPushToDevice} />
                         </td>
                       </tr>
                     );
@@ -1041,7 +901,7 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
                 const Icon = card.icon;
                 const openCard = () => {
                   if (card.id === 'enroll') setEnrollOpen(true);
-                  if (card.id === 'push') setPushOpen(true);
+                  if (card.id === 'push') launchPushToDevice();
                   if (card.id === 'csr') setCsrOpen(true);
                   if (card.id === 'ssl') setSslDrawerOpen(true);
                 };
@@ -1144,7 +1004,7 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
       <ExecutionLogDrawer request={logRequest} open={!!logRequest} onClose={() => setLogRequest(null)} />
       <EnrollCertificateWizard open={enrollOpen} onClose={() => setEnrollOpen(false)} onSubmit={addPolicyRequest} />
       <GenerateCSRModal open={csrOpen} onClose={() => setCsrOpen(false)} />
-      <PushToDeviceModal open={pushOpen} onClose={() => setPushOpen(false)} onSubmit={addPolicyRequest} />
+      <PushToDeviceModal open={pushOpen} onClose={() => { setPushOpen(false); setPushSeedRow(null); }} onSubmit={addPolicyRequest} initialCertificateId={pushSeedRow?.assetId} />
       <SSLCheckerDrawer open={sslDrawerOpen} onClose={() => setSslDrawerOpen(false)} />
 
       <Modal open={!!actionType && !!actionRow} onClose={() => { setActionType(null); setActionRow(null); }} title={actionType ? `${actionType} Certificate` : 'Certificate Action'}>

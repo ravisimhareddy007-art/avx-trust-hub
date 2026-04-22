@@ -29,6 +29,8 @@ export default {
         amber: { DEFAULT: "hsl(var(--amber))", light: "hsl(var(--amber-light))" },
         coral: { DEFAULT: "hsl(var(--coral))", light: "hsl(var(--coral-light))" },
         purple: { DEFAULT: "hsl(var(--purple))", light: "hsl(var(--purple-light))" },
+        info: "hsl(var(--info))",
+        "warning-strong": "hsl(var(--warning-strong))",
         success: "hsl(var(--success))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
