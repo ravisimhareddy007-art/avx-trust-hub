@@ -1,7 +1,7 @@
 import { CryptoAsset } from '@/data/mockData';
 
 export type ClmTab = 'issues' | 'deployments' | 'actions';
-export type ClmIssueFilter = 'all-issues' | 'expiry' | 'pqc' | 'orphaned' | 'policy';
+export type ClmIssueFilter = 'all' | 'expiring' | 'pqc' | 'orphaned' | 'policy' | 'codesigning';
 export type ClmIssueType = 'Expiring / Expired' | 'PQC Migration' | 'Orphaned' | 'Policy Violation';
 export type ClmIssueAction =
   | 'Renew'
@@ -20,7 +20,7 @@ export interface ClmIssueRow {
   asset: CryptoAsset;
   severity: 'Critical' | 'High' | 'Medium' | 'Low';
   issueType: ClmIssueType;
-  issueCategory: Exclude<ClmIssueFilter, 'all-issues'>;
+  issueCategory: Exclude<ClmIssueFilter, 'all'>;
   issueText: string;
   recommended: string;
   owner: string;
