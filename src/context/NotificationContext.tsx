@@ -48,11 +48,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     setNotifications(prev => [newNotif, ...prev]);
   };
 
-  const markAllRead = () =>
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-
-  const markRead = (id: string) =>
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  const markAllRead = () => setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  const markRead = (id: string) => setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
 
   const unreadCount = notifications.filter(n => !n.read).length;
 

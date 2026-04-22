@@ -38,12 +38,8 @@ export default function TopBar() {
   const activeUndo = undoStack.filter(u => !u.rolledBack).length;
 
   // Escalation notifications relevant to current persona
-  const escalationsForMe = notifications.filter(n =>
-    (persona === 'security-admin' && n.toPersona === 'security-admin') ||
-    (persona === 'compliance-officer' && n.fromPersona === 'compliance-officer')
-  );
-  const myUnread = escalationsForMe.filter(n => !n.read).length + (persona !== 'compliance-officer' ? 0 : 0);
-  const totalUnread = persona === 'security-admin' ? myUnread : unreadCount;
+  const escalationsForMe = notifications.filter(n => n.toPersona === persona);
+  const myUnread = escalationsForMe.filter(n => !n.read).length;
 
   const handleBellClick = () => {
     setShowNotifications(!showNotifications);
@@ -96,10 +92,10 @@ export default function TopBar() {
             onClick={handleBellClick}
             className="relative p-2 rounded-lg hover:bg-muted transition-colors"
           >
-            <Bell className={`w-4 h-4 ${myUnread > 0 && persona === 'security-admin' ? 'text-coral' : 'text-muted-foreground'}`} />
-            {(myUnread > 0 || (persona !== 'security-admin' && totalUnread > 0)) && (
+            <Bell className={`w-4 h-4 ${myUnread > 0 ? 'text-coral' : 'text-muted-foreground'}`} />
+            {unreadCount > 0 && (
               <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-coral rounded-full text-[10px] text-primary-foreground flex items-center justify-center font-bold animate-pulse">
-                {myUnread > 0 ? myUnread : totalUnread}
+                {unreadCount}
               </span>
             )}
           </button>
