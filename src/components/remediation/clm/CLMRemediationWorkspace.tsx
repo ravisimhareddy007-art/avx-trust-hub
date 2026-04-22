@@ -443,20 +443,20 @@ function BulkActionBar({
   onAction,
 }: {
   selectedCount: number;
-  onAction: (label: 'Renew' | 'Revoke' | 'CA Switch' | 'Export' | 'Assign Owner') => void;
+  onAction: (label: 'Renew' | 'Revoke & Reissue' | 'Export' | 'Assign Owner') => void;
 }) {
   if (selectedCount === 0) return null;
 
   return (
-    <div className="pointer-events-none fixed bottom-6 left-1/2 z-40 -translate-x-1/2 animate-in slide-in-from-bottom-4 duration-200">
-      <div className="pointer-events-auto flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-3 shadow-2xl">
-        <span className="text-sm font-medium text-foreground">{selectedCount} selected</span>
-        {(['Renew', 'Revoke', 'CA Switch', 'Export', 'Assign Owner'] as const).map((action) => (
+    <div className="sticky top-0 z-30 -mb-2 animate-in slide-in-from-top-2 duration-200 px-5">
+      <div className="flex items-center gap-2 overflow-x-auto rounded-lg border border-border bg-card/95 px-4 py-3 shadow-lg backdrop-blur">
+        <span className="whitespace-nowrap text-sm font-medium text-foreground">{selectedCount} items selected</span>
+        {(['Renew', 'Revoke & Reissue', 'Assign Owner', 'Export'] as const).map((action) => (
           <button
             key={action}
             type="button"
             onClick={() => onAction(action)}
-            className={`rounded-md px-3 py-1.5 text-xs font-medium ${action === 'Renew' ? 'bg-teal text-primary-foreground hover:bg-teal-light' : action === 'Revoke' ? 'bg-coral/10 text-coral hover:bg-coral/20' : action === 'CA Switch' ? 'bg-amber/10 text-amber hover:bg-amber/20' : 'bg-muted text-foreground hover:bg-secondary'}`}
+            className={`whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium ${action === 'Renew' ? 'bg-teal text-primary-foreground hover:bg-teal-light' : action === 'Revoke & Reissue' ? 'bg-coral/10 text-coral hover:bg-coral/20' : 'bg-muted text-foreground hover:bg-secondary'}`}
           >
             {action}
           </button>
@@ -622,6 +622,7 @@ function ToggleRow({ label, checked, onChange }: { label: string; checked: boole
 
 export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Props) {
   const [issueSearch, setIssueSearch] = useState('');
+  const [quickFilterSelection, setQuickFilterSelection] = useState<Set<IssueQuickFilter>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [detailRow, setDetailRow] = useState<ClmIssueRow | null>(null);
   const [actionRow, setActionRow] = useState<ClmIssueRow | null>(null);
@@ -638,12 +639,41 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
   const [pushSeedRow, setPushSeedRow] = useState<ClmIssueRow | null>(null);
 
   const filteredIssues = useMemo(() => {
-    return clmIssues.filter((row) => {
+    return [...clmIssues]
+      .filter((row) => {
       const query = issueSearch.toLowerCase();
       const matchesSearch = !query || [row.asset.name, row.issueText, row.recommended, row.owner].some((value) => value.toLowerCase().includes(query));
-      return matchesSearch;
-    });
-  }, [issueSearch]);
+      if (!matchesSearch) return false;
+      if (quickFilterSelection.has('expiringSoon')) {
+        const urgencyDays = getUrgencyDays(row);
+        if (urgencyDays === null || urgencyDays >= 7) return false;
+      }
+      if (quickFilterSelection.has('production') && row.environment !== 'Production') return false;
+      if (quickFilterSelection.has('highSeverity') && !['Critical', 'High'].includes(row.severity)) return false;
+      if (quickFilterSelection.has('unassigned') && !/unassigned|unknown|none/i.test(row.owner)) return false;
+      return true;
+      })
+      .sort((a, b) => {
+        const aDays = getUrgencyDays(a);
+        const bDays = getUrgencyDays(b);
+        if (aDays !== null && bDays !== null) return aDays - bDays;
+        if (aDays !== null) return -1;
+        if (bDays !== null) return 1;
+        return a.asset.daysToExpiry - b.asset.daysToExpiry;
+      });
+  }, [issueSearch, quickFilterSelection]);
+
+  const summaryCounts = useMemo(() => {
+    const critical = filteredIssues.filter((row) => {
+      const days = getUrgencyDays(row);
+      return days !== null && days <= 3;
+    }).length;
+    const warning = filteredIssues.filter((row) => {
+      const days = getUrgencyDays(row);
+      return days !== null && days >= 4 && days <= 7;
+    }).length;
+    return { critical, warning, total: filteredIssues.length };
+  }, [filteredIssues]);
 
   const queueRows = useMemo(() => {
     return policyRequests.filter((row) => {
