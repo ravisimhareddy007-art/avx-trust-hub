@@ -215,7 +215,9 @@ export default function PKIEngineerDashboard() {
   const [switchCa, setSwitchCa] = useState('Entrust L1K');
   const [bulkUpdateMode, setBulkUpdateMode] = useState<'File Upload' | 'By Group'>('File Upload');
   const [revocationDone, setRevocationDone] = useState(false);
+  const actionsButtonRef = useRef<HTMLButtonElement | null>(null);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 });
   const { setFilters } = useNav();
 
   const allCerts = useMemo(
@@ -326,11 +328,27 @@ export default function PKIEngineerDashboard() {
 
   useEffect(() => {
     if (!actionsOpen) return;
+
+    const rect = actionsButtonRef.current?.getBoundingClientRect();
+    if (rect) {
+      setDropdownPos({
+        top: rect.bottom + 4,
+        right: window.innerWidth - rect.right,
+      });
+    }
+
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (
+        actionsButtonRef.current &&
+        !actionsButtonRef.current.contains(target) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(target)
+      ) {
         setActionsOpen(false);
       }
     };
+
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [actionsOpen]);
@@ -1059,11 +1077,10 @@ export default function PKIEngineerDashboard() {
 
       {drillOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/40 backdrop-blur-sm" onClick={() => setDrillOpen(false)}>
-          <div className="flex max-h-[85vh] w-[900px] max-w-[95vw] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="sticky top-0 flex items-center justify-between border-b border-border bg-card px-5 py-3">
+          <div className="flex h-[85vh] w-[900px] max-w-[95vw] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex flex-shrink-0 items-center justify-between border-b border-border bg-card px-5 py-3">
               <div className="text-sm font-semibold text-foreground">Severity :: {drillSeverity}</div>
               <div className="flex items-center gap-2">
-                <button type="button" onClick={() => setActionModal('renew')} className="rounded-md px-3 py-1.5 text-xs font-medium text-primary-foreground" style={{ backgroundColor: 'hsl(var(--teal))' }}>Remediate</button>
                 <button type="button" onClick={() => setActionModal('export')} className="rounded-md border border-border px-3 py-1.5 text-xs text-foreground">Export</button>
                 <span className="text-[10px] text-muted-foreground">1 to {tabCerts.length} of {tabCerts.length}</span>
                 <ChevronLeft className="h-3.5 w-3.5 text-muted-foreground" />
@@ -1075,7 +1092,7 @@ export default function PKIEngineerDashboard() {
               </div>
             </div>
 
-            <div className="flex border-b border-border px-5">
+            <div className="flex flex-shrink-0 border-b border-border px-5">
               {[
                 { id: 'server' as const, label: 'Server' },
                 { id: 'client' as const, label: 'Client' },
@@ -1095,7 +1112,7 @@ export default function PKIEngineerDashboard() {
               ))}
             </div>
 
-            <div className="flex items-center gap-3 border-b border-border bg-secondary/20 px-5 py-2.5">
+            <div className="flex flex-shrink-0 items-center gap-3 border-b border-border bg-secondary/20 px-5 py-2.5">
               <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <input type="checkbox" checked={selected.length === tabCerts.length && tabCerts.length > 0} onChange={selectAll} />
                 <span>Select all</span>
@@ -1103,8 +1120,9 @@ export default function PKIEngineerDashboard() {
               {selected.length > 0 && (
                 <span className="rounded-full bg-teal/15 px-2 py-0.5 text-[10px] text-teal">{selected.length} selected</span>
               )}
-              <div className="ml-auto relative" ref={dropdownRef}>
+              <div className="ml-auto">
                 <button
+                  ref={actionsButtonRef}
                   type="button"
                   disabled={selected.length === 0}
                   onClick={() => setActionsOpen((open) => !open)}
@@ -1114,42 +1132,10 @@ export default function PKIEngineerDashboard() {
                   Actions
                   <ChevronDown className={`h-3 w-3 transition-transform ${actionsOpen ? 'rotate-180' : ''}`} />
                 </button>
-                {actionsOpen && (
-                  <div className="absolute right-0 top-full z-50 mt-1 w-56 rounded-lg border border-border bg-card py-1 shadow-xl">
-                    <div>
-                      <button type="button" onClick={() => { setActionModal('export'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Download className="h-3.5 w-3.5" />Export Certificates</button>
-                      <button type="button" onClick={() => { setActionModal('download'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Download className="h-3.5 w-3.5" />Download Certificates</button>
-                    </div>
-                    <div className="my-1 h-px bg-border" />
-                    <div>
-                      <button type="button" onClick={() => { setActionModal('renew'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-teal hover:bg-secondary/40"><RefreshCw className="h-3.5 w-3.5" />Renew Certificate</button>
-                      <button type="button" onClick={() => { setActionModal('regenerate'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-teal hover:bg-secondary/40"><RotateCcw className="h-3.5 w-3.5" />Regenerate Certificate</button>
-                      <button type="button" onClick={() => { setActionModal('reissue'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-teal hover:bg-secondary/40"><ArrowRightLeft className="h-3.5 w-3.5" />Reissue Certificate</button>
-                      <button type="button" onClick={() => { setActionModal('revoke'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40" style={{ color: 'hsl(var(--coral))' }}><XCircle className="h-3.5 w-3.5" />Revoke Certificate</button>
-                      <button type="button" onClick={() => { setActionModal('ca-switch'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><ArrowRightLeft className="h-3.5 w-3.5" />CA Switch</button>
-                      <button type="button" onClick={() => { setActionModal('revocation-check'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><CheckCircle2 className="h-3.5 w-3.5" />Revocation Check</button>
-                    </div>
-                    <div className="my-1 h-px bg-border" />
-                    <div>
-                      <button type="button" onClick={() => { setActionModal('change-status'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Settings className="h-3.5 w-3.5" />Change Status</button>
-                      <button type="button" onClick={() => { setActionModal('assign-group'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Tag className="h-3.5 w-3.5" />Assign Group</button>
-                      <button type="button" onClick={() => { setActionModal('unassign-group'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Unlink className="h-3.5 w-3.5" />Unassign Group</button>
-                      <button type="button" onClick={() => { setActionModal('update-renew'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Clock className="h-3.5 w-3.5" />Update Renew Validity</button>
-                      <button type="button" onClick={() => { setActionModal('add-comments'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><MessageSquare className="h-3.5 w-3.5" />Add/Modify Comments</button>
-                      <button type="button" onClick={() => { setActionModal('bulk-update'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Layers className="h-3.5 w-3.5" />Bulk Update Attributes</button>
-                      <button type="button" onClick={() => { setActionModal('cert-attributes'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Settings className="h-3.5 w-3.5" />Certificate Attributes</button>
-                    </div>
-                    <div className="my-1 h-px bg-border" />
-                    <div>
-                      <button type="button" onClick={() => { setActionModal('archive'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40" style={{ color: 'hsl(var(--amber))' }}><Archive className="h-3.5 w-3.5" />Archive</button>
-                      <button type="button" onClick={() => { setActionModal('delete'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40" style={{ color: 'hsl(var(--coral))' }}><Trash2 className="h-3.5 w-3.5" />Delete</button>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto">
+            <div className="scrollbar-thin flex-1 overflow-y-auto">
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-secondary/50">
                   <tr className="border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -1196,6 +1182,43 @@ export default function PKIEngineerDashboard() {
                 </tbody>
               </table>
             </div>
+
+            {actionsOpen && (
+              <div
+                ref={dropdownRef}
+                style={{ position: 'fixed', top: dropdownPos.top, right: dropdownPos.right, zIndex: 9999 }}
+                className="w-56 rounded-lg border border-border bg-card py-1 shadow-xl"
+              >
+                    <div>
+                      <button type="button" onClick={() => { setActionModal('export'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Download className="h-3.5 w-3.5" />Export Certificates</button>
+                      <button type="button" onClick={() => { setActionModal('download'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Download className="h-3.5 w-3.5" />Download Certificates</button>
+                    </div>
+                    <div className="my-1 h-px bg-border" />
+                    <div>
+                      <button type="button" onClick={() => { setActionModal('renew'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-teal hover:bg-secondary/40"><RefreshCw className="h-3.5 w-3.5" />Renew Certificate</button>
+                      <button type="button" onClick={() => { setActionModal('regenerate'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-teal hover:bg-secondary/40"><RotateCcw className="h-3.5 w-3.5" />Regenerate Certificate</button>
+                      <button type="button" onClick={() => { setActionModal('reissue'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-teal hover:bg-secondary/40"><ArrowRightLeft className="h-3.5 w-3.5" />Reissue Certificate</button>
+                      <button type="button" onClick={() => { setActionModal('revoke'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40" style={{ color: 'hsl(var(--coral))' }}><XCircle className="h-3.5 w-3.5" />Revoke Certificate</button>
+                      <button type="button" onClick={() => { setActionModal('ca-switch'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><ArrowRightLeft className="h-3.5 w-3.5" />CA Switch</button>
+                      <button type="button" onClick={() => { setActionModal('revocation-check'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><CheckCircle2 className="h-3.5 w-3.5" />Revocation Check</button>
+                    </div>
+                    <div className="my-1 h-px bg-border" />
+                    <div>
+                      <button type="button" onClick={() => { setActionModal('change-status'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Settings className="h-3.5 w-3.5" />Change Status</button>
+                      <button type="button" onClick={() => { setActionModal('assign-group'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Tag className="h-3.5 w-3.5" />Assign Group</button>
+                      <button type="button" onClick={() => { setActionModal('unassign-group'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Unlink className="h-3.5 w-3.5" />Unassign Group</button>
+                      <button type="button" onClick={() => { setActionModal('update-renew'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Clock className="h-3.5 w-3.5" />Update Renew Validity</button>
+                      <button type="button" onClick={() => { setActionModal('add-comments'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><MessageSquare className="h-3.5 w-3.5" />Add/Modify Comments</button>
+                      <button type="button" onClick={() => { setActionModal('bulk-update'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Layers className="h-3.5 w-3.5" />Bulk Update Attributes</button>
+                      <button type="button" onClick={() => { setActionModal('cert-attributes'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Settings className="h-3.5 w-3.5" />Certificate Attributes</button>
+                    </div>
+                    <div className="my-1 h-px bg-border" />
+                    <div>
+                      <button type="button" onClick={() => { setActionModal('archive'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40" style={{ color: 'hsl(var(--amber))' }}><Archive className="h-3.5 w-3.5" />Archive</button>
+                      <button type="button" onClick={() => { setActionModal('delete'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40" style={{ color: 'hsl(var(--coral))' }}><Trash2 className="h-3.5 w-3.5" />Delete</button>
+                    </div>
+              </div>
+            )}
           </div>
           {renderActionModal()}
         </div>
