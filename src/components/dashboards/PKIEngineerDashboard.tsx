@@ -285,8 +285,6 @@ function getCrsBadgeColor(crs: number) {
 
 export default function PKIEngineerDashboard() {
   const [tab, setTab] = useState<CLMTab>('overview');
-  const [certType, setCertType] = useState('All Certificates');
-  const [caFilter, setCaFilter] = useState('All CAs');
   const [drillOpen, setDrillOpen] = useState(false);
   const [drillSeverity, setDrillSeverity] = useState('');
   const [drillKind, setDrillKind] = useState<'severity' | 'ca' | 'scan'>('severity');
@@ -1119,32 +1117,9 @@ export default function PKIEngineerDashboard() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Certificate Lifecycle Management</h1>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <select
-              value={certType}
-              onChange={(e) => setCertType(e.target.value)}
-              className="appearance-none rounded border border-border bg-muted py-1.5 pl-3 pr-7 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-            >
-              {CERT_TYPES.map((type) => <option key={type}>{type}</option>)}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
-          </div>
-          <div className="relative">
-            <select
-              value={caFilter}
-              onChange={(e) => setCaFilter(e.target.value)}
-              className="appearance-none rounded border border-border bg-muted py-1.5 pl-3 pr-7 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-            >
-              {CA_FILTERS.map((ca) => <option key={ca}>{ca}</option>)}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
-          </div>
-          <span className="text-xs text-muted-foreground">Refreshed 0m ago</span>
-          <button type="button" className="p-1 text-muted-foreground transition-colors hover:text-foreground" onClick={handleRefresh}>
-            <RefreshCw className="h-3.5 w-3.5" />
-          </button>
-        </div>
+        <button type="button" className="p-1 text-muted-foreground transition-colors hover:text-foreground" onClick={handleRefresh}>
+          <RefreshCw className="h-3.5 w-3.5" />
+        </button>
       </div>
 
       <div className="flex flex-shrink-0 items-center border-b border-border">
