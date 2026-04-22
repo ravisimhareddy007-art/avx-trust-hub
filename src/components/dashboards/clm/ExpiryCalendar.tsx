@@ -39,7 +39,7 @@ export default function ExpiryCalendar({ openModal, certCounts }: ExpiryCalendar
 
     const fallbackCerts = allCerts.slice(
       i * 2,
-      Math.min(allCerts.length, i * 2 + Math.max(1, total))
+      Math.min(allCerts.length, i * 2 + Math.max(1, total > 0 ? matching.length || 1 : 0 || 1))
     );
     const certsForThatDay = matching.length > 0 ? matching : fallbackCerts;
 
