@@ -471,7 +471,20 @@ export default function PKIEngineerDashboard() {
                       <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} angle={-15} textAnchor="end" height={50} axisLine={false} tickLine={false} interval={0} />
                       <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} label={{ value: 'Certificate Counts', angle: -90, position: 'insideLeft', style: { fill: 'hsl(var(--muted-foreground))', fontSize: 10 } }} />
                       <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 11 }} />
-                      <Bar dataKey="value" fill="hsl(230 60% 60%)" radius={[4, 4, 0, 0]} cursor="pointer" onClick={(data) => guardAndOpenDrill('scan', data.name, getScanTypeCerts(data.name), Number(Array.isArray(data.value) ? data.value[0] : data.value))}>
+                      <Bar
+                        dataKey="value"
+                        fill="hsl(230 60% 60%)"
+                        radius={[4, 4, 0, 0]}
+                        cursor="pointer"
+                        onClick={(data) => {
+                          const totalScanValue = scanData.reduce((sum, item) => sum + item.value, 0);
+                          const rawValue = Number(Array.isArray(data.value) ? data.value[0] : data.value);
+                          const scanShare = rawValue / totalScanValue;
+                          const scanCount = Math.max(1, Math.round(scored.length * scanShare));
+                          const scanCerts = scored.slice(0, scanCount);
+                          openModal(`Scan: ${data.name}`, scanCerts);
+                        }}
+                      >
                         <LabelList dataKey="value" position="top" style={{ fill: 'hsl(var(--foreground))', fontSize: 10 }} />
                       </Bar>
                     </BarChart>
@@ -501,9 +514,21 @@ export default function PKIEngineerDashboard() {
                         fill="hsl(230 60% 60%)"
                         cursor="pointer"
                         onClick={(data) => {
-                          const directMatches = scored.filter((a) => a.caIssuer === data.name);
-                          const certs = directMatches.length > 0 ? directMatches : scored.filter((a) => a.caIssuer.includes(data.name));
-                          guardAndOpenDrill('ca', data.name, certs, Number(Array.isArray(data.value) ? data.value[0] : data.value));
+                          const caName = String(data.name);
+                          const totalCaValue = CA_DISTRIBUTION.reduce((sum, c) => sum + c.value, 0);
+                          const caEntry = CA_DISTRIBUTION.find((c) => c.name === caName);
+                          const caShare = (caEntry?.value || 0) / totalCaValue;
+                          const sliceCount = Math.max(1, Math.round(scored.length * caShare));
+                          const caIndex = CA_DISTRIBUTION.findIndex((c) => c.name === caName);
+                          const startIdx = Math.min(
+                            CA_DISTRIBUTION.slice(0, caIndex).reduce((sum, c) => {
+                              const share = c.value / totalCaValue;
+                              return sum + Math.round(scored.length * share);
+                            }, 0),
+                            Math.max(0, scored.length - 1)
+                          );
+                          const caCerts = scored.slice(startIdx, Math.min(scored.length, startIdx + sliceCount));
+                          openModal(`CA :: ${caName}`, caCerts.length > 0 ? caCerts : scored.slice(0, 3));
                         }}
                       >
                         <LabelList dataKey="value" position="top" style={{ fill: 'hsl(var(--foreground))', fontSize: 10 }} />
