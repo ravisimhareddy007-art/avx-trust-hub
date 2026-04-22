@@ -9,7 +9,6 @@ import {
   ArrowRight, User, Workflow, CheckCircle, Plus, Ticket, LockKeyhole,
   Terminal, Code, Database, Cpu, Sparkles, AlertCircle, Send
 } from 'lucide-react';
-import CertDeploymentsView from '@/components/remediation/CertDeploymentsView';
 import CLMRemediationWorkspace from '@/components/remediation/clm/CLMRemediationWorkspace';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -406,64 +405,45 @@ function LockedModuleOverlay({ module, onRequestLicense }: { module: ModuleDef; 
   );
 }
 
-// ─── Main Page ───────────────────────────────────────────────────────────────
-
-export default function RemediationPage() {
-  const { currentPage, filters, setFilters } = useNav();
-  const [activeModule, setActiveModule] = useState<ModuleId>('all');
+function ModuleRemediationView({
+  moduleId,
+  filters,
+}: {
+  moduleId: ModuleId;
+  filters: Record<string, string>;
+}) {
   const [activeFilter, setActiveFilter] = useState<FilterId>('all-issues');
   const [search, setSearch] = useState('');
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [wizardItem, setWizardItem] = useState<RemediationItem | null>(null);
   const [provisionModule, setProvisionModule] = useState<ModuleDef | null>(null);
   const [ticketModule, setTicketModule] = useState<ModuleDef | null>(null);
-  const [clmView, setClmView] = useState<'issues' | 'deployments' | 'actions'>('issues');
 
-  // Honor cross-link filters set by Integrations / Device drawer / Inventory violations.
   useEffect(() => {
-    if (currentPage === 'remediation-objects') setActiveModule('all');
-    if (currentPage === 'remediation-clm') setActiveModule('clm');
-    if (currentPage === 'remediation-ssh') setActiveModule('ssh');
-    if (currentPage === 'remediation-ai') setActiveModule('ai-agents');
-    if (currentPage === 'remediation-secrets') setActiveModule('secrets');
-
-    if (filters.module === 'clm') {
-      setActiveModule('clm');
-      if (filters.view === 'deployments' || filters.view === 'actions' || filters.view === 'issues') {
-        setClmView(filters.view as 'issues' | 'deployments' | 'actions');
-      }
-    }
     if (filters.category && ['expiry', 'pqc', 'orphaned', 'policy'].includes(filters.category)) {
       setActiveFilter(filters.category as FilterId);
     }
     if (filters.assetId) {
       setSearch(filters.assetId);
     }
-  }, [currentPage, filters.module, filters.view, filters.category, filters.assetId]);
+  }, [filters.category, filters.assetId]);
 
-  const currentModule = modules.find(m => m.id === activeModule)!;
-  const isLocked = activeModule !== 'all' && !currentModule.licensed;
-
+  const currentModule = modules.find(m => m.id === moduleId)!;
+  const isLocked = moduleId !== 'all' && !currentModule.licensed;
   const allItems = useMemo(() => getRemediationItems(mockAssets), []);
 
   const items = useMemo(() => {
     let result = allItems;
-    if (activeModule !== 'all') {
-      const mod = modules.find(m => m.id === activeModule);
-      if (mod) result = result.filter(i => mod.types.includes(i.asset.type));
+    if (moduleId !== 'all') {
+      result = result.filter(i => currentModule.types.includes(i.asset.type));
     }
     if (activeFilter !== 'all-issues') result = result.filter(i => i.issueCategory === activeFilter);
     if (search) result = result.filter(i => i.asset.name.toLowerCase().includes(search.toLowerCase()));
     return result;
-  }, [allItems, activeModule, activeFilter, search]);
-
-  const getModuleCount = (mod: ModuleDef) => {
-    if (mod.id === 'all') return allItems.length;
-    return allItems.filter(i => mod.types.includes(i.asset.type)).length;
-  };
+  }, [allItems, moduleId, currentModule.types, activeFilter, search]);
 
   const issueFilterCounts = useMemo(() => {
-    const base = activeModule === 'all' ? allItems : allItems.filter(i => currentModule.types.includes(i.asset.type));
+    const base = moduleId === 'all' ? allItems : allItems.filter(i => currentModule.types.includes(i.asset.type));
     return {
       'all-issues': base.length,
       expiry: base.filter(i => i.issueCategory === 'expiry').length,
@@ -471,151 +451,135 @@ export default function RemediationPage() {
       orphaned: base.filter(i => i.issueCategory === 'orphaned').length,
       policy: base.filter(i => i.issueCategory === 'policy').length,
     };
-  }, [allItems, activeModule]);
+  }, [allItems, moduleId, currentModule.types]);
 
   const toggleRow = (id: string) => {
-    setSelectedRows(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    setSelectedRows(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
   };
 
-  return (
-    <div className="flex gap-0 -m-6 h-[calc(100vh-3.5rem)]">
-      {/* Left sidebar — module nav */}
-      <div className="w-52 bg-card border-r border-border flex flex-col flex-shrink-0">
-        <div className="px-3 py-3 border-b border-border">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Remediation Modules</h2>
-        </div>
-        <nav className="flex-1 overflow-y-auto py-1">
-          {modules.map(mod => {
-            const count = getModuleCount(mod);
-            const active = activeModule === mod.id;
-            return (
-              <button key={mod.id}
-                onClick={() => { setActiveModule(mod.id); setSelectedRows(new Set()); }}
-                className={`w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors ${
-                  active ? 'bg-teal/10 text-teal font-medium border-r-2 border-teal' : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
-                }`}>
-                <mod.icon className="w-3.5 h-3.5 flex-shrink-0" />
-                <span className="flex-1 text-left truncate">{mod.label}</span>
-                <span className={`min-w-[20px] px-1.5 py-0.5 rounded-full text-[10px] font-semibold text-center ${active ? 'bg-teal/20 text-teal' : 'bg-muted'}`}>{count}</span>
-                {!mod.licensed && <Lock className="w-3 h-3 text-amber flex-shrink-0" />}
-              </button>
-            );
-          })}
-        </nav>
-      </div>
-
-      {/* Main content — locked overlay or full remediation view */}
-      {isLocked ? (
+  if (isLocked) {
+    return (
+      <>
         <LockedModuleOverlay module={currentModule} onRequestLicense={() => setTicketModule(currentModule)} />
-      ) : (
-        <div className="flex-1 overflow-auto p-6 space-y-3">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-lg font-bold flex items-center gap-2">
-                <currentModule.icon className="w-5 h-5 text-teal" />
-                {currentModule.label}
-              </h1>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {activeModule === 'clm'
-                  ? 'Certificate remediation workflows and policy requests'
-                  : `${items.length} items need attention`}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              {activeModule !== 'all' && activeModule !== 'clm' && currentModule.provisionLabel && (
-                <button onClick={() => setProvisionModule(currentModule)} className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-teal text-primary-foreground rounded-lg hover:bg-teal-light">
-                  <Plus className="w-3.5 h-3.5" /> {currentModule.provisionLabel}
-                </button>
-              )}
-            </div>
-          </div>
+        <Modal open={!!ticketModule} onClose={() => setTicketModule(null)} title="Request Module License">
+          {ticketModule && <CreateTicketModal module={ticketModule} onClose={() => setTicketModule(null)} onCreated={() => {}} />}
+        </Modal>
+      </>
+    );
+  }
 
-          {activeModule === 'clm' ? (
-            <CLMRemediationWorkspace activeTab={clmView} onTabChange={setClmView} />
-          ) : (
-            <>
-              {/* Issue filters */}
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {issueFilters.map(f => (
-                  <button key={f.id} onClick={() => { setActiveFilter(f.id); setSelectedRows(new Set()); }}
-                    className={`px-3 py-1 rounded-full text-[10px] font-medium transition-colors ${
-                      activeFilter === f.id ? 'bg-teal/10 text-teal border border-teal/30' : 'bg-muted text-muted-foreground border border-transparent hover:border-border'
-                    }`}>{f.label} ({issueFilterCounts[f.id]})</button>
-                ))}
-              </div>
-
-              {/* Toolbar */}
-              <div className="bg-card rounded-lg border border-border px-3 py-2 flex items-center gap-2">
-                <div className="relative flex-1 max-w-xs">
-                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                  <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..."
-                    className="w-full pl-7 pr-3 py-1 bg-muted border border-border rounded text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal" />
-                </div>
-                {selectedRows.size > 0 && (
-                  <button onClick={() => { toast.success(`Bulk remediation for ${selectedRows.size} items`); setSelectedRows(new Set()); }}
-                    className="flex items-center gap-1 px-3 py-1 text-xs font-medium bg-teal text-primary-foreground rounded hover:bg-teal-light">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Remediate ({selectedRows.size})
-                  </button>
-                )}
-                <button onClick={() => toast.success('Exporting...')} className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground ml-auto">
-                  <Download className="w-3.5 h-3.5" /> Export
-                </button>
-              </div>
-
-              {/* Table */}
-              <div className="bg-card rounded-lg border border-border overflow-hidden">
-                <div className="overflow-x-auto scrollbar-thin">
-                  <table className="w-full text-xs">
-                    <thead className="bg-secondary/50">
-                      <tr className="border-b border-border">
-                        <th className="w-8 py-2 px-2"><input type="checkbox" onChange={e => setSelectedRows(e.target.checked ? new Set(items.map((_, i) => `${i}`)) : new Set())} className="rounded" /></th>
-                        <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Severity</th>
-                        <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Asset</th>
-                        {activeModule === 'all' && <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Type</th>}
-                        <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Issue</th>
-                        <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Owner</th>
-                        <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Env</th>
-                        <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Recommended</th>
-                        <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Action</th>
-                        <th className="w-10 py-2 px-2"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {items.map((item, i) => {
-                        const Icon = getActionIcon(item.actionType);
-                        return (
-                          <tr key={`${item.asset.id}-${item.issueCategory}-${i}`} className="border-b border-border hover:bg-secondary/30">
-                            <td className="py-2 px-2"><input type="checkbox" checked={selectedRows.has(`${i}`)} onChange={() => toggleRow(`${i}`)} className="rounded" /></td>
-                            <td className="py-2 px-2"><SeverityBadge severity={item.severity} /></td>
-                            <td className="py-2 px-2 font-medium text-foreground max-w-[200px] truncate">{item.asset.name}</td>
-                            {activeModule === 'all' && <td className="py-2 px-2 text-muted-foreground">{item.asset.type}</td>}
-                            <td className="py-2 px-2 text-muted-foreground">{item.issue}</td>
-                            <td className="py-2 px-2 text-muted-foreground">{item.asset.owner}</td>
-                            <td className="py-2 px-2"><StatusBadge status={item.asset.environment} /></td>
-                            <td className="py-2 px-2 text-muted-foreground text-[10px] max-w-[160px]">{item.recommendedAction}</td>
-                            <td className="py-2 px-2">
-                              <button onClick={() => setWizardItem(item)} className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium bg-teal/10 text-teal hover:bg-teal/20 whitespace-nowrap">
-                                <Icon className="w-3 h-3" /> {item.actionType}
-                              </button>
-                            </td>
-                            <td className="py-2 px-2"><RowMenu item={item} onAction={setWizardItem} /></td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                {items.length === 0 && (
-                  <div className="py-12 text-center text-sm text-muted-foreground">No remediation items match the current filters.</div>
-                )}
-              </div>
-            </>
+  return (
+    <div className="flex-1 overflow-auto p-6 space-y-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-lg font-bold flex items-center gap-2">
+            <currentModule.icon className="w-5 h-5 text-teal" />
+            {currentModule.label}
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5">{items.length} items need attention</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {moduleId !== 'all' && currentModule.provisionLabel && (
+            <button onClick={() => setProvisionModule(currentModule)} className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-teal text-primary-foreground rounded-lg hover:bg-teal-light">
+              <Plus className="w-3.5 h-3.5" /> {currentModule.provisionLabel}
+            </button>
           )}
         </div>
-      )}
+      </div>
 
-      {/* Modals */}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {issueFilters.map(f => (
+          <button
+            key={f.id}
+            onClick={() => {
+              setActiveFilter(f.id);
+              setSelectedRows(new Set());
+            }}
+            className={`px-3 py-1 rounded-full text-[10px] font-medium transition-colors ${
+              activeFilter === f.id ? 'bg-teal/10 text-teal border border-teal/30' : 'bg-muted text-muted-foreground border border-transparent hover:border-border'
+            }`}
+          >
+            {f.label} ({issueFilterCounts[f.id]})
+          </button>
+        ))}
+      </div>
+
+      <div className="bg-card rounded-lg border border-border px-3 py-2 flex items-center gap-2">
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search..."
+            className="w-full pl-7 pr-3 py-1 bg-muted border border-border rounded text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal"
+          />
+        </div>
+        {selectedRows.size > 0 && (
+          <button
+            onClick={() => {
+              toast.success(`Bulk remediation for ${selectedRows.size} items`);
+              setSelectedRows(new Set());
+            }}
+            className="flex items-center gap-1 px-3 py-1 text-xs font-medium bg-teal text-primary-foreground rounded hover:bg-teal-light"
+          >
+            <CheckCircle2 className="w-3.5 h-3.5" /> Remediate ({selectedRows.size})
+          </button>
+        )}
+        <button onClick={() => toast.success('Exporting...')} className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground ml-auto">
+          <Download className="w-3.5 h-3.5" /> Export
+        </button>
+      </div>
+
+      <div className="bg-card rounded-lg border border-border overflow-hidden">
+        <div className="overflow-x-auto scrollbar-thin">
+          <table className="w-full text-xs">
+            <thead className="bg-secondary/50">
+              <tr className="border-b border-border">
+                <th className="w-8 py-2 px-2"><input type="checkbox" onChange={e => setSelectedRows(e.target.checked ? new Set(items.map((_, i) => `${i}`)) : new Set())} className="rounded" /></th>
+                <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Severity</th>
+                <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Asset</th>
+                {moduleId === 'all' && <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Type</th>}
+                <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Issue</th>
+                <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Owner</th>
+                <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Env</th>
+                <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Recommended</th>
+                <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Action</th>
+                <th className="w-10 py-2 px-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item, i) => {
+                const Icon = getActionIcon(item.actionType);
+                return (
+                  <tr key={`${item.asset.id}-${item.issueCategory}-${i}`} className="border-b border-border hover:bg-secondary/30">
+                    <td className="py-2 px-2"><input type="checkbox" checked={selectedRows.has(`${i}`)} onChange={() => toggleRow(`${i}`)} className="rounded" /></td>
+                    <td className="py-2 px-2"><SeverityBadge severity={item.severity} /></td>
+                    <td className="py-2 px-2 font-medium text-foreground max-w-[200px] truncate">{item.asset.name}</td>
+                    {moduleId === 'all' && <td className="py-2 px-2 text-muted-foreground">{item.asset.type}</td>}
+                    <td className="py-2 px-2 text-muted-foreground">{item.issue}</td>
+                    <td className="py-2 px-2 text-muted-foreground">{item.asset.owner}</td>
+                    <td className="py-2 px-2"><StatusBadge status={item.asset.environment} /></td>
+                    <td className="py-2 px-2 text-muted-foreground text-[10px] max-w-[160px]">{item.recommendedAction}</td>
+                    <td className="py-2 px-2">
+                      <button onClick={() => setWizardItem(item)} className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium bg-teal/10 text-teal hover:bg-teal/20 whitespace-nowrap">
+                        <Icon className="w-3 h-3" /> {item.actionType}
+                      </button>
+                    </td>
+                    <td className="py-2 px-2"><RowMenu item={item} onAction={setWizardItem} /></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {items.length === 0 && <div className="py-12 text-center text-sm text-muted-foreground">No remediation items match the current filters.</div>}
+      </div>
+
       <Modal open={!!wizardItem} onClose={() => setWizardItem(null)} title={`${wizardItem?.actionType} — ${wizardItem?.asset.name || ''}`}>
         {wizardItem && <RemediationWizard item={wizardItem} onClose={() => setWizardItem(null)} />}
       </Modal>
@@ -625,6 +589,31 @@ export default function RemediationPage() {
       <Modal open={!!ticketModule} onClose={() => setTicketModule(null)} title="Request Module License">
         {ticketModule && <CreateTicketModal module={ticketModule} onClose={() => setTicketModule(null)} onCreated={() => {}} />}
       </Modal>
+    </div>
+  );
+}
+
+// ─── Main Page ───────────────────────────────────────────────────────────────
+
+export default function RemediationPage() {
+  const { currentPage, filters } = useNav();
+  const [clmView, setClmView] = useState<'issues' | 'deployments' | 'actions'>('issues');
+
+  useEffect(() => {
+    if (filters.module === 'clm') {
+      if (filters.view === 'deployments' || filters.view === 'actions' || filters.view === 'issues') {
+        setClmView(filters.view as 'issues' | 'deployments' | 'actions');
+      }
+    }
+  }, [filters.module, filters.view]);
+
+  return (
+    <div className="flex-1 overflow-auto">
+      {currentPage === 'remediation-objects' && <ModuleRemediationView moduleId="all" filters={filters} />}
+      {currentPage === 'remediation-clm' && <CLMRemediationWorkspace activeTab={clmView} onTabChange={setClmView} />}
+      {currentPage === 'remediation-ssh' && <ModuleRemediationView moduleId="ssh" filters={filters} />}
+      {currentPage === 'remediation-ai' && <ModuleRemediationView moduleId="ai-agents" filters={filters} />}
+      {currentPage === 'remediation-secrets' && <ModuleRemediationView moduleId="secrets" filters={filters} />}
     </div>
   );
 }
