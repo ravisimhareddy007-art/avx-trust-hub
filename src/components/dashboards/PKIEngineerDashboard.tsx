@@ -1312,16 +1312,15 @@ export default function PKIEngineerDashboard() {
                     <Info className="h-3 w-3" />
                   </div>
                 </div>
-                <div className="h-[200px]">
+                <div className="h-[260px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={caData} layout="vertical" margin={{ top: 6, right: 12, left: 8, bottom: 6 }}>
+                    <BarChart data={CA_DISTRIBUTION} margin={{ top: 6, right: 12, left: 0, bottom: 72 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis type="number" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-                      <YAxis type="category" dataKey="name" width={90} tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                      <XAxis dataKey="name" interval={0} angle={-45} textAnchor="end" height={70} tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                       <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 11 }} />
-                      <Bar dataKey="value" radius={[0, 4, 4, 0]} onClick={(data) => openDrill(data.name, scored.filter((cert) => cert.caIssuer === data.name))}>
-                        {caData.map((entry) => <Cell key={entry.name} fill={issuerColors[entry.name]} />)}
-                        <LabelList dataKey="value" position="right" style={{ fill: 'hsl(var(--foreground))', fontSize: 10 }} />
+                      <Bar dataKey="value" radius={[4, 4, 0, 0]} fill="hsl(230 60% 60%)">
+                        <LabelList dataKey="value" position="top" style={{ fill: 'hsl(var(--foreground))', fontSize: 10 }} />
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
@@ -1401,6 +1400,18 @@ export default function PKIEngineerDashboard() {
               )}
               <div className="ml-auto">
                 <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDraftSelectedColumns(selectedColumns);
+                    setColumnsOpen(true);
+                  }}
+                  className="mr-2 inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-xs text-foreground transition hover:bg-secondary/40"
+                >
+                  <Layers className="h-3.5 w-3.5" />
+                  Columns
+                </button>
+                <button
                   ref={actionsButtonRef}
                   type="button"
                   disabled={selected.length === 0}
@@ -1422,41 +1433,24 @@ export default function PKIEngineerDashboard() {
                 <thead className="sticky top-0 bg-secondary/50">
                   <tr className="border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground">
                     <th className="w-8 px-3 py-2 text-left"><input type="checkbox" checked={selected.length === tabCerts.length && tabCerts.length > 0} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); selectAll(); }} /></th>
-                    <th className="px-3 py-2 text-left">Common Name</th>
-                    <th className="px-3 py-2 text-left">Key Algorithm</th>
-                    <th className="px-3 py-2 text-left">Signature Algorithm</th>
-                    <th className="px-3 py-2 text-left">CRS Score</th>
-                    <th className="px-3 py-2 text-left">Group</th>
-                    <th className="px-3 py-2 text-left">Valid To</th>
-                    <th className="px-3 py-2 text-left">Status</th>
+                    {visibleColumns.map((column) => (
+                      <th key={column.key} className="px-3 py-2 text-left">{column.label}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
                   {tabCerts.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-8 text-center text-xs text-muted-foreground">No {drillSeverity} severity certificates in {certTab} category.</td>
+                      <td colSpan={visibleColumns.length + 1} className="py-8 text-center text-xs text-muted-foreground">No {drillSeverity} severity certificates in {certTab} category.</td>
                     </tr>
                   ) : (
                     tabCerts.map((cert) => {
-                      const crsColor = getCrsBadgeColor(cert.crs);
-                      const statusLabel = getDisplayStatus(cert.status);
-                      const statusColor = getStatusTone(cert.status);
                       return (
                         <tr key={cert.id} className={`cursor-pointer border-b border-border transition-colors hover:bg-secondary/30 ${selected.includes(cert.id) ? 'bg-teal/5' : ''}`}>
                           <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                             <input type="checkbox" checked={selected.includes(cert.id)} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); toggleSelect(cert.id); }} />
                           </td>
-                          <td className="max-w-[180px] truncate px-3 py-2 font-mono text-[10.5px] text-foreground">{cert.commonName || cert.name}</td>
-                          <td className="px-3 py-2 text-muted-foreground">{cert.algorithm}</td>
-                          <td className="px-3 py-2 text-muted-foreground">{getSignatureAlgorithm(cert.algorithm)}</td>
-                          <td className="px-3 py-2">
-                            <span className="rounded-full border px-2 py-0.5 text-[10px] font-bold" style={{ color: crsColor, backgroundColor: `${crsColor}22`, borderColor: `${crsColor}44` }}>CRS {cert.crs}</span>
-                          </td>
-                          <td className="px-3 py-2 text-[10px] text-muted-foreground">{getGroupLabel(cert)}</td>
-                          <td className="px-3 py-2 text-[10px] tabular-nums text-muted-foreground">{getValidTo(cert)}</td>
-                          <td className="px-3 py-2">
-                            <span className="rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ backgroundColor: `${statusColor}22`, color: statusColor }}>{statusLabel}</span>
-                          </td>
+                          {visibleColumns.map((column) => <td key={column.key} className="px-3 py-2 align-top">{getColumnValue(cert, column.key)}</td>)}
                         </tr>
                       );
                     })
@@ -1479,29 +1473,119 @@ export default function PKIEngineerDashboard() {
                     <div className="my-1 h-px bg-border" />
                     <div>
                       <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('renew'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-teal hover:bg-secondary/40"><RefreshCw className="h-3.5 w-3.5" />Renew Certificate</button>
-                      <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('regenerate'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-teal hover:bg-secondary/40"><RotateCcw className="h-3.5 w-3.5" />Regenerate Certificate</button>
-                      <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('reissue'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-teal hover:bg-secondary/40"><ArrowRightLeft className="h-3.5 w-3.5" />Reissue Certificate</button>
                       <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('revoke'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40" style={{ color: 'hsl(var(--coral))' }}><XCircle className="h-3.5 w-3.5" />Revoke Certificate</button>
                       <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('ca-switch'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><ArrowRightLeft className="h-3.5 w-3.5" />CA Switch</button>
                       <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('revocation-check'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><CheckCircle2 className="h-3.5 w-3.5" />Revocation Check</button>
                     </div>
                     <div className="my-1 h-px bg-border" />
                     <div>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('delete'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40" style={{ color: 'hsl(var(--coral))' }}><Trash2 className="h-3.5 w-3.5" />Delete</button>
                       <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('change-status'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Settings className="h-3.5 w-3.5" />Change Status</button>
                       <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('assign-group'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Tag className="h-3.5 w-3.5" />Assign Group</button>
                       <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('unassign-group'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Unlink className="h-3.5 w-3.5" />Unassign Group</button>
-                      <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('update-renew'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Clock className="h-3.5 w-3.5" />Update Renew Validity</button>
                       <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('add-comments'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><MessageSquare className="h-3.5 w-3.5" />Add/Modify Comments</button>
-                      <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('bulk-update'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Layers className="h-3.5 w-3.5" />Bulk Update Attributes</button>
                       <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('cert-attributes'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Settings className="h-3.5 w-3.5" />Certificate Attributes</button>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('bulk-update'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Layers className="h-3.5 w-3.5" />Bulk Update Attributes V...</button>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('update-renew'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Clock className="h-3.5 w-3.5" />Update Renew Validity</button>
                     </div>
                     <div className="my-1 h-px bg-border" />
                     <div>
                       <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('archive'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40" style={{ color: 'hsl(var(--amber))' }}><Archive className="h-3.5 w-3.5" />Archive</button>
-                      <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('delete'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40" style={{ color: 'hsl(var(--coral))' }}><Trash2 className="h-3.5 w-3.5" />Delete</button>
                     </div>
               </div>,
               document.body
+            )}
+
+            {columnsOpen && (
+              <div className="fixed inset-0 z-[80] flex items-center justify-center bg-foreground/40" onClick={(e) => { e.stopPropagation(); setColumnsOpen(false); }}>
+                <div className="w-[980px] max-w-[95vw] rounded-xl border border-border bg-card p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                  <div className="mb-4 flex items-center justify-between">
+                    <div className="text-sm font-semibold text-foreground">Columns</div>
+                    <button type="button" className="rounded p-1 text-muted-foreground hover:bg-secondary/40" onClick={(e) => { e.stopPropagation(); setColumnsOpen(false); }}><X className="h-4 w-4" /></button>
+                  </div>
+                  <div className="mb-4 flex items-center gap-3">
+                    <input value={columnSearch} onChange={(e) => setColumnSearch(e.target.value)} placeholder="Search..." className="h-9 flex-1 rounded-md border border-border bg-background px-3 text-xs text-foreground outline-none" />
+                    <span className="rounded-full px-2 py-1 text-[10px]" style={{ backgroundColor: 'hsl(var(--teal) / 0.12)', color: 'hsl(var(--teal))' }}>Selected columns: {draftSelectedColumns.length}</span>
+                    <label className="flex items-center gap-2 text-xs text-foreground"><input type="checkbox" checked={draftSelectedColumns.length === COLUMN_OPTIONS.length} onChange={() => setDraftSelectedColumns(draftSelectedColumns.length === COLUMN_OPTIONS.length ? DEFAULT_VISIBLE_COLUMNS : COLUMN_OPTIONS.map((c) => c.key))} />Select all</label>
+                    <button type="button" className="text-xs underline" style={{ color: 'hsl(var(--teal))' }} onClick={() => setDraftSelectedColumns(previousSelectedColumns)}>Reset to previous column selection</button>
+                  </div>
+                  <div className="grid grid-cols-4 gap-x-4 gap-y-2 text-xs">
+                    {filteredColumnOptions.map((column) => {
+                      const required = 'required' in column && column.required;
+                      return (
+                        <label key={column.key} className="flex items-center gap-2 text-foreground">
+                          <input type="checkbox" checked={draftSelectedColumns.includes(column.key)} disabled={required} onChange={() => toggleColumn(column.key)} />
+                          <span>{column.label}{required ? ' *' : ''}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-5 flex justify-end gap-2">
+                    <button type="button" className="rounded-md border border-border px-3 py-1.5 text-xs text-foreground" onClick={() => setColumnsOpen(false)}>Cancel</button>
+                    <button type="button" className="rounded-md px-3 py-1.5 text-xs text-primary-foreground" style={{ backgroundColor: 'hsl(var(--teal))' }} onClick={() => { setPreviousSelectedColumns(selectedColumns); setSelectedColumns(Array.from(new Set(['commonName', ...draftSelectedColumns])) as ColumnKey[]); setColumnsOpen(false); }}>Save</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {approvalAction && (
+              <div className="fixed inset-0 z-[80] flex items-center justify-center bg-foreground/40" onClick={(e) => e.stopPropagation()}>
+                <div className="w-[1100px] max-w-[96vw] rounded-xl border border-border bg-card shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-between border-b border-border px-5 py-3">
+                    <div className="text-sm font-semibold text-foreground">{approvalAction === 'renew' ? 'Renew Certificate' : 'Revoke Certificate'}</div>
+                    <button type="button" className="rounded p-1 text-muted-foreground hover:bg-secondary/40" onClick={() => closeApprovalModal()}><X className="h-4 w-4" /></button>
+                  </div>
+                  <div className="flex border-b border-border px-5">
+                    {['server', 'client'].map((item) => <button key={item} type="button" className={`border-b-2 px-4 py-2 text-xs font-medium ${certTab === item ? 'border-teal text-teal' : 'border-transparent text-muted-foreground'}`}>{item[0].toUpperCase() + item.slice(1)}</button>)}
+                  </div>
+                  <div className="space-y-3 px-5 py-4">
+                    <input value={approvalSearch} onChange={(e) => setApprovalSearch(e.target.value)} placeholder="Search..." className="h-9 w-full rounded-md border border-border bg-background px-3 text-xs text-foreground outline-none" />
+                    <div className="flex items-center justify-between">
+                      <button ref={actionsButtonRef} type="button" className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-xs text-foreground" onClick={(e) => { e.stopPropagation(); setActionsOpen((open) => !open); }}><MoreVertical className="h-3.5 w-3.5" />Actions<ChevronDown className="h-3 w-3" /></button>
+                      <span className="text-[10px] text-muted-foreground">1 to 1 of 0</span>
+                    </div>
+                    <div className="overflow-hidden rounded-lg border border-border">
+                      <table className="w-full text-xs">
+                        <thead className="bg-secondary/30">
+                          <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground">
+                            <th className="w-8 px-3 py-2"><input type="checkbox" checked={approvalRows.length > 0} readOnly /></th>
+                            <th className="px-3 py-2">Common Name</th>
+                            <th className="px-3 py-2">Serial Number</th>
+                            <th className="px-3 py-2">Certificate Authority</th>
+                            <th className="px-3 py-2">Expiry Date</th>
+                            <th className="px-3 py-2">Thumbprint</th>
+                            <th className="px-3 py-2">Order</th>
+                            <th className="px-3 py-2">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {approvalRows.map((cert) => (
+                            <tr key={`approval-${cert.id}`} className="border-t border-border">
+                              <td className="px-3 py-2"><input type="checkbox" checked readOnly /></td>
+                              <td className="px-3 py-2 font-mono text-[10.5px] text-foreground">{cert.commonName}</td>
+                              <td className="px-3 py-2 font-mono text-[10px] text-muted-foreground">{cert.serial}</td>
+                              <td className="px-3 py-2 text-muted-foreground">{cert.caIssuer}</td>
+                              <td className="px-3 py-2 text-muted-foreground">{getValidTo(cert)}</td>
+                              <td className="px-3 py-2 font-mono text-[10px] text-muted-foreground">{`${getThumbprint(cert).slice(0, 8)}...${getThumbprint(cert).slice(-4)}`}</td>
+                              <td className="px-3 py-2"><button type="button" className="text-xs underline" style={{ color: 'hsl(var(--teal))' }}>{getOrderId(cert)}</button></td>
+                              <td className="px-3 py-2 text-[10px] italic text-muted-foreground">({approvalAction === 'renew' ? 'Renewal Submission In Progress' : 'Revocation Submission In Progress'})</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="relative flex justify-start">
+                      <button type="button" className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-xs text-foreground" onClick={() => setApprovalDecisionOpen((open) => !open)}><MoreVertical className="h-3.5 w-3.5" />Actions<ChevronDown className="h-3 w-3" /></button>
+                      {approvalDecisionOpen && (
+                        <div className="absolute top-10 z-10 min-w-[220px] rounded-lg border border-border bg-card py-1 shadow-2xl">
+                          <button type="button" className="flex w-full items-center px-3 py-2 text-left text-xs hover:bg-secondary/40" onClick={() => { toast.success(`Action submitted successfully for ${selected.length} certificate(s)`); setSelected([]); closeApprovalModal(); setDrillOpen(false); }}>Proceed Further</button>
+                          <button type="button" className="flex w-full items-center px-3 py-2 text-left text-xs hover:bg-secondary/40" onClick={() => { toast.info('Action rejected'); closeApprovalModal(); }}>Reject</button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
           {renderActionModal()}
