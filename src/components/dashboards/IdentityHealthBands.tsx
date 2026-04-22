@@ -1,57 +1,54 @@
 import React from 'react';
 import { useNav } from '@/context/NavigationContext';
-import { Shield, Key, Bot, Lock, Fingerprint, KeyRound, ArrowRight, TrendingUp, TrendingDown, ArrowRightLeft } from 'lucide-react';
+import { ESTATE_SUMMARY } from '@/data/mockData';
+import { Shield, Key, Bot, Lock, Fingerprint, ArrowRight, TrendingUp, TrendingDown, ArrowRightLeft } from 'lucide-react';
 
 interface Band {
   name: string;
   type: string;
   icon: React.ComponentType<{ className?: string }>;
   total: string;
-  // health distribution (must sum to 100)
-  critical: number; high: number; medium: number; healthy: number;
-  // ONE key insight per category — the most relevant signal
   keyInsight: { label: string; value: string; filter: Record<string, string> };
-  // lightweight 7d trend (in % at risk)
-  trend7d: number; // positive = risk grew, negative = risk shrank
-  // cross-layer pivot to infrastructure view
+  atRisk: number;
+  trend: string;
   pivotTo?: { label: string; filters: Record<string, string> };
 }
 
 // Normalized to the 5 identity categories per spec
 const BANDS: Band[] = [
   {
-    name: 'Certificates', type: 'TLS Certificate', icon: Shield, total: '1.8M',
-    critical: 4, high: 12, medium: 18, healthy: 66,
-    keyInsight: { label: 'expiring <30d', value: '12,847', filter: { type: 'TLS Certificate', status: 'Expiring', tab: 'identities' } },
-    trend7d: +1.2,
+    name: 'Certificates', type: 'TLS Certificate', icon: Shield, total: ESTATE_SUMMARY.certificates.toLocaleString(),
+    keyInsight: { label: 'expiring <30d', value: ESTATE_SUMMARY.certsExpiring30d.toLocaleString(), filter: { type: 'TLS Certificate', status: 'Expiring', tab: 'identities' } },
+    atRisk: ESTATE_SUMMARY.certsAtRisk,
+    trend: ESTATE_SUMMARY.certsTrend,
     pivotTo: { label: 'Hosts using these certs', filters: { tab: 'infrastructure', type: 'Application Server', usesCertExpiring: 'true' } },
   },
   {
-    name: 'Secrets & API Keys', type: 'API Key / Secret', icon: Lock, total: '812K',
-    critical: 5, high: 18, medium: 19, healthy: 58,
-    keyInsight: { label: 'exposed in code', value: '18,420', filter: { type: 'API Key / Secret', exposure: 'code', tab: 'identities' } },
-    trend7d: +2.4,
+    name: 'Secrets & API Keys', type: 'API Key / Secret', icon: Lock, total: ESTATE_SUMMARY.secretsAndAPIKeys.toLocaleString(),
+    keyInsight: { label: 'exposed in code', value: ESTATE_SUMMARY.secretsExposedCode.toLocaleString(), filter: { type: 'API Key / Secret', exposure: 'code', tab: 'identities' } },
+    atRisk: ESTATE_SUMMARY.secretsAtRisk,
+    trend: ESTATE_SUMMARY.secretsTrend,
     pivotTo: { label: 'Affected repositories', filters: { tab: 'infrastructure', type: 'Code Repository', exposed: 'true' } },
   },
   {
-    name: 'SSH & Encryption Keys', type: 'SSH Key', icon: Key, total: '1.4M',
-    critical: 2, high: 8, medium: 15, healthy: 75,
-    keyInsight: { label: 'not rotated >90d', value: '8,412', filter: { type: 'SSH Key', rotation: 'overdue', tab: 'identities' } },
-    trend7d: -0.8,
+    name: 'SSH & Encryption Keys', type: 'SSH Key', icon: Key, total: ESTATE_SUMMARY.sshAndEncryptionKeys.toLocaleString(),
+    keyInsight: { label: 'not rotated >90d', value: ESTATE_SUMMARY.sshNotRotated90d.toLocaleString(), filter: { type: 'SSH Key', rotation: 'overdue', tab: 'identities' } },
+    atRisk: ESTATE_SUMMARY.sshAtRisk,
+    trend: ESTATE_SUMMARY.sshTrend,
     pivotTo: { label: 'Hosts with stale keys', filters: { tab: 'infrastructure', type: 'Application Server', sshStale: 'true' } },
   },
   {
-    name: 'AI Agent Tokens', type: 'AI Agent Token', icon: Bot, total: '472K',
-    critical: 8, high: 30, medium: 22, healthy: 40,
-    keyInsight: { label: 'over-privileged', value: '179K', filter: { type: 'AI Agent Token', privilege: 'over', tab: 'identities' } },
-    trend7d: +4.1,
+    name: 'AI Agent Tokens', type: 'AI Agent Token', icon: Bot, total: ESTATE_SUMMARY.aiAgentTokens.toLocaleString(),
+    keyInsight: { label: 'over-privileged', value: ESTATE_SUMMARY.aiTokensOverPriv.toLocaleString(), filter: { type: 'AI Agent Token', privilege: 'over', tab: 'identities' } },
+    atRisk: ESTATE_SUMMARY.aiTokensAtRisk,
+    trend: ESTATE_SUMMARY.aiTrend,
     pivotTo: { label: 'Services exposing tokens', filters: { tab: 'infrastructure', type: 'API Gateway', aiToken: 'true' } },
   },
   {
-    name: 'Code Signing', type: 'Code Signing', icon: Fingerprint, total: '48K',
-    critical: 3, high: 10, medium: 14, healthy: 73,
-    keyInsight: { label: 'weak algorithm', value: '2,180', filter: { type: 'Code Signing', algorithm: 'weak', tab: 'identities' } },
-    trend7d: -0.3,
+    name: 'Code Signing', type: 'Code Signing', icon: Fingerprint, total: ESTATE_SUMMARY.codeSigning.toLocaleString(),
+    keyInsight: { label: 'weak algorithm', value: '24', filter: { type: 'Code Signing', algorithm: 'weak', tab: 'identities' } },
+    atRisk: ESTATE_SUMMARY.codeSigningAtRisk,
+    trend: ESTATE_SUMMARY.codeSigningTrend,
     pivotTo: { label: 'Build pipelines using these', filters: { tab: 'infrastructure', type: 'Application Server', signsArtifacts: 'true' } },
   },
 ];
@@ -77,9 +74,9 @@ export default function IdentityHealthBands() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2.5">
         {BANDS.map(b => {
           const Icon = b.icon;
-          const issuePct = b.critical + b.high;
-          const TrendIcon = b.trend7d >= 0 ? TrendingUp : TrendingDown;
-          const trendColor = b.trend7d > 0.5 ? 'text-coral' : b.trend7d < -0.5 ? 'text-teal' : 'text-muted-foreground';
+          const trendValue = parseFloat(b.trend);
+          const TrendIcon = trendValue >= 0 ? TrendingUp : TrendingDown;
+          const trendColor = trendValue > 0.5 ? 'text-coral' : trendValue < -0.5 ? 'text-teal' : 'text-muted-foreground';
           return (
             <div
               key={b.name}
@@ -98,24 +95,19 @@ export default function IdentityHealthBands() {
                 <span className="text-[9.5px] text-muted-foreground/70 tabular-nums font-normal flex-shrink-0">{b.total}</span>
               </button>
 
-              {/* Risk bar */}
-              <div className="flex h-1.5 rounded-full overflow-hidden mb-1.5" title={`Critical ${b.critical}% · High ${b.high}% · Medium ${b.medium}% · Healthy ${b.healthy}%`}>
-                <div style={{ width: `${b.critical}%` }} className="bg-coral" />
-                <div style={{ width: `${b.high}%` }} className="bg-coral/60" />
-                <div style={{ width: `${b.medium}%` }} className="bg-amber" />
-                <div style={{ width: `${b.healthy}%` }} className="bg-teal" />
+              <div className="mb-1.5 flex h-1.5 overflow-hidden rounded-full" title={`${b.atRisk}% at risk`}>
+                <div style={{ width: `${b.atRisk}%` }} className="bg-coral" />
+                <div style={{ width: `${100 - b.atRisk}%` }} className="bg-teal" />
               </div>
 
-              {/* % at risk + 7d trend */}
               <div className="flex items-center justify-between text-[10px] mb-2">
-                <span className="text-coral font-semibold tabular-nums">{issuePct}% at risk</span>
+                <span className="text-coral font-semibold tabular-nums">{b.atRisk}% at risk</span>
                 <span className={`flex items-center gap-0.5 tabular-nums ${trendColor}`} title="7-day change in % at risk">
                   <TrendIcon className="w-2.5 h-2.5" />
-                  {b.trend7d > 0 ? '+' : ''}{b.trend7d.toFixed(1)}%
+                  {b.trend}
                 </span>
               </div>
 
-              {/* Single key insight — the contextual drill-down */}
               <button
                 onClick={() => nav(b.keyInsight.filter)}
                 className="text-left text-[10.5px] text-foreground/90 hover:text-teal flex items-start justify-between gap-1 py-1 border-t border-border/40"
