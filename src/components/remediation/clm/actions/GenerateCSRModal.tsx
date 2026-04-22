@@ -190,7 +190,7 @@ export default function GenerateCSRModal({ open, onClose, onSubmit }: { open: bo
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const deviceOptions = useMemo(() => (deviceType === 'HSM Devices' ? [...hsmDeviceOptions] : [...adcDeviceOptions]), [deviceType]);
-  const bitLengthOptions = useMemo(() => {
+  const bitLengthOptions = useMemo<string[]>(() => {
     if (keyType === 'RSA') return [...rsaBitLengths];
     if (keyType === 'EC') return [...ecBitLengths];
     return [];
