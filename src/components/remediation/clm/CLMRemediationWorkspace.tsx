@@ -804,69 +804,25 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
 
       <div className="flex-1 overflow-auto">
         {activeTab === 'issues' && (
-          <div className="space-y-4 py-4">
-            <div className="border-b border-border px-6 pt-0 pb-2">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                <div>
-                  <p className="mt-0 text-xs text-muted-foreground">{formatCount(clmIssues.length)} items need attention</p>
-                </div>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button type="button" onClick={launchIssueNewCertificate} className="inline-flex items-center gap-2 self-start rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-foreground hover:bg-secondary">
-                        <FilePlus className="h-4 w-4" />
-                        + Issue New Certificate
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>Create and issue a new certificate (independent of existing issues)</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+          <div>
+            <div className="flex items-center justify-between border-b border-border px-6 py-3">
+              <div className="flex w-80 items-center gap-2 rounded-md bg-muted px-3 py-2">
+                <Search className="h-[14px] w-[14px] shrink-0 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={issueSearch}
+                  onChange={(event) => setIssueSearch(event.target.value)}
+                  placeholder="Search certificates or issues..."
+                  className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+                />
               </div>
-
-              <p className="mt-2 text-xs text-muted-foreground">Showing: Issues requiring attention</p>
-
-              <div className="mt-3 flex flex-col gap-3 border-b border-border py-3 xl:flex-row xl:items-center xl:justify-between">
-                <div className="flex flex-wrap items-center gap-2">
-                  {quickFilters.map((filter) => {
-                    const active = quickFilterSelection.has(filter.id);
-                    return (
-                      <button
-                        key={filter.id}
-                        type="button"
-                        onClick={() => toggleQuickFilter(filter.id)}
-                        className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${active ? 'border-teal/40 bg-teal/10 text-teal' : 'border-border bg-background text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
-                      >
-                        {filter.label}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Search className="h-[15px] w-[15px]" />
-                    <input
-                      type="text"
-                      value={issueSearch}
-                      onChange={(event) => setIssueSearch(event.target.value)}
-                      placeholder="Search certificates or issues..."
-                      className="w-72 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
-                    />
-                  </div>
-                  <button type="button" onClick={() => toast.success('Issue export generated.')} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
-                    <Download className="h-3.5 w-3.5" />
-                    Export
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 py-3 text-xs">
-                <span className="rounded-full border border-coral/20 bg-coral/10 px-2.5 py-1 font-medium text-coral">Critical (0–3 days): {summaryCounts.critical}</span>
-                <span className="rounded-full border border-amber/20 bg-amber/10 px-2.5 py-1 font-medium text-amber">Warning (4–7 days): {summaryCounts.warning}</span>
-                <span className="rounded-full border border-border bg-background px-2.5 py-1 font-medium text-foreground">Total issues: {summaryCounts.total}</span>
-              </div>
+              <button type="button" onClick={() => toast.success('Issue export generated.')} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
+                <Download className="h-[14px] w-[14px]" />
+                Export
+              </button>
             </div>
 
-            <div className="mx-6 overflow-hidden rounded-lg border border-border bg-card">
+            <div className="overflow-hidden">
               <BulkActionBar selectedCount={selectedIds.size} onAction={handleBulkAction} />
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[1120px] text-sm">
@@ -885,9 +841,7 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
                       </th>
                       <th className="px-3 py-3">Owner</th>
                       <th className="px-3 py-3">Env</th>
-                      <th className="px-3 py-3">Recommended</th>
                       <th className="px-3 py-3">Action</th>
-                      <th className="px-3 py-3" />
                     </tr>
                   </thead>
                   <tbody>
@@ -896,48 +850,45 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
                       const urgencyDays = getUrgencyDays(row);
                       const recommendation = getRecommendationMeta(row);
                       return (
-                        <tr key={row.id} className="cursor-pointer border-b border-border last:border-b-0 hover:bg-background/30" onClick={() => setDetailRow(row)}>
-                          <td className="px-3 py-3 align-top">
+                        <tr key={row.id} className="cursor-pointer border-b border-border last:border-b-0" onClick={() => setDetailRow(row)}>
+                          <td className="px-3 py-2 align-top">
                             <input type="checkbox" checked={selectedIds.has(row.id)} onChange={() => handleSelectRow(row.id)} onClick={(event) => event.stopPropagation()} className="rounded border-border bg-background" />
                           </td>
-                          <td className="px-3 py-3 align-top">
+                          <td className="px-3 py-2 align-top">
                             <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${severityBadgeClass(row.severity)}`}>{row.severity}</span>
                           </td>
-                          <td className="px-3 py-3 align-top">
-                            <button type="button" onClick={(event) => { event.stopPropagation(); setDetailRow(row); }} className="font-mono text-xs text-foreground hover:text-teal hover:underline">
+                          <td className="px-3 py-2 align-top">
+                            <button type="button" onClick={(event) => { event.stopPropagation(); setDetailRow(row); }} className="font-mono text-sm font-normal text-foreground hover:text-teal hover:underline">
                               {row.asset.name}
                             </button>
                           </td>
-                          <td className="px-3 py-3 align-top text-sm text-foreground">
+                          <td className="px-3 py-2 align-top text-sm text-foreground">
                             <div className="flex items-center gap-2">
                               <span>{row.issueText}</span>
                               {urgencyDays !== null && <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${urgencyBadgeClass(urgencyDays)}`}>{urgencyDays}d</span>}
                             </div>
                           </td>
-                          <td className="px-3 py-3 align-top text-sm text-muted-foreground">{row.owner}</td>
-                          <td className="px-3 py-3 align-top">
+                          <td className="px-3 py-2 align-top text-sm text-muted-foreground">{row.owner}</td>
+                          <td className="px-3 py-2 align-top">
                             <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${environmentBadgeClass(row.environment)}`}>{row.environment}</span>
                           </td>
-                          <td className="px-3 py-3 align-top">
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <button type="button" onClick={(event) => { event.stopPropagation(); handleAction(recommendation.action, row); }} className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium ${recommendation.className}`}>
-                                    {recommendation.label}
-                                  </button>
-                                </TooltipTrigger>
-                                <TooltipContent>{recommendation.tooltip}</TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          </td>
-                          <td className="px-3 py-3 align-top">
-                            <button type="button" onClick={(event) => { event.stopPropagation(); handleAction(row.primaryAction, row); }} className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium ${actionMeta[row.primaryAction].className}`}>
-                              <PrimaryIcon className="h-3.5 w-3.5" />
-                              {row.primaryAction}
-                            </button>
-                          </td>
-                          <td className="px-3 py-3 align-top">
-                            <OverflowMenu row={row} onAction={handleAction} onPush={launchPushToDevice} />
+                          <td className="px-3 py-2 align-top">
+                            <div className="flex items-center gap-2">
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <button type="button" onClick={(event) => { event.stopPropagation(); handleAction(recommendation.action, row); }} className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium ${recommendation.className}`}>
+                                      <PrimaryIcon className="h-3.5 w-3.5" />
+                                      {recommendation.label}
+                                    </button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>{recommendation.tooltip}</TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                              <div onClick={(event) => event.stopPropagation()}>
+                                <OverflowMenu row={row} onAction={handleAction} onPush={launchPushToDevice} />
+                              </div>
+                            </div>
                           </td>
                         </tr>
                       );
