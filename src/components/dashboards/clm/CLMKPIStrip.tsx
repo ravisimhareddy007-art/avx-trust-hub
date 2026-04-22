@@ -69,7 +69,10 @@ export default function CLMKPIStrip({
         value={totalCerts.toString()}
         subtitle="Total Certificates"
         color="teal"
-        onClick={() => setCurrentPage('remediation')}
+        onClick={() => {
+          onSeverityCardClick?.('');
+          if (!onSeverityCardClick) setCurrentPage('remediation');
+        }}
       />
       <KPICard
         value={expiringToday.toString()}
