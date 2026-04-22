@@ -50,7 +50,7 @@ import SLCCompliance from './clm/SLCCompliance';
 import ScanCoverage from './clm/ScanCoverage';
 import SLCDashboard from './clm/SLCDashboard';
 import { Modal } from '@/components/shared/UIComponents';
-import { mockAssets, type CryptoAsset } from '@/data/mockData';
+import { ESTATE_SUMMARY, mockAssets, type CryptoAsset } from '@/data/mockData';
 import { mockITAssets } from '@/data/inventoryMockData';
 import { computeCRS } from '@/lib/risk/crs';
 import { useNav } from '@/context/NavigationContext';
@@ -276,6 +276,27 @@ export default function PKIEngineerDashboard() {
   );
 
   const codeSigningCount = useMemo(() => scored.filter((a) => a.type === 'Code-Signing Certificate').length, [scored]);
+
+  const severityBuckets = useMemo(() => {
+    const buckets = [
+      { name: 'Critical', certs: critical },
+      { name: 'High', certs: high },
+      { name: 'Medium', certs: medium },
+      { name: 'Low', certs: low },
+      { name: 'Compliant', certs: compliant },
+    ];
+    const percentages = buckets.map((bucket) => Math.round((bucket.certs.length / total) * 100));
+    const sum = percentages.reduce((acc, value) => acc + value, 0);
+    const largestIndex = buckets.reduce((bestIndex, bucket, index, arr) => (
+      bucket.certs.length > arr[bestIndex].certs.length ? index : bestIndex
+    ), 0);
+    percentages[largestIndex] += 100 - sum;
+
+    return buckets.map((bucket, index) => ({
+      ...bucket,
+      pct: percentages[index],
+    }));
+  }, [compliant, critical, high, low, medium, total]);
 
   const donutData = useMemo(
     () => [
@@ -845,10 +866,10 @@ export default function PKIEngineerDashboard() {
               </div>
               <div className="flex divide-x divide-border">
                 {[
-                  { label: 'Total Certificates', value: actualTotal },
+                    { label: 'Total Certificates', value: ESTATE_SUMMARY.certificates.toLocaleString() },
                   { label: 'Cert Manager', value: 0, subtitle: 'not configured' },
                   { label: 'Total Issuing CAs', value: 4 },
-                  { label: 'Code Signing Certs', value: codeSigningCount },
+                    { label: 'Code Signing Certs', value: ESTATE_SUMMARY.codeSigning.toLocaleString() },
                   { label: 'Total Devices', value: mockITAssets.length },
                 ].map((tile) => (
                   <div key={tile.label} className="flex-1 px-4 py-2">
@@ -895,14 +916,7 @@ export default function PKIEngineerDashboard() {
                   </div>
 
                   <div className="flex-1 space-y-2">
-                    {[
-                      { name: 'Critical', certs: critical },
-                      { name: 'High', certs: high },
-                      { name: 'Medium', certs: medium },
-                      { name: 'Low', certs: low },
-                      { name: 'Compliant', certs: compliant },
-                    ].map((bucket) => {
-                      const pct = Math.round((bucket.certs.length / total) * 100);
+                    {severityBuckets.map((bucket) => {
                       return (
                         <button
                           key={bucket.name}
@@ -914,7 +928,7 @@ export default function PKIEngineerDashboard() {
                           <div className="h-5 flex-1 overflow-hidden rounded bg-secondary/40">
                             <div className="h-full min-w-[2px] rounded" style={{ width: `${Math.max((bucket.certs.length / total) * 100, bucket.certs.length > 0 ? 2 : 0)}%`, backgroundColor: severityHsl[bucket.name] }} />
                           </div>
-                          <span className="text-xs tabular-nums text-muted-foreground">{bucket.certs.length} · {pct}%</span>
+                          <span className="text-xs tabular-nums text-muted-foreground">{bucket.certs.length} · {bucket.pct}%</span>
                         </button>
                       );
                     })}

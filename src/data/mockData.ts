@@ -47,6 +47,29 @@ export interface CryptoAsset {
   agentMeta?: AgentMeta;
 }
 
+export const ESTATE_SUMMARY = {
+  certificates: 2847,
+  sshAndEncryptionKeys: 1423,
+  secretsAndAPIKeys: 892,
+  aiAgentTokens: 312,
+  codeSigning: 184,
+  totalIdentities: 5658,
+  certsAtRisk: 16,
+  sshAtRisk: 10,
+  secretsAtRisk: 23,
+  aiTokensAtRisk: 38,
+  codeSigningAtRisk: 13,
+  certsExpiring30d: 284,
+  sshNotRotated90d: 142,
+  secretsExposedCode: 201,
+  aiTokensOverPriv: 119,
+  certsTrend: '+1.2%',
+  sshTrend: '-0.8%',
+  secretsTrend: '+2.4%',
+  aiTrend: '+4.1%',
+  codeSigningTrend: '-0.3%',
+} as const;
+
 export const mockAssets: CryptoAsset[] = [
   { id: 'cert-001', name: '*.payments.acmecorp.com', type: 'TLS Certificate', commonName: '*.payments.acmecorp.com', caIssuer: 'DigiCert Global G2', algorithm: 'RSA-2048', keyLength: '2048', serial: '0A:3B:45:67:89:CD:EF:12', owner: 'Sarah Chen', team: 'Payments Engineering', application: 'Payment Gateway', environment: 'Production', infrastructure: 'aws-us-east-1-prod', discoverySource: 'DigiCert CertCentral', issueDate: '2025-11-15', expiryDate: '2026-04-20', daysToExpiry: 6, lastRotated: '2025-11-15', autoRenewal: false, rotationFrequency: '90 days', status: 'Expiring', pqcRisk: 'Critical', policyViolations: 3, dependencyCount: 7, tags: ['pci-dss', 'production', 'wildcard'] },
   { id: 'cert-002', name: 'api.internal.acmecorp.com', type: 'TLS Certificate', commonName: 'api.internal.acmecorp.com', caIssuer: 'Entrust L1K', algorithm: 'ECC P-256', keyLength: '256', serial: '1B:2C:3D:4E:5F:60:71:82', owner: 'Mike Rodriguez', team: 'Platform Engineering', application: 'Internal API Gateway', environment: 'Production', infrastructure: 'aws-us-west-2-prod', discoverySource: 'Network Scan', issueDate: '2026-01-10', expiryDate: '2026-07-10', daysToExpiry: 87, lastRotated: '2026-01-10', autoRenewal: true, rotationFrequency: '180 days', status: 'Active', pqcRisk: 'High', policyViolations: 0, dependencyCount: 12, tags: ['internal', 'production'] },

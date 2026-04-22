@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { mockAssets } from '@/data/mockData';
+import { ESTATE_SUMMARY, mockAssets } from '@/data/mockData';
 import { useNav } from '@/context/NavigationContext';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -11,14 +11,16 @@ export default function ExpiryForecast() {
   const { chartData, atRiskTotal } = useMemo(() => {
     const today = new Date();
     const todayDow = today.getDay();
+    const certs = mockAssets.filter((asset) => asset.type.includes('Certificate'));
+    const scale = Math.max(1, Math.round(ESTATE_SUMMARY.certificates / Math.max(certs.length, 1)));
 
     const days = Array.from({ length: 7 }, (_, i) => {
       const label =
         i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : DAY_NAMES[(todayDow + i) % 7];
 
-      const assets = mockAssets.filter(a => a.daysToExpiry === i);
-      const safe = assets.filter(a => a.autoRenewal).length;
-      const atRisk = assets.length - safe;
+      const assets = certs.filter(a => a.daysToExpiry === i);
+      const safe = assets.filter(a => a.autoRenewal).length * scale;
+      const atRisk = (assets.length - assets.filter(a => a.autoRenewal).length) * scale;
 
       return { label, safe, atRisk };
     });
