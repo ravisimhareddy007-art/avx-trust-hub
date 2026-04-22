@@ -59,6 +59,7 @@ import { toast } from 'sonner';
 
 type CLMTab = 'overview' | 'operations' | 'risk' | 'slc';
 type CertTab = 'server' | 'client' | 'code-signing';
+type ApprovalAction = 'renew' | 'revoke' | null;
 type ActionModal =
   | 'export'
   | 'download'
@@ -81,6 +82,54 @@ type ActionModal =
 
 type ScoredCert = CryptoAsset & { crs: number };
 
+const COLUMN_OPTIONS = [
+  { key: 'commonName', label: 'Common Name', required: true, defaultVisible: true },
+  { key: 'serialNumber', label: 'Serial Number', defaultVisible: true },
+  { key: 'group', label: 'Group', defaultVisible: true },
+  { key: 'issuerCommonName', label: 'Issuer Common Name', defaultVisible: true },
+  { key: 'validTo', label: 'Valid To (GMT)', defaultVisible: true },
+  { key: 'status', label: 'Status', defaultVisible: true },
+  { key: 'certificateAuthority', label: 'Certificate Authority', defaultVisible: true },
+  { key: 'kubeAttributes', label: 'Kube Attributes', defaultVisible: true },
+  { key: 'quantumReadiness', label: 'Quantum Readiness', defaultVisible: true },
+  { key: 'subjectOrganizationUnit', label: 'Subject Organization Unit' },
+  { key: 'subjectLocality', label: 'Subject Locality' },
+  { key: 'subjectState', label: 'Subject State' },
+  { key: 'subjectCountry', label: 'Subject Country' },
+  { key: 'issuerOrganization', label: 'Issuer Organization' },
+  { key: 'issuerOrganizationUnit', label: 'Issuer Organization Unit' },
+  { key: 'issuerLocality', label: 'Issuer Locality' },
+  { key: 'issuerState', label: 'Issuer State' },
+  { key: 'issuerCountry', label: 'Issuer Country' },
+  { key: 'version', label: 'Version' },
+  { key: 'validFrom', label: 'Valid From (GMT)' },
+  { key: 'keyAlgorithmSize', label: 'Key Algorithm & Size' },
+  { key: 'signatureAlgorithm', label: 'Signature Algorithm' },
+  { key: 'keyUsages', label: 'Key Usage(s)' },
+  { key: 'extendedKeyUsages', label: 'Extended Key Usage(s)' },
+  { key: 'basicConstraints', label: 'Basic Constraints' },
+  { key: 'associatedObject', label: 'Associated Object' },
+  { key: 'applications', label: 'Application(s)' },
+  { key: 'subjectAlternativeNames', label: 'Subject Alternative Names' },
+  { key: 'compliant', label: 'Compliant' },
+  { key: 'discoveredFileNames', label: 'Discovered File Name(s)' },
+  { key: 'renewDate', label: 'Renew Date' },
+  { key: 'validFor', label: 'Valid For' },
+  { key: 'requestId', label: 'Request ID' },
+  { key: 'subjectEmailAddress', label: 'Subject Email Address' },
+  { key: 'comments', label: 'Comments' },
+  { key: 'orderId', label: 'Order ID' },
+  { key: 'countOfSubjectAltNames', label: 'Count Of Subject Altern Names' },
+  { key: 'reenrollDate', label: 'Re-enroll Date' },
+  { key: 'regenerateDate', label: 'Regenerate Date' },
+  { key: 'thumbprint', label: 'Thumbprint' },
+  { key: 'subjectKeyIdentifier', label: 'Subject Key Identifier' },
+  { key: 'discoverySource', label: 'Discovery Source' },
+  { key: 'subjectOrganization', label: 'Subject Organization' },
+] as const;
+
+type ColumnKey = (typeof COLUMN_OPTIONS)[number]['key'];
+
 const CERT_TYPES = ['All Certificates', 'TLS / SSL', 'Code Signing', 'K8s Workload', 'SSH Certificate'];
 const CA_FILTERS = ['All CAs', 'DigiCert', 'Entrust', "Let's Encrypt", 'MSCA Enterprise'];
 
@@ -92,7 +141,56 @@ const TABS: { id: CLMTab; label: string; icon: React.ElementType }[] = [
 ];
 
 const GROUPS = ['Default', 'Private_CA_Certificates', 'Public_CA_Certificates', 'Certificate-Gateway'];
-const CA_OPTIONS = ['DigiCert Global G2', 'Entrust L1K', "Let's Encrypt R3", 'MSCA Enterprise'];
+const CA_OPTIONS = [
+  'Amazon',
+  'Amazon Private CA',
+  'AppViewX',
+  'AppViewX PKIaaS NDES',
+  'CSC Global',
+  'DigiCert',
+  'Ejbca',
+  'Entrust',
+  'Entrust MPKI',
+  'GlobalSign',
+  'GlobalSign Atlas',
+  'GlobalSign MSSL',
+  'GoDaddy',
+  'Google',
+  'HashiCorp Vault',
+  'HydrantID',
+  "Let's Encrypt",
+  'Microsoft Enterprise',
+  'Nexus',
+  'OpenTrust',
+  'SwissSign',
+  'Trustwave',
+  'XCA Test Issuer',
+  'Sectigo',
+  'OTHERS',
+] as const;
+const CA_DISTRIBUTION = [
+  { name: 'AppViewX', value: 1081 },
+  { name: 'DigiCert', value: 313 },
+  { name: 'Sectigo', value: 199 },
+  { name: 'Microsoft Enterprise', value: 171 },
+  { name: "Let's Encrypt", value: 142 },
+  { name: 'Entrust', value: 114 },
+  { name: 'GlobalSign', value: 114 },
+  { name: 'GoDaddy', value: 85 },
+  { name: 'SwissSign', value: 85 },
+  { name: 'HashiCorp Vault', value: 57 },
+  { name: 'Amazon', value: 57 },
+  { name: 'CSC Global', value: 28 },
+  { name: 'HydrantID', value: 28 },
+  { name: 'OpenTrust', value: 28 },
+  { name: 'OTHERS', value: 345 },
+] as const;
+const DEFAULT_VISIBLE_COLUMNS = COLUMN_OPTIONS.reduce<ColumnKey[]>((acc, column) => {
+  if (('defaultVisible' in column && column.defaultVisible) || ('required' in column && column.required)) {
+    acc.push(column.key);
+  }
+  return acc;
+}, []);
 const REVOKE_REASONS = [
   { value: 'Affiliation Changed', hint: 'Subject no longer affiliated with issuer' },
   { value: 'Cessation of operation', hint: 'Certificate holder stopped relevant operations' },
@@ -198,6 +296,9 @@ export default function PKIEngineerDashboard() {
   const [selected, setSelected] = useState<string[]>([]);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [actionModal, setActionModal] = useState<ActionModal>(null);
+  const [approvalAction, setApprovalAction] = useState<ApprovalAction>(null);
+  const [approvalSearch, setApprovalSearch] = useState('');
+  const [approvalDecisionOpen, setApprovalDecisionOpen] = useState(false);
   const [revokeReason, setRevokeReason] = useState('');
   const [revokeComment, setRevokeComment] = useState('');
   const [exportFormat, setExportFormat] = useState<'csv' | 'xls'>('csv');
@@ -209,12 +310,17 @@ export default function PKIEngineerDashboard() {
   const [groupSearch, setGroupSearch] = useState('');
   const [comments, setComments] = useState('');
   const [renewDays, setRenewDays] = useState(30);
-  const [renewCa, setRenewCa] = useState('DigiCert Global G2');
+  const [renewCa, setRenewCa] = useState('DigiCert');
   const [renewSchedule, setRenewSchedule] = useState<'Immediately' | 'Next maintenance window'>('Immediately');
   const [regenerateKeyType, setRegenerateKeyType] = useState('RSA-4096');
   const [reissueReason, setReissueReason] = useState('');
-  const [switchCa, setSwitchCa] = useState('Entrust L1K');
+  const [switchCa, setSwitchCa] = useState('Entrust');
   const [bulkUpdateMode, setBulkUpdateMode] = useState<'File Upload' | 'By Group'>('File Upload');
+  const [columnsOpen, setColumnsOpen] = useState(false);
+  const [columnSearch, setColumnSearch] = useState('');
+  const [selectedColumns, setSelectedColumns] = useState<ColumnKey[]>(DEFAULT_VISIBLE_COLUMNS);
+  const [draftSelectedColumns, setDraftSelectedColumns] = useState<ColumnKey[]>(DEFAULT_VISIBLE_COLUMNS);
+  const [previousSelectedColumns, setPreviousSelectedColumns] = useState<ColumnKey[]>(DEFAULT_VISIBLE_COLUMNS);
   const [revocationDone, setRevocationDone] = useState(false);
   const actionsButtonRef = useRef<HTMLButtonElement | null>(null);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
@@ -327,6 +433,130 @@ export default function PKIEngineerDashboard() {
     [groupSearch]
   );
 
+  const visibleColumns = useMemo(
+    () => COLUMN_OPTIONS.filter((column) => selectedColumns.includes(column.key)),
+    [selectedColumns]
+  );
+
+  const filteredColumnOptions = useMemo(
+    () => COLUMN_OPTIONS.filter((column) => column.label.toLowerCase().includes(columnSearch.toLowerCase())),
+    [columnSearch]
+  );
+
+  const selectedCerts = useMemo(
+    () => tabCerts.filter((cert) => selected.includes(cert.id)),
+    [selected, tabCerts]
+  );
+
+  const approvalRows = useMemo(() => {
+    const term = approvalSearch.trim().toLowerCase();
+    if (!term) return selectedCerts;
+    return selectedCerts.filter((cert) =>
+      [cert.commonName, cert.serial, cert.caIssuer, cert.name].some((value) => value.toLowerCase().includes(term))
+    );
+  }, [approvalSearch, selectedCerts]);
+
+  const getOrderId = (cert: CryptoAsset) => `R${cert.id.replace(/\D/g, '').padStart(5, '0')}`;
+  const getThumbprint = (cert: CryptoAsset) => cert.serial.replace(/:/g, '').padEnd(20, '0').slice(0, 20);
+  const getValidFrom = (cert: CryptoAsset) => cert.issueDate || '2026-01-01';
+  const getKubeAttributes = (cert: CryptoAsset) => cert.type === 'K8s Workload Cert' ? 'namespace=prod; workload=managed' : '—';
+  const getQuantumReadiness = (cert: CryptoAsset) => cert.pqcRisk;
+
+  const getColumnValue = (cert: ScoredCert, key: ColumnKey) => {
+    const thumbprint = getThumbprint(cert);
+
+    switch (key) {
+      case 'commonName':
+        return <span className="font-mono text-[10.5px] text-foreground">{cert.commonName || cert.name}</span>;
+      case 'serialNumber':
+        return <span className="font-mono text-[10px] text-muted-foreground">{cert.serial}</span>;
+      case 'group':
+        return <span className="text-[10px] text-muted-foreground">{getGroupLabel(cert)}</span>;
+      case 'issuerCommonName':
+      case 'certificateAuthority':
+        return <span className="text-[10px] text-muted-foreground">{cert.caIssuer}</span>;
+      case 'validTo':
+        return <span className="tabular-nums text-[10px] text-muted-foreground">{getValidTo(cert)}</span>;
+      case 'status': {
+        const statusLabel = getDisplayStatus(cert.status);
+        const statusColor = getStatusTone(cert.status);
+        return <span className="rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ backgroundColor: `${statusColor}22`, color: statusColor }}>{statusLabel}</span>;
+      }
+      case 'kubeAttributes':
+        return <span className="text-[10px] text-muted-foreground">{getKubeAttributes(cert)}</span>;
+      case 'quantumReadiness':
+        return <span className="text-[10px] text-muted-foreground">{getQuantumReadiness(cert)}</span>;
+      case 'subjectOrganizationUnit':
+        return <span className="text-[10px] text-muted-foreground">{cert.team}</span>;
+      case 'subjectLocality':
+        return <span className="text-[10px] text-muted-foreground">San Jose</span>;
+      case 'subjectState':
+        return <span className="text-[10px] text-muted-foreground">California</span>;
+      case 'subjectCountry':
+        return <span className="text-[10px] text-muted-foreground">US</span>;
+      case 'issuerOrganization':
+        return <span className="text-[10px] text-muted-foreground">{cert.caIssuer.split(' ')[0]}</span>;
+      case 'issuerOrganizationUnit':
+        return <span className="text-[10px] text-muted-foreground">PKI Services</span>;
+      case 'issuerLocality':
+        return <span className="text-[10px] text-muted-foreground">New York</span>;
+      case 'issuerState':
+        return <span className="text-[10px] text-muted-foreground">New York</span>;
+      case 'issuerCountry':
+        return <span className="text-[10px] text-muted-foreground">US</span>;
+      case 'version':
+        return <span className="text-[10px] text-muted-foreground">v3</span>;
+      case 'validFrom':
+        return <span className="tabular-nums text-[10px] text-muted-foreground">{getValidFrom(cert)}</span>;
+      case 'keyAlgorithmSize':
+        return <span className="text-[10px] text-muted-foreground">{`${cert.algorithm} / ${cert.keyLength}`}</span>;
+      case 'signatureAlgorithm':
+        return <span className="text-[10px] text-muted-foreground">{getSignatureAlgorithm(cert.algorithm)}</span>;
+      case 'keyUsages':
+        return <span className="text-[10px] text-muted-foreground">Digital Signature, Key Encipherment</span>;
+      case 'extendedKeyUsages':
+        return <span className="text-[10px] text-muted-foreground">Server Auth, Client Auth</span>;
+      case 'basicConstraints':
+        return <span className="text-[10px] text-muted-foreground">CA:FALSE</span>;
+      case 'associatedObject':
+        return <span className="text-[10px] text-muted-foreground">{cert.infrastructure}</span>;
+      case 'applications':
+        return <span className="text-[10px] text-muted-foreground">{cert.application}</span>;
+      case 'subjectAlternativeNames':
+        return <span className="text-[10px] text-muted-foreground">{cert.commonName}, api.{cert.application.toLowerCase().replace(/\s+/g, '-')}.acmecorp.com</span>;
+      case 'compliant':
+        return <span className="text-[10px] text-muted-foreground">{cert.crs < 30 ? 'Yes' : 'No'}</span>;
+      case 'discoveredFileNames':
+        return <span className="text-[10px] text-muted-foreground">{`${cert.name}.pem`}</span>;
+      case 'renewDate':
+        return <span className="tabular-nums text-[10px] text-muted-foreground">{getValidTo(cert)}</span>;
+      case 'validFor':
+        return <span className="text-[10px] text-muted-foreground">{Math.max(cert.daysToExpiry, 0)} days</span>;
+      case 'requestId':
+      case 'orderId':
+        return <span className="text-[10px] text-muted-foreground">{getOrderId(cert)}</span>;
+      case 'subjectEmailAddress':
+        return <span className="text-[10px] text-muted-foreground">{`${cert.owner.toLowerCase().replace(/\s+/g, '.')}@acmecorp.com`}</span>;
+      case 'comments':
+        return <span className="text-[10px] text-muted-foreground">Managed by {cert.team}</span>;
+      case 'countOfSubjectAltNames':
+        return <span className="text-[10px] text-muted-foreground">2</span>;
+      case 'reenrollDate':
+      case 'regenerateDate':
+        return <span className="tabular-nums text-[10px] text-muted-foreground">{getValidFrom(cert)}</span>;
+      case 'thumbprint':
+        return <span className="font-mono text-[10px] text-muted-foreground">{thumbprint}</span>;
+      case 'subjectKeyIdentifier':
+        return <span className="font-mono text-[10px] text-muted-foreground">{thumbprint.slice(0, 12)}</span>;
+      case 'discoverySource':
+        return <span className="text-[10px] text-muted-foreground">{cert.discoverySource}</span>;
+      case 'subjectOrganization':
+        return <span className="text-[10px] text-muted-foreground">AcmeCorp</span>;
+      default:
+        return <span className="text-[10px] text-muted-foreground">—</span>;
+    }
+  };
+
   useEffect(() => {
     if (!actionsOpen) return;
 
@@ -372,11 +602,20 @@ export default function PKIEngineerDashboard() {
     setCertTab('server');
     setActionsOpen(false);
     setActionModal(null);
+    setApprovalAction(null);
+    setColumnsOpen(false);
     setDrillOpen(true);
   }
 
   function toggleSelect(id: string) {
     setSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+  }
+
+  function toggleColumn(columnKey: ColumnKey) {
+    const option = COLUMN_OPTIONS.find((column) => column.key === columnKey);
+    if (!option) return;
+    if ('required' in option && option.required) return;
+    setDraftSelectedColumns((prev) => prev.includes(columnKey) ? prev.filter((key) => key !== columnKey) : [...prev, columnKey]);
   }
 
   function selectAll() {
@@ -391,6 +630,12 @@ export default function PKIEngineerDashboard() {
     setActionModal(null);
     setRevokeReason('');
     setRevokeComment('');
+  }
+
+  function closeApprovalModal() {
+    setApprovalAction(null);
+    setApprovalSearch('');
+    setApprovalDecisionOpen(false);
   }
 
   function handleSuccess(message: string, opts?: { clearSelection?: boolean; closeDrill?: boolean }) {
@@ -674,7 +919,12 @@ export default function PKIEngineerDashboard() {
               <div className="rounded-lg border p-3" style={{ backgroundColor: 'hsl(var(--teal) / 0.08)', borderColor: 'hsl(var(--teal) / 0.18)' }}>
                 Same key pair and template will be used for renewal.
               </div>
-              {modalFooter('Renew', () => handleSuccess(`Renewal initiated for ${selectedCount || tabCerts.length} certificate(s)`))}
+              {modalFooter('Renew', () => {
+                setActionModal(null);
+                setApprovalAction('renew');
+                setApprovalSearch('');
+                setApprovalDecisionOpen(false);
+              })}
             </div>
           </Modal>
         )}
@@ -742,6 +992,21 @@ export default function PKIEngineerDashboard() {
                 <p className="text-[11px] italic text-muted-foreground">{REVOKE_REASONS.find((reason) => reason.value === revokeReason)?.hint}</p>
               )}
               <textarea value={revokeComment} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setRevokeComment(e.target.value); }} rows={4} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none" placeholder="Add comments about this revocation request" />
+              <div className="rounded border border-border p-3 text-xs leading-relaxed text-muted-foreground">
+                Please revoke the certificate individually if the reason for revocation is not listed. Already Revoked/expired certificates, certificates with status other than 'Managed' and certificates with existing active Requests cannot be revoked. Download the list to check if the selected certificates are eligible{' '}
+                <button
+                  type="button"
+                  className="underline"
+                  style={{ color: 'hsl(var(--teal))' }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toast.info('Downloading eligibility list...');
+                  }}
+                >
+                  here
+                </button>
+                .
+              </div>
               {!revokeReason && (
                 <div className="rounded-lg border p-3 text-[11px]" style={{ backgroundColor: 'hsl(var(--coral) / 0.08)', borderColor: 'hsl(var(--coral) / 0.2)' }}>
                   A revoke reason is required before submitting.
@@ -752,7 +1017,13 @@ export default function PKIEngineerDashboard() {
                 <button
                   type="button"
                   disabled={!revokeReason}
-                  onClick={(e) => { e.stopPropagation(); handleSuccess(`Revocation: ${revokeReason} (${selectedCount || tabCerts.length} certificate(s))`); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActionModal(null);
+                    setApprovalAction('revoke');
+                    setApprovalSearch('');
+                    setApprovalDecisionOpen(false);
+                  }}
                   className="rounded-md px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
                   style={{ backgroundColor: 'hsl(var(--teal))' }}
                 >
@@ -1041,16 +1312,15 @@ export default function PKIEngineerDashboard() {
                     <Info className="h-3 w-3" />
                   </div>
                 </div>
-                <div className="h-[200px]">
+                <div className="h-[260px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={caData} layout="vertical" margin={{ top: 6, right: 12, left: 8, bottom: 6 }}>
+                    <BarChart data={CA_DISTRIBUTION} margin={{ top: 6, right: 12, left: 0, bottom: 72 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis type="number" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-                      <YAxis type="category" dataKey="name" width={90} tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                      <XAxis dataKey="name" interval={0} angle={-45} textAnchor="end" height={70} tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                       <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 11 }} />
-                      <Bar dataKey="value" radius={[0, 4, 4, 0]} onClick={(data) => openDrill(data.name, scored.filter((cert) => cert.caIssuer === data.name))}>
-                        {caData.map((entry) => <Cell key={entry.name} fill={issuerColors[entry.name]} />)}
-                        <LabelList dataKey="value" position="right" style={{ fill: 'hsl(var(--foreground))', fontSize: 10 }} />
+                      <Bar dataKey="value" radius={[4, 4, 0, 0]} fill="hsl(230 60% 60%)">
+                        <LabelList dataKey="value" position="top" style={{ fill: 'hsl(var(--foreground))', fontSize: 10 }} />
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
@@ -1130,6 +1400,18 @@ export default function PKIEngineerDashboard() {
               )}
               <div className="ml-auto">
                 <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDraftSelectedColumns(selectedColumns);
+                    setColumnsOpen(true);
+                  }}
+                  className="mr-2 inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-xs text-foreground transition hover:bg-secondary/40"
+                >
+                  <Layers className="h-3.5 w-3.5" />
+                  Columns
+                </button>
+                <button
                   ref={actionsButtonRef}
                   type="button"
                   disabled={selected.length === 0}
@@ -1151,41 +1433,24 @@ export default function PKIEngineerDashboard() {
                 <thead className="sticky top-0 bg-secondary/50">
                   <tr className="border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground">
                     <th className="w-8 px-3 py-2 text-left"><input type="checkbox" checked={selected.length === tabCerts.length && tabCerts.length > 0} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); selectAll(); }} /></th>
-                    <th className="px-3 py-2 text-left">Common Name</th>
-                    <th className="px-3 py-2 text-left">Key Algorithm</th>
-                    <th className="px-3 py-2 text-left">Signature Algorithm</th>
-                    <th className="px-3 py-2 text-left">CRS Score</th>
-                    <th className="px-3 py-2 text-left">Group</th>
-                    <th className="px-3 py-2 text-left">Valid To</th>
-                    <th className="px-3 py-2 text-left">Status</th>
+                    {visibleColumns.map((column) => (
+                      <th key={column.key} className="px-3 py-2 text-left">{column.label}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
                   {tabCerts.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-8 text-center text-xs text-muted-foreground">No {drillSeverity} severity certificates in {certTab} category.</td>
+                      <td colSpan={visibleColumns.length + 1} className="py-8 text-center text-xs text-muted-foreground">No {drillSeverity} severity certificates in {certTab} category.</td>
                     </tr>
                   ) : (
                     tabCerts.map((cert) => {
-                      const crsColor = getCrsBadgeColor(cert.crs);
-                      const statusLabel = getDisplayStatus(cert.status);
-                      const statusColor = getStatusTone(cert.status);
                       return (
                         <tr key={cert.id} className={`cursor-pointer border-b border-border transition-colors hover:bg-secondary/30 ${selected.includes(cert.id) ? 'bg-teal/5' : ''}`}>
                           <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                             <input type="checkbox" checked={selected.includes(cert.id)} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); toggleSelect(cert.id); }} />
                           </td>
-                          <td className="max-w-[180px] truncate px-3 py-2 font-mono text-[10.5px] text-foreground">{cert.commonName || cert.name}</td>
-                          <td className="px-3 py-2 text-muted-foreground">{cert.algorithm}</td>
-                          <td className="px-3 py-2 text-muted-foreground">{getSignatureAlgorithm(cert.algorithm)}</td>
-                          <td className="px-3 py-2">
-                            <span className="rounded-full border px-2 py-0.5 text-[10px] font-bold" style={{ color: crsColor, backgroundColor: `${crsColor}22`, borderColor: `${crsColor}44` }}>CRS {cert.crs}</span>
-                          </td>
-                          <td className="px-3 py-2 text-[10px] text-muted-foreground">{getGroupLabel(cert)}</td>
-                          <td className="px-3 py-2 text-[10px] tabular-nums text-muted-foreground">{getValidTo(cert)}</td>
-                          <td className="px-3 py-2">
-                            <span className="rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ backgroundColor: `${statusColor}22`, color: statusColor }}>{statusLabel}</span>
-                          </td>
+                          {visibleColumns.map((column) => <td key={column.key} className="px-3 py-2 align-top">{getColumnValue(cert, column.key)}</td>)}
                         </tr>
                       );
                     })
@@ -1208,29 +1473,119 @@ export default function PKIEngineerDashboard() {
                     <div className="my-1 h-px bg-border" />
                     <div>
                       <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('renew'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-teal hover:bg-secondary/40"><RefreshCw className="h-3.5 w-3.5" />Renew Certificate</button>
-                      <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('regenerate'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-teal hover:bg-secondary/40"><RotateCcw className="h-3.5 w-3.5" />Regenerate Certificate</button>
-                      <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('reissue'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-teal hover:bg-secondary/40"><ArrowRightLeft className="h-3.5 w-3.5" />Reissue Certificate</button>
                       <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('revoke'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40" style={{ color: 'hsl(var(--coral))' }}><XCircle className="h-3.5 w-3.5" />Revoke Certificate</button>
                       <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('ca-switch'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><ArrowRightLeft className="h-3.5 w-3.5" />CA Switch</button>
                       <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('revocation-check'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><CheckCircle2 className="h-3.5 w-3.5" />Revocation Check</button>
                     </div>
                     <div className="my-1 h-px bg-border" />
                     <div>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('delete'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40" style={{ color: 'hsl(var(--coral))' }}><Trash2 className="h-3.5 w-3.5" />Delete</button>
                       <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('change-status'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Settings className="h-3.5 w-3.5" />Change Status</button>
                       <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('assign-group'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Tag className="h-3.5 w-3.5" />Assign Group</button>
                       <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('unassign-group'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Unlink className="h-3.5 w-3.5" />Unassign Group</button>
-                      <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('update-renew'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Clock className="h-3.5 w-3.5" />Update Renew Validity</button>
                       <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('add-comments'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><MessageSquare className="h-3.5 w-3.5" />Add/Modify Comments</button>
-                      <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('bulk-update'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Layers className="h-3.5 w-3.5" />Bulk Update Attributes</button>
                       <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('cert-attributes'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Settings className="h-3.5 w-3.5" />Certificate Attributes</button>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('bulk-update'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Layers className="h-3.5 w-3.5" />Bulk Update Attributes V...</button>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('update-renew'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Clock className="h-3.5 w-3.5" />Update Renew Validity</button>
                     </div>
                     <div className="my-1 h-px bg-border" />
                     <div>
                       <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('archive'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40" style={{ color: 'hsl(var(--amber))' }}><Archive className="h-3.5 w-3.5" />Archive</button>
-                      <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('delete'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40" style={{ color: 'hsl(var(--coral))' }}><Trash2 className="h-3.5 w-3.5" />Delete</button>
                     </div>
               </div>,
               document.body
+            )}
+
+            {columnsOpen && (
+              <div className="fixed inset-0 z-[80] flex items-center justify-center bg-foreground/40" onClick={(e) => { e.stopPropagation(); setColumnsOpen(false); }}>
+                <div className="w-[980px] max-w-[95vw] rounded-xl border border-border bg-card p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                  <div className="mb-4 flex items-center justify-between">
+                    <div className="text-sm font-semibold text-foreground">Columns</div>
+                    <button type="button" className="rounded p-1 text-muted-foreground hover:bg-secondary/40" onClick={(e) => { e.stopPropagation(); setColumnsOpen(false); }}><X className="h-4 w-4" /></button>
+                  </div>
+                  <div className="mb-4 flex items-center gap-3">
+                    <input value={columnSearch} onChange={(e) => setColumnSearch(e.target.value)} placeholder="Search..." className="h-9 flex-1 rounded-md border border-border bg-background px-3 text-xs text-foreground outline-none" />
+                    <span className="rounded-full px-2 py-1 text-[10px]" style={{ backgroundColor: 'hsl(var(--teal) / 0.12)', color: 'hsl(var(--teal))' }}>Selected columns: {draftSelectedColumns.length}</span>
+                    <label className="flex items-center gap-2 text-xs text-foreground"><input type="checkbox" checked={draftSelectedColumns.length === COLUMN_OPTIONS.length} onChange={() => setDraftSelectedColumns(draftSelectedColumns.length === COLUMN_OPTIONS.length ? DEFAULT_VISIBLE_COLUMNS : COLUMN_OPTIONS.map((c) => c.key))} />Select all</label>
+                    <button type="button" className="text-xs underline" style={{ color: 'hsl(var(--teal))' }} onClick={() => setDraftSelectedColumns(previousSelectedColumns)}>Reset to previous column selection</button>
+                  </div>
+                  <div className="grid grid-cols-4 gap-x-4 gap-y-2 text-xs">
+                    {filteredColumnOptions.map((column) => {
+                      const required = 'required' in column && column.required;
+                      return (
+                        <label key={column.key} className="flex items-center gap-2 text-foreground">
+                          <input type="checkbox" checked={draftSelectedColumns.includes(column.key)} disabled={required} onChange={() => toggleColumn(column.key)} />
+                          <span>{column.label}{required ? ' *' : ''}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-5 flex justify-end gap-2">
+                    <button type="button" className="rounded-md border border-border px-3 py-1.5 text-xs text-foreground" onClick={() => setColumnsOpen(false)}>Cancel</button>
+                    <button type="button" className="rounded-md px-3 py-1.5 text-xs text-primary-foreground" style={{ backgroundColor: 'hsl(var(--teal))' }} onClick={() => { setPreviousSelectedColumns(selectedColumns); setSelectedColumns(Array.from(new Set(['commonName', ...draftSelectedColumns])) as ColumnKey[]); setColumnsOpen(false); }}>Save</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {approvalAction && (
+              <div className="fixed inset-0 z-[80] flex items-center justify-center bg-foreground/40" onClick={(e) => e.stopPropagation()}>
+                <div className="w-[1100px] max-w-[96vw] rounded-xl border border-border bg-card shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-between border-b border-border px-5 py-3">
+                    <div className="text-sm font-semibold text-foreground">{approvalAction === 'renew' ? 'Renew Certificate' : 'Revoke Certificate'}</div>
+                    <button type="button" className="rounded p-1 text-muted-foreground hover:bg-secondary/40" onClick={() => closeApprovalModal()}><X className="h-4 w-4" /></button>
+                  </div>
+                  <div className="flex border-b border-border px-5">
+                    {['server', 'client'].map((item) => <button key={item} type="button" className={`border-b-2 px-4 py-2 text-xs font-medium ${certTab === item ? 'border-teal text-teal' : 'border-transparent text-muted-foreground'}`}>{item[0].toUpperCase() + item.slice(1)}</button>)}
+                  </div>
+                  <div className="space-y-3 px-5 py-4">
+                    <input value={approvalSearch} onChange={(e) => setApprovalSearch(e.target.value)} placeholder="Search..." className="h-9 w-full rounded-md border border-border bg-background px-3 text-xs text-foreground outline-none" />
+                    <div className="flex items-center justify-between">
+                      <button ref={actionsButtonRef} type="button" className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-xs text-foreground" onClick={(e) => { e.stopPropagation(); setActionsOpen((open) => !open); }}><MoreVertical className="h-3.5 w-3.5" />Actions<ChevronDown className="h-3 w-3" /></button>
+                      <span className="text-[10px] text-muted-foreground">1 to 1 of 0</span>
+                    </div>
+                    <div className="overflow-hidden rounded-lg border border-border">
+                      <table className="w-full text-xs">
+                        <thead className="bg-secondary/30">
+                          <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground">
+                            <th className="w-8 px-3 py-2"><input type="checkbox" checked={approvalRows.length > 0} readOnly /></th>
+                            <th className="px-3 py-2">Common Name</th>
+                            <th className="px-3 py-2">Serial Number</th>
+                            <th className="px-3 py-2">Certificate Authority</th>
+                            <th className="px-3 py-2">Expiry Date</th>
+                            <th className="px-3 py-2">Thumbprint</th>
+                            <th className="px-3 py-2">Order</th>
+                            <th className="px-3 py-2">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {approvalRows.map((cert) => (
+                            <tr key={`approval-${cert.id}`} className="border-t border-border">
+                              <td className="px-3 py-2"><input type="checkbox" checked readOnly /></td>
+                              <td className="px-3 py-2 font-mono text-[10.5px] text-foreground">{cert.commonName}</td>
+                              <td className="px-3 py-2 font-mono text-[10px] text-muted-foreground">{cert.serial}</td>
+                              <td className="px-3 py-2 text-muted-foreground">{cert.caIssuer}</td>
+                              <td className="px-3 py-2 text-muted-foreground">{getValidTo(cert)}</td>
+                              <td className="px-3 py-2 font-mono text-[10px] text-muted-foreground">{`${getThumbprint(cert).slice(0, 8)}...${getThumbprint(cert).slice(-4)}`}</td>
+                              <td className="px-3 py-2"><button type="button" className="text-xs underline" style={{ color: 'hsl(var(--teal))' }}>{getOrderId(cert)}</button></td>
+                              <td className="px-3 py-2 text-[10px] italic text-muted-foreground">({approvalAction === 'renew' ? 'Renewal Submission In Progress' : 'Revocation Submission In Progress'})</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="relative flex justify-start">
+                      <button type="button" className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-xs text-foreground" onClick={() => setApprovalDecisionOpen((open) => !open)}><MoreVertical className="h-3.5 w-3.5" />Actions<ChevronDown className="h-3 w-3" /></button>
+                      {approvalDecisionOpen && (
+                        <div className="absolute top-10 z-10 min-w-[220px] rounded-lg border border-border bg-card py-1 shadow-2xl">
+                          <button type="button" className="flex w-full items-center px-3 py-2 text-left text-xs hover:bg-secondary/40" onClick={() => { toast.success(`Action submitted successfully for ${selected.length} certificate(s)`); setSelected([]); closeApprovalModal(); setDrillOpen(false); }}>Proceed Further</button>
+                          <button type="button" className="flex w-full items-center px-3 py-2 text-left text-xs hover:bg-secondary/40" onClick={() => { toast.info('Action rejected'); closeApprovalModal(); }}>Reject</button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
           {renderActionModal()}
