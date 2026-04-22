@@ -35,19 +35,21 @@ interface NavSubItemProps {
 const NavSubItem = ({ label, count, icon: ItemIcon, isActive, onClick }: NavSubItemProps) => (
   <div
     onClick={onClick}
-    className={`flex items-center justify-between gap-2 pl-8 pr-3 py-1 cursor-pointer rounded-md mx-2 text-xs transition-colors ${
+    className={`flex items-center justify-between gap-2 px-4 py-1.5 cursor-pointer text-xs transition-colors border-l-2 ${
       isActive
-        ? 'text-teal bg-teal/10 font-medium'
-        : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
+        ? 'text-teal font-medium border-teal bg-teal/5'
+        : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-white/5'
     }`}
   >
-    <span className="flex-1">{label}</span>
-    {ItemIcon && <ItemIcon size={10} className="text-amber shrink-0" />}
-    {typeof count === 'number' && (
-      <span className="bg-white/10 text-muted-foreground px-1.5 py-0.5 rounded-full text-xs shrink-0">
-        {count}
-      </span>
-    )}
+    <span>{label}</span>
+    <div className="flex items-center gap-1.5 shrink-0">
+      {ItemIcon && <ItemIcon size={10} className="text-amber" />}
+      {typeof count === 'number' && (
+        <span className="bg-white/10 px-1.5 py-0.5 rounded-full text-xs text-muted-foreground">
+          {count}
+        </span>
+      )}
+    </div>
   </div>
 );
 
@@ -197,7 +199,7 @@ export default function AppSidebar() {
                   </button>
                 </div>
                 {expandedGroups.includes(item.id) && (
-                  <div className="ml-4 mt-0.5 space-y-0.5 border-l border-navy-lighter pl-3">
+                  <div className="mt-0.5 space-y-0.5">
                     {item.children.map(child => (
                       <NavSubItem
                         key={child.id}
