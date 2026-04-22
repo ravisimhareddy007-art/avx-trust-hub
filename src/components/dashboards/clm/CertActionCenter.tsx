@@ -21,8 +21,6 @@ import {
   Clock,
   XCircle,
   Archive,
-  Shield,
-  Atom,
   ChevronDown,
   Search,
   AlertTriangle,
@@ -62,7 +60,6 @@ type CertRecord = {
   asset: CryptoAsset;
   crs: number;
   severity: string;
-  isQuantumVulnerable: boolean;
   sans: string;
   group: string;
   certStatus: 'Managed' | 'Monitored' | 'Expired';
@@ -140,7 +137,7 @@ export function useCertActionCenter() {
 }
 
 export default function CertActionCenter({ open, severityFilter, setOpen, setSeverityFilter }: CertActionCenterProps) {
-  const { setCurrentPage } = useNav();
+  const { setCurrentPage, setFilters } = useNav();
   const [certTab, setCertTab] = useState<CertTab>('server');
   const [selectedCerts, setSelectedCerts] = useState<string[]>([]);
   const [actionModal, setActionModal] = useState<ActionModal>(null);
@@ -172,7 +169,6 @@ export default function CertActionCenter({ open, severityFilter, setOpen, setSev
           asset,
           crs,
           severity: severityFor(crs),
-          isQuantumVulnerable: /RSA|ECC|ECDSA/.test(asset.algorithm),
           sans: asset.tags.slice(0, 3).join(', ') || asset.commonName,
           group: asset.caIssuer.includes('MSCA')
             ? 'Private_CA_Certificates'
@@ -197,7 +193,8 @@ export default function CertActionCenter({ open, severityFilter, setOpen, setSev
       if (severityFilter === 'Critical') return record.crs >= 80;
       if (severityFilter === 'High') return record.crs >= 60 && record.crs < 80;
       if (severityFilter === 'Medium') return record.crs >= 30 && record.crs < 60;
-      if (severityFilter === 'Low') return record.crs < 30;
+      if (severityFilter === 'Low') return record.crs > 0 && record.crs < 30;
+      if (severityFilter === 'Compliant') return record.crs === 0 || (record.asset.policyViolations === 0 && record.crs < 20);
       return true;
     });
   }, [certData, certTab, severityFilter]);
@@ -309,6 +306,7 @@ export default function CertActionCenter({ open, severityFilter, setOpen, setSev
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <button
                 onClick={() => {
+                  setFilters({ module: 'clm', filter: 'expiry' });
                   setCurrentPage('remediation');
                   closeAll();
                 }}
@@ -316,7 +314,7 @@ export default function CertActionCenter({ open, severityFilter, setOpen, setSev
               >
                 Remediate
               </button>
-              <button onClick={() => setActionModal('export')} className="rounded-lg border border-border px-3 py-2 text-xs text-foreground hover:bg-secondary">
+              <button onClick={() => toast.success('Exporting...')} className="rounded-lg border border-border px-3 py-2 text-xs text-foreground hover:bg-secondary">
                 Export
               </button>
               <div className="flex items-center gap-2 rounded-lg border border-border px-3 py-2">
