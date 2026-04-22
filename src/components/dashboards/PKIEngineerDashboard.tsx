@@ -1,11 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import {
   CheckCircle2,
+  Clock,
+  ChevronLeft,
+  ChevronRight,
   Info,
   LayoutDashboard,
   RefreshCw,
   ShieldCheck,
   Wrench,
+  X,
 } from 'lucide-react';
 import {
   BarChart,
@@ -81,13 +85,6 @@ const severityHsl: Record<string, string> = {
   Compliant: 'hsl(var(--teal))',
 };
 
-const issuerColors: Record<string, string> = {
-  'DigiCert Global G2': 'hsl(230 60% 60%)',
-  'Entrust L1K': 'hsl(280 50% 60%)',
-  "Let's Encrypt R3": 'hsl(200 70% 55%)',
-  'MSCA Enterprise': 'hsl(250 55% 65%)',
-};
-
 function polar(cx: number, cy: number, radius: number, angle: number) {
   const radians = ((angle - 90) * Math.PI) / 180;
   return {
@@ -111,50 +108,11 @@ function getScoreColor(overallScore: number) {
   return scoreZoneColors.bad;
 }
 
-function getStatusTone(status: CryptoAsset['status']) {
-  if (status === 'Expired') return 'hsl(var(--coral))';
-  if (status === 'Expiring') return 'hsl(var(--amber))';
-  if (status === 'Orphaned') return 'hsl(var(--purple))';
-  if (status === 'Pending') return 'hsl(210 80% 56%)';
-  return 'hsl(var(--teal))';
-}
-
-function getSignatureAlgorithm(algorithm: string) {
-  if (algorithm.includes('RSA')) return 'sha256WithRSAEncryption';
-  if (algorithm.includes('ECC') || algorithm.includes('Ed25519')) return 'ecdsa-with-SHA384';
-  if (algorithm.includes('AES')) return 'aes256-gcm';
-  return 'sha256';
-}
-
-function getGroupLabel(cert: CryptoAsset) {
-  return /MSCA|Enterprise|Internal|Istio/i.test(cert.caIssuer) ? 'Private_CA_Certificates' : 'Public_CA_Certificates';
-}
-
-function getDisplayStatus(status: CryptoAsset['status']) {
-  if (status === 'Active') return 'Healthy';
-  return status;
-}
-
-function getValidTo(cert: CryptoAsset) {
-  if (cert.expiryDate && cert.expiryDate !== 'N/A') return cert.expiryDate;
-  const base = new Date();
-  base.setDate(base.getDate() + cert.daysToExpiry);
-  return base.toISOString().slice(0, 10);
-}
-
-function getCrsBadgeColor(crs: number) {
-  if (crs >= 80) return 'hsl(var(--coral))';
-  if (crs >= 60) return 'hsl(var(--amber))';
-  if (crs >= 30) return 'hsl(210 80% 56%)';
-  return 'hsl(var(--teal))';
-}
-
 export default function PKIEngineerDashboard() {
   const [tab, setTab] = useState<CLMTab>('overview');
   const [modalOpen, setModalOpen] = useState(false);
   const [modalTitle, setModalTitle] = useState('');
   const [modalCerts, setModalCerts] = useState<ScoredCert[]>([]);
-  const { setFilters } = useNav();
 
   const allCerts = useMemo(
     () => mockAssets.filter((a) => a.type.includes('Certificate')),
@@ -188,19 +146,6 @@ export default function PKIEngineerDashboard() {
   const exp11to30 = useMemo(() => scored.filter((a) => a.daysToExpiry > 10 && a.daysToExpiry <= 30), [scored]);
   const exp31to90 = useMemo(() => scored.filter((a) => a.daysToExpiry > 30 && a.daysToExpiry <= 90), [scored]);
 
-  const caGroups = ['DigiCert Global G2', 'Entrust L1K', "Let's Encrypt R3", 'MSCA Enterprise'];
-  const caData = useMemo(
-    () => caGroups.map((ca) => ({
-      name: ca,
-      value: scored.filter((a) => a.caIssuer === ca).length ||
-        (ca === 'DigiCert Global G2' ? Math.round(total * 0.4) :
-         ca === 'Entrust L1K' ? Math.round(total * 0.22) :
-         ca === "Let's Encrypt R3" ? Math.round(total * 0.25) :
-         Math.round(total * 0.13)),
-    })),
-    [scored, total]
-  );
-
   const scanData = useMemo(
     () => [
       { name: 'Managed Device', value: Math.round(total * 0.42) },
@@ -212,8 +157,6 @@ export default function PKIEngineerDashboard() {
     ],
     [total]
   );
-
-  const codeSigningCount = useMemo(() => scored.filter((a) => a.type === 'Code-Signing Certificate').length, [scored]);
 
   const severityBuckets = useMemo(() => {
     const buckets = [
@@ -354,40 +297,7 @@ export default function PKIEngineerDashboard() {
 
   const backgroundArc = describeArc(80, 80, 65, -220, 40);
   const filledArc = describeArc(80, 80, 65, -220, -220 + (Math.max(0, Math.min(100, overallScore)) / 100) * 260);
-  const drillCount = selected.length || tabCerts.length;
-
-  const renderActionModal = () => {
-    if (!actionModal) return null;
-
-    const modalFooter = (primaryLabel: string, onPrimary: () => void, primaryStyle?: React.CSSProperties, secondaryLabel = 'Cancel') => (
-      <div className="mt-5 flex items-center justify-end gap-2">
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            closeActionModal();
-          }}
-          className="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-secondary/40"
-        >
-          {secondaryLabel}
-        </button>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onPrimary();
-          }}
-          className="rounded-md px-3 py-1.5 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90"
-          style={primaryStyle ?? { backgroundColor: 'hsl(var(--teal))' }}
-        >
-          {primaryLabel}
-        </button>
-      </div>
-    );
-
-    const selectedCount = selected.length;
-
-    return (
+  return (
       <div className="fixed inset-0 z-[70]" onClick={(e) => e.stopPropagation()}>
         {actionModal === 'export' && (
           <Modal open onClose={closeActionModal} title="Export Certificates">
