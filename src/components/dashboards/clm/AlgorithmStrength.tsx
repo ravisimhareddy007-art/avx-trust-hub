@@ -44,7 +44,11 @@ function LegendRow({ items }: { items: { label: string; count: number; pct: numb
   );
 }
 
-export default function AlgorithmStrength() {
+type AlgorithmStrengthProps = {
+  openModal?: (title: string, certs: any[]) => void;
+};
+
+export default function AlgorithmStrength({ openModal: _openModal }: AlgorithmStrengthProps) {
   const total = certAssets.length;
 
   // Signature distribution
