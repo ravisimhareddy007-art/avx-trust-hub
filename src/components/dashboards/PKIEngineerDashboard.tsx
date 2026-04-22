@@ -446,7 +446,7 @@ export default function PKIEngineerDashboard() {
                       <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} angle={-15} textAnchor="end" height={50} axisLine={false} tickLine={false} interval={0} />
                       <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} label={{ value: 'Certificate Counts', angle: -90, position: 'insideLeft', style: { fill: 'hsl(var(--muted-foreground))', fontSize: 10 } }} />
                       <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 11 }} />
-                      <Bar dataKey="value" fill="hsl(230 60% 60%)" radius={[4, 4, 0, 0]} cursor="pointer" onClick={(data) => guardAndOpenDrill('scan', data.name, getScanTypeCerts(data.name), data.value)}>
+                      <Bar dataKey="value" fill="hsl(230 60% 60%)" radius={[4, 4, 0, 0]} cursor="pointer" onClick={(data) => guardAndOpenDrill('scan', data.name, getScanTypeCerts(data.name), Number(Array.isArray(data.value) ? data.value[0] : data.value))}>
                         <LabelList dataKey="value" position="top" style={{ fill: 'hsl(var(--foreground))', fontSize: 10 }} />
                       </Bar>
                     </BarChart>
@@ -478,7 +478,7 @@ export default function PKIEngineerDashboard() {
                         onClick={(data) => {
                           const directMatches = scored.filter((a) => a.caIssuer === data.name);
                           const certs = directMatches.length > 0 ? directMatches : scored.filter((a) => a.caIssuer.includes(data.name));
-                          guardAndOpenDrill('ca', data.name, certs, data.value);
+                          guardAndOpenDrill('ca', data.name, certs, Number(Array.isArray(data.value) ? data.value[0] : data.value));
                         }}
                       >
                         <LabelList dataKey="value" position="top" style={{ fill: 'hsl(var(--foreground))', fontSize: 10 }} />

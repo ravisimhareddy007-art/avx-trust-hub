@@ -194,6 +194,13 @@ export default function CertDrillModal({ open, onClose, title, certs }: CertDril
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 });
 
+  useEffect(() => {
+    if (open && certs.length === 0) {
+      toast.info('No certificates match this filter');
+      onClose();
+    }
+  }, [certs.length, onClose, open]);
+
   const scoredCerts = useMemo<ScoredCert[]>(() => certs.map((cert) => {
     const scored = cert as ScoredCert;
     return typeof scored.crs === 'number' ? scored : { ...(cert as CryptoAsset), crs: computeCRS(cert as CryptoAsset).crs };
