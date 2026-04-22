@@ -79,20 +79,18 @@ export default function PKIEngineerDashboard() {
   );
 
   const severityBuckets = useMemo(() => {
-    const buckets = {
-      Critical: certsWithScores.filter(({ crs }) => crs >= 80).length,
-      High: certsWithScores.filter(({ crs }) => crs >= 60 && crs < 80).length,
-      Medium: certsWithScores.filter(({ crs }) => crs >= 30 && crs < 60).length,
-      Low: certsWithScores.filter(({ crs }) => crs > 0 && crs < 30).length,
-      Compliant: certsWithScores.filter(({ crs }) => crs === 0).length,
-    };
+    const critical = certsWithScores.filter(({ crs }) => crs >= 80);
+    const high = certsWithScores.filter(({ crs }) => crs >= 60 && crs < 80);
+    const medium = certsWithScores.filter(({ crs }) => crs >= 30 && crs < 60);
+    const low = certsWithScores.filter(({ crs }) => crs > 0 && crs < 30);
+    const compliant = certsWithScores.filter(({ crs, policyViolations }) => crs === 0 || (policyViolations === 0 && crs < 20));
 
     return [
-      { name: 'Critical', count: buckets.Critical, color: 'hsl(0 72% 51%)' },
-      { name: 'High', count: buckets.High, color: 'hsl(0 72% 62%)' },
-      { name: 'Medium', count: buckets.Medium, color: 'hsl(38 90% 55%)' },
-      { name: 'Low', count: buckets.Low, color: 'hsl(48 80% 55%)' },
-      { name: 'Compliant', count: buckets.Compliant, color: 'hsl(var(--teal))' },
+      { name: 'Critical', count: critical.length, color: 'hsl(0 72% 51%)' },
+      { name: 'High', count: high.length, color: 'hsl(0 72% 62%)' },
+      { name: 'Medium', count: medium.length, color: 'hsl(38 90% 55%)' },
+      { name: 'Low', count: low.length, color: 'hsl(48 80% 55%)' },
+      { name: 'Compliant', count: compliant.length, color: 'hsl(var(--teal))' },
     ];
   }, [certsWithScores]);
 
@@ -252,8 +250,8 @@ export default function PKIEngineerDashboard() {
 
   const handleRefresh = () => toast.success('CLM overview refreshed');
   const handleSeverityNavigate = (severityName: string) => {
-    setFilters({ module: 'clm', severity: severityName.toLowerCase() });
-    setCurrentPage('remediation');
+    setDrillSeverity(severityName);
+    setDrillOpen(true);
   };
 
   return (
