@@ -24,7 +24,7 @@ const buildIssue = (
       asset,
       severity: asset.daysToExpiry <= 2 || asset.status === 'Expired' ? 'Critical' : 'High',
       issueType,
-      issueCategory: 'expiry',
+      issueCategory: 'expiring',
       issueText,
       recommended,
       owner: asset.owner,
@@ -140,11 +140,12 @@ export const clmCertificates = allCertificates;
 export const clmIssues = [...expiryRows, ...pqcRows, ...orphanedRows, ...policyRows];
 
 export const clmIssueFilters = [
-  { id: 'all-issues', label: 'All Issues' },
-  { id: 'expiry', label: 'Expiring / Expired' },
+  { id: 'all', label: 'All Issues', count: 43 },
+  { id: 'expiring', label: 'Expiring / Expired', count: 12 },
   { id: 'pqc', label: 'PQC Migration' },
   { id: 'orphaned', label: 'Orphaned' },
   { id: 'policy', label: 'Policy Violations' },
+  { id: 'codesigning', label: 'Code Signing', count: 3 },
 ] as const;
 
 export const policyRequestsSeed: PolicyRequestRow[] = [
