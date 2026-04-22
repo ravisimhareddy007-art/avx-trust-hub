@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNav } from '@/context/NavigationContext';
+import { useNotifications } from '@/context/NotificationContext';
 import { KPICard, SeverityBadge, Modal, Drawer, AIInsightCard } from '@/components/shared/UIComponents';
 
 // ─── DATA ────────────────────────────────────────────────────────────────────
@@ -590,7 +591,7 @@ export default function ComplianceDashboard() {
       toPersona: 'security-admin',
       comments,
     });
-    toast.success('Escalation sent to Security Admin — they'll see it on their dashboard');
+    toast.success('Escalation sent to Security Admin');
   };
 
   const handleCreateTicket = (v: Violation, data: { title: string; priority: string; assignee: string; description: string }) => {
