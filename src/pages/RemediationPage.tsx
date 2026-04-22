@@ -10,6 +10,7 @@ import {
   Terminal, Code, Database, Cpu, Sparkles, AlertCircle, Send
 } from 'lucide-react';
 import CLMRemediationWorkspace from '@/components/remediation/clm/CLMRemediationWorkspace';
+import AIAgentRemediationWorkspace from '@/components/remediation/ai/AIAgentRemediationWorkspace';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -612,7 +613,7 @@ export default function RemediationPage() {
       {currentPage === 'remediation-objects' && <ModuleRemediationView moduleId="all" filters={filters} />}
       {currentPage === 'remediation-clm' && <CLMRemediationWorkspace activeTab={clmView} onTabChange={setClmView} />}
       {currentPage === 'remediation-ssh' && <ModuleRemediationView moduleId="ssh" filters={filters} />}
-      {currentPage === 'remediation-ai' && <ModuleRemediationView moduleId="ai-agents" filters={filters} />}
+      {currentPage === 'remediation-ai' && <AIAgentRemediationWorkspace />}
       {currentPage === 'remediation-secrets' && <ModuleRemediationView moduleId="secrets" filters={filters} />}
     </div>
   );
