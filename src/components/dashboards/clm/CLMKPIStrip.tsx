@@ -27,7 +27,6 @@ function KPICard({ value, subtitle, color, onClick }: KPICardProps) {
   );
 }
 
-export default function CLMKPIStrip() {
 export default function CLMKPIStrip({
   onSeverityCardClick,
 }: {

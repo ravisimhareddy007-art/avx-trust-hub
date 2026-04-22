@@ -451,11 +451,13 @@ export default function CertActionCenter({ open, severityFilter, setOpen, setSev
                         </span>
                       </td>
                       <td className="border-b border-border py-3 pr-3">
-                        {record.isQuantumVulnerable ? (
-                          <Atom className="h-4 w-4 text-purple-light" title="Quantum vulnerable" />
-                        ) : (
-                          <Shield className="h-4 w-4 text-teal" title="PQC safer profile" />
-                        )}
+                        <span title={record.isQuantumVulnerable ? 'Quantum vulnerable' : 'PQC safer profile'}>
+                          {record.isQuantumVulnerable ? (
+                            <Atom className="h-4 w-4 text-purple-light" />
+                          ) : (
+                            <Shield className="h-4 w-4 text-teal" />
+                          )}
+                        </span>
                       </td>
                       <td className="border-b border-border py-3 pr-3 text-xs text-muted-foreground">{record.group}</td>
                       <td className="border-b border-border py-3 pr-3 text-xs tabular-nums text-muted-foreground">{record.asset.expiryDate}</td>
