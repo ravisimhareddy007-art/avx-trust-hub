@@ -146,6 +146,16 @@ export default function PKIEngineerDashboard() {
     orphaned: scored.filter((a) => a.owner === 'Unassigned' || a.status === 'Orphaned'),
   }), [allCerts.length, scored]);
 
+  const critical = CERT_COUNTS.critical;
+  const high = CERT_COUNTS.high;
+  const medium = CERT_COUNTS.medium;
+  const low = CERT_COUNTS.low;
+  const compliant = CERT_COUNTS.compliant;
+  const expExpired = CERT_COUNTS.expired;
+  const exp1to10 = scored.filter((a) => a.daysToExpiry >= 0 && a.daysToExpiry <= 10);
+  const exp11to30 = scored.filter((a) => a.daysToExpiry > 10 && a.daysToExpiry <= 30);
+  const exp31to90 = scored.filter((a) => a.daysToExpiry > 30 && a.daysToExpiry <= 90);
+
   const total = scored.length || 1;
   const actualTotal = scored.length;
 
@@ -157,16 +167,6 @@ export default function PKIEngineerDashboard() {
     overallScore >= 40 ? 'Fair' :
     overallScore >= 20 ? 'Poor' : 'Bad';
   const scoreColor = getScoreColor(overallScore);
-
-  const critical = CERT_COUNTS.critical;
-  const high = CERT_COUNTS.high;
-  const medium = CERT_COUNTS.medium;
-  const low = CERT_COUNTS.low;
-  const compliant = CERT_COUNTS.compliant;
-  const expExpired = CERT_COUNTS.expired;
-  const exp1to10 = scored.filter((a) => a.daysToExpiry >= 0 && a.daysToExpiry <= 10);
-  const exp11to30 = scored.filter((a) => a.daysToExpiry > 10 && a.daysToExpiry <= 30);
-  const exp31to90 = scored.filter((a) => a.daysToExpiry > 30 && a.daysToExpiry <= 90);
 
   const scanData = useMemo(
     () => [
