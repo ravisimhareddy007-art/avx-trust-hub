@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { usePersona, Persona } from '@/context/PersonaContext';
-import { useNav } from '@/context/NavigationContext';
+import { remediationPages, useNav } from '@/context/NavigationContext';
 import {
   LayoutDashboard, Search, Package, Shield, AlertTriangle,
   ChevronDown, ChevronRight, Users,
@@ -90,7 +90,6 @@ const personaOptions: { value: Persona; label: string }[] = [
 export default function AppSidebar() {
   const { persona, setPersona } = usePersona();
   const { currentPage, setCurrentPage, setFilters } = useNav();
-  const remediationPages = ['remediation-objects', 'remediation-clm', 'remediation-ssh', 'remediation-ai', 'remediation-secrets'];
   const [expandedGroups, setExpandedGroups] = useState<string[]>([
     'inventory-section',
     'integrations',

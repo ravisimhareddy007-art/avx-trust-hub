@@ -1,8 +1,24 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
+export type Page =
+  | 'remediation-objects'
+  | 'remediation-clm'
+  | 'remediation-ssh'
+  | 'remediation-ai'
+  | 'remediation-secrets'
+  | string;
+
+export const remediationPages: Page[] = [
+  'remediation-objects',
+  'remediation-clm',
+  'remediation-ssh',
+  'remediation-ai',
+  'remediation-secrets',
+];
+
 interface NavigationContextType {
-  currentPage: string;
-  setCurrentPage: (page: string) => void;
+  currentPage: Page;
+  setCurrentPage: (page: Page) => void;
   filters: Record<string, string>;
   setFilters: (f: Record<string, string>) => void;
   drawerOpen: boolean;
@@ -25,7 +41,7 @@ const NavigationContext = createContext<NavigationContextType>({
 export const useNav = () => useContext(NavigationContext);
 
 export const NavigationProvider = ({ children }: { children: ReactNode }) => {
-  const [currentPage, setCurrentPage] = useState('dashboards');
+  const [currentPage, setCurrentPage] = useState<Page>('dashboards');
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerContent, setDrawerContent] = useState<any>(null);
