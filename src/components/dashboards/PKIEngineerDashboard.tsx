@@ -30,6 +30,9 @@ import CLMActionTrend from './clm/CLMActionTrend';
 import FailedRenewals from './clm/FailedRenewals';
 import NonStandardCerts from './clm/NonStandardCerts';
 import AlgorithmStrength from './clm/AlgorithmStrength';
+import SignatureHashStrength from './clm/SignatureHashStrength';
+import CipherSuiteTable from './clm/CipherSuiteTable';
+import OperationsStatusBands from './clm/OperationsStatusBands';
 import ScanCoverage from './clm/ScanCoverage';
 import SLCDashboard from './clm/SLCDashboard';
 import CertDrillModal from './clm/CertDrillModal';
@@ -496,6 +499,7 @@ export default function PKIEngineerDashboard() {
         {tab === 'operations' && (
           <div className="space-y-4 pr-1">
             <RenewalPipeline openModal={openModal} />
+            <OperationsStatusBands openModal={openModal} />
             <ExpiryCalendar openModal={openModal} />
             <FailedRenewals openModal={openModal} />
           </div>
@@ -505,6 +509,8 @@ export default function PKIEngineerDashboard() {
           <div className="space-y-4 pr-1">
             <NonStandardCerts openModal={openModal} />
             <AlgorithmStrength openModal={openModal} />
+            <SignatureHashStrength openModal={openModal} />
+            <CipherSuiteTable openModal={openModal} />
             <ScanCoverage />
           </div>
         )}
