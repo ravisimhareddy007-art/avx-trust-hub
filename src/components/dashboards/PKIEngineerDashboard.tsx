@@ -39,6 +39,7 @@ import CertDrillModal from './clm/CertDrillModal';
 import { ESTATE_SUMMARY, mockAssets, type CryptoAsset } from '@/data/mockData';
 import { mockITAssets } from '@/data/inventoryMockData';
 import { computeCRS } from '@/lib/risk/crs';
+import type { CertCounts } from './clm/types';
 import { toast } from 'sonner';
 
 type CLMTab = 'overview' | 'operations' | 'risk' | 'slc';
@@ -124,11 +125,27 @@ export default function PKIEngineerDashboard() {
     [allCerts]
   );
 
-  const critical = useMemo(() => scored.filter((a) => a.crs >= 80), [scored]);
-  const high = useMemo(() => scored.filter((a) => a.crs >= 60 && a.crs < 80), [scored]);
-  const medium = useMemo(() => scored.filter((a) => a.crs >= 30 && a.crs < 60), [scored]);
-  const low = useMemo(() => scored.filter((a) => a.crs > 0 && a.crs < 30), [scored]);
-  const compliant = useMemo(() => scored.filter((a) => a.crs === 0), [scored]);
+  const CERT_COUNTS = useMemo<CertCounts>(() => ({
+    total: ESTATE_SUMMARY.certificates,
+    sampleSize: allCerts.length,
+    scaleFactor: Math.round(ESTATE_SUMMARY.certificates / Math.max(1, allCerts.length)),
+    all: scored,
+    critical: scored.filter((a) => a.crs >= 80),
+    high: scored.filter((a) => a.crs >= 60 && a.crs < 80),
+    medium: scored.filter((a) => a.crs >= 30 && a.crs < 60),
+    low: scored.filter((a) => a.crs > 0 && a.crs < 30),
+    compliant: scored.filter((a) => a.crs === 0),
+    expired: scored.filter((a) => a.daysToExpiry < 0 || a.status === 'Expired'),
+    expiring7d: scored.filter((a) => a.daysToExpiry >= 0 && a.daysToExpiry <= 7),
+    expiring30d: scored.filter((a) => a.daysToExpiry >= 0 && a.daysToExpiry <= 30),
+    healthy: scored.filter((a) => a.daysToExpiry > 30),
+    noAutoRenewal: scored.filter((a) => !a.autoRenewal),
+    quantumVulnerable: scored.filter((a) => /RSA|ECC|ECDSA/.test(a.algorithm)),
+    weakAlgorithm: scored.filter((a) => ['RSA-1024', 'SHA-1'].includes(a.algorithm)),
+    legacyAlgorithm: scored.filter((a) => ['RSA-2048', 'RSA-3072'].includes(a.algorithm)),
+    orphaned: scored.filter((a) => a.owner === 'Unassigned' || a.status === 'Orphaned'),
+  }), [allCerts.length, scored]);
+
   const total = scored.length || 1;
   const actualTotal = scored.length;
 
@@ -141,10 +158,15 @@ export default function PKIEngineerDashboard() {
     overallScore >= 20 ? 'Poor' : 'Bad';
   const scoreColor = getScoreColor(overallScore);
 
-  const expExpired = useMemo(() => scored.filter((a) => a.daysToExpiry < 0 || a.status === 'Expired'), [scored]);
-  const exp1to10 = useMemo(() => scored.filter((a) => a.daysToExpiry >= 0 && a.daysToExpiry <= 10), [scored]);
-  const exp11to30 = useMemo(() => scored.filter((a) => a.daysToExpiry > 10 && a.daysToExpiry <= 30), [scored]);
-  const exp31to90 = useMemo(() => scored.filter((a) => a.daysToExpiry > 30 && a.daysToExpiry <= 90), [scored]);
+  const critical = CERT_COUNTS.critical;
+  const high = CERT_COUNTS.high;
+  const medium = CERT_COUNTS.medium;
+  const low = CERT_COUNTS.low;
+  const compliant = CERT_COUNTS.compliant;
+  const expExpired = CERT_COUNTS.expired;
+  const exp1to10 = scored.filter((a) => a.daysToExpiry >= 0 && a.daysToExpiry <= 10);
+  const exp11to30 = scored.filter((a) => a.daysToExpiry > 10 && a.daysToExpiry <= 30);
+  const exp31to90 = scored.filter((a) => a.daysToExpiry > 30 && a.daysToExpiry <= 90);
 
   const scanData = useMemo(
     () => [
@@ -310,8 +332,8 @@ export default function PKIEngineerDashboard() {
                 </div>
               </div>
               <div className="flex divide-x divide-border">
-                {[
-                  { label: 'Total Certificates', value: ESTATE_SUMMARY.certificates.toLocaleString() },
+                  {[
+                    { label: 'Total Certificates', value: ESTATE_SUMMARY.certificates.toLocaleString(), subtitle: `(showing ${CERT_COUNTS.sampleSize} in detail view)` },
                   { label: 'Cert Manager', value: 0, subtitle: 'not configured' },
                   { label: 'Total Issuing CAs', value: 4 },
                   { label: 'Code Signing Certs', value: ESTATE_SUMMARY.codeSigning.toLocaleString() },
@@ -498,24 +520,24 @@ export default function PKIEngineerDashboard() {
 
         {tab === 'operations' && (
           <div className="space-y-4 pr-1">
-            <RenewalPipeline openModal={openModal} />
-            <OperationsStatusBands openModal={openModal} />
-            <ExpiryCalendar openModal={openModal} />
+            <RenewalPipeline openModal={openModal} certCounts={CERT_COUNTS} />
+            <OperationsStatusBands openModal={openModal} certCounts={CERT_COUNTS} />
+            <ExpiryCalendar openModal={openModal} certCounts={CERT_COUNTS} />
             <FailedRenewals openModal={openModal} />
           </div>
         )}
 
         {tab === 'risk' && (
           <div className="space-y-4 pr-1">
-            <NonStandardCerts openModal={openModal} />
-            <AlgorithmStrength openModal={openModal} />
+            <NonStandardCerts openModal={openModal} certCounts={CERT_COUNTS} />
+            <AlgorithmStrength openModal={openModal} certCounts={CERT_COUNTS} />
             <SignatureHashStrength openModal={openModal} />
             <CipherSuiteTable openModal={openModal} />
             <ScanCoverage />
           </div>
         )}
 
-        {tab === 'slc' && <SLCDashboard openModal={openModal} />}
+        {tab === 'slc' && <SLCDashboard openModal={openModal} certCounts={CERT_COUNTS} />}
       </div>
 
       <CertDrillModal open={modalOpen} onClose={() => setModalOpen(false)} title={modalTitle} certs={modalCerts} />
