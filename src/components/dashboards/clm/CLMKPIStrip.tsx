@@ -28,6 +28,11 @@ function KPICard({ value, subtitle, color, onClick }: KPICardProps) {
 }
 
 export default function CLMKPIStrip() {
+export default function CLMKPIStrip({
+  onSeverityCardClick,
+}: {
+  onSeverityCardClick?: (severity: string) => void;
+}) {
   const { setCurrentPage } = useNav();
 
   // Filter certificate-type assets
@@ -71,7 +76,10 @@ export default function CLMKPIStrip() {
         value={expiringToday.toString()}
         subtitle="requires immediate action"
         color="coral"
-        onClick={() => setCurrentPage('remediation')}
+        onClick={() => {
+          onSeverityCardClick?.('Critical');
+          if (!onSeverityCardClick) setCurrentPage('remediation');
+        }}
       />
       <KPICard
         value={renewalsInFlight.toString()}
@@ -83,7 +91,10 @@ export default function CLMKPIStrip() {
         value={failedLast24h.toString()}
         subtitle="renewal failures overnight"
         color="coral"
-        onClick={() => setCurrentPage('remediation')}
+        onClick={() => {
+          onSeverityCardClick?.('High');
+          if (!onSeverityCardClick) setCurrentPage('remediation');
+        }}
       />
       <KPICard
         value={`${autoRenewalPercent}%`}
