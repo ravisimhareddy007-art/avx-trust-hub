@@ -88,7 +88,7 @@ export default function AlgorithmStrength({ openModal }: AlgorithmStrengthProps)
       showEmpty();
       return;
     }
-    setFilters({ type: 'TLS Certificate', ...extra });
+    setFilters({ tab: 'identities', type: 'TLS Certificate', ...extra });
     setCurrentPage('inventory');
   };
 

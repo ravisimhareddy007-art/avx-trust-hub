@@ -77,7 +77,7 @@ export default function OperationsStatusBands({ openModal, certCounts }: Operati
   const { setCurrentPage, setFilters } = useNav();
 
   const openInventory = (filterValue: string) => {
-    setFilters({ type: 'TLS Certificate', status: filterValue });
+    setFilters({ tab: 'identities', type: 'TLS Certificate', status: filterValue });
     setCurrentPage('inventory');
   };
 
@@ -119,7 +119,7 @@ export default function OperationsStatusBands({ openModal, certCounts }: Operati
       trackClass: 'bg-teal',
       pattern: 'inventory',
       action: () => {
-        setFilters({ type: 'TLS Certificate', autoRenewal: 'true' });
+        setFilters({ tab: 'identities', type: 'TLS Certificate', autoRenewal: 'true' });
         setCurrentPage('inventory');
       },
     },
@@ -143,7 +143,7 @@ export default function OperationsStatusBands({ openModal, certCounts }: Operati
       trackClass: 'bg-teal',
       pattern: 'inventory',
       action: () => {
-        setFilters({ type: 'TLS Certificate', autoPush: 'true' });
+        setFilters({ tab: 'identities', type: 'TLS Certificate', autoPush: 'true' });
         setCurrentPage('inventory');
       },
     },
