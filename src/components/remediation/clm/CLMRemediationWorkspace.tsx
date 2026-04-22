@@ -689,41 +689,43 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
 
       {activeTab === 'issues' && (
         <div className="space-y-4">
-          <div className="border-b border-border px-6 pt-4 pb-2">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <Lock className="h-[18px] w-[18px] text-teal" />
-                <h1 className="text-lg font-semibold text-foreground">Certificates (CLM)</h1>
-                <span className="text-sm text-muted-foreground">· {formatCount(clmIssues.length)} items need attention</span>
+          <div className="border-b border-border px-5 pt-3 pb-2">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <h1 className="flex items-center gap-2 text-lg font-bold text-foreground">
+                  <Lock className="h-5 w-5 text-teal" />
+                  Certificates (CLM)
+                </h1>
+                <p className="mt-0 text-xs text-muted-foreground">{formatCount(clmIssues.length)} items need attention</p>
               </div>
-              <button type="button" onClick={launchIssueNewCertificate} className="inline-flex items-center gap-2 rounded-lg bg-teal px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-teal-light">
-                <FilePlus className="h-3.5 w-3.5" />
+              <button type="button" onClick={launchIssueNewCertificate} className="inline-flex items-center gap-2 self-start rounded-lg bg-teal px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-teal-light">
+                <FilePlus className="h-4 w-4" />
                 + Issue New Certificate
               </button>
             </div>
 
-            <div className="flex items-center gap-2 overflow-x-auto">
+            <div className="my-2 flex flex-wrap items-center gap-2">
               {clmIssueFilters.map((filter) => (
                 <button
                   key={filter.id}
                   type="button"
                   onClick={() => { setIssueFilter(filter.id); setSelectedIds(new Set()); }}
-                  className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium ${issueFilter === filter.id ? 'border-teal/30 bg-teal/10 text-teal' : 'border-transparent bg-muted text-muted-foreground hover:border-border hover:text-foreground'}`}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-medium ${issueFilter === filter.id ? 'border-teal/30 bg-teal/10 text-teal' : 'border-transparent bg-muted text-muted-foreground hover:border-border hover:text-foreground'}`}
                 >
                   {filter.label} ({issueCounts[filter.id]})
                 </button>
               ))}
+            </div>
 
-              <div className="ml-auto flex items-center gap-2 shrink-0">
-                <div className="relative w-44">
-                  <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input value={issueSearch} onChange={(event) => setIssueSearch(event.target.value)} placeholder="Search..." className="pl-8" />
-                </div>
-                <button type="button" onClick={() => toast.success('Issue export generated.')} className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-xs font-medium text-foreground hover:bg-secondary">
-                  <Download className="h-3.5 w-3.5" />
-                  Export
-                </button>
+            <div className="mt-2 flex flex-col gap-3 rounded-lg border border-border bg-card p-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="relative w-full max-w-sm">
+                <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input value={issueSearch} onChange={(event) => setIssueSearch(event.target.value)} placeholder="Search certificates or issues" className="pl-8" />
               </div>
+              <button type="button" onClick={() => toast.success('Issue export generated.')} className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-xs font-medium text-foreground hover:bg-secondary">
+                <Download className="h-3.5 w-3.5" />
+                Export
+              </button>
             </div>
           </div>
 
