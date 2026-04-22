@@ -11,6 +11,7 @@ import AlgorithmStrength from './clm/AlgorithmStrength';
 import SLCCompliance from './clm/SLCCompliance';
 import ScanCoverage from './clm/ScanCoverage';
 import SLCDashboard from './clm/SLCDashboard';
+import CertActionCenter from './clm/CertActionCenter';
 
 type CLMTab = 'overview' | 'operations' | 'risk' | 'slc';
 
@@ -28,6 +29,8 @@ export default function PKIEngineerDashboard() {
   const [tab, setTab]           = useState<CLMTab>('overview');
   const [certType, setCertType] = useState('All Certificates');
   const [caFilter, setCaFilter] = useState('All CAs');
+  const [drillSeverity, setDrillSeverity] = useState('');
+  const [drillOpen, setDrillOpen] = useState(false);
 
   return (
     <div className="space-y-0 max-h-[calc(100vh-120px)] flex flex-col">
@@ -93,7 +96,12 @@ export default function PKIEngineerDashboard() {
         {/* OVERVIEW */}
         {tab === 'overview' && (
           <div className="space-y-4 pr-1">
-            <CLMKPIStrip />
+            <CLMKPIStrip
+              onSeverityCardClick={(severity) => {
+                setDrillSeverity(severity);
+                setDrillOpen(true);
+              }}
+            />
             <CLMActionTrend />
             <CAHealthStrip />
           </div>
@@ -122,6 +130,13 @@ export default function PKIEngineerDashboard() {
         {tab === 'slc' && <SLCDashboard />}
 
       </div>
+
+      <CertActionCenter
+        open={drillOpen}
+        severityFilter={drillSeverity}
+        setOpen={setDrillOpen}
+        setSeverityFilter={setDrillSeverity}
+      />
     </div>
   );
 }
