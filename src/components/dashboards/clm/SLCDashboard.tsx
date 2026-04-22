@@ -127,7 +127,11 @@ function SLCGauge({ score }: { score: number }) {
 }
 
 /* ── Component ───────────────────────────────── */
-export default function SLCDashboard() {
+type SLCDashboardProps = {
+  openModal?: (title: string, certs: any[]) => void;
+};
+
+export default function SLCDashboard({ openModal }: SLCDashboardProps) {
   const { setCurrentPage } = useNav();
 
   const [groupOpen, setGroupOpen] = useState(false);
