@@ -35,16 +35,16 @@ interface NavSubItemProps {
 const NavSubItem = ({ label, count, icon: ItemIcon, isActive, onClick }: NavSubItemProps) => (
   <div
     onClick={onClick}
-    className={`flex items-center justify-between gap-2 pl-6 pr-3 py-1.5 cursor-pointer rounded-md mx-2 text-sm transition-colors ${
+    className={`flex items-center justify-between gap-2 pl-8 pr-3 py-1 cursor-pointer rounded-md mx-2 text-xs transition-colors ${
       isActive
         ? 'text-teal bg-teal/10 font-medium'
         : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
     }`}
   >
-    <span className="flex-1 leading-tight">{label}</span>
-    {ItemIcon && <ItemIcon size={12} className="text-amber shrink-0" />}
+    <span className="flex-1">{label}</span>
+    {ItemIcon && <ItemIcon size={10} className="text-amber shrink-0" />}
     {typeof count === 'number' && (
-      <span className="text-xs bg-white/10 text-muted-foreground px-1.5 py-0.5 rounded-full shrink-0">
+      <span className="bg-white/10 text-muted-foreground px-1.5 py-0.5 rounded-full text-xs shrink-0">
         {count}
       </span>
     )}
@@ -95,6 +95,7 @@ export default function AppSidebar() {
   const [expandedGroups, setExpandedGroups] = useState<string[]>([
     'inventory-section',
     'integrations',
+    ...(remediationPages.includes(currentPage) ? ['remediation'] : []),
   ]);
   const [personaOpen, setPersonaOpen] = useState(false);
 
@@ -163,44 +164,7 @@ export default function AppSidebar() {
       <nav className="flex-1 px-2 py-2 overflow-y-auto scrollbar-thin">
         {navItems.map(item => (
           <div key={item.id} className="mb-0.5">
-            {item.id === 'remediation' && item.children ? (
-              <div className="relative group">
-                <button
-                  onClick={() => handleNavClick(item.id, item.page)}
-                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-[11px] font-semibold uppercase tracking-wide transition-colors ${
-                    remediationPages.includes(currentPage) ? 'text-teal' : 'text-sidebar-foreground hover:text-primary-foreground'
-                  }`}
-                >
-                  <item.icon className="w-4 h-4" />
-                  <span>{item.label}</span>
-                </button>
-
-                <div className="absolute left-full top-0 ml-1 z-50 w-52 rounded-lg border border-navy-lighter bg-navy-light py-1 shadow-xl shadow-black/40 opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
-                  <div className="mb-1 border-b border-navy-lighter px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Remediation
-                  </div>
-                  {item.children.map(child => (
-                    <button
-                      key={child.id}
-                      onClick={() => handleNavClick(child.id, child.page, child.type)}
-                      className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-sm transition-colors ${
-                        isActive(child.id, child.page)
-                          ? 'bg-teal/10 text-teal'
-                          : 'text-muted-foreground hover:bg-white/5 hover:text-foreground'
-                      }`}
-                    >
-                      <span className="flex-1">{child.label}</span>
-                      {child.icon && <child.icon size={11} className="text-amber shrink-0" />}
-                      {typeof child.count === 'number' && (
-                        <span className="rounded-full bg-white/10 px-1.5 py-0.5 text-xs shrink-0">
-                          {child.count}
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : item.children ? (
+            {item.children ? (
               <>
                 <div
                   className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-[11px] font-semibold uppercase tracking-wide transition-colors ${
