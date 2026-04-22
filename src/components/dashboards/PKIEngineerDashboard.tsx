@@ -1279,7 +1279,7 @@ export default function PKIEngineerDashboard() {
             </div>
 
             <div className="grid grid-cols-12 gap-4">
-              <section className="col-span-8 rounded-xl border border-border bg-card p-4">
+              <section className="col-span-4 rounded-xl border border-border bg-card p-4">
                 <div className="mb-4 flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-foreground">Certificates based on Scan Type</h3>
                   <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
@@ -1303,7 +1303,7 @@ export default function PKIEngineerDashboard() {
                 </div>
               </section>
 
-              <section className="col-span-4 rounded-xl border border-border bg-card p-4">
+              <section className="col-span-8 rounded-xl border border-border bg-card p-4">
                 <div className="mb-4 flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-foreground">Certificates by Issuing CAs</h3>
                   <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
