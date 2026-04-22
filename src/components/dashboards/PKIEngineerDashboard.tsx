@@ -1,32 +1,11 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import ReactDOM from 'react-dom';
+import React, { useMemo, useState } from 'react';
 import {
-  RefreshCw,
   LayoutDashboard,
-  Wrench,
-  ShieldCheck,
-  ChevronDown,
-  Clock,
-  Info,
-  ChevronLeft,
-  ChevronRight,
-  AlertTriangle,
   CheckCircle2,
-  Search,
-  Download,
-  MoreVertical,
-  X,
-  ArrowRight,
-  RotateCcw,
-  ArrowRightLeft,
-  XCircle,
-  Settings,
-  Tag,
-  Unlink,
-  MessageSquare,
-  Layers,
-  Archive,
-  Trash2,
+  Info,
+  RefreshCw,
+  ShieldCheck,
+  Wrench,
 } from 'lucide-react';
 import {
   BarChart,
@@ -50,7 +29,7 @@ import AlgorithmStrength from './clm/AlgorithmStrength';
 import SLCCompliance from './clm/SLCCompliance';
 import ScanCoverage from './clm/ScanCoverage';
 import SLCDashboard from './clm/SLCDashboard';
-import { Modal } from '@/components/shared/UIComponents';
+import CertDrillModal from './clm/CertDrillModal';
 import { ESTATE_SUMMARY, mockAssets, type CryptoAsset } from '@/data/mockData';
 import { mockITAssets } from '@/data/inventoryMockData';
 import { computeCRS } from '@/lib/risk/crs';
@@ -58,77 +37,7 @@ import { useNav } from '@/context/NavigationContext';
 import { toast } from 'sonner';
 
 type CLMTab = 'overview' | 'operations' | 'risk' | 'slc';
-type CertTab = 'server' | 'client' | 'code-signing';
-type ApprovalAction = 'renew' | 'revoke' | null;
-type ActionModal =
-  | 'export'
-  | 'download'
-  | 'delete'
-  | 'change-status'
-  | 'assign-group'
-  | 'unassign-group'
-  | 'add-comments'
-  | 'cert-attributes'
-  | 'bulk-update'
-  | 'update-renew'
-  | 'renew'
-  | 'regenerate'
-  | 'reissue'
-  | 'revoke'
-  | 'ca-switch'
-  | 'revocation-check'
-  | 'archive'
-  | null;
-
 type ScoredCert = CryptoAsset & { crs: number };
-
-const COLUMN_OPTIONS = [
-  { key: 'commonName', label: 'Common Name', required: true, defaultVisible: true },
-  { key: 'serialNumber', label: 'Serial Number', defaultVisible: true },
-  { key: 'group', label: 'Group', defaultVisible: true },
-  { key: 'issuerCommonName', label: 'Issuer Common Name', defaultVisible: true },
-  { key: 'validTo', label: 'Valid To (GMT)', defaultVisible: true },
-  { key: 'status', label: 'Status', defaultVisible: true },
-  { key: 'certificateAuthority', label: 'Certificate Authority', defaultVisible: true },
-  { key: 'kubeAttributes', label: 'Kube Attributes', defaultVisible: true },
-  { key: 'quantumReadiness', label: 'Quantum Readiness', defaultVisible: true },
-  { key: 'subjectOrganizationUnit', label: 'Subject Organization Unit' },
-  { key: 'subjectLocality', label: 'Subject Locality' },
-  { key: 'subjectState', label: 'Subject State' },
-  { key: 'subjectCountry', label: 'Subject Country' },
-  { key: 'issuerOrganization', label: 'Issuer Organization' },
-  { key: 'issuerOrganizationUnit', label: 'Issuer Organization Unit' },
-  { key: 'issuerLocality', label: 'Issuer Locality' },
-  { key: 'issuerState', label: 'Issuer State' },
-  { key: 'issuerCountry', label: 'Issuer Country' },
-  { key: 'version', label: 'Version' },
-  { key: 'validFrom', label: 'Valid From (GMT)' },
-  { key: 'keyAlgorithmSize', label: 'Key Algorithm & Size' },
-  { key: 'signatureAlgorithm', label: 'Signature Algorithm' },
-  { key: 'keyUsages', label: 'Key Usage(s)' },
-  { key: 'extendedKeyUsages', label: 'Extended Key Usage(s)' },
-  { key: 'basicConstraints', label: 'Basic Constraints' },
-  { key: 'associatedObject', label: 'Associated Object' },
-  { key: 'applications', label: 'Application(s)' },
-  { key: 'subjectAlternativeNames', label: 'Subject Alternative Names' },
-  { key: 'compliant', label: 'Compliant' },
-  { key: 'discoveredFileNames', label: 'Discovered File Name(s)' },
-  { key: 'renewDate', label: 'Renew Date' },
-  { key: 'validFor', label: 'Valid For' },
-  { key: 'requestId', label: 'Request ID' },
-  { key: 'subjectEmailAddress', label: 'Subject Email Address' },
-  { key: 'comments', label: 'Comments' },
-  { key: 'orderId', label: 'Order ID' },
-  { key: 'countOfSubjectAltNames', label: 'Count Of Subject Altern Names' },
-  { key: 'reenrollDate', label: 'Re-enroll Date' },
-  { key: 'regenerateDate', label: 'Regenerate Date' },
-  { key: 'thumbprint', label: 'Thumbprint' },
-  { key: 'subjectKeyIdentifier', label: 'Subject Key Identifier' },
-  { key: 'discoverySource', label: 'Discovery Source' },
-  { key: 'subjectOrganization', label: 'Subject Organization' },
-] as const;
-
-type ColumnKey = (typeof COLUMN_OPTIONS)[number]['key'];
 
 
 const TABS: { id: CLMTab; label: string; icon: React.ElementType }[] = [
@@ -138,34 +47,6 @@ const TABS: { id: CLMTab; label: string; icon: React.ElementType }[] = [
   { id: 'slc', label: 'Short-Lived Certs', icon: Clock },
 ];
 
-const GROUPS = ['Default', 'Private_CA_Certificates', 'Public_CA_Certificates', 'Certificate-Gateway'];
-const CA_OPTIONS = [
-  'Amazon',
-  'Amazon Private CA',
-  'AppViewX',
-  'AppViewX PKIaaS NDES',
-  'CSC Global',
-  'DigiCert',
-  'Ejbca',
-  'Entrust',
-  'Entrust MPKI',
-  'GlobalSign',
-  'GlobalSign Atlas',
-  'GlobalSign MSSL',
-  'GoDaddy',
-  'Google',
-  'HashiCorp Vault',
-  'HydrantID',
-  "Let's Encrypt",
-  'Microsoft Enterprise',
-  'Nexus',
-  'OpenTrust',
-  'SwissSign',
-  'Trustwave',
-  'XCA Test Issuer',
-  'Sectigo',
-  'OTHERS',
-] as const;
 const CA_DISTRIBUTION = [
   { name: 'AppViewX', value: 1081 },
   { name: 'DigiCert', value: 313 },
@@ -182,21 +63,6 @@ const CA_DISTRIBUTION = [
   { name: 'HydrantID', value: 28 },
   { name: 'OpenTrust', value: 28 },
   { name: 'OTHERS', value: 345 },
-] as const;
-const DEFAULT_VISIBLE_COLUMNS = COLUMN_OPTIONS.reduce<ColumnKey[]>((acc, column) => {
-  if (('defaultVisible' in column && column.defaultVisible) || ('required' in column && column.required)) {
-    acc.push(column.key);
-  }
-  return acc;
-}, []);
-const REVOKE_REASONS = [
-  { value: 'Affiliation Changed', hint: 'Subject no longer affiliated with issuer' },
-  { value: 'Cessation of operation', hint: 'Certificate holder stopped relevant operations' },
-  { value: 'Key compromise', hint: 'Private key is suspected compromised' },
-  { value: 'Superseded', hint: 'Replaced by a newer certificate' },
-  { value: 'CA Compromise', hint: 'The issuing CA has been compromised' },
-  { value: 'Privilege Withdrawn', hint: 'Granted privileges have been withdrawn' },
-  { value: 'Unspecified', hint: 'Reason does not fall into other categories' },
 ] as const;
 
 const scoreZoneColors = {
