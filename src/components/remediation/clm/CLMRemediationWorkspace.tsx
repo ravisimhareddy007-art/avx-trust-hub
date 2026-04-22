@@ -249,6 +249,7 @@ const DetailDrawer = ({
           <div className="rounded-lg border border-coral/20 bg-coral/5 p-3">
             <p className="text-[11px] font-medium uppercase tracking-wide text-coral">Current issue</p>
             <p className="mt-1 text-sm text-foreground">{row.issueText}</p>
+            <p className="mt-2 text-xs text-muted-foreground">Recommended path: {row.recommended}</p>
           </div>
 
           <div className="grid grid-cols-2 gap-3 text-sm">
@@ -260,6 +261,8 @@ const DetailDrawer = ({
             <InfoTile label="Valid To" value={row.asset.expiryDate} mono />
             <InfoTile label="Algorithm" value={row.asset.algorithm} />
             <InfoTile label="Key Size" value={row.asset.keyLength} />
+            <InfoTile label="Owner" value={row.owner} />
+            <InfoTile label="Environment" value={row.environment} />
           </div>
 
           <div className="rounded-lg border border-border bg-background/40 p-3">
@@ -280,6 +283,27 @@ const DetailDrawer = ({
                   {san}
                 </span>
               ))}
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-border bg-background/40 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">History</p>
+              <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${severityBadgeClass(row.severity)}`}>{row.severity}</span>
+            </div>
+            <div className="mt-3 space-y-3 text-xs">
+              <div className="flex items-start justify-between gap-3">
+                <span className="text-muted-foreground">Discovered</span>
+                <span className="text-right text-foreground">Discovery scan flagged this certificate for {row.issueType.toLowerCase()}.</span>
+              </div>
+              <div className="flex items-start justify-between gap-3">
+                <span className="text-muted-foreground">Ownership</span>
+                <span className="text-right text-foreground">Current owner: {row.owner}</span>
+              </div>
+              <div className="flex items-start justify-between gap-3">
+                <span className="text-muted-foreground">Recommended next step</span>
+                <span className="text-right text-foreground">{row.recommended}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -717,7 +741,16 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
     setActionRow(null);
   };
 
-  const handleBulkAction = (label: 'Renew' | 'Revoke' | 'CA Switch' | 'Export' | 'Assign Owner') => {
+  const toggleQuickFilter = (filterId: IssueQuickFilter) => {
+    setQuickFilterSelection((current) => {
+      const next = new Set(current);
+      if (next.has(filterId)) next.delete(filterId);
+      else next.add(filterId);
+      return next;
+    });
+  };
+
+  const handleBulkAction = (label: 'Renew' | 'Revoke & Reissue' | 'Export' | 'Assign Owner') => {
     if (label === 'Assign Owner') {
       toast.success(`Owner assignment queued for ${selectedRows.length} certificates.`);
     } else if (label === 'Export') {
@@ -773,31 +806,64 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
                 </h1>
                 <p className="mt-0 text-xs text-muted-foreground">{formatCount(clmIssues.length)} items need attention</p>
               </div>
-              <button type="button" onClick={launchIssueNewCertificate} className="inline-flex items-center gap-2 self-start rounded-lg bg-teal px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-teal-light">
-                <FilePlus className="h-4 w-4" />
-                + Issue New Certificate
-              </button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button type="button" onClick={launchIssueNewCertificate} className="inline-flex items-center gap-2 self-start rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-foreground hover:bg-secondary">
+                      <FilePlus className="h-4 w-4" />
+                      + Issue New Certificate
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Create and issue a new certificate (independent of existing issues)</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
 
-            <div className="mt-2 flex items-center justify-between border-b border-border px-6 py-3">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Search className="h-[15px] w-[15px]" />
-                <input
-                  type="text"
-                  value={issueSearch}
-                  onChange={(event) => setIssueSearch(event.target.value)}
-                  placeholder="Search certificates or issues..."
-                  className="w-72 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
-                />
+            <p className="mt-2 text-xs text-muted-foreground">Showing: Issues requiring attention</p>
+
+            <div className="mt-3 flex flex-col gap-3 border-b border-border px-6 py-3 xl:flex-row xl:items-center xl:justify-between">
+              <div className="flex flex-wrap items-center gap-2">
+                {quickFilters.map((filter) => {
+                  const active = quickFilterSelection.has(filter.id);
+                  return (
+                    <button
+                      key={filter.id}
+                      type="button"
+                      onClick={() => toggleQuickFilter(filter.id)}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${active ? 'border-teal/40 bg-teal/10 text-teal' : 'border-border bg-background text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
+                    >
+                      {filter.label}
+                    </button>
+                  );
+                })}
               </div>
-              <button type="button" onClick={() => toast.success('Issue export generated.')} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
-                <Download className="h-3.5 w-3.5" />
-                Export
-              </button>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Search className="h-[15px] w-[15px]" />
+                  <input
+                    type="text"
+                    value={issueSearch}
+                    onChange={(event) => setIssueSearch(event.target.value)}
+                    placeholder="Search certificates or issues..."
+                    className="w-72 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+                  />
+                </div>
+                <button type="button" onClick={() => toast.success('Issue export generated.')} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
+                  <Download className="h-3.5 w-3.5" />
+                  Export
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 px-6 py-3 text-xs">
+              <span className="rounded-full border border-coral/20 bg-coral/10 px-2.5 py-1 font-medium text-coral">Critical (0–3 days): {summaryCounts.critical}</span>
+              <span className="rounded-full border border-amber/20 bg-amber/10 px-2.5 py-1 font-medium text-amber">Warning (4–7 days): {summaryCounts.warning}</span>
+              <span className="rounded-full border border-border bg-background px-2.5 py-1 font-medium text-foreground">Total issues: {summaryCounts.total}</span>
             </div>
           </div>
 
           <div className="overflow-hidden rounded-lg border border-border bg-card">
+            <BulkActionBar selectedCount={selectedIds.size} onAction={handleBulkAction} />
             <div className="overflow-x-auto">
               <table className="w-full min-w-[1120px] text-sm">
                 <thead className="border-b border-border bg-background/40 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
@@ -807,7 +873,12 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
                     </th>
                     <th className="px-3 py-3">Severity</th>
                     <th className="px-3 py-3">Asset</th>
-                    <th className="px-3 py-3">Issue</th>
+                    <th className="px-3 py-3">
+                      <button type="button" className="inline-flex items-center gap-1 text-[11px] uppercase tracking-wide text-muted-foreground">
+                        Issue
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      </button>
+                    </th>
                     <th className="px-3 py-3">Owner</th>
                     <th className="px-3 py-3">Env</th>
                     <th className="px-3 py-3">Recommended</th>
@@ -818,27 +889,45 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
                 <tbody>
                   {filteredIssues.map((row) => {
                     const PrimaryIcon = actionMeta[row.primaryAction].icon;
+                    const urgencyDays = getUrgencyDays(row);
+                    const recommendation = getRecommendationMeta(row);
                     return (
-                      <tr key={row.id} className="border-b border-border last:border-b-0 hover:bg-background/30">
+                      <tr key={row.id} className="cursor-pointer border-b border-border last:border-b-0 hover:bg-background/30" onClick={() => setDetailRow(row)}>
                         <td className="px-3 py-3 align-top">
-                          <input type="checkbox" checked={selectedIds.has(row.id)} onChange={() => handleSelectRow(row.id)} className="rounded border-border bg-background" />
+                          <input type="checkbox" checked={selectedIds.has(row.id)} onChange={() => handleSelectRow(row.id)} onClick={(event) => event.stopPropagation()} className="rounded border-border bg-background" />
                         </td>
                         <td className="px-3 py-3 align-top">
                           <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${severityBadgeClass(row.severity)}`}>{row.severity}</span>
                         </td>
                         <td className="px-3 py-3 align-top">
-                          <button type="button" onClick={() => setDetailRow(row)} className="font-mono text-xs text-foreground hover:text-teal hover:underline">
+                          <button type="button" onClick={(event) => { event.stopPropagation(); setDetailRow(row); }} className="font-mono text-xs text-foreground hover:text-teal hover:underline">
                             {row.asset.name}
                           </button>
                         </td>
-                        <td className="px-3 py-3 align-top text-sm text-foreground">{row.issueText}</td>
+                        <td className="px-3 py-3 align-top text-sm text-foreground">
+                          <div className="flex items-center gap-2">
+                            <span>{row.issueText}</span>
+                            {urgencyDays !== null && <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${urgencyBadgeClass(urgencyDays)}`}>{urgencyDays}d</span>}
+                          </div>
+                        </td>
                         <td className="px-3 py-3 align-top text-sm text-muted-foreground">{row.owner}</td>
                         <td className="px-3 py-3 align-top">
                           <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${environmentBadgeClass(row.environment)}`}>{row.environment}</span>
                         </td>
-                        <td className="px-3 py-3 align-top text-sm text-muted-foreground">{row.recommended}</td>
                         <td className="px-3 py-3 align-top">
-                          <button type="button" onClick={() => handleAction(row.primaryAction, row)} className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium ${actionMeta[row.primaryAction].className}`}>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button type="button" onClick={(event) => { event.stopPropagation(); handleAction(recommendation.action, row); }} className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium ${recommendation.className}`}>
+                                  {recommendation.label}
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>{recommendation.tooltip}</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </td>
+                        <td className="px-3 py-3 align-top">
+                          <button type="button" onClick={(event) => { event.stopPropagation(); handleAction(row.primaryAction, row); }} className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium ${actionMeta[row.primaryAction].className}`}>
                             <PrimaryIcon className="h-3.5 w-3.5" />
                             {row.primaryAction}
                           </button>
@@ -963,8 +1052,6 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
           </div>
         </div>
       )}
-
-      <BulkActionBar selectedCount={selectedIds.size} onAction={handleBulkAction} />
 
       <DetailDrawer row={detailRow} open={!!detailRow} onClose={() => setDetailRow(null)} onRunAction={handleAction} />
       <ExecutionLogDrawer request={logRequest} open={!!logRequest} onClose={() => setLogRequest(null)} />
