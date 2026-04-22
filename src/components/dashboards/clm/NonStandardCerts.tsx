@@ -72,13 +72,13 @@ export default function NonStandardCerts({ openModal }: NonStandardCertsProps) {
   };
 
   return (
-    <div className="bg-card border border-border rounded-xl p-5">
-      <div className="flex items-center justify-between mb-4">
+    <div className="rounded-xl border border-border bg-card p-4">
+      <div className="mb-4 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-foreground">Non-Standard Certificates</h3>
         <span className="text-[10px] text-muted-foreground">click any tile to investigate</span>
       </div>
-      <div className="grid grid-cols-3 gap-3">
-        {tiles.map(t => {
+      <div className="grid grid-cols-6 gap-3">
+        {tiles.map((t) => {
           const count = counts[t.key];
           const Icon = t.icon;
           const isInteractive = count > 0;
@@ -86,14 +86,14 @@ export default function NonStandardCerts({ openModal }: NonStandardCertsProps) {
             <div
               key={t.key}
               onClick={isInteractive ? () => handleTileClick(t.label, t.key, count) : undefined}
-              className={`group rounded-lg border p-4 ${getTint(count)} ${isInteractive ? 'cursor-pointer hover:bg-secondary/40 transition-all' : 'cursor-default'}`}
+              className={`flex flex-col gap-1 rounded-lg border p-3 ${getTint(count)} ${isInteractive ? 'cursor-pointer transition-all hover:bg-secondary/40' : 'cursor-default'}`}
             >
-              <div className="mb-2 flex items-center justify-between">
-                <Icon className="w-4 h-4 text-muted-foreground" />
+              <div className="flex items-center justify-between">
+                <Icon className="h-4 w-4 text-muted-foreground" />
                 {isInteractive ? <ArrowRight className="h-3 w-3 text-teal opacity-0 transition-opacity group-hover:opacity-100" /> : null}
               </div>
-              <p className={`text-2xl font-bold ${count > 3 ? 'text-coral' : count >= 1 ? 'text-amber' : 'text-muted-foreground'}`}>{count}</p>
-              <p className="text-[10px] text-muted-foreground mt-1">{t.label}</p>
+              <p className={`text-xl font-bold ${count > 3 ? 'text-coral' : count >= 1 ? 'text-amber' : 'text-muted-foreground'}`}>{count}</p>
+              <p className="text-[11px] text-muted-foreground">{t.label}</p>
             </div>
           );
         })}
