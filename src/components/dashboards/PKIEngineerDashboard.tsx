@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import {
-  LayoutDashboard,
   CheckCircle2,
   Info,
+  LayoutDashboard,
   RefreshCw,
   ShieldCheck,
   Wrench,
@@ -151,43 +151,9 @@ function getCrsBadgeColor(crs: number) {
 
 export default function PKIEngineerDashboard() {
   const [tab, setTab] = useState<CLMTab>('overview');
-  const [drillOpen, setDrillOpen] = useState(false);
-  const [drillSeverity, setDrillSeverity] = useState('');
-  const [drillKind, setDrillKind] = useState<'severity' | 'ca' | 'scan'>('severity');
-  const [drillCerts, setDrillCerts] = useState<ScoredCert[]>([]);
-  const [certTab, setCertTab] = useState<CertTab>('server');
-  const [selected, setSelected] = useState<string[]>([]);
-  const [actionsOpen, setActionsOpen] = useState(false);
-  const [actionModal, setActionModal] = useState<ActionModal>(null);
-  const [approvalAction, setApprovalAction] = useState<ApprovalAction>(null);
-  const [approvalSearch, setApprovalSearch] = useState('');
-  const [approvalDecisionOpen, setApprovalDecisionOpen] = useState(false);
-  const [revokeReason, setRevokeReason] = useState('');
-  const [revokeComment, setRevokeComment] = useState('');
-  const [exportFormat, setExportFormat] = useState<'csv' | 'xls'>('csv');
-  const [downloadType, setDownloadType] = useState<'certs' | 'keys'>('certs');
-  const [downloadTruststore, setDownloadTruststore] = useState(false);
-  const [newStatus, setNewStatus] = useState('Managed');
-  const [statusComment, setStatusComment] = useState('');
-  const [selectedGroup, setSelectedGroup] = useState('Default');
-  const [groupSearch, setGroupSearch] = useState('');
-  const [comments, setComments] = useState('');
-  const [renewDays, setRenewDays] = useState(30);
-  const [renewCa, setRenewCa] = useState('DigiCert');
-  const [renewSchedule, setRenewSchedule] = useState<'Immediately' | 'Next maintenance window'>('Immediately');
-  const [regenerateKeyType, setRegenerateKeyType] = useState('RSA-4096');
-  const [reissueReason, setReissueReason] = useState('');
-  const [switchCa, setSwitchCa] = useState('Entrust');
-  const [bulkUpdateMode, setBulkUpdateMode] = useState<'File Upload' | 'By Group'>('File Upload');
-  const [columnsOpen, setColumnsOpen] = useState(false);
-  const [columnSearch, setColumnSearch] = useState('');
-  const [selectedColumns, setSelectedColumns] = useState<ColumnKey[]>(DEFAULT_VISIBLE_COLUMNS);
-  const [draftSelectedColumns, setDraftSelectedColumns] = useState<ColumnKey[]>(DEFAULT_VISIBLE_COLUMNS);
-  const [previousSelectedColumns, setPreviousSelectedColumns] = useState<ColumnKey[]>(DEFAULT_VISIBLE_COLUMNS);
-  const [revocationDone, setRevocationDone] = useState(false);
-  const actionsButtonRef = useRef<HTMLButtonElement | null>(null);
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
-  const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 });
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalTitle, setModalTitle] = useState('');
+  const [modalCerts, setModalCerts] = useState<ScoredCert[]>([]);
   const { setFilters } = useNav();
 
   const allCerts = useMemo(
@@ -319,144 +285,13 @@ export default function PKIEngineerDashboard() {
     );
   }, [approvalSearch, selectedCerts]);
 
-  const getOrderId = (cert: CryptoAsset) => `R${cert.id.replace(/\D/g, '').padStart(5, '0')}`;
-  const getThumbprint = (cert: CryptoAsset) => cert.serial.replace(/:/g, '').padEnd(20, '0').slice(0, 20);
-  const getValidFrom = (cert: CryptoAsset) => cert.issueDate || '2026-01-01';
-  const getKubeAttributes = (cert: CryptoAsset) => cert.type === 'K8s Workload Cert' ? 'namespace=prod; workload=managed' : '—';
-  const getQuantumReadiness = (cert: CryptoAsset) => cert.pqcRisk;
-
-  const getColumnValue = (cert: ScoredCert, key: ColumnKey) => {
-    const thumbprint = getThumbprint(cert);
-
-    switch (key) {
-      case 'commonName':
-        return <span className="font-mono text-[10.5px] text-foreground">{cert.commonName || cert.name}</span>;
-      case 'serialNumber':
-        return <span className="font-mono text-[10px] text-muted-foreground">{cert.serial}</span>;
-      case 'group':
-        return <span className="text-[10px] text-muted-foreground">{getGroupLabel(cert)}</span>;
-      case 'issuerCommonName':
-      case 'certificateAuthority':
-        return <span className="text-[10px] text-muted-foreground">{cert.caIssuer}</span>;
-      case 'validTo':
-        return <span className="tabular-nums text-[10px] text-muted-foreground">{getValidTo(cert)}</span>;
-      case 'status': {
-        const statusLabel = getDisplayStatus(cert.status);
-        const statusColor = getStatusTone(cert.status);
-        return <span className="rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ backgroundColor: `${statusColor}22`, color: statusColor }}>{statusLabel}</span>;
-      }
-      case 'kubeAttributes':
-        return <span className="text-[10px] text-muted-foreground">{getKubeAttributes(cert)}</span>;
-      case 'quantumReadiness':
-        return <span className="text-[10px] text-muted-foreground">{getQuantumReadiness(cert)}</span>;
-      case 'subjectOrganizationUnit':
-        return <span className="text-[10px] text-muted-foreground">{cert.team}</span>;
-      case 'subjectLocality':
-        return <span className="text-[10px] text-muted-foreground">San Jose</span>;
-      case 'subjectState':
-        return <span className="text-[10px] text-muted-foreground">California</span>;
-      case 'subjectCountry':
-        return <span className="text-[10px] text-muted-foreground">US</span>;
-      case 'issuerOrganization':
-        return <span className="text-[10px] text-muted-foreground">{cert.caIssuer.split(' ')[0]}</span>;
-      case 'issuerOrganizationUnit':
-        return <span className="text-[10px] text-muted-foreground">PKI Services</span>;
-      case 'issuerLocality':
-        return <span className="text-[10px] text-muted-foreground">New York</span>;
-      case 'issuerState':
-        return <span className="text-[10px] text-muted-foreground">New York</span>;
-      case 'issuerCountry':
-        return <span className="text-[10px] text-muted-foreground">US</span>;
-      case 'version':
-        return <span className="text-[10px] text-muted-foreground">v3</span>;
-      case 'validFrom':
-        return <span className="tabular-nums text-[10px] text-muted-foreground">{getValidFrom(cert)}</span>;
-      case 'keyAlgorithmSize':
-        return <span className="text-[10px] text-muted-foreground">{`${cert.algorithm} / ${cert.keyLength}`}</span>;
-      case 'signatureAlgorithm':
-        return <span className="text-[10px] text-muted-foreground">{getSignatureAlgorithm(cert.algorithm)}</span>;
-      case 'keyUsages':
-        return <span className="text-[10px] text-muted-foreground">Digital Signature, Key Encipherment</span>;
-      case 'extendedKeyUsages':
-        return <span className="text-[10px] text-muted-foreground">Server Auth, Client Auth</span>;
-      case 'basicConstraints':
-        return <span className="text-[10px] text-muted-foreground">CA:FALSE</span>;
-      case 'associatedObject':
-        return <span className="text-[10px] text-muted-foreground">{cert.infrastructure}</span>;
-      case 'applications':
-        return <span className="text-[10px] text-muted-foreground">{cert.application}</span>;
-      case 'subjectAlternativeNames':
-        return <span className="text-[10px] text-muted-foreground">{cert.commonName}, api.{cert.application.toLowerCase().replace(/\s+/g, '-')}.acmecorp.com</span>;
-      case 'compliant':
-        return <span className="text-[10px] text-muted-foreground">{cert.crs < 30 ? 'Yes' : 'No'}</span>;
-      case 'discoveredFileNames':
-        return <span className="text-[10px] text-muted-foreground">{`${cert.name}.pem`}</span>;
-      case 'renewDate':
-        return <span className="tabular-nums text-[10px] text-muted-foreground">{getValidTo(cert)}</span>;
-      case 'validFor':
-        return <span className="text-[10px] text-muted-foreground">{Math.max(cert.daysToExpiry, 0)} days</span>;
-      case 'requestId':
-      case 'orderId':
-        return <span className="text-[10px] text-muted-foreground">{getOrderId(cert)}</span>;
-      case 'subjectEmailAddress':
-        return <span className="text-[10px] text-muted-foreground">{`${cert.owner.toLowerCase().replace(/\s+/g, '.')}@acmecorp.com`}</span>;
-      case 'comments':
-        return <span className="text-[10px] text-muted-foreground">Managed by {cert.team}</span>;
-      case 'countOfSubjectAltNames':
-        return <span className="text-[10px] text-muted-foreground">2</span>;
-      case 'reenrollDate':
-      case 'regenerateDate':
-        return <span className="tabular-nums text-[10px] text-muted-foreground">{getValidFrom(cert)}</span>;
-      case 'thumbprint':
-        return <span className="font-mono text-[10px] text-muted-foreground">{thumbprint}</span>;
-      case 'subjectKeyIdentifier':
-        return <span className="font-mono text-[10px] text-muted-foreground">{thumbprint.slice(0, 12)}</span>;
-      case 'discoverySource':
-        return <span className="text-[10px] text-muted-foreground">{cert.discoverySource}</span>;
-      case 'subjectOrganization':
-        return <span className="text-[10px] text-muted-foreground">AcmeCorp</span>;
-      default:
-        return <span className="text-[10px] text-muted-foreground">—</span>;
-    }
-  };
-
-  useEffect(() => {
-    if (!actionsOpen) return;
-
-    const rect = actionsButtonRef.current?.getBoundingClientRect();
-    if (rect) {
-      setDropdownPos({
-        top: rect.bottom + 4,
-        right: window.innerWidth - rect.right,
-      });
-    }
-
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (
-        actionsButtonRef.current &&
-        !actionsButtonRef.current.contains(target) &&
-        dropdownRef.current &&
-        !dropdownRef.current.contains(target)
-      ) {
-        setActionsOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [actionsOpen]);
-
-  useEffect(() => {
-    if (actionModal !== 'revocation-check') {
-      setRevocationDone(false);
-      return;
-    }
-    const timer = window.setTimeout(() => setRevocationDone(true), 1500);
-    return () => window.clearTimeout(timer);
-  }, [actionModal]);
-
   const handleRefresh = () => toast.success('CLM overview refreshed');
+
+  function openModal(title: string, certs: ScoredCert[]) {
+    setModalTitle(title);
+    setModalCerts(certs.length > 0 ? certs : scored);
+    setModalOpen(true);
+  }
 
   function openDrill(kind: 'severity' | 'ca' | 'scan', label: string, certs: ScoredCert[]): void;
   function openDrill(severity: string, certs: ScoredCert[]): void;
@@ -465,55 +300,8 @@ export default function PKIEngineerDashboard() {
     const nextKind = isExplicitKind ? kindOrSeverity : 'severity';
     const nextLabel = isExplicitKind ? String(labelOrCerts) : kindOrSeverity;
     const nextCerts = (isExplicitKind ? maybeCerts : labelOrCerts) as ScoredCert[];
-
-    setDrillKind(nextKind);
-    setDrillSeverity(nextLabel);
-    setDrillCerts(nextCerts);
-    setSelected([]);
-    setCertTab('server');
-    setActionsOpen(false);
-    setActionModal(null);
-    setApprovalAction(null);
-    setColumnsOpen(false);
-    setDrillOpen(true);
-  }
-
-  function toggleSelect(id: string) {
-    setSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
-  }
-
-  function toggleColumn(columnKey: ColumnKey) {
-    const option = COLUMN_OPTIONS.find((column) => column.key === columnKey);
-    if (!option) return;
-    if ('required' in option && option.required) return;
-    setDraftSelectedColumns((prev) => prev.includes(columnKey) ? prev.filter((key) => key !== columnKey) : [...prev, columnKey]);
-  }
-
-  function selectAll() {
-    if (selected.length === tabCerts.length) {
-      setSelected([]);
-      return;
-    }
-    setSelected(tabCerts.map((a) => a.id));
-  }
-
-  function closeActionModal() {
-    setActionModal(null);
-    setRevokeReason('');
-    setRevokeComment('');
-  }
-
-  function closeApprovalModal() {
-    setApprovalAction(null);
-    setApprovalSearch('');
-    setApprovalDecisionOpen(false);
-  }
-
-  function handleSuccess(message: string, opts?: { clearSelection?: boolean; closeDrill?: boolean }) {
-    toast.success(message);
-    if (opts?.clearSelection !== false) setSelected([]);
-    if (opts?.closeDrill) setDrillOpen(false);
-    setActionModal(null);
+    const prefix = nextKind === 'ca' ? 'CA' : nextKind === 'scan' ? 'Scan Type' : 'Severity';
+    openModal(`${prefix} :: ${nextLabel}`, nextCerts);
   }
 
   function getScanTypeCerts(scanType: string) {
@@ -524,19 +312,19 @@ export default function PKIEngineerDashboard() {
         matches = scored.filter((a) => a.tags.some((tag) => /managed/i.test(tag)));
         break;
       case 'Network Scan':
-        matches = scored.filter((a) => a.tags.some((tag) => /network-scan/i.test(tag)));
+        matches = scored.filter((a) => /network/i.test(a.discoverySource) || a.tags.some((tag) => /network-scan/i.test(tag)));
         break;
       case 'CA Scan':
-        matches = scored.filter((a) => a.tags.some((tag) => /ca-scan/i.test(tag)));
+        matches = scored.filter((a) => /ca|certcentral|connector/i.test(a.discoverySource) || a.tags.some((tag) => /ca-scan/i.test(tag)));
         break;
       case 'Cloud Scan':
-        matches = scored.filter((a) => a.tags.some((tag) => /cloud|aws|azure|gcp/i.test(tag)));
+        matches = scored.filter((a) => /cloud|aws|azure|gcp/i.test(a.discoverySource) || a.tags.some((tag) => /cloud|aws|azure|gcp/i.test(tag)));
         break;
       case 'CT Log Scan':
-        matches = scored.filter((a) => a.tags.some((tag) => /ct|log/i.test(tag)));
+        matches = scored.filter((a) => /ct log|ct log monitor/i.test(a.discoverySource) || a.tags.some((tag) => /ct|log/i.test(tag)));
         break;
       case 'K8s Scan':
-        matches = scored.filter((a) => a.type === 'K8s Workload Cert' || a.tags.some((tag) => /k8s|kubernetes/i.test(tag)));
+        matches = scored.filter((a) => a.type === 'K8s Workload Cert' || /kubernetes/i.test(a.discoverySource) || a.tags.some((tag) => /k8s|kubernetes/i.test(tag)));
         break;
       default:
         matches = [];
@@ -1192,266 +980,27 @@ export default function PKIEngineerDashboard() {
             <CLMActionTrend />
           </div>
         )}
-
         {tab === 'operations' && (
           <div className="space-y-4 pr-1">
-            <RenewalPipeline />
-            <ExpiryCalendar />
-            <FailedRenewals />
+            <RenewalPipeline openModal={openModal} />
+            <ExpiryCalendar openModal={openModal} />
+            <FailedRenewals openModal={openModal} />
           </div>
         )}
 
         {tab === 'risk' && (
           <div className="space-y-4 pr-1">
-            <NonStandardCerts />
-            <AlgorithmStrength />
-            <SLCCompliance />
+            <NonStandardCerts openModal={openModal} />
+            <AlgorithmStrength openModal={openModal} />
+            <SLCCompliance openModal={openModal} />
             <ScanCoverage />
           </div>
         )}
 
-        {tab === 'slc' && <SLCDashboard />}
+        {tab === 'slc' && <SLCDashboard openModal={openModal} />}
       </div>
 
-      {drillOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/40 backdrop-blur-sm" onClick={(e) => { e.stopPropagation(); setDrillOpen(false); }}>
-          <div className="flex h-[85vh] w-[900px] max-w-[95vw] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex flex-shrink-0 items-center justify-between border-b border-border bg-card px-5 py-3">
-              <div className="text-sm font-semibold text-foreground">{drillKind === 'ca' ? `CA :: ${drillSeverity}` : drillKind === 'scan' ? `Scan Type :: ${drillSeverity}` : `Severity :: ${drillSeverity}`}</div>
-              <div className="flex items-center gap-2">
-                <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('export'); }} className="rounded-md border border-border px-3 py-1.5 text-xs text-foreground">Export</button>
-                <span className="text-[10px] text-muted-foreground">1 to {tabCerts.length} of {tabCerts.length}</span>
-                <ChevronLeft className="h-3.5 w-3.5 text-muted-foreground" />
-                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                <RefreshCw className="h-3.5 w-3.5 text-muted-foreground" />
-                <button type="button" onClick={(e) => { e.stopPropagation(); setDrillOpen(false); }} className="rounded p-1 text-muted-foreground transition-colors hover:bg-secondary/40 hover:text-foreground">
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-            <div className="flex flex-shrink-0 border-b border-border px-5">
-              {[
-                { id: 'server' as const, label: 'Server' },
-                { id: 'client' as const, label: 'Client' },
-                { id: 'code-signing' as const, label: 'Code Signing' },
-              ].map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setCertTab(item.id);
-                    setSelected([]);
-                  }}
-                  className={`border-b-2 px-4 py-2 text-xs font-medium ${certTab === item.id ? 'border-teal text-teal' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex flex-shrink-0 items-center gap-3 border-b border-border bg-secondary/20 px-5 py-2.5">
-              <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <input type="checkbox" checked={selected.length === tabCerts.length && tabCerts.length > 0} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); selectAll(); }} />
-                <span>Select all</span>
-              </label>
-              {selected.length > 0 && (
-                <span className="rounded-full bg-teal/15 px-2 py-0.5 text-[10px] text-teal">{selected.length} selected</span>
-              )}
-              <div className="ml-auto">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setDraftSelectedColumns(selectedColumns);
-                    setColumnsOpen(true);
-                  }}
-                  className="mr-2 inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-xs text-foreground transition hover:bg-secondary/40"
-                >
-                  <Layers className="h-3.5 w-3.5" />
-                  Columns
-                </button>
-                <button
-                  ref={actionsButtonRef}
-                  type="button"
-                  disabled={selected.length === 0}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setActionsOpen((open) => !open);
-                  }}
-                  className="flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-xs text-foreground transition hover:bg-secondary/40 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <MoreVertical className="h-3.5 w-3.5" />
-                  Actions
-                  <ChevronDown className={`h-3 w-3 transition-transform ${actionsOpen ? 'rotate-180' : ''}`} />
-                </button>
-              </div>
-            </div>
-
-            <div className="scrollbar-thin flex-1 overflow-y-auto">
-              <table className="w-full text-xs">
-                <thead className="sticky top-0 bg-secondary/50">
-                  <tr className="border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground">
-                    <th className="w-8 px-3 py-2 text-left"><input type="checkbox" checked={selected.length === tabCerts.length && tabCerts.length > 0} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); selectAll(); }} /></th>
-                    {visibleColumns.map((column) => (
-                      <th key={column.key} className="px-3 py-2 text-left">{column.label}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {tabCerts.length === 0 ? (
-                    <tr>
-                      <td colSpan={visibleColumns.length + 1} className="py-8 text-center text-xs text-muted-foreground">No certificates found for {drillSeverity} in {certTab} category.</td>
-                    </tr>
-                  ) : (
-                    tabCerts.map((cert) => {
-                      return (
-                        <tr key={cert.id} className={`cursor-pointer border-b border-border transition-colors hover:bg-secondary/30 ${selected.includes(cert.id) ? 'bg-teal/5' : ''}`}>
-                          <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
-                            <input type="checkbox" checked={selected.includes(cert.id)} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); toggleSelect(cert.id); }} />
-                          </td>
-                          {visibleColumns.map((column) => <td key={column.key} className="px-3 py-2 align-top">{getColumnValue(cert, column.key)}</td>)}
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {actionsOpen && ReactDOM.createPortal(
-              <div
-                ref={dropdownRef}
-                style={{ position: 'fixed', top: dropdownPos.top, right: dropdownPos.right, zIndex: 99999, minWidth: '220px' }}
-                className="rounded-lg border border-border bg-card py-1 shadow-2xl"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div>
-                  <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('export'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Download className="h-3.5 w-3.5" />Export Certificates</button>
-                  <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('download'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Download className="h-3.5 w-3.5" />Download Certificates</button>
-                </div>
-                <div className="my-1 h-px bg-border" />
-                <div>
-                  <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('renew'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-teal hover:bg-secondary/40"><RefreshCw className="h-3.5 w-3.5" />Renew Certificate</button>
-                  <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('revoke'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40" style={{ color: 'hsl(var(--coral))' }}><XCircle className="h-3.5 w-3.5" />Revoke Certificate</button>
-                  <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('ca-switch'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><ArrowRightLeft className="h-3.5 w-3.5" />CA Switch</button>
-                  <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('revocation-check'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><CheckCircle2 className="h-3.5 w-3.5" />Revocation Check</button>
-                </div>
-                <div className="my-1 h-px bg-border" />
-                <div>
-                  <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('delete'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40" style={{ color: 'hsl(var(--coral))' }}><Trash2 className="h-3.5 w-3.5" />Delete</button>
-                  <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('change-status'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Settings className="h-3.5 w-3.5" />Change Status</button>
-                  <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('assign-group'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Tag className="h-3.5 w-3.5" />Assign Group</button>
-                  <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('unassign-group'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Unlink className="h-3.5 w-3.5" />Unassign Group</button>
-                  <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('add-comments'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><MessageSquare className="h-3.5 w-3.5" />Add/Modify Comments</button>
-                  <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('cert-attributes'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Settings className="h-3.5 w-3.5" />Certificate Attributes</button>
-                  <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('bulk-update'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Layers className="h-3.5 w-3.5" />Bulk Update Attributes V...</button>
-                  <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('update-renew'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Clock className="h-3.5 w-3.5" />Update Renew Validity</button>
-                </div>
-                <div className="my-1 h-px bg-border" />
-                <div>
-                  <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('archive'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40" style={{ color: 'hsl(var(--amber))' }}><Archive className="h-3.5 w-3.5" />Archive</button>
-                </div>
-              </div>,
-              document.body
-            )}
-
-            {columnsOpen && (
-              <div className="fixed inset-0 z-[80] flex items-center justify-center bg-foreground/40" onClick={(e) => { e.stopPropagation(); setColumnsOpen(false); }}>
-                <div className="w-[980px] max-w-[95vw] rounded-xl border border-border bg-card p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-                  <div className="mb-4 flex items-center justify-between">
-                    <div className="text-sm font-semibold text-foreground">Columns</div>
-                    <button type="button" className="rounded p-1 text-muted-foreground hover:bg-secondary/40" onClick={(e) => { e.stopPropagation(); setColumnsOpen(false); }}><X className="h-4 w-4" /></button>
-                  </div>
-                  <div className="mb-4 flex items-center gap-3">
-                    <input value={columnSearch} onChange={(e) => setColumnSearch(e.target.value)} placeholder="Search..." className="h-9 flex-1 rounded-md border border-border bg-background px-3 text-xs text-foreground outline-none" />
-                    <span className="rounded-full px-2 py-1 text-[10px]" style={{ backgroundColor: 'hsl(var(--teal) / 0.12)', color: 'hsl(var(--teal))' }}>Selected columns: {draftSelectedColumns.length}</span>
-                    <label className="flex items-center gap-2 text-xs text-foreground"><input type="checkbox" checked={draftSelectedColumns.length === COLUMN_OPTIONS.length} onChange={() => setDraftSelectedColumns(draftSelectedColumns.length === COLUMN_OPTIONS.length ? DEFAULT_VISIBLE_COLUMNS : COLUMN_OPTIONS.map((c) => c.key))} />Select all</label>
-                    <button type="button" className="text-xs underline" style={{ color: 'hsl(var(--teal))' }} onClick={() => setDraftSelectedColumns(previousSelectedColumns)}>Reset to previous column selection</button>
-                  </div>
-                  <div className="grid grid-cols-4 gap-x-4 gap-y-2 text-xs">
-                    {filteredColumnOptions.map((column) => {
-                      const required = 'required' in column && column.required;
-                      return (
-                        <label key={column.key} className="flex items-center gap-2 text-foreground">
-                          <input type="checkbox" checked={draftSelectedColumns.includes(column.key)} disabled={required} onChange={() => toggleColumn(column.key)} />
-                          <span>{column.label}{required ? ' *' : ''}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                  <div className="mt-5 flex justify-end gap-2">
-                    <button type="button" className="rounded-md border border-border px-3 py-1.5 text-xs text-foreground" onClick={() => setColumnsOpen(false)}>Cancel</button>
-                    <button type="button" className="rounded-md px-3 py-1.5 text-xs text-primary-foreground" style={{ backgroundColor: 'hsl(var(--teal))' }} onClick={() => { setPreviousSelectedColumns(selectedColumns); setSelectedColumns(Array.from(new Set(['commonName', ...draftSelectedColumns])) as ColumnKey[]); setColumnsOpen(false); }}>Save</button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {approvalAction && (
-              <div className="fixed inset-0 z-[80] flex items-center justify-center bg-foreground/40" onClick={(e) => e.stopPropagation()}>
-                <div className="w-[1100px] max-w-[96vw] rounded-xl border border-border bg-card shadow-2xl" onClick={(e) => e.stopPropagation()}>
-                  <div className="flex items-center justify-between border-b border-border px-5 py-3">
-                    <div className="text-sm font-semibold text-foreground">{approvalAction === 'renew' ? 'Renew Certificate' : 'Revoke Certificate'}</div>
-                    <button type="button" className="rounded p-1 text-muted-foreground hover:bg-secondary/40" onClick={() => closeApprovalModal()}><X className="h-4 w-4" /></button>
-                  </div>
-                  <div className="flex border-b border-border px-5">
-                    {['server', 'client'].map((item) => <button key={item} type="button" className={`border-b-2 px-4 py-2 text-xs font-medium ${certTab === item ? 'border-teal text-teal' : 'border-transparent text-muted-foreground'}`}>{item[0].toUpperCase() + item.slice(1)}</button>)}
-                  </div>
-                  <div className="space-y-3 px-5 py-4">
-                    <input value={approvalSearch} onChange={(e) => setApprovalSearch(e.target.value)} placeholder="Search..." className="h-9 w-full rounded-md border border-border bg-background px-3 text-xs text-foreground outline-none" />
-                    <div className="flex items-center justify-between">
-                      <button ref={actionsButtonRef} type="button" className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-xs text-foreground" onClick={(e) => { e.stopPropagation(); setActionsOpen((open) => !open); }}><MoreVertical className="h-3.5 w-3.5" />Actions<ChevronDown className="h-3 w-3" /></button>
-                      <span className="text-[10px] text-muted-foreground">1 to 1 of 0</span>
-                    </div>
-                    <div className="overflow-hidden rounded-lg border border-border">
-                      <table className="w-full text-xs">
-                        <thead className="bg-secondary/30">
-                          <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground">
-                            <th className="w-8 px-3 py-2"><input type="checkbox" checked={approvalRows.length > 0} readOnly /></th>
-                            <th className="px-3 py-2">Common Name</th>
-                            <th className="px-3 py-2">Serial Number</th>
-                            <th className="px-3 py-2">Certificate Authority</th>
-                            <th className="px-3 py-2">Expiry Date</th>
-                            <th className="px-3 py-2">Thumbprint</th>
-                            <th className="px-3 py-2">Order</th>
-                            <th className="px-3 py-2">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {approvalRows.map((cert) => (
-                            <tr key={`approval-${cert.id}`} className="border-t border-border">
-                              <td className="px-3 py-2"><input type="checkbox" checked readOnly /></td>
-                              <td className="px-3 py-2 font-mono text-[10.5px] text-foreground">{cert.commonName}</td>
-                              <td className="px-3 py-2 font-mono text-[10px] text-muted-foreground">{cert.serial}</td>
-                              <td className="px-3 py-2 text-muted-foreground">{cert.caIssuer}</td>
-                              <td className="px-3 py-2 text-muted-foreground">{getValidTo(cert)}</td>
-                              <td className="px-3 py-2 font-mono text-[10px] text-muted-foreground">{`${getThumbprint(cert).slice(0, 8)}...${getThumbprint(cert).slice(-4)}`}</td>
-                              <td className="px-3 py-2"><button type="button" className="text-xs underline" style={{ color: 'hsl(var(--teal))' }}>{getOrderId(cert)}</button></td>
-                              <td className="px-3 py-2 text-[10px] italic text-muted-foreground">({approvalAction === 'renew' ? 'Renewal Submission In Progress' : 'Revocation Submission In Progress'})</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    <div className="relative flex justify-start">
-                      <button type="button" className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-xs text-foreground" onClick={() => setApprovalDecisionOpen((open) => !open)}><MoreVertical className="h-3.5 w-3.5" />Actions<ChevronDown className="h-3 w-3" /></button>
-                      {approvalDecisionOpen && (
-                        <div className="absolute top-10 z-10 min-w-[220px] rounded-lg border border-border bg-card py-1 shadow-2xl">
-                          <button type="button" className="flex w-full items-center px-3 py-2 text-left text-xs hover:bg-secondary/40" onClick={() => { toast.success(`Action submitted successfully for ${selected.length} certificate(s)`); setSelected([]); closeApprovalModal(); setDrillOpen(false); }}>Proceed Further</button>
-                          <button type="button" className="flex w-full items-center px-3 py-2 text-left text-xs hover:bg-secondary/40" onClick={() => { toast.info('Action rejected'); closeApprovalModal(); }}>Reject</button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-          {renderActionModal()}
-        </div>
-      )}
+      <CertDrillModal open={modalOpen} onClose={() => setModalOpen(false)} title={modalTitle} certs={modalCerts} />
     </div>
   );
 }
