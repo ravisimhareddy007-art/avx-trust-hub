@@ -366,11 +366,19 @@ export default function SLCDashboard({ openModal, certCounts }: SLCDashboardProp
                   onClick={(_, index) => {
                     const item = keyAlgo[index];
                     if (!item) return;
-                    if (item.name === 'Ed25519') {
-                      openInventory({ algorithm: item.name });
+                    if (item.name === 'RSA-2048') {
+                      openSLCModal('RSA-2048 Certificates', shortLived.filter(a => a.algorithm === 'RSA-2048'));
                       return;
                     }
-                    openSLCModal(`Quantum-Vulnerable SLC: ${item.name}`, shortLived.filter(a => a.algorithm === item.name));
+                    if (item.name === 'ECC P-256') {
+                      openSLCModal('ECC P-256 Certificates', shortLived.filter(a => a.algorithm === 'ECC P-256'));
+                      return;
+                    }
+                    if (item.name === 'ECC P-384') {
+                      openSLCModal('ECC P-384 Certificates', shortLived.filter(a => a.algorithm === 'ECC P-384'));
+                      return;
+                    }
+                    openInventory({ algorithm: 'Ed25519' });
                   }}
                 >
                   {keyAlgo.map((e, i) => <Cell key={i} fill={e.color} className="cursor-pointer" />)}
@@ -391,7 +399,7 @@ export default function SLCDashboard({ openModal, certCounts }: SLCDashboardProp
               </span>
             ))}
           </div>
-          <div className="mt-2 bg-amber/10 border border-amber/30 rounded p-2 text-[10px] text-amber">
+          <div onClick={() => openSLCModal('Quantum-Vulnerable SLC Certs', shortLived.filter(a => /RSA|ECC/.test(a.algorithm)))} className="mt-2 bg-amber/10 border border-amber/30 rounded p-2 text-[10px] text-amber cursor-pointer">
             ⚠ 97% use quantum-vulnerable algorithms (RSA/ECC). NIST FIPS 203/204 migration required before 2030.
           </div>
         </Card>
@@ -414,10 +422,10 @@ export default function SLCDashboard({ openModal, certCounts }: SLCDashboardProp
                     const item = keyLen[index];
                     if (!item) return;
                     if (item.name === '2048') {
-                      openSLCModal('Weak Key Length: 2048-bit', shortLived.filter(a => a.algorithm.includes('2048') || a.keyLength === '2048'));
+                      openSLCModal('2048-bit Key Length', shortLived.filter(a => a.algorithm.includes('2048')));
                       return;
                     }
-                    openInventory({ keyLength: item.name });
+                    openInventory();
                   }}
                 >
                   {keyLen.map((e, i) => <Cell key={i} fill={e.color} className="cursor-pointer" />)}
@@ -438,7 +446,7 @@ export default function SLCDashboard({ openModal, certCounts }: SLCDashboardProp
               </span>
             ))}
           </div>
-          <p className="text-[10px] text-muted-foreground mt-2">RSA-2048 at 45% — migrate to RSA-4096 or ECC P-384 for stronger key security.</p>
+          <p onClick={() => openInventory()} className="text-[10px] text-muted-foreground mt-2 cursor-pointer">RSA-2048 at 45% — migrate to RSA-4096 or ECC P-384 for stronger key security.</p>
         </Card>
 
         <Card>
@@ -459,10 +467,10 @@ export default function SLCDashboard({ openModal, certCounts }: SLCDashboardProp
                     const item = protocols[index];
                     if (!item) return;
                     if (item.name === 'Manual') {
-                      openSLCModal('Manual Enrollment – Needs Automation', shortLived.slice(0, 35));
+                      openSLCModal('Manual Enrollment - Needs Automation', shortLived.filter(a => !a.autoRenewal).slice(0, 35));
                       return;
                     }
-                    openInventory({ protocol: item.name });
+                    openInventory();
                   }}
                 >
                   {protocols.map((e, i) => <Cell key={i} fill={e.color} className="cursor-pointer" />)}
@@ -483,7 +491,7 @@ export default function SLCDashboard({ openModal, certCounts }: SLCDashboardProp
               </span>
             ))}
           </div>
-          <div className="mt-2 bg-coral/10 border border-coral/20 rounded p-2 text-[10px] text-coral">
+          <div onClick={() => openSLCModal('Manual Enrollment', shortLived.filter(a => !a.autoRenewal).slice(0, 35))} className="mt-2 bg-coral/10 border border-coral/20 rounded p-2 text-[10px] text-coral cursor-pointer">
             ⚠ 35 certs on manual enrollment — SLC certs must use ACME, SCEP, or EST to maintain rotation compliance.
           </div>
         </Card>
