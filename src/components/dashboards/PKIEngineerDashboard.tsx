@@ -130,8 +130,6 @@ const COLUMN_OPTIONS = [
 
 type ColumnKey = (typeof COLUMN_OPTIONS)[number]['key'];
 
-const CERT_TYPES = ['All Certificates', 'TLS / SSL', 'Code Signing', 'K8s Workload', 'SSH Certificate'];
-const CA_FILTERS = ['All CAs', 'DigiCert', 'Entrust', "Let's Encrypt", 'MSCA Enterprise'];
 
 const TABS: { id: CLMTab; label: string; icon: React.ElementType }[] = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
