@@ -287,7 +287,7 @@ export default function SLCDashboard({ openModal, certCounts }: SLCDashboardProp
           <div className="h-10 w-full rounded-full overflow-hidden flex">
             <button type="button" onClick={() => openSLCModal('SLC Critical Zone', shortLived.filter(a => a.daysToExpiry <= 2))} style={{ width: `${ageBuckets[0].pct}%`, backgroundColor: ageBuckets[0].color }} className="h-full cursor-pointer transition-opacity hover:opacity-80" />
             <button type="button" onClick={() => openSLCModal('SLC Renewal Window', shortLived.filter(a => a.daysToExpiry > 2 && a.daysToExpiry <= 30))} style={{ width: `${ageBuckets[1].pct + ageBuckets[2].pct}%`, background: `linear-gradient(90deg, ${ageBuckets[1].color}, ${ageBuckets[2].color})` }} className="h-full cursor-pointer transition-opacity hover:opacity-80" />
-            <button type="button" onClick={() => openInventory({ lifecycle: 'healthy' })} style={{ width: `${ageBuckets[3].pct}%`, backgroundColor: ageBuckets[3].color }} className="h-full cursor-pointer transition-opacity hover:opacity-80" />
+            <button type="button" onClick={() => openInventory({ status: 'Healthy' })} style={{ width: `${ageBuckets[3].pct}%`, backgroundColor: ageBuckets[3].color }} className="h-full cursor-pointer transition-opacity hover:opacity-80" />
           </div>
           <div className="flex justify-between mt-2 text-[10px]">
             <span className="text-muted-foreground">Issued</span>
@@ -299,7 +299,7 @@ export default function SLCDashboard({ openModal, certCounts }: SLCDashboardProp
               <span>Renewal window (3-30d): {ageBuckets[1].count + ageBuckets[2].count} certs</span>
               <ArrowRight className="h-3 w-3 text-teal opacity-0 transition-opacity group-hover:opacity-100" />
             </button>
-            <button onClick={() => openInventory({ lifecycle: 'healthy' })} className="group inline-flex items-center gap-1 hover:text-teal transition-colors">
+            <button onClick={() => openInventory({ status: 'Healthy' })} className="group inline-flex items-center gap-1 hover:text-teal transition-colors">
               <span className="text-teal">Healthy (31-90d): {ageBuckets[3].count} certs</span>
               <ExternalLink className="h-2.5 w-2.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
             </button>
@@ -313,7 +313,7 @@ export default function SLCDashboard({ openModal, certCounts }: SLCDashboardProp
                 <ArrowRight className="h-3 w-3 text-teal opacity-0 transition-opacity group-hover:opacity-100" />
               </button>
             )}
-            <button onClick={() => openInventory({ lifecycle: 'healthy' })} className="group inline-flex items-center gap-1 text-[10px] text-teal hover:text-teal transition-colors">
+            <button onClick={() => openInventory({ status: 'Healthy' })} className="group inline-flex items-center gap-1 text-[10px] text-teal hover:text-teal transition-colors">
               <span>{complianceScore}% of SLC estate in healthy lifecycle position</span>
               <ExternalLink className="h-2.5 w-2.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
             </button>
