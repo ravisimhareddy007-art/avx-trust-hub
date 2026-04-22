@@ -1329,7 +1329,7 @@ export default function PKIEngineerDashboard() {
                         radius={[4, 4, 0, 0]}
                         fill="hsl(230 60% 60%)"
                         cursor="pointer"
-                        onClick={(data) => openDrill('ca', data.name, scored.filter((a) => a.issuer === data.name).length > 0 ? scored.filter((a) => a.issuer === data.name) : scored)}
+                        onClick={(data) => openDrill('ca', data.name, scored.filter((a) => a.caIssuer === data.name).length > 0 ? scored.filter((a) => a.caIssuer === data.name) : scored)}
                       >
                         <LabelList dataKey="value" position="top" style={{ fill: 'hsl(var(--foreground))', fontSize: 10 }} />
                       </Bar>
