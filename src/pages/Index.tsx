@@ -6,6 +6,7 @@ import { InventoryRegistryProvider } from '@/context/InventoryRegistryContext';
 import { RiskProvider } from '@/context/RiskContext';
 import { AgentProvider } from '@/context/AgentContext';
 import { CertificateWorkflowProvider } from '@/context/CertificateWorkflowContext';
+import { NotificationProvider } from '@/context/NotificationContext';
 import AppSidebar from '@/components/AppSidebar';
 import TopBar from '@/components/TopBar';
 import InfinityAIDrawer from '@/components/InfinityAIDrawer';
@@ -95,20 +96,22 @@ function AppShell() {
 
 export default function Index() {
   return (
-    <PersonaProvider>
-      <NavigationProvider>
-        <IntegrationsProvider>
-          <InventoryRegistryProvider>
-            <RiskProvider>
-              <CertificateWorkflowProvider>
-                <AgentBoundary>
-                  <AppShell />
-                </AgentBoundary>
-              </CertificateWorkflowProvider>
-            </RiskProvider>
-          </InventoryRegistryProvider>
-        </IntegrationsProvider>
-      </NavigationProvider>
-    </PersonaProvider>
+    <NotificationProvider>
+      <PersonaProvider>
+        <NavigationProvider>
+          <IntegrationsProvider>
+            <InventoryRegistryProvider>
+              <RiskProvider>
+                <CertificateWorkflowProvider>
+                  <AgentBoundary>
+                    <AppShell />
+                  </AgentBoundary>
+                </CertificateWorkflowProvider>
+              </RiskProvider>
+            </InventoryRegistryProvider>
+          </IntegrationsProvider>
+        </NavigationProvider>
+      </PersonaProvider>
+    </NotificationProvider>
   );
 }

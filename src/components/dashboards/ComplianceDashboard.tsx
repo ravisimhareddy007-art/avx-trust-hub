@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNav } from '@/context/NavigationContext';
+import { useNotifications } from '@/context/NotificationContext';
 import { KPICard, SeverityBadge, Modal, Drawer, AIInsightCard } from '@/components/shared/UIComponents';
 
 // ─── DATA ────────────────────────────────────────────────────────────────────
@@ -590,7 +591,7 @@ export default function ComplianceDashboard() {
       toPersona: 'security-admin',
       comments,
     });
-    toast.success('Escalation sent to Security Admin — they'll see it on their dashboard');
+    toast.success('Escalation sent to Security Admin');
   };
 
   const handleCreateTicket = (v: Violation, data: { title: string; priority: string; assignee: string; description: string }) => {
@@ -675,7 +676,11 @@ export default function ComplianceDashboard() {
                 <p className="text-[9px] text-teal mb-1 cursor-pointer">↑ Click any bar to drill into violations</p>
                 <ResponsiveContainer width="100%" height={210}>
                   <BarChart data={FRAMEWORK_POSTURE} barSize={14} layout="vertical"
-                    onClick={(d) => { if (d?.activePayload?.[0]?.payload?.framework) setFrameworkDrill(d.activePayload[0].payload.framework); }}>
+                    onClick={(d) => {
+                      const activePayload = (d as { activePayload?: Array<{ payload?: { framework?: string } }> })?.activePayload;
+                      const framework = activePayload?.[0]?.payload?.framework;
+                      if (framework) setFrameworkDrill(framework);
+                    }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 13% 91%)" horizontal={false} />
                     <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(220 9% 46%)" domain={[0, 100]} unit="%" />
                     <YAxis dataKey="framework" type="category" tick={{ fontSize: 10 }} stroke="hsl(220 9% 46%)" width={76} />
@@ -744,8 +749,9 @@ export default function ComplianceDashboard() {
                 <ResponsiveContainer width="100%" height={175}>
                   <AreaChart data={VIOLATION_TREND}
                     onClick={(d) => {
-                      if (d?.activePayload?.[0]?.name) {
-                        const fw = d.activePayload[0].name;
+                      const activePayload = (d as { activePayload?: Array<{ name?: string }> })?.activePayload;
+                      const fw = activePayload?.[0]?.name;
+                      if (fw) {
                         setTab('violations');
                         setVFilter(f => ({ ...f, framework: fw === 'PCI' ? 'PCI-DSS' : fw === 'FIPS' ? 'FIPS' : fw }));
                       }
