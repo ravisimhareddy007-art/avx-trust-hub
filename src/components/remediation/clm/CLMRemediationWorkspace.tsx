@@ -101,11 +101,12 @@ const caList = ['DigiCert Global G2', 'Entrust L1K', "Let's Encrypt", 'MSCA Ente
 const groupOptions = ['Payments', 'Platform', 'Security', 'Identity', 'Infrastructure'];
 
 const getIssueCounts = () => ({
-  'all-issues': clmIssues.length,
-  expiry: clmIssues.filter((item) => item.issueCategory === 'expiry').length,
+  all: clmIssues.length,
+  expiring: clmIssues.filter((item) => item.issueCategory === 'expiring').length,
   pqc: clmIssues.filter((item) => item.issueCategory === 'pqc').length,
   orphaned: clmIssues.filter((item) => item.issueCategory === 'orphaned').length,
   policy: clmIssues.filter((item) => item.issueCategory === 'policy').length,
+  codesigning: 3,
 });
 
 const formatCount = (value: number) => new Intl.NumberFormat('en-US').format(value);
@@ -1082,7 +1083,7 @@ function ToggleRow({ label, checked, onChange }: { label: string; checked: boole
 }
 
 export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Props) {
-  const [issueFilter, setIssueFilter] = useState<ClmIssueFilter>('all-issues');
+  const [issueFilter, setIssueFilter] = useState<ClmIssueFilter>('all');
   const [issueSearch, setIssueSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [detailRow, setDetailRow] = useState<ClmIssueRow | null>(null);
@@ -1102,7 +1103,7 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
 
   const filteredIssues = useMemo(() => {
     return clmIssues.filter((row) => {
-      const matchesFilter = issueFilter === 'all-issues' || row.issueCategory === issueFilter;
+      const matchesFilter = issueFilter === 'all' || row.issueCategory === issueFilter;
       const query = issueSearch.toLowerCase();
       const matchesSearch = !query || [row.asset.name, row.issueText, row.recommended, row.owner].some((value) => value.toLowerCase().includes(query));
       return matchesFilter && matchesSearch;
