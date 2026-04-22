@@ -100,6 +100,13 @@ export default function ViolationsPage() {
         }
       });
     });
+    classic.push(
+      { violationType:'classic', type:'expired-token', severity:'Critical', objectId:'ai-006', objectName:'security-soc-autonomous', description:'Token expired 2 days ago. Agent retains cached credentials with access to Splunk, CrowdStrike, Active Directory, and Firewall API.', assetId:'ai-006', assetName:'aws-eks-security', environment:'Production', ownerTeam:'Security Operations', daysToFailure:-2, primaryAction:'Revoke & Rotate' },
+      { violationType:'classic', type:'over-privileged', severity:'High', objectId:'ai-001', objectName:'gpt-orchestrator-token', description:'s3:PutObject and pinecone:upsert unused in last 30 days. Agent runs 14,200 actions/day — write scope creep risk.', assetId:'ai-001', assetName:'aws-eks-ai-cluster', environment:'Production', ownerTeam:'AI Engineering', daysToFailure:5, primaryAction:'Right-size Permissions' },
+      { violationType:'classic', type:'shared-credential', severity:'Critical', objectId:'ai-004', objectName:'customer-support-bot', description:'MCP API Credential shared with Github_Copilot-AVXLM186, AVXLM187, AVXLM188. Weakens accountability and makes rotation harder if exposed.', assetId:'ai-004', assetName:'aws-lambda', environment:'Production', ownerTeam:'Customer Experience', daysToFailure:17, primaryAction:'Issue Dedicated Credential' },
+      { violationType:'classic', type:'pii-access', severity:'High', objectId:'ai-008', objectName:'hr-onboarding-copilot', description:'Agent accesses PII Vault and DocuSign without data governance approval. Workday write access not justified by HR onboarding intent.', assetId:'ai-008', assetName:'azure-openai', environment:'Production', ownerTeam:'People Operations', daysToFailure:276, primaryAction:'Review Access' },
+      { violationType:'classic', type:'unsanctioned-mcp', severity:'High', objectId:'ai-003', objectName:'copilot-code-review-agent', description:'Connected to 2 unsanctioned MCP servers (Aws-Mcp-Server-MCP, Filemanager-Proxy-MCP) not in the approved MCP server registry.', assetId:'ai-003', assetName:'github-actions', environment:'Production', ownerTeam:'AI Engineering', daysToFailure:1, primaryAction:'Place behind MCP Gateway' }
+    );
     return { classic, pqc };
   }, []);
 

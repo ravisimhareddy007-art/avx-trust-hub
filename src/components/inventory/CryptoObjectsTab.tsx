@@ -8,6 +8,7 @@ import { StatusBadge, EnvBadge, PQCBadge, DaysToExpiry, SeverityBadge } from '@/
 import { Search, ChevronDown, ChevronRight, MoreVertical, X, Shield, ShieldOff, ChevronsRight, FileEdit, Info, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import DeployToDeviceModal from '@/components/integrations/DeployToDeviceModal';
+import AgentDetailPanel from '@/components/inventory/AgentDetailPanel';
 
 interface Props {
   onCreateTicket: (ctx: any) => void;
@@ -389,8 +390,17 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
         </div>
       </div>
 
+      {detailAsset && detailAsset.type === 'AI Agent Token' && (
+        <AgentDetailPanel
+          agent={detailAsset}
+          onClose={() => setDetailAsset(null)}
+          onCreateTicket={onCreateTicket}
+          licensed={true}
+        />
+      )}
+
       {/* Identity Detail Panel — 80% width slide panel, same design as Infrastructure */}
-      {detailAsset && (
+      {detailAsset && detailAsset.type !== 'AI Agent Token' && (
         <div className="fixed inset-0 z-50 flex">
           <div className="w-[20%] bg-foreground/10 backdrop-blur-sm" onClick={() => setDetailAsset(null)} />
           <div className="w-[80%] bg-card border-l border-border shadow-2xl h-full overflow-y-auto animate-slide-in-right">
