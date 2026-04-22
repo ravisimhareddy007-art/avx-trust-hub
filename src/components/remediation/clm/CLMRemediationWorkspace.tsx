@@ -27,7 +27,6 @@ import {
 } from 'lucide-react';
 import CertDeploymentsView from '@/components/remediation/CertDeploymentsView';
 import { Modal } from '@/components/shared/UIComponents';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -36,8 +35,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import EnrollCertificateWizard from './actions/EnrollCertificateWizard';
 import GenerateCSRModal from './actions/GenerateCSRModal';
 import PushToDeviceModal from './actions/PushToDeviceModal';
-import { clmCertificates, clmIssueFilters, clmIssues, policyRequestsSeed, sslCheckMock } from './mockData';
-import { ClmIssueAction, ClmIssueFilter, ClmIssueRow, ClmTab, PolicyActionType, PolicyRequestRow } from './types';
+import { clmCertificates, clmIssues, policyRequestsSeed, sslCheckMock } from './mockData';
+import { ClmIssueAction, ClmIssueRow, ClmTab, PolicyActionType, PolicyRequestRow } from './types';
 
 interface Props {
   activeTab: ClmTab;
@@ -98,15 +97,6 @@ const deviceTypes = ['Windows IIS', 'Apache', 'Nginx', 'Tomcat', 'MSSQL', 'Linux
 const ownerOptions = ['Sarah Chen', 'Mike Rodriguez', 'Lisa Park', 'James Wilson', 'Security Team'];
 const caList = ['DigiCert Global G2', 'Entrust L1K', "Let's Encrypt", 'MSCA Enterprise'];
 const groupOptions = ['Payments', 'Platform', 'Security', 'Identity', 'Infrastructure'];
-
-const getIssueCounts = () => ({
-  all: clmIssues.length,
-  expiring: clmIssues.filter((item) => item.issueCategory === 'expiring').length,
-  pqc: clmIssues.filter((item) => item.issueCategory === 'pqc').length,
-  orphaned: clmIssues.filter((item) => item.issueCategory === 'orphaned').length,
-  policy: clmIssues.filter((item) => item.issueCategory === 'policy').length,
-  codesigning: 3,
-});
 
 const formatCount = (value: number) => new Intl.NumberFormat('en-US').format(value);
 
@@ -572,7 +562,6 @@ function ToggleRow({ label, checked, onChange }: { label: string; checked: boole
 }
 
 export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Props) {
-  const [issueFilter, setIssueFilter] = useState<ClmIssueFilter>('all');
   const [issueSearch, setIssueSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [detailRow, setDetailRow] = useState<ClmIssueRow | null>(null);
@@ -589,16 +578,13 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
   const [sslDrawerOpen, setSslDrawerOpen] = useState(false);
   const [pushSeedRow, setPushSeedRow] = useState<ClmIssueRow | null>(null);
 
-  const issueCounts = useMemo(() => getIssueCounts(), []);
-
   const filteredIssues = useMemo(() => {
     return clmIssues.filter((row) => {
-      const matchesFilter = issueFilter === 'all' || row.issueCategory === issueFilter;
       const query = issueSearch.toLowerCase();
       const matchesSearch = !query || [row.asset.name, row.issueText, row.recommended, row.owner].some((value) => value.toLowerCase().includes(query));
-      return matchesFilter && matchesSearch;
+      return matchesSearch;
     });
-  }, [issueFilter, issueSearch]);
+  }, [issueSearch]);
 
   const queueRows = useMemo(() => {
     return policyRequests.filter((row) => {
