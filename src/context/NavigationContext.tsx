@@ -1,13 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
-export const remediationPages = [
-  'remediation-objects',
-  'remediation-clm',
-  'remediation-ssh',
-  'remediation-ai',
-  'remediation-secrets',
-] as const;
-
 export type Page =
   | 'remediation-objects'
   | 'remediation-clm'
@@ -15,6 +7,14 @@ export type Page =
   | 'remediation-ai'
   | 'remediation-secrets'
   | string;
+
+export const remediationPages: Page[] = [
+  'remediation-objects',
+  'remediation-clm',
+  'remediation-ssh',
+  'remediation-ai',
+  'remediation-secrets',
+];
 
 interface NavigationContextType {
   currentPage: Page;
