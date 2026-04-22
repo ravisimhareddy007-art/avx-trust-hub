@@ -1117,9 +1117,6 @@ export default function PKIEngineerDashboard() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Certificate Lifecycle Management</h1>
         </div>
-        <button type="button" className="p-1 text-muted-foreground transition-colors hover:text-foreground" onClick={handleRefresh}>
-          <RefreshCw className="h-3.5 w-3.5" />
-        </button>
       </div>
 
       <div className="flex flex-shrink-0 items-center border-b border-border">
@@ -1291,7 +1288,21 @@ export default function PKIEngineerDashboard() {
                         <LabelList dataKey="value" position="top" style={{ fill: 'hsl(var(--foreground))', fontSize: 10 }} />
                       </Bar>
                     </BarChart>
-...
+                  </ResponsiveContainer>
+                </div>
+              </section>
+
+              <section className="col-span-8 rounded-xl border border-border bg-card p-4">
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-foreground">Certificates by Issuing CAs</h3>
+                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                    <span>0m ago</span>
+                    <button type="button" onClick={handleRefresh} className="transition-colors hover:text-foreground"><RefreshCw className="h-3 w-3" /></button>
+                    <Info className="h-3 w-3" />
+                  </div>
+                </div>
+                <div className="h-[260px]">
+                  <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={CA_DISTRIBUTION} margin={{ top: 6, right: 12, left: 0, bottom: 72 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                       <XAxis dataKey="name" interval={0} angle={-45} textAnchor="end" height={70} tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
