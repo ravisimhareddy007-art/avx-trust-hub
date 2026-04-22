@@ -485,8 +485,8 @@ export default function PKIEngineerDashboard() {
               <div className="space-y-2">
                 <p className="text-[11px] text-muted-foreground">Columns</p>
                 {['All Columns', 'Displayed Columns'].map((option) => (
-                  <label key={option} className="flex items-center gap-2">
-                    <input type="radio" name="columns" defaultChecked={option === 'Displayed Columns'} />
+                  <label key={option} className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <input type="radio" name="columns" defaultChecked={option === 'Displayed Columns'} onClick={(e) => e.stopPropagation()} />
                     <span>{option}</span>
                   </label>
                 ))}
@@ -494,8 +494,8 @@ export default function PKIEngineerDashboard() {
               <div className="space-y-2">
                 <p className="text-[11px] text-muted-foreground">Format</p>
                 {(['csv', 'xls'] as const).map((format) => (
-                  <label key={format} className="flex items-center gap-2 uppercase">
-                    <input type="radio" name="format" checked={exportFormat === format} onChange={() => setExportFormat(format)} />
+                  <label key={format} className="flex items-center gap-2 uppercase" onClick={(e) => e.stopPropagation()}>
+                    <input type="radio" name="format" checked={exportFormat === format} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setExportFormat(format); }} />
                     <span>{format}</span>
                   </label>
                 ))}
@@ -511,17 +511,17 @@ export default function PKIEngineerDashboard() {
             <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
               <div className="space-y-2">
                 <p className="text-[11px] text-muted-foreground">Choose Download Type</p>
-                <label className="flex items-center gap-2">
-                  <input type="radio" name="downloadType" checked={downloadType === 'certs'} onChange={() => setDownloadType('certs')} />
+                <label className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                  <input type="radio" name="downloadType" checked={downloadType === 'certs'} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setDownloadType('certs'); }} />
                   <span>Certificates Only</span>
                 </label>
-                <label className="flex items-center gap-2">
-                  <input type="radio" name="downloadType" checked={downloadType === 'keys'} onChange={() => setDownloadType('keys')} />
+                <label className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                  <input type="radio" name="downloadType" checked={downloadType === 'keys'} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setDownloadType('keys'); }} />
                   <span>Certificates and Keys</span>
                 </label>
               </div>
-              <label className="flex items-center gap-2">
-                <input type="checkbox" checked={downloadTruststore} onChange={(e) => setDownloadTruststore(e.target.checked)} />
+              <label className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                <input type="checkbox" checked={downloadTruststore} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setDownloadTruststore(e.target.checked); }} />
                 <span>Download Truststore Certificates</span>
               </label>
               {modalFooter('Download', () => handleSuccess(`Downloading ${selectedCount || tabCerts.length} certificate(s)`))}
@@ -546,14 +546,14 @@ export default function PKIEngineerDashboard() {
               <div className="space-y-2">
                 <p>Change Status to:</p>
                 {['Managed', 'Monitored'].map((status) => (
-                  <label key={status} className="flex items-center gap-2">
-                    <input type="radio" checked={newStatus === status} onChange={() => setNewStatus(status)} />
+                  <label key={status} className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <input type="radio" checked={newStatus === status} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setNewStatus(status); }} />
                     <span>{status}</span>
                   </label>
                 ))}
               </div>
               <div className="rounded-md border border-border bg-secondary/20 p-3 text-[11px] text-muted-foreground">Changing status may impact existing workflows.</div>
-              <textarea value={statusComment} onChange={(e) => setStatusComment(e.target.value)} rows={4} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none" placeholder="Comments" />
+              <textarea value={statusComment} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setStatusComment(e.target.value); }} rows={4} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none" placeholder="Comments" />
               {modalFooter('Yes', () => handleSuccess(`Status updated to ${newStatus} for ${selectedCount} certificate(s)`), { backgroundColor: 'hsl(var(--teal))' }, 'No')}
             </div>
           </Modal>
@@ -564,21 +564,21 @@ export default function PKIEngineerDashboard() {
             <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                <input value={groupSearch} onChange={(e) => setGroupSearch(e.target.value)} placeholder="Search groups" className="w-full rounded-md border border-border bg-secondary/20 py-2 pl-9 pr-3 text-xs outline-none" />
+                <input value={groupSearch} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setGroupSearch(e.target.value); }} placeholder="Search groups" className="w-full rounded-md border border-border bg-secondary/20 py-2 pl-9 pr-3 text-xs outline-none" />
               </div>
               <div className="rounded-md border border-border bg-secondary/20 px-3 py-2"><span className="text-muted-foreground">Selected:</span> <strong>{selectedGroup}</strong></div>
               <div className="space-y-2">
                 {filteredGroups.map((group) => (
-                  <label key={group} className="flex items-center justify-between rounded-md border border-border px-3 py-2">
+                  <label key={group} className="flex items-center justify-between rounded-md border border-border px-3 py-2" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-2">
-                      <input type="radio" checked={selectedGroup === group} onChange={() => setSelectedGroup(group)} />
+                      <input type="radio" checked={selectedGroup === group} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setSelectedGroup(group); }} />
                       <span>{group}</span>
                     </div>
                     {selectedGroup === group && <CheckCircle2 className="h-4 w-4" style={{ color: 'hsl(var(--teal))' }} />}
                   </label>
                 ))}
               </div>
-              <textarea value={comments} onChange={(e) => setComments(e.target.value)} rows={4} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none" placeholder="Comments" />
+              <textarea value={comments} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setComments(e.target.value); }} rows={4} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none" placeholder="Comments" />
               {modalFooter('Assign', () => handleSuccess(`Assigned ${selectedCount} certificate(s) to ${selectedGroup}`))}
             </div>
           </Modal>
@@ -596,7 +596,7 @@ export default function PKIEngineerDashboard() {
         {actionModal === 'add-comments' && (
           <Modal open onClose={closeActionModal} title="Add / Modify Comments">
             <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
-              <textarea value={comments} onChange={(e) => setComments(e.target.value)} rows={4} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none" />
+              <textarea value={comments} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setComments(e.target.value); }} rows={4} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none" />
               {modalFooter('Save', () => handleSuccess(`Saved comments for ${selectedCount} certificate(s)`))}
             </div>
           </Modal>
@@ -608,7 +608,7 @@ export default function PKIEngineerDashboard() {
               {['Owner', 'Environment', 'Business Unit'].map((field) => (
                 <div key={field} className="grid grid-cols-[120px,1fr] items-center gap-3 rounded-md border border-border px-3 py-2">
                   <span className="text-muted-foreground">{field}</span>
-                  <input defaultValue={field === 'Owner' ? 'Sarah Chen' : field === 'Environment' ? 'Production' : 'Platform'} className="rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none" />
+                  <input defaultValue={field === 'Owner' ? 'Sarah Chen' : field === 'Environment' ? 'Production' : 'Platform'} onClick={(e) => e.stopPropagation()} className="rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none" />
                 </div>
               ))}
               {modalFooter('Save', () => handleSuccess(`Updated attributes for ${selectedCount} certificate(s)`))}
@@ -624,17 +624,17 @@ export default function PKIEngineerDashboard() {
               </div>
               <div className="space-y-2">
                 {(['File Upload', 'By Group'] as const).map((mode) => (
-                  <label key={mode} className="flex items-center gap-2">
-                    <input type="radio" checked={bulkUpdateMode === mode} onChange={() => setBulkUpdateMode(mode)} />
+                  <label key={mode} className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <input type="radio" checked={bulkUpdateMode === mode} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setBulkUpdateMode(mode); }} />
                     <span>{mode}</span>
                   </label>
                 ))}
               </div>
               <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
                 <span>Download Template</span>
-                <button type="button" className="rounded-md border border-border px-3 py-1 text-[11px]">Download</button>
+                <button type="button" onClick={(e) => e.stopPropagation()} className="rounded-md border border-border px-3 py-1 text-[11px]">Download</button>
               </div>
-              <input type="file" className="w-full text-[11px] text-muted-foreground" />
+              <input type="file" onClick={(e) => e.stopPropagation()} className="w-full text-[11px] text-muted-foreground" />
               {modalFooter('Save', () => handleSuccess(`Bulk update queued for ${selectedCount} certificate(s)`))}
             </div>
           </Modal>
@@ -645,7 +645,7 @@ export default function PKIEngineerDashboard() {
             <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
               <label className="space-y-2">
                 <span>Renew X days before expiry</span>
-                <input type="number" value={renewDays} onChange={(e) => setRenewDays(Number(e.target.value))} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none" />
+                <input type="number" value={renewDays} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setRenewDays(Number(e.target.value)); }} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none" />
               </label>
               {modalFooter('Save', () => handleSuccess(`Updated renew validity for ${selectedCount} certificate(s)`))}
             </div>
@@ -658,15 +658,15 @@ export default function PKIEngineerDashboard() {
               <p>{selectedCount || tabCerts.length} certificate(s) selected.</p>
               <label className="space-y-2 block">
                 <span>CA</span>
-                <select value={renewCa} onChange={(e) => setRenewCa(e.target.value)} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none">
+                <select value={renewCa} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setRenewCa(e.target.value); }} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none">
                   {CA_OPTIONS.map((option) => <option key={option}>{option}</option>)}
                 </select>
               </label>
               <div className="space-y-2">
                 <span>Schedule</span>
                 {(['Immediately', 'Next maintenance window'] as const).map((option) => (
-                  <label key={option} className="flex items-center gap-2">
-                    <input type="radio" checked={renewSchedule === option} onChange={() => setRenewSchedule(option)} />
+                  <label key={option} className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <input type="radio" checked={renewSchedule === option} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setRenewSchedule(option); }} />
                     <span>{option}</span>
                   </label>
                 ))}
@@ -685,13 +685,13 @@ export default function PKIEngineerDashboard() {
               <p>{selectedCount || tabCerts.length} certificate(s) selected.</p>
               <label className="space-y-2 block">
                 <span>Key Type</span>
-                <select value={regenerateKeyType} onChange={(e) => setRegenerateKeyType(e.target.value)} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none">
+                <select value={regenerateKeyType} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setRegenerateKeyType(e.target.value); }} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none">
                   {['RSA-4096', 'ECC P-384', 'Ed25519'].map((option) => <option key={option}>{option}</option>)}
                 </select>
               </label>
               <label className="space-y-2 block">
                 <span>CA</span>
-                <select value={renewCa} onChange={(e) => setRenewCa(e.target.value)} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none">
+                <select value={renewCa} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setRenewCa(e.target.value); }} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none">
                   {CA_OPTIONS.map((option) => <option key={option}>{option}</option>)}
                 </select>
               </label>
@@ -709,20 +709,20 @@ export default function PKIEngineerDashboard() {
               <p>{selectedCount || tabCerts.length} certificate(s) selected.</p>
               <label className="space-y-2 block">
                 <span>CA</span>
-                <select value={renewCa} onChange={(e) => setRenewCa(e.target.value)} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none">
+                <select value={renewCa} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setRenewCa(e.target.value); }} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none">
                   {CA_OPTIONS.map((option) => <option key={option}>{option}</option>)}
                 </select>
               </label>
               <div className="space-y-2">
                 <span>Schedule</span>
                 {(['Immediately', 'Next maintenance window'] as const).map((option) => (
-                  <label key={option} className="flex items-center gap-2">
-                    <input type="radio" checked={renewSchedule === option} onChange={() => setRenewSchedule(option)} />
+                  <label key={option} className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <input type="radio" checked={renewSchedule === option} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setRenewSchedule(option); }} />
                     <span>{option}</span>
                   </label>
                 ))}
               </div>
-              <textarea value={reissueReason} onChange={(e) => setReissueReason(e.target.value)} rows={4} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none" placeholder="Reason for reissue" />
+              <textarea value={reissueReason} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setReissueReason(e.target.value); }} rows={4} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none" placeholder="Reason for reissue" />
               {modalFooter('Reissue', () => handleSuccess(`Reissue initiated for ${selectedCount || tabCerts.length} certificate(s)`))}
             </div>
           </Modal>
@@ -733,7 +733,7 @@ export default function PKIEngineerDashboard() {
             <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
               <label className="space-y-2 block">
                 <span>* Reason:</span>
-                <select value={revokeReason} onChange={(e) => setRevokeReason(e.target.value)} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none">
+                <select value={revokeReason} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setRevokeReason(e.target.value); }} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none">
                   <option value="">Select a reason</option>
                   {REVOKE_REASONS.map((reason) => <option key={reason.value} value={reason.value}>{reason.value}</option>)}
                 </select>
@@ -741,18 +741,18 @@ export default function PKIEngineerDashboard() {
               {revokeReason && (
                 <p className="text-[11px] italic text-muted-foreground">{REVOKE_REASONS.find((reason) => reason.value === revokeReason)?.hint}</p>
               )}
-              <textarea value={revokeComment} onChange={(e) => setRevokeComment(e.target.value)} rows={4} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none" placeholder="Add comments about this revocation request" />
+              <textarea value={revokeComment} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setRevokeComment(e.target.value); }} rows={4} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none" placeholder="Add comments about this revocation request" />
               {!revokeReason && (
                 <div className="rounded-lg border p-3 text-[11px]" style={{ backgroundColor: 'hsl(var(--coral) / 0.08)', borderColor: 'hsl(var(--coral) / 0.2)' }}>
                   A revoke reason is required before submitting.
                 </div>
               )}
               <div className="mt-5 flex items-center justify-end gap-2">
-                <button type="button" onClick={closeActionModal} className="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-secondary/40">Close</button>
+                <button type="button" onClick={(e) => { e.stopPropagation(); closeActionModal(); }} className="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-secondary/40">Close</button>
                 <button
                   type="button"
                   disabled={!revokeReason}
-                  onClick={() => handleSuccess(`Revocation: ${revokeReason} (${selectedCount || tabCerts.length} certificate(s))`)}
+                  onClick={(e) => { e.stopPropagation(); handleSuccess(`Revocation: ${revokeReason} (${selectedCount || tabCerts.length} certificate(s))`); }}
                   className="rounded-md px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
                   style={{ backgroundColor: 'hsl(var(--teal))' }}
                 >
@@ -769,7 +769,7 @@ export default function PKIEngineerDashboard() {
               <p className="text-muted-foreground">Current CA: {tabCerts[0]?.caIssuer ?? 'Unknown'}</p>
               <label className="space-y-2 block">
                 <span>Switch to</span>
-                <select value={switchCa} onChange={(e) => setSwitchCa(e.target.value)} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none">
+                <select value={switchCa} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setSwitchCa(e.target.value); }} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none">
                   {CA_OPTIONS.map((option) => <option key={option}>{option}</option>)}
                 </select>
               </label>
@@ -806,7 +806,7 @@ export default function PKIEngineerDashboard() {
                 </div>
               )}
               <div className="mt-5 flex items-center justify-end">
-                <button type="button" onClick={closeActionModal} className="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-secondary/40">Close</button>
+                <button type="button" onClick={(e) => { e.stopPropagation(); closeActionModal(); }} className="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-secondary/40">Close</button>
               </div>
             </div>
           </Modal>
