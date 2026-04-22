@@ -116,7 +116,7 @@ export default function AppSidebar() {
   const isChildActive = (section: NavItem) => section.children?.some(c => currentPage === (c.page || c.id));
 
   return (
-    <div className="w-72 min-h-screen bg-navy flex flex-col border-r border-navy-lighter flex-shrink-0">
+    <div className="w-56 min-h-screen bg-navy flex flex-col border-r border-navy-lighter flex-shrink-0">
       <div className="h-14 flex items-center px-4 border-b border-navy-lighter">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-teal flex items-center justify-center">
