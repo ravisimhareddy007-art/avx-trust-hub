@@ -35,14 +35,14 @@ interface NavSubItemProps {
 const NavSubItem = ({ label, count, icon: ItemIcon, isActive, onClick }: NavSubItemProps) => (
   <div
     onClick={onClick}
-    className={`flex items-center justify-between gap-2 pl-6 pr-3 py-1.5 cursor-pointer rounded-md mx-2 text-sm transition-colors whitespace-nowrap overflow-hidden ${
+    className={`flex items-center justify-between gap-2 pl-6 pr-3 py-1.5 cursor-pointer rounded-md mx-2 text-sm transition-colors ${
       isActive
         ? 'text-teal bg-teal/10 font-medium'
         : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
     }`}
   >
-    <span className="truncate">{label}</span>
-    {ItemIcon && <ItemIcon size={12} className="text-amber shrink-0 ml-auto" />}
+    <span className="flex-1 leading-tight">{label}</span>
+    {ItemIcon && <ItemIcon size={12} className="text-amber shrink-0" />}
     {typeof count === 'number' && (
       <span className="text-xs bg-white/10 text-muted-foreground px-1.5 py-0.5 rounded-full shrink-0">
         {count}
@@ -114,7 +114,7 @@ export default function AppSidebar() {
   const isChildActive = (section: NavItem) => section.children?.some(c => currentPage === (c.page || c.id));
 
   return (
-    <div className="w-[232px] min-h-screen bg-navy flex flex-col border-r border-navy-lighter flex-shrink-0">
+    <div className="w-72 min-h-screen bg-navy flex flex-col border-r border-navy-lighter flex-shrink-0">
       <div className="h-14 flex items-center px-4 border-b border-navy-lighter">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-teal flex items-center justify-center">
