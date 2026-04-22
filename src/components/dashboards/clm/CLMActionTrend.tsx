@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useNav } from '@/context/NavigationContext';
 
 const data = Array.from({ length: 14 }, (_, i) => {
   const d = new Date(2026, 3, 8 + i);
@@ -15,6 +16,12 @@ const data = Array.from({ length: 14 }, (_, i) => {
 
 export default function CLMActionTrend() {
   const [range, setRange] = useState<'daily' | 'weekly'>('daily');
+  const { setCurrentPage, setFilters } = useNav();
+
+  const openInventory = () => {
+    setFilters({ type: 'TLS Certificate' });
+    setCurrentPage('inventory');
+  };
 
   return (
     <div className="bg-card border border-border rounded-xl p-5">
@@ -35,26 +42,28 @@ export default function CLMActionTrend() {
         </div>
       </div>
 
-      <ResponsiveContainer width="100%" height={220}>
-        <LineChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-          <XAxis dataKey="day" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-          <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} width={30} />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: 'hsl(var(--card))',
-              border: '1px solid hsl(var(--border))',
-              borderRadius: '8px',
-              fontSize: '11px',
-            }}
-          />
-          <Legend iconSize={8} wrapperStyle={{ fontSize: '10px' }} />
-          <Line type="monotone" dataKey="enrolled" stroke="hsl(var(--teal))" strokeWidth={2} dot={false} />
-          <Line type="monotone" dataKey="renewed" stroke="hsl(var(--purple))" strokeWidth={2} dot={false} />
-          <Line type="monotone" dataKey="revoked" stroke="hsl(var(--coral))" strokeWidth={2} dot={false} />
-          <Line type="monotone" dataKey="regenerated" stroke="hsl(var(--amber))" strokeWidth={2} dot={false} />
-        </LineChart>
-      </ResponsiveContainer>
+      <div onClick={openInventory} className="cursor-pointer hover:text-teal transition-colors">
+        <ResponsiveContainer width="100%" height={220}>
+          <LineChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis dataKey="day" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} width={30} />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: 'hsl(var(--card))',
+                border: '1px solid hsl(var(--border))',
+                borderRadius: '8px',
+                fontSize: '11px',
+              }}
+            />
+            <Legend iconSize={8} wrapperStyle={{ fontSize: '10px' }} />
+            <Line type="monotone" dataKey="enrolled" stroke="hsl(var(--teal))" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="renewed" stroke="hsl(var(--purple))" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="revoked" stroke="hsl(var(--coral))" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="regenerated" stroke="hsl(var(--amber))" strokeWidth={2} dot={false} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }

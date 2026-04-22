@@ -1,7 +1,8 @@
 import React from 'react';
 import { Search } from 'lucide-react';
 import { mockAssets } from '@/data/mockData';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts';
+import { useNav } from '@/context/NavigationContext';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
 
 const certAssets = mockAssets.filter(a =>
   a.type === 'TLS Certificate' || a.type === 'Code-Signing Certificate' ||
@@ -18,9 +19,9 @@ const SOURCES = [
 ];
 
 export default function ScanCoverage() {
+  const { setCurrentPage, setFilters } = useNav();
   const total = certAssets.length || 1;
 
-  // Try tag-based counts
   const tagCounts = SOURCES.map(s => ({
     ...s,
     count: certAssets.filter(a => a.tags?.includes(s.key)).length,
@@ -32,12 +33,17 @@ export default function ScanCoverage() {
     const count = hasData
       ? tagCounts.find(t => t.key === s.key)!.count
       : Math.round((s.fallbackPct / 100) * total);
-    return { name: s.label, count };
+    return { name: s.label, count, key: s.key };
   });
 
   const networkPct = hasData
     ? Math.round((tagCounts.find(t => t.key === 'network-scan')!.count / total) * 100)
     : 28;
+
+  const openInventory = (sourceKey: string) => {
+    setFilters({ type: 'TLS Certificate', discoverySource: sourceKey });
+    setCurrentPage('inventory');
+  };
 
   return (
     <div className="bg-card border border-border rounded-xl p-5">
@@ -52,6 +58,8 @@ export default function ScanCoverage() {
           <XAxis type="number" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
           <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} width={100} />
           <Tooltip
+            formatter={(value) => [value, 'Certificates']}
+            labelFormatter={(label) => `${label} · Click to view in Inventory`}
             contentStyle={{
               backgroundColor: 'hsl(var(--card))',
               border: '1px solid hsl(var(--border))',
@@ -59,7 +67,7 @@ export default function ScanCoverage() {
               fontSize: '11px',
             }}
           />
-          <Bar dataKey="count" radius={[0, 4, 4, 0]} fill="hsl(var(--teal))">
+          <Bar dataKey="count" radius={[0, 4, 4, 0]} fill="hsl(var(--teal))" cursor="pointer" onClick={(entry) => openInventory(entry.key)}>
             <LabelList dataKey="count" position="right" style={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
           </Bar>
         </BarChart>
