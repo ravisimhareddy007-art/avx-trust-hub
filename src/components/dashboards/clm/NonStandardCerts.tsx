@@ -31,14 +31,29 @@ const tiles = [
   { key: 'unassociated', label: 'Unassociated', icon: Unlink },
 ] as const;
 
-export default function NonStandardCerts() {
-  const { setCurrentPage } = useNav();
+type NonStandardCertsProps = {
+  openModal?: (title: string, certs: any[]) => void;
+};
+
+export default function NonStandardCerts({ openModal }: NonStandardCertsProps) {
   const counts = computeCounts();
 
   const getTint = (count: number) => {
     if (count > 3) return 'bg-coral/5 border-coral/20';
     if (count >= 1) return 'bg-amber/5 border-amber/20';
     return 'bg-card border-border';
+  };
+
+  const getTileCerts = (key: typeof tiles[number]['key']) => {
+    switch (key) {
+      case 'selfSigned': return certAssets.filter(a => a.caIssuer?.toLowerCase().includes('self') || a.owner === 'Unassigned');
+      case 'wildcard': return certAssets.filter(a => a.name.startsWith('*.'));
+      case 'unknownCA': return certAssets.filter(a => !a.caIssuer || a.caIssuer === 'Unknown');
+      case 'rootCAIssued': return certAssets.filter(a => a.tags?.includes('root-ca'));
+      case 'sanMismatch': return certAssets.filter(a => a.policyViolations > 1);
+      case 'unassociated': return certAssets.filter(a => a.dependencyCount === 0);
+      default: return certAssets;
+    }
   };
 
   return (
@@ -52,10 +67,10 @@ export default function NonStandardCerts() {
           const count = counts[t.key];
           const Icon = t.icon;
           return (
-            <div
+              <div
               key={t.key}
-              onClick={() => setCurrentPage('inventory')}
-              className={`rounded-lg border p-4 cursor-pointer hover:brightness-110 transition-all ${getTint(count)}`}
+                onClick={() => openModal?.(`Non-Standard: ${t.label}`, getTileCerts(t.key))}
+                className={`rounded-lg border p-4 cursor-pointer hover:bg-secondary/40 transition-all ${getTint(count)}`}
             >
               <Icon className="w-4 h-4 text-muted-foreground mb-2" />
               <p className={`text-2xl font-bold ${count > 3 ? 'text-coral' : count >= 1 ? 'text-amber' : 'text-muted-foreground'}`}>{count}</p>

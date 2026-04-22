@@ -1,6 +1,7 @@
 import React from 'react';
 import { Clock } from 'lucide-react';
 import { mockAssets } from '@/data/mockData';
+import { useNav } from '@/context/NavigationContext';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 
 const certAssets = mockAssets.filter(a =>
@@ -8,7 +9,12 @@ const certAssets = mockAssets.filter(a =>
   a.type === 'K8s Workload Cert' || a.type === 'SSH Certificate'
 );
 
-export default function SLCCompliance() {
+type SLCComplianceProps = {
+  openModal?: (title: string, certs: any[]) => void;
+};
+
+export default function SLCCompliance({ openModal }: SLCComplianceProps) {
+  const { setCurrentPage, setFilters } = useNav();
   const shortLived = certAssets.filter(a => a.daysToExpiry >= 0 && a.daysToExpiry <= 90);
   const total = shortLived.length;
   const compliant = shortLived.filter(a => a.autoRenewal === true).length;
@@ -44,6 +50,14 @@ export default function SLCCompliance() {
                 outerRadius={65}
                 dataKey="value"
                 strokeWidth={0}
+                onClick={(_, index) => {
+                  if (index === 0) {
+                    openModal?.('SLC Expiring < 30 Days', shortLived.filter(a => a.daysToExpiry <= 30));
+                    return;
+                  }
+                  setFilters({ type: 'TLS Certificate', slc: 'true' });
+                  setCurrentPage('inventory');
+                }}
               >
                 {donutData.map((_, i) => (
                   <Cell key={i} fill={COLORS[i]} />
@@ -74,6 +88,7 @@ export default function SLCCompliance() {
           <p className="text-[10px] text-muted-foreground italic">
             CA/Browser Forum mandates 90-day maximum TLS cert validity from 2025
           </p>
+          <p className="text-[10px] text-muted-foreground">Click segments to investigate</p>
         </div>
       </div>
     </div>

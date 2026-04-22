@@ -2,7 +2,11 @@ import React from 'react';
 import { mockAssets } from '@/data/mockData';
 import { useNav } from '@/context/NavigationContext';
 
-export default function ExpiryCalendar() {
+type ExpiryCalendarProps = {
+  openModal?: (title: string, certs: any[]) => void;
+};
+
+export default function ExpiryCalendar({ openModal }: ExpiryCalendarProps) {
   const { setCurrentPage, setFilters } = useNav();
 
   const certAssets = mockAssets.filter(a =>
@@ -61,10 +65,16 @@ export default function ExpiryCalendar() {
           <div
             key={d.day}
             onClick={() => {
+              if (d.total === 0) return;
+              const dayCerts = certAssets.filter(a => a.daysToExpiry === d.day);
+              if (d.atRisk > 0) {
+                openModal?.(`Expiring ${d.label}`, dayCerts.filter(a => !a.autoRenewal).length ? dayCerts.filter(a => !a.autoRenewal) : dayCerts);
+                return;
+              }
               setFilters({ daysToExpiry: d.day.toString(), type: 'TLS Certificate' });
               setCurrentPage('inventory');
             }}
-            className={`rounded-lg border p-2 min-h-[64px] flex flex-col justify-between text-xs cursor-pointer hover:brightness-110 transition-all ${getCellClasses(d.total, d.atRisk)}`}
+            className={`rounded-lg border p-2 min-h-[64px] flex flex-col justify-between text-xs transition-all ${d.total > 0 ? 'cursor-pointer hover:brightness-110' : 'cursor-default'} ${getCellClasses(d.total, d.atRisk)}`}
           >
             <span className="text-muted-foreground text-[10px]">{d.label}</span>
             <span className={`text-lg font-bold text-center ${d.total === 0 ? 'text-muted-foreground/40' : 'text-foreground'}`}>

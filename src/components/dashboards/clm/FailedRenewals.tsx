@@ -2,6 +2,7 @@ import React from 'react';
 import { RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { SeverityBadge } from '@/components/shared/UIComponents';
+import { mockAssets } from '@/data/mockData';
 
 interface FailedRow {
   cert: string;
@@ -23,7 +24,11 @@ const rows: FailedRow[] = [
   { cert: 'api-gw-prod.acmecorp.com', ca: 'Entrust', reason: 'Policy violation: key length', asset: 'prod-gateway-01', failedAt: '12h ago', severity: 'Critical' },
 ];
 
-export default function FailedRenewals() {
+type FailedRenewalsProps = {
+  openModal?: (title: string, certs: any[]) => void;
+};
+
+export default function FailedRenewals({ openModal }: FailedRenewalsProps) {
   return (
     <div className="bg-card border border-border rounded-xl p-5">
       <div className="flex items-center justify-between mb-4">
@@ -50,7 +55,9 @@ export default function FailedRenewals() {
             {rows.map((r, i) => (
               <tr key={i} className="border-b border-border last:border-0 hover:bg-muted/30">
                 <td className="py-2 pr-2"><SeverityBadge severity={r.severity} /></td>
-                <td className="py-2 pr-2 font-mono text-foreground max-w-[180px] truncate">{r.cert}</td>
+                <td className="py-2 pr-2 font-mono text-foreground max-w-[180px] truncate">
+                  <button className="text-left hover:text-teal transition-colors" onClick={() => openModal?.(`Failed Renewal: ${r.cert}`, [mockAssets.find((a) => a.commonName === r.cert || a.name === r.cert) ?? mockAssets[0]])}>{r.cert}</button>
+                </td>
                 <td className="py-2 pr-2 text-muted-foreground">{r.ca}</td>
                 <td className="py-2 pr-2 text-muted-foreground">{r.reason}</td>
                 <td className="py-2 pr-2 text-muted-foreground">{r.asset}</td>

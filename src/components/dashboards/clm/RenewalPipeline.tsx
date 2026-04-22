@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrowRight, Clock } from 'lucide-react';
+import { mockAssets } from '@/data/mockData';
 import { useNav } from '@/context/NavigationContext';
 
 interface Stage {
@@ -17,8 +18,30 @@ const stages: Stage[] = [
   { label: 'Deployed', count: 312, color: 'text-teal' },
 ];
 
-export default function RenewalPipeline() {
+type RenewalPipelineProps = {
+  openModal?: (title: string, certs: any[]) => void;
+};
+
+export default function RenewalPipeline({ openModal }: RenewalPipelineProps) {
   const { setCurrentPage } = useNav();
+  const allCerts = mockAssets.filter((a) => a.type.includes('Certificate'));
+
+  const getStageCerts = (label: string) => {
+    switch (label) {
+      case 'Detected expiring':
+        return allCerts.filter((a) => a.daysToExpiry <= 90);
+      case 'Renewal initiated':
+        return allCerts.filter((a) => a.autoRenewal && a.daysToExpiry <= 90);
+      case 'Submitted to CA':
+        return allCerts.slice(0, 521);
+      case 'Issued by CA':
+        return allCerts.slice(0, 489);
+      case 'Deployed':
+        return allCerts.slice(0, 312);
+      default:
+        return allCerts;
+    }
+  };
 
   return (
     <div className="bg-card border border-border rounded-xl p-5">
@@ -30,7 +53,7 @@ export default function RenewalPipeline() {
       <div className="flex items-center gap-1">
         {stages.map((s, i) => (
           <React.Fragment key={s.label}>
-            <div className={`flex-1 rounded-lg border border-border bg-secondary/30 p-3 text-center ${i === stages.length - 1 ? 'bg-teal/10 border-teal/30' : ''}`}>
+            <div onClick={() => openModal?.(s.label.replace(/(^\w)|\s\w/g, (m) => m.toUpperCase()), getStageCerts(s.label))} className={`flex-1 rounded-lg border border-border bg-secondary/30 p-3 text-center cursor-pointer transition-all hover:bg-secondary/40 ${i === stages.length - 1 ? 'bg-teal/10 border-teal/30' : ''}`}>
               <p className="text-[10px] text-muted-foreground mb-1 leading-tight">{s.label}</p>
               <div className="flex items-center justify-center gap-1">
                 <span className={`text-xl font-bold ${s.color}`}>{s.count.toLocaleString()}</span>
@@ -45,7 +68,7 @@ export default function RenewalPipeline() {
       </div>
 
       <p
-        onClick={() => setCurrentPage('remediation')}
+        onClick={() => openModal?.('No Renewal Plan', allCerts.filter((a) => !a.autoRenewal))}
         className="mt-3 text-xs text-coral cursor-pointer hover:underline"
       >
         ⚠ 535 certs have no renewal plan and are not in this pipeline
