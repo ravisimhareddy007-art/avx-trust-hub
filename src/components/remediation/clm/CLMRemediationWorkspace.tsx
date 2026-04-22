@@ -1142,7 +1142,7 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
 
       <DetailDrawer row={detailRow} open={!!detailRow} onClose={() => setDetailRow(null)} onRunAction={handleAction} />
       <ExecutionLogDrawer request={logRequest} open={!!logRequest} onClose={() => setLogRequest(null)} />
-      <EnrollWizard open={enrollOpen} onClose={() => setEnrollOpen(false)} onSubmit={addPolicyRequest} />
+      <EnrollCertificateWizard open={enrollOpen} onClose={() => setEnrollOpen(false)} onSubmit={addPolicyRequest} />
       <GenerateCSRModal open={csrOpen} onClose={() => setCsrOpen(false)} />
       <PushToDeviceModal open={pushOpen} onClose={() => setPushOpen(false)} onSubmit={addPolicyRequest} />
       <SSLCheckerDrawer open={sslDrawerOpen} onClose={() => setSslDrawerOpen(false)} />
