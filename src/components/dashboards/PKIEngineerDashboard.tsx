@@ -310,11 +310,11 @@ export default function PKIEngineerDashboard() {
   const [groupSearch, setGroupSearch] = useState('');
   const [comments, setComments] = useState('');
   const [renewDays, setRenewDays] = useState(30);
-  const [renewCa, setRenewCa] = useState('DigiCert Global G2');
+  const [renewCa, setRenewCa] = useState('DigiCert');
   const [renewSchedule, setRenewSchedule] = useState<'Immediately' | 'Next maintenance window'>('Immediately');
   const [regenerateKeyType, setRegenerateKeyType] = useState('RSA-4096');
   const [reissueReason, setReissueReason] = useState('');
-  const [switchCa, setSwitchCa] = useState('Entrust L1K');
+  const [switchCa, setSwitchCa] = useState('Entrust');
   const [bulkUpdateMode, setBulkUpdateMode] = useState<'File Upload' | 'By Group'>('File Upload');
   const [columnsOpen, setColumnsOpen] = useState(false);
   const [columnSearch, setColumnSearch] = useState('');
@@ -602,11 +602,20 @@ export default function PKIEngineerDashboard() {
     setCertTab('server');
     setActionsOpen(false);
     setActionModal(null);
+    setApprovalAction(null);
+    setColumnsOpen(false);
     setDrillOpen(true);
   }
 
   function toggleSelect(id: string) {
     setSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+  }
+
+  function toggleColumn(columnKey: ColumnKey) {
+    const option = COLUMN_OPTIONS.find((column) => column.key === columnKey);
+    if (!option) return;
+    if ('required' in option && option.required) return;
+    setDraftSelectedColumns((prev) => prev.includes(columnKey) ? prev.filter((key) => key !== columnKey) : [...prev, columnKey]);
   }
 
   function selectAll() {
@@ -621,6 +630,12 @@ export default function PKIEngineerDashboard() {
     setActionModal(null);
     setRevokeReason('');
     setRevokeComment('');
+  }
+
+  function closeApprovalModal() {
+    setApprovalAction(null);
+    setApprovalSearch('');
+    setApprovalDecisionOpen(false);
   }
 
   function handleSuccess(message: string, opts?: { clearSelection?: boolean; closeDrill?: boolean }) {
