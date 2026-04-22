@@ -25,18 +25,36 @@ const crsBadgeCls = (score: number) => {
 
 type WTab = 'agents' | 'hitl' | 'mcp' | 'timeline';
 
-const HITL_QUEUE = [
+type HitlItem = {
+  id: string;
+  agent: string;
+  action: string;
+  severity: 'Critical' | 'High' | 'Medium' | 'Low';
+  reason: string;
+  time: string;
+  status: 'Pending' | 'Denied' | 'Approved';
+};
+
+type McpServer = {
+  id: string;
+  name: string;
+  agent: string;
+  status: 'Unsanctioned' | 'Approved';
+  protected: boolean;
+};
+
+const HITL_QUEUE: HitlItem[] = [
   { id:'H1', agent:'customer-support-bot', action:'pip install jinja2', severity:'High', reason:'Supply chain risk: 5 CVEs detected (GHSA-462w-v97r-4m45, GHSA-8r7q-cvjq-x353, GHSA-cpwx-vrp4-4pq7, GHSA-fqh9-2qgg-h84h, GHSA-g3rq-g295-4j3m). Package flagged as vulnerable.', time:'6:34 AM', status:'Pending' },
   { id:'H2', agent:'gpt-orchestrator-token', action:'Read file: app/db_config.py', severity:'High', reason:'Action deviates from stated agent intent (database-check task). Sensitive config access blocked per policy.', time:'6:40 AM', status:'Denied' },
   { id:'H3', agent:'hr-onboarding-copilot', action:'ad:groups.addMember — Admins', severity:'Critical', reason:'Admin group membership outside scope of HR onboarding intent. Requires CISO approval.', time:'6:41 AM', status:'Pending' },
-] as const;
+] ;
 
-const MCP_SERVERS = [
+const MCP_SERVERS: McpServer[] = [
   { id:'m1', name:'Aws-Mcp-Server-MCP', agent:'copilot-code-review-agent', status:'Unsanctioned', protected:false },
   { id:'m2', name:'Filemanager-Proxy-MCP', agent:'Github_Copilot-AVXLM184', status:'Unsanctioned', protected:false },
   { id:'m3', name:'Remote-Auth-OAuth', agent:'Github_Copilot-AVXLM184', status:'Approved', protected:true },
   { id:'m4', name:'BigQuery-MCP', agent:'data-analyst-mcp-server', status:'Approved', protected:true },
-] as const;
+];
 
 const TIMELINE_EVENTS = [
   { text:'Agent registered — security-soc-autonomous', time:'Apr 22, 01:12 AM', type:'info' },
@@ -176,8 +194,8 @@ export default function AIAgentRemediationWorkspace() {
   const [selectedAgent, setSelectedAgent] = useState<CryptoAsset | null>(null);
   const [showDetailPanel, setShowDetailPanel] = useState(false);
   const [search, setSearch] = useState('');
-  const [hitlItems, setHitlItems] = useState([...HITL_QUEUE]);
-  const [mcpServers, setMcpServers] = useState([...MCP_SERVERS]);
+  const [hitlItems, setHitlItems] = useState<HitlItem[]>([...HITL_QUEUE]);
+  const [mcpServers, setMcpServers] = useState<McpServer[]>([...MCP_SERVERS]);
   const [msgs, setMsgs] = useState<{ role:'guardian'|'user', text:string }[]>([]);
   const [input, setInput] = useState('');
 
