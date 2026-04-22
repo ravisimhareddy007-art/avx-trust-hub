@@ -33,6 +33,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import EnrollCertificateWizard from './actions/EnrollCertificateWizard';
 import GenerateCSRModal from './actions/GenerateCSRModal';
 import PushToDeviceModal from './actions/PushToDeviceModal';
@@ -47,6 +48,7 @@ interface Props {
 type EnvironmentFilter = 'All' | 'Production' | 'Staging' | 'Development';
 type QueueFilter = 'All' | 'Pending' | 'In Progress' | 'Completed' | 'Failed';
 type ValidityUnit = 'Days' | 'Months' | 'Years';
+type IssueQuickFilter = 'expiringSoon' | 'production' | 'highSeverity' | 'unassigned';
 
 const proactiveCards = [
   {
@@ -100,6 +102,62 @@ const caList = ['DigiCert Global G2', 'Entrust L1K', "Let's Encrypt", 'MSCA Ente
 const groupOptions = ['Payments', 'Platform', 'Security', 'Identity', 'Infrastructure'];
 
 const formatCount = (value: number) => new Intl.NumberFormat('en-US').format(value);
+
+const quickFilters: Array<{ id: IssueQuickFilter; label: string }> = [
+  { id: 'expiringSoon', label: 'Expiring < 7 days' },
+  { id: 'production', label: 'Production' },
+  { id: 'highSeverity', label: 'High severity' },
+  { id: 'unassigned', label: 'Unassigned owner' },
+];
+
+const getUrgencyDays = (row: ClmIssueRow) => {
+  if (row.issueType !== 'Expiring / Expired') return null;
+  return Math.max(0, row.asset.daysToExpiry);
+};
+
+const urgencyBadgeClass = (days: number) => {
+  if (days <= 3) return 'bg-coral/10 text-coral';
+  if (days <= 7) return 'bg-amber/10 text-amber';
+  return 'bg-muted text-muted-foreground';
+};
+
+const getRecommendationMeta = (row: ClmIssueRow) => {
+  const recommended = row.recommended;
+
+  if (recommended.includes('Renew')) {
+    return {
+      label: 'Renew from CA',
+      tooltip: 'Reissue the certificate through the current CA workflow.',
+      className: 'bg-teal text-primary-foreground hover:bg-teal-light',
+      action: 'Renew' as ClmIssueAction,
+    };
+  }
+
+  if (recommended.includes('Revoke') || recommended.includes('Reissue')) {
+    return {
+      label: 'Revoke & Reissue',
+      tooltip: 'Revoke the current certificate and issue a clean replacement.',
+      className: 'bg-coral/10 text-coral hover:bg-coral/20',
+      action: 'Reissue' as ClmIssueAction,
+    };
+  }
+
+  if (recommended.includes('CA Switch')) {
+    return {
+      label: 'CA Switch',
+      tooltip: 'Move issuance to a different CA profile for policy alignment.',
+      className: 'bg-amber/10 text-amber hover:bg-amber/20',
+      action: 'CA Switch' as ClmIssueAction,
+    };
+  }
+
+  return {
+    label: recommended,
+    tooltip: 'Start the recommended remediation workflow for this certificate.',
+    className: 'bg-muted text-foreground hover:bg-secondary',
+    action: row.primaryAction,
+  };
+};
 
 const environmentBadgeClass = (env: ClmIssueRow['environment']) => {
   if (env === 'Production') return 'bg-coral/10 text-coral';
