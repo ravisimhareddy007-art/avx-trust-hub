@@ -15,7 +15,6 @@ import {
   Shield,
   Smartphone,
   Tag,
-  TagOff,
   Workflow,
   X,
 } from 'lucide-react';
@@ -607,7 +606,7 @@ export default function CertHolisticView() {
           </div>
           <button type="button" className="inline-flex items-center gap-2 rounded-md px-3 py-2 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground"><History className="h-3.5 w-3.5" />History</button>
           <button type="button" className="inline-flex items-center gap-2 rounded-md px-3 py-2 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground"><Tag className="h-3.5 w-3.5" />Assign Group</button>
-          <button type="button" className="inline-flex items-center gap-2 rounded-md px-3 py-2 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground"><TagOff className="h-3.5 w-3.5" />Unassign Group</button>
+          <button type="button" className="inline-flex items-center gap-2 rounded-md px-3 py-2 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground"><X className="h-3.5 w-3.5" />Unassign Group</button>
           <button type="button" onClick={() => toast.success('Certificate refreshed.')} className="inline-flex items-center gap-2 rounded-md px-3 py-2 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground"><RefreshCw className="h-3.5 w-3.5" />Refresh</button>
         </div>
       </div>
