@@ -30,7 +30,6 @@ import CLMActionTrend from './clm/CLMActionTrend';
 import FailedRenewals from './clm/FailedRenewals';
 import NonStandardCerts from './clm/NonStandardCerts';
 import AlgorithmStrength from './clm/AlgorithmStrength';
-import SLCCompliance from './clm/SLCCompliance';
 import ScanCoverage from './clm/ScanCoverage';
 import SLCDashboard from './clm/SLCDashboard';
 import CertDrillModal from './clm/CertDrillModal';
@@ -179,10 +178,10 @@ export default function PKIEngineerDashboard() {
 
   const donutData = useMemo(
     () => [
-      { name: 'Expired', value: expExpired.length || 3, color: 'hsl(var(--coral))', certs: expExpired },
-      { name: '1-10 days', value: exp1to10.length || 7, color: 'hsl(0 65% 60%)', certs: exp1to10 },
-      { name: '11-30 days', value: exp11to30.length || 12, color: 'hsl(var(--amber))', certs: exp11to30 },
-      { name: '31-90 days', value: exp31to90.length || 28, color: 'hsl(48 80% 55%)', certs: exp31to90 },
+      { name: 'Expired', value: expExpired.length, color: 'hsl(var(--coral))', certs: expExpired },
+      { name: '1-10 days', value: exp1to10.length, color: 'hsl(0 65% 60%)', certs: exp1to10 },
+      { name: '11-30 days', value: exp11to30.length, color: 'hsl(var(--amber))', certs: exp11to30 },
+      { name: '31-90 days', value: exp31to90.length, color: 'hsl(48 80% 55%)', certs: exp31to90 },
     ],
     [exp1to10, exp11to30, exp31to90, expExpired]
   );
@@ -212,8 +211,12 @@ export default function PKIEngineerDashboard() {
   const handleRefresh = () => toast.success('CLM overview refreshed');
 
   function openModal(title: string, certs: ScoredCert[]) {
+    if (!certs || certs.length === 0) {
+      toast.info('No certificates in this category');
+      return;
+    }
     setModalTitle(title);
-    setModalCerts(certs.length > 0 ? certs : scored);
+    setModalCerts(certs);
     setModalOpen(true);
   }
 
