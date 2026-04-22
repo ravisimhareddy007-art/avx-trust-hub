@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import {
   Check,
-  CheckCircle2,
   ChevronDown,
   ChevronRight,
   Plus,
@@ -32,6 +31,7 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onSubmit: (request: PolicyRequestRow) => void;
+  initialCertificateId?: string;
 }
 
 interface DeviceRow {
@@ -185,7 +185,7 @@ function InlineStep({ label, state, children }: { label: string; state: 'done' |
   );
 }
 
-export default function PushToDeviceModal({ open, onClose, onSubmit }: Props) {
+export default function PushToDeviceModal({ open, onClose, onSubmit, initialCertificateId }: Props) {
   const [stage, setStage] = useState<Stage>('config');
   const [activeTab, setActiveTab] = useState<CertTypeTab>('Server');
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({ general: true, devices: true, details: true, push: true });
@@ -287,6 +287,13 @@ export default function PushToDeviceModal({ open, onClose, onSubmit }: Props) {
       return kept ? [kept] : pool[0] ? [pool[0].id] : [];
     });
   }, [activeTab, isBulkTab]);
+
+  useEffect(() => {
+    if (!open || !initialCertificateId) return;
+    const pool = activeTab === 'Server' ? serverCertificates : activeTab === 'Client' ? clientCertificates : chainCertificates;
+    if (!pool.some((item) => item.id === initialCertificateId)) return;
+    setSelectedCertIds(isBulkTab ? [initialCertificateId] : [initialCertificateId]);
+  }, [open, initialCertificateId, activeTab, isBulkTab]);
 
   useEffect(() => {
     if (!open) {
