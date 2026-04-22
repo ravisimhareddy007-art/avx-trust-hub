@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import {
   AlertCircle,
@@ -8,7 +8,6 @@ import {
   ChevronDown,
   ChevronRight,
   CircleDot,
-  Copy,
   Download,
   ExternalLink,
   FileCode,
@@ -35,6 +34,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import EnrollCertificateWizard from './actions/EnrollCertificateWizard';
+import GenerateCSRModal from './actions/GenerateCSRModal';
 import PushToDeviceModal from './actions/PushToDeviceModal';
 import { clmCertificates, clmIssueFilters, clmIssues, policyRequestsSeed, sslCheckMock } from './mockData';
 import { ClmIssueAction, ClmIssueFilter, ClmIssueRow, ClmTab, PolicyActionType, PolicyRequestRow } from './types';
@@ -95,8 +95,6 @@ const certificateCategories = ['TLS', 'Code Signing', 'Client'];
 const certTypes = ['DV', 'OV', 'EV'];
 const csrLocations = ['AppViewX', 'Endpoint'];
 const deviceTypes = ['Windows IIS', 'Apache', 'Nginx', 'Tomcat', 'MSSQL', 'Linux Server'];
-const keyTypes = ['RSA', 'ECC', 'Ed25519'] as const;
-const hashFunctions = ['SHA-256', 'SHA-384'];
 const ownerOptions = ['Sarah Chen', 'Mike Rodriguez', 'Lisa Park', 'James Wilson', 'Security Team'];
 const caList = ['DigiCert Global G2', 'Entrust L1K', "Let's Encrypt", 'MSCA Enterprise'];
 const groupOptions = ['Payments', 'Platform', 'Security', 'Identity', 'Infrastructure'];
@@ -168,7 +166,6 @@ const getSans = (asset: ClmIssueRow['asset']) => {
   );
 };
 
-const buildCsrOutput = (commonName: string, org: string, ou: string, country: string, state: string, city: string) => `-----BEGIN CERTIFICATE REQUEST-----\nMIICnzCCAYcCAQAwgYIxIDAeBgNVBAMMFy${commonName.replace(/[^a-zA-Z0-9]/g, '').slice(0, 12)}\nMQ8wDQYDVQQLDAZ${ou || 'Security'}\nMQ8wDQYDVQQKDAZ${org || 'Acme'}\nMQswCQYDVQQGEwJ${country || 'US'}\nMQ0wCwYDVQQIDAR${state || 'CA'}\nMQ0wCwYDVQQHDAR${city || 'NYC'}\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtlslXnmwQF9M2aYxW1K8\n8Ef7V5x7Ew7YvM0nYx8k4QZ4CqkM1K2Gz8T2TQ8v3Q3r8Iu9o2JZc2nQm4aV7Q1V\n7q1YgXxP3vXnq8Y9Lw2YQ4sE7xX9yLh3vC8P8gXj2Vf3qY5mW0V5QnLx0rJrX3m8\n7tJ1GfL3xQIDAQABoAAwDQYJKoZIhvcNAQELBQADggEBAI6nY3YxUuM0J8fF9QpW\nJf6k2G3mJ3O3cT6m1vSxw6Gz1uF2c9aQ4sJ3m2n0N9oT4uK5yQ1pV6dJ2wT0mC3n\n-----END CERTIFICATE REQUEST-----`;
 
 const DetailDrawer = ({
   row,
@@ -417,107 +414,6 @@ function BulkActionBar({
         ))}
       </div>
     </div>
-  );
-}
-
-function GenerateCSRModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [commonName, setCommonName] = useState('api.example.com');
-  const [organisation, setOrganisation] = useState('AcmeCorp');
-  const [organisationUnit, setOrganisationUnit] = useState('Platform');
-  const [country, setCountry] = useState('US');
-  const [state, setState] = useState('CA');
-  const [city, setCity] = useState('San Francisco');
-  const [keyType, setKeyType] = useState<'RSA' | 'ECC'>('RSA');
-  const [keySize, setKeySize] = useState('2048');
-  const [hashFunction, setHashFunction] = useState('SHA-256');
-  const [csrOutput, setCsrOutput] = useState('');
-
-  const generate = () => {
-    const output = buildCsrOutput(commonName, organisation, organisationUnit, country, state, city);
-    setCsrOutput(output);
-  };
-
-  const download = () => {
-    const blob = new Blob([csrOutput], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${commonName || 'certificate'}.csr`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  return (
-    <Modal open={open} onClose={onClose} title="Generate CSR">
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <FormField label="CN">
-            <Input value={commonName} onChange={(event) => setCommonName(event.target.value)} />
-          </FormField>
-          <FormField label="Organisation">
-            <Input value={organisation} onChange={(event) => setOrganisation(event.target.value)} />
-          </FormField>
-          <FormField label="Organisational Unit">
-            <Input value={organisationUnit} onChange={(event) => setOrganisationUnit(event.target.value)} />
-          </FormField>
-          <FormField label="Country">
-            <Input value={country} onChange={(event) => setCountry(event.target.value.toUpperCase())} maxLength={2} />
-          </FormField>
-          <FormField label="State">
-            <Input value={state} onChange={(event) => setState(event.target.value)} />
-          </FormField>
-          <FormField label="City">
-            <Input value={city} onChange={(event) => setCity(event.target.value)} />
-          </FormField>
-          <FormField label="Key Type">
-            <RadioGroup value={keyType} onValueChange={(value) => { setKeyType(value as 'RSA' | 'ECC'); setKeySize(value === 'RSA' ? '2048' : 'P-256'); }} className="mt-2 flex gap-4">
-              {['RSA', 'ECC'].map((option) => (
-                <div key={option} className="flex items-center gap-2">
-                  <RadioGroupItem value={option} id={`csr-${option}`} />
-                  <Label htmlFor={`csr-${option}`}>{option}</Label>
-                </div>
-              ))}
-            </RadioGroup>
-          </FormField>
-          <FormSelect label="Key Size" value={keySize} onChange={setKeySize} options={keyType === 'RSA' ? ['2048', '3072', '4096'] : ['P-256', 'P-384']} />
-          <FormField label="Hash Function">
-            <RadioGroup value={hashFunction} onValueChange={setHashFunction} className="mt-2 flex gap-4">
-              {hashFunctions.map((option) => (
-                <div key={option} className="flex items-center gap-2">
-                  <RadioGroupItem value={option} id={`hash-${option}`} />
-                  <Label htmlFor={`hash-${option}`}>{option}</Label>
-                </div>
-              ))}
-            </RadioGroup>
-          </FormField>
-        </div>
-
-        {csrOutput && (
-          <div className="space-y-3 rounded-lg border border-border bg-background/40 p-3">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-foreground">CSR Output</p>
-              <div className="flex items-center gap-2">
-                <button type="button" onClick={() => { navigator.clipboard.writeText(csrOutput); toast.success('CSR copied.'); }} className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:bg-secondary">
-                  <Copy className="h-3.5 w-3.5" />
-                  Copy
-                </button>
-                <button type="button" onClick={download} className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:bg-secondary">
-                  <Download className="h-3.5 w-3.5" />
-                  Download
-                </button>
-              </div>
-            </div>
-            <pre className="overflow-auto rounded-md border border-border bg-card p-3 font-mono text-[11px] leading-5 text-foreground">{csrOutput}</pre>
-          </div>
-        )}
-
-        <div className="flex justify-end border-t border-border pt-4">
-          <button type="button" onClick={generate} className="rounded-md bg-teal px-4 py-2 text-xs font-medium text-primary-foreground hover:bg-teal-light">
-            Generate CSR
-          </button>
-        </div>
-      </div>
-    </Modal>
   );
 }
 
@@ -1003,7 +899,7 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
       <DetailDrawer row={detailRow} open={!!detailRow} onClose={() => setDetailRow(null)} onRunAction={handleAction} />
       <ExecutionLogDrawer request={logRequest} open={!!logRequest} onClose={() => setLogRequest(null)} />
       <EnrollCertificateWizard open={enrollOpen} onClose={() => setEnrollOpen(false)} onSubmit={addPolicyRequest} />
-      <GenerateCSRModal open={csrOpen} onClose={() => setCsrOpen(false)} />
+      <GenerateCSRModal open={csrOpen} onClose={() => setCsrOpen(false)} onSubmit={addPolicyRequest} />
       <PushToDeviceModal open={pushOpen} onClose={() => { setPushOpen(false); setPushSeedRow(null); }} initialCertificateId={pushSeedRow?.assetId} />
       <SSLCheckerDrawer open={sslDrawerOpen} onClose={() => setSslDrawerOpen(false)} />
 
