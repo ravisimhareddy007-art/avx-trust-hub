@@ -1,0 +1,1443 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
+import {
+  AlertCircle,
+  ArrowRight,
+  Atom,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  CircleDot,
+  Copy,
+  Download,
+  ExternalLink,
+  FileCode,
+  FilePlus,
+  Info,
+  KeyRound,
+  Lock,
+  MoreVertical,
+  RotateCw,
+  Search,
+  ShieldAlert,
+  ShieldCheck,
+  Shuffle,
+  Upload,
+  UserPlus,
+  XCircle,
+} from 'lucide-react';
+import CertDeploymentsView from '@/components/remediation/CertDeploymentsView';
+import { Modal } from '@/components/shared/UIComponents';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { clmCertificates, clmIssueFilters, clmIssues, policyRequestsSeed, sslCheckMock } from './mockData';
+import { ClmIssueAction, ClmIssueFilter, ClmIssueRow, ClmTab, PolicyActionType, PolicyRequestRow } from './types';
+
+interface Props {
+  activeTab: ClmTab;
+  onTabChange: (tab: ClmTab) => void;
+}
+
+type EnvironmentFilter = 'All' | 'Production' | 'Staging' | 'Development';
+type QueueFilter = 'All' | 'Pending' | 'In Progress' | 'Completed' | 'Failed';
+type CredentialMode = 'password' | 'ssh-key';
+type ValidityUnit = 'Days' | 'Months' | 'Years';
+
+const proactiveCards = [
+  {
+    id: 'enroll',
+    title: 'Enroll Certificate',
+    description: 'Request a new certificate from a CA',
+    cta: 'Start Enrollment',
+    icon: FilePlus,
+  },
+  {
+    id: 'push',
+    title: 'Push to Device',
+    description: 'Deploy an existing cert to an endpoint',
+    cta: 'Push',
+    icon: Upload,
+  },
+  {
+    id: 'csr',
+    title: 'Generate CSR',
+    description: 'Generate a Certificate Signing Request',
+    cta: 'Generate',
+    icon: FileCode,
+  },
+  {
+    id: 'ssl',
+    title: 'SSL Checker',
+    description: 'Diagnose certificate chain for a hostname',
+    cta: 'Run Check',
+    icon: ShieldCheck,
+  },
+] as const;
+
+const actionMeta: Record<ClmIssueAction, { icon: React.ElementType; className: string }> = {
+  Renew: { icon: RotateCw, className: 'bg-teal/10 text-teal hover:bg-teal/20' },
+  Regenerate: { icon: FileCode, className: 'bg-muted text-foreground hover:bg-secondary' },
+  Reissue: { icon: FilePlus, className: 'bg-muted text-foreground hover:bg-secondary' },
+  Revoke: { icon: XCircle, className: 'bg-coral/10 text-coral hover:bg-coral/20' },
+  'CA Switch': { icon: Shuffle, className: 'bg-amber/10 text-amber hover:bg-amber/20' },
+  'Revocation Check - OCSP': { icon: ShieldCheck, className: 'bg-muted text-foreground hover:bg-secondary' },
+  Migrate: { icon: Atom, className: 'bg-purple/10 text-purple hover:bg-purple/20' },
+};
+
+const queueStatuses: QueueFilter[] = ['All', 'Pending', 'In Progress', 'Completed', 'Failed'];
+const caTemplates = ['Public TLS OV', 'Public TLS EV', 'Internal Server TLS', 'Client Auth', 'Code Signing'];
+const certificateCategories = ['TLS', 'Code Signing', 'Client'];
+const certTypes = ['DV', 'OV', 'EV'];
+const csrLocations = ['AppViewX', 'Endpoint'];
+const deviceTypes = ['Windows IIS', 'Apache', 'Nginx', 'Tomcat', 'MSSQL', 'Linux Server'];
+const keyTypes = ['RSA', 'ECC', 'Ed25519'] as const;
+const hashFunctions = ['SHA-256', 'SHA-384'];
+const ownerOptions = ['Sarah Chen', 'Mike Rodriguez', 'Lisa Park', 'James Wilson', 'Security Team'];
+const caList = ['DigiCert Global G2', 'Entrust L1K', "Let's Encrypt", 'MSCA Enterprise'];
+const groupOptions = ['Payments', 'Platform', 'Security', 'Identity', 'Infrastructure'];
+
+const getIssueCounts = () => ({
+  'all-issues': clmIssues.length,
+  expiry: clmIssues.filter((item) => item.issueCategory === 'expiry').length,
+  pqc: clmIssues.filter((item) => item.issueCategory === 'pqc').length,
+  orphaned: clmIssues.filter((item) => item.issueCategory === 'orphaned').length,
+  policy: clmIssues.filter((item) => item.issueCategory === 'policy').length,
+});
+
+const formatCount = (value: number) => new Intl.NumberFormat('en-US').format(value);
+
+const environmentBadgeClass = (env: ClmIssueRow['environment']) => {
+  if (env === 'Production') return 'bg-coral/10 text-coral';
+  if (env === 'Staging') return 'bg-amber/10 text-amber';
+  return 'bg-muted text-muted-foreground';
+};
+
+const severityBadgeClass = (severity: ClmIssueRow['severity']) => {
+  if (severity === 'Critical') return 'bg-coral/10 text-coral';
+  if (severity === 'High') return 'bg-amber/10 text-amber';
+  if (severity === 'Medium') return 'bg-purple/10 text-purple';
+  return 'bg-teal/10 text-teal';
+};
+
+const requestStatusClass = (status: QueueFilter | PolicyRequestRow['status']) => {
+  switch (status) {
+    case 'Pending':
+      return 'bg-amber/10 text-amber';
+    case 'In Progress':
+      return 'bg-teal/10 text-teal';
+    case 'Completed':
+      return 'bg-teal/10 text-teal';
+    case 'Failed':
+      return 'bg-coral/10 text-coral';
+    default:
+      return 'bg-muted text-muted-foreground';
+  }
+};
+
+const actionBadgeClass = (action: PolicyActionType) => {
+  if (action === 'Enroll') return 'bg-teal/10 text-teal';
+  if (action === 'Push to Device') return 'bg-amber/10 text-amber';
+  if (action === 'Generate CSR') return 'bg-purple/10 text-purple';
+  return 'bg-coral/10 text-coral';
+};
+
+const deriveCRS = (row: ClmIssueRow) => {
+  let score = 92;
+  if (row.asset.daysToExpiry <= 7) score -= 18;
+  if (row.asset.status === 'Expired') score -= 22;
+  if (row.asset.algorithm.includes('1024')) score -= 20;
+  if (row.asset.policyViolations > 0) score -= row.asset.policyViolations * 3;
+  if (row.asset.pqcRisk === 'Critical') score -= 10;
+  return Math.max(35, score);
+};
+
+const getSans = (asset: ClmIssueRow['asset']) => {
+  const baseName = asset.commonName.replace(/^\*\./, '');
+  return Array.from(
+    new Set([
+      asset.commonName,
+      `www.${baseName}`,
+      `${asset.application.toLowerCase().replace(/\s+/g, '-')}.internal.acmecorp.com`,
+    ]),
+  );
+};
+
+const buildCsrOutput = (commonName: string, org: string, ou: string, country: string, state: string, city: string) => `-----BEGIN CERTIFICATE REQUEST-----\nMIICnzCCAYcCAQAwgYIxIDAeBgNVBAMMFy${commonName.replace(/[^a-zA-Z0-9]/g, '').slice(0, 12)}\nMQ8wDQYDVQQLDAZ${ou || 'Security'}\nMQ8wDQYDVQQKDAZ${org || 'Acme'}\nMQswCQYDVQQGEwJ${country || 'US'}\nMQ0wCwYDVQQIDAR${state || 'CA'}\nMQ0wCwYDVQQHDAR${city || 'NYC'}\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtlslXnmwQF9M2aYxW1K8\n8Ef7V5x7Ew7YvM0nYx8k4QZ4CqkM1K2Gz8T2TQ8v3Q3r8Iu9o2JZc2nQm4aV7Q1V\n7q1YgXxP3vXnq8Y9Lw2YQ4sE7xX9yLh3vC8P8gXj2Vf3qY5mW0V5QnLx0rJrX3m8\n7tJ1GfL3xQIDAQABoAAwDQYJKoZIhvcNAQELBQADggEBAI6nY3YxUuM0J8fF9QpW\nJf6k2G3mJ3O3cT6m1vSxw6Gz1uF2c9aQ4sJ3m2n0N9oT4uK5yQ1pV6dJ2wT0mC3n\n-----END CERTIFICATE REQUEST-----`;
+
+const DetailDrawer = ({
+  row,
+  open,
+  onClose,
+  onRunAction,
+}: {
+  row: ClmIssueRow | null;
+  open: boolean;
+  onClose: () => void;
+  onRunAction: (action: ClmIssueAction, row: ClmIssueRow) => void;
+}) => {
+  if (!open || !row) return null;
+
+  const footerActions = [row.primaryAction, ...row.menuActions];
+  const crsScore = deriveCRS(row);
+
+  return (
+    <div className="fixed inset-0 z-50 flex">
+      <button type="button" className="flex-1 bg-background/60" onClick={onClose} aria-label="Close details" />
+      <aside className="w-[480px] border-l border-border bg-card shadow-2xl animate-slide-in-right">
+        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Certificate detail</p>
+            <h3 className="mt-1 text-base font-semibold text-foreground">{row.asset.name}</h3>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground">
+            Close
+          </button>
+        </div>
+        <div className="space-y-5 px-5 py-4 text-sm">
+          <div className="rounded-lg border border-coral/20 bg-coral/5 p-3">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-coral">Current issue</p>
+            <p className="mt-1 text-sm text-foreground">{row.issueText}</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <InfoTile label="CN" value={row.asset.commonName} mono />
+            <InfoTile label="Serial" value={row.asset.serial} mono />
+            <InfoTile label="Issuer" value={row.asset.caIssuer} />
+            <InfoTile label="Days remaining" value={String(row.asset.daysToExpiry)} emphasis={row.asset.daysToExpiry <= 7 ? 'coral' : 'teal'} />
+            <InfoTile label="Valid From" value={row.asset.issueDate} mono />
+            <InfoTile label="Valid To" value={row.asset.expiryDate} mono />
+            <InfoTile label="Algorithm" value={row.asset.algorithm} />
+            <InfoTile label="Key Size" value={row.asset.keyLength} />
+          </div>
+
+          <div className="rounded-lg border border-border bg-background/40 p-3">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">CRS score</p>
+              <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${crsScore < 60 ? 'bg-coral/10 text-coral' : crsScore < 80 ? 'bg-amber/10 text-amber' : 'bg-teal/10 text-teal'}`}>
+                {crsScore}
+              </span>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">Derived from expiry pressure, algorithm strength, policy violations, and PQC readiness.</p>
+          </div>
+
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">SANs</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {getSans(row.asset).map((san) => (
+                <span key={san} className="rounded-md border border-border bg-background/40 px-2 py-1 font-mono text-[11px] text-foreground">
+                  {san}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="mt-auto border-t border-border px-5 py-4">
+          <div className="flex flex-wrap gap-2">
+            {footerActions.map((action) => {
+              const meta = actionMeta[action];
+              const Icon = meta.icon;
+              return (
+                <button
+                  key={action}
+                  type="button"
+                  onClick={() => onRunAction(action, row)}
+                  className={`inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium transition-colors ${meta.className}`}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {action}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </aside>
+    </div>
+  );
+};
+
+const ExecutionLogDrawer = ({ request, open, onClose }: { request: PolicyRequestRow | null; open: boolean; onClose: () => void }) => {
+  if (!open || !request) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex">
+      <button type="button" className="flex-1 bg-background/60" onClick={onClose} aria-label="Close execution log" />
+      <aside className="w-[480px] border-l border-border bg-card shadow-2xl animate-slide-in-right">
+        <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
+          <div>
+            <p className="font-mono text-xs text-muted-foreground">{request.id}</p>
+            <div className="mt-1 flex items-center gap-2">
+              <h3 className="text-base font-semibold text-foreground">Execution Log</h3>
+              <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${actionBadgeClass(request.action)}`}>{request.action}</span>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground">
+            Close
+          </button>
+        </div>
+
+        <div className="space-y-5 px-5 py-4 text-sm">
+          <div className="rounded-lg border border-border bg-background/40 p-3">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Certificate subject</p>
+            <p className="mt-1 text-sm text-foreground">{request.subject}</p>
+            <p className="mt-2 text-[11px] uppercase tracking-wide text-muted-foreground">Target CA</p>
+            <p className="mt-1 text-sm text-foreground">{request.targetCA}</p>
+          </div>
+
+          <div className="space-y-4">
+            {request.stages.map((stage, index) => (
+              <div key={stage.label} className="relative pl-8">
+                {index < request.stages.length - 1 && <div className="absolute left-[10px] top-6 h-[calc(100%+0.5rem)] w-px bg-border" />}
+                <div className={`absolute left-0 top-1 flex h-5 w-5 items-center justify-center rounded-full border ${stage.status === 'done' ? 'border-teal bg-teal/10 text-teal' : stage.status === 'active' ? 'border-amber bg-amber/10 text-amber' : stage.status === 'failed' ? 'border-coral bg-coral/10 text-coral' : 'border-border bg-muted text-muted-foreground'}`}>
+                  {stage.status === 'done' ? <CheckCircle2 className="h-3 w-3" /> : stage.status === 'failed' ? <XCircle className="h-3 w-3" /> : <CircleDot className="h-3 w-3" />}
+                </div>
+                <div className="rounded-lg border border-border bg-background/40 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-medium text-foreground">{stage.label}</p>
+                    <p className="text-[11px] text-muted-foreground">{stage.timestamp}</p>
+                  </div>
+                  <div className="mt-3 grid gap-2">
+                    {stage.details.map((detail) => (
+                      <div key={`${stage.label}-${detail.label}`} className="flex items-center justify-between gap-3 text-xs">
+                        <span className="text-muted-foreground">{detail.label}</span>
+                        <span className="text-right text-foreground">{detail.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {stage.error && <div className="mt-3 rounded-md border border-coral/20 bg-coral/5 p-2 text-xs text-coral">{stage.error}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="border-t border-border px-5 py-4">
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => toast.info(`Retry queued for ${request.id}`)} className="rounded-md border border-coral/30 px-3 py-2 text-xs font-medium text-coral hover:bg-coral/10">
+              Retry
+            </button>
+            {request.status === 'Completed' && (
+              <button type="button" onClick={() => toast.success(`Opening certificate for ${request.subject}`)} className="rounded-md bg-teal px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-teal-light">
+                View Certificate
+              </button>
+            )}
+          </div>
+        </div>
+      </aside>
+    </div>
+  );
+};
+
+const OverflowMenu = ({ row, onAction }: { row: ClmIssueRow; onAction: (action: ClmIssueAction, row: ClmIssueRow) => void }) => {
+  const [open, setOpen] = useState(false);
+  const actions = row.menuActions;
+
+  return (
+    <div className="relative">
+      <button type="button" onClick={() => setOpen((value) => !value)} className="rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground">
+        <MoreVertical className="h-4 w-4" />
+      </button>
+      {open && (
+        <>
+          <button type="button" className="fixed inset-0 z-40 cursor-default" onClick={() => setOpen(false)} aria-label="Close action menu" />
+          <div className="absolute right-0 top-8 z-50 min-w-[220px] rounded-lg border border-border bg-card p-1 shadow-xl">
+            {actions.map((action) => {
+              const Icon = actionMeta[action].icon;
+              return (
+                <button
+                  key={action}
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    onAction(action, row);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs text-foreground hover:bg-secondary"
+                >
+                  <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                  {action}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+function InfoTile({ label, value, mono, emphasis }: { label: string; value: string; mono?: boolean; emphasis?: 'coral' | 'teal' }) {
+  return (
+    <div className="rounded-lg border border-border bg-background/30 p-3">
+      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className={`mt-1 text-sm ${mono ? 'font-mono' : ''} ${emphasis === 'coral' ? 'text-coral font-semibold' : emphasis === 'teal' ? 'text-teal font-semibold' : 'text-foreground'}`}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function BulkActionBar({
+  selectedCount,
+  onAction,
+}: {
+  selectedCount: number;
+  onAction: (label: 'Renew' | 'Revoke' | 'CA Switch' | 'Export' | 'Assign Owner') => void;
+}) {
+  if (selectedCount === 0) return null;
+
+  return (
+    <div className="pointer-events-none fixed bottom-6 left-1/2 z-40 -translate-x-1/2 animate-in slide-in-from-bottom-4 duration-200">
+      <div className="pointer-events-auto flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-3 shadow-2xl">
+        <span className="text-sm font-medium text-foreground">{selectedCount} selected</span>
+        {(['Renew', 'Revoke', 'CA Switch', 'Export', 'Assign Owner'] as const).map((action) => (
+          <button
+            key={action}
+            type="button"
+            onClick={() => onAction(action)}
+            className={`rounded-md px-3 py-1.5 text-xs font-medium ${action === 'Renew' ? 'bg-teal text-primary-foreground hover:bg-teal-light' : action === 'Revoke' ? 'bg-coral/10 text-coral hover:bg-coral/20' : action === 'CA Switch' ? 'bg-amber/10 text-amber hover:bg-amber/20' : 'bg-muted text-foreground hover:bg-secondary'}`}
+          >
+            {action}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function EnrollWizard({ open, onClose, onSubmit }: { open: boolean; onClose: () => void; onSubmit: (request: PolicyRequestRow) => void }) {
+  const [step, setStep] = useState(1);
+  const [action, setAction] = useState<'Enroll' | 'Re-Enroll' | 'Renew' | 'Regenerate'>('Enroll');
+  const [displayName, setDisplayName] = useState('New TLS Certificate');
+  const [group, setGroup] = useState(groupOptions[0]);
+  const [caTemplate, setCaTemplate] = useState(caTemplates[0]);
+  const [ca, setCa] = useState(caList[0]);
+  const [category, setCategory] = useState(certificateCategories[0]);
+  const [caAccount, setCaAccount] = useState('Enterprise-Primary');
+  const [certType, setCertType] = useState(certTypes[1]);
+  const [expiryDate, setExpiryDate] = useState('2027-04-22');
+  const [csrLocation, setCsrLocation] = useState<'AppViewX' | 'Endpoint'>('AppViewX');
+  const [deviceType, setDeviceType] = useState(deviceTypes[0]);
+  const [autoApprove, setAutoApprove] = useState(true);
+  const [level1Approver, setLevel1Approver] = useState('');
+  const [level2Approver, setLevel2Approver] = useState('');
+  const [dnsValidation, setDnsValidation] = useState(true);
+  const [ipWhitelist, setIpWhitelist] = useState(false);
+  const [firewallCheck, setFirewallCheck] = useState(true);
+  const [cn, setCn] = useState('api.example.com');
+  const [sanInput, setSanInput] = useState('');
+  const [sans, setSans] = useState<string[]>(['api.example.com', 'www.api.example.com']);
+  const [org, setOrg] = useState('AcmeCorp');
+  const [keyType, setKeyType] = useState<(typeof keyTypes)[number]>('RSA');
+  const [keySize, setKeySize] = useState('2048');
+  const [hashFunction, setHashFunction] = useState(hashFunctions[0]);
+  const [validityUnit, setValidityUnit] = useState<ValidityUnit>('Days');
+  const [validityValue, setValidityValue] = useState(90);
+  const [showCustomFields, setShowCustomFields] = useState(false);
+  const [customFields, setCustomFields] = useState('Environment=Production\nBusinessUnit=Payments');
+  const [pushToDevice, setPushToDevice] = useState(false);
+  const [postTarget, setPostTarget] = useState('nginx-prod-01');
+  const [startedEmails, setStartedEmails] = useState('secops@acme.com');
+  const [successEmails, setSuccessEmails] = useState('platform@acme.com');
+  const [failureEmails, setFailureEmails] = useState('oncall@acme.com');
+
+  useEffect(() => {
+    if (!open) {
+      setStep(1);
+    }
+  }, [open]);
+
+  const submit = () => {
+    const request: PolicyRequestRow = {
+      id: `REQ-${Math.floor(41030 + Math.random() * 100)}`,
+      action: 'Enroll',
+      certificateTarget: cn,
+      requestedBy: 'Current User',
+      created: 'Just now',
+      status: 'Pending',
+      subject: cn,
+      targetCA: ca,
+      stages: [
+        { label: 'Enrollment Request', timestamp: 'Just now', status: 'active', details: [{ label: 'Display Name', value: displayName }, { label: 'Category', value: category }] },
+        { label: 'Request Creation', timestamp: 'Queued', status: 'pending', details: [{ label: 'Group', value: group }] },
+        { label: 'CA Submission', timestamp: 'Pending', status: 'pending', details: [{ label: 'CA Template', value: caTemplate }] },
+        { label: 'Certificate Issued', timestamp: 'Pending', status: 'pending', details: [{ label: 'Post Issuance', value: pushToDevice ? `Push to ${postTarget}` : 'Store only' }] },
+      ],
+    };
+    onSubmit(request);
+    toast.success('Certificate request submitted.');
+    onClose();
+  };
+
+  const addSan = () => {
+    const value = sanInput.trim();
+    if (!value) return;
+    setSans((items) => Array.from(new Set([...items, value])));
+    setSanInput('');
+  };
+
+  const steps = ['Action', 'Issuance Template', 'CA Details', 'Approval', 'Pre-Issuance Tasks', 'Certificate Parameters', 'Post Issuance'];
+
+  return (
+    <Modal open={open} onClose={onClose} title="Issue New Certificate" wide>
+      <div className="space-y-5">
+        <div className="grid grid-cols-7 gap-2">
+          {steps.map((label, index) => (
+            <div key={label} className="space-y-2">
+              <div className={`h-1 rounded-full ${index + 1 <= step ? 'bg-teal' : 'bg-muted'}`} />
+              <p className={`text-[11px] ${index + 1 === step ? 'text-foreground' : 'text-muted-foreground'}`}>{label}</p>
+            </div>
+          ))}
+        </div>
+
+        {step === 1 && (
+          <div className="space-y-4">
+            <div>
+              <Label>Action</Label>
+              <div className="mt-2 grid grid-cols-2 gap-3">
+                {(['Enroll', 'Re-Enroll', 'Renew', 'Regenerate'] as const).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setAction(option)}
+                    className={`rounded-lg border p-4 text-left ${action === option ? 'border-teal bg-teal/5' : 'border-border bg-background/30'}`}
+                  >
+                    <p className="text-sm font-medium text-foreground">{option}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="display-name">Display Name</Label>
+              <Input id="display-name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} className="mt-2" />
+            </div>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div className="grid grid-cols-2 gap-4">
+            <FormSelect label="Group" value={group} onChange={setGroup} options={groupOptions} />
+            <FormSelect label="CA Template" value={caTemplate} onChange={setCaTemplate} options={caTemplates} />
+          </div>
+        )}
+
+        {step === 3 && (
+          <div className="grid grid-cols-2 gap-4">
+            <FormSelect label="CA" value={ca} onChange={setCa} options={caList} />
+            <FormSelect label="Certificate Category" value={category} onChange={setCategory} options={certificateCategories} />
+            <FormField label="CA Account">
+              <Input value={caAccount} onChange={(event) => setCaAccount(event.target.value)} />
+            </FormField>
+            <FormSelect label="Cert Type" value={certType} onChange={setCertType} options={certTypes} />
+            <FormField label="Expiry date">
+              <Input type="date" value={expiryDate} onChange={(event) => setExpiryDate(event.target.value)} />
+            </FormField>
+            <FormSelect label="CSR Generation location" value={csrLocation} onChange={(value) => setCsrLocation(value as 'AppViewX' | 'Endpoint')} options={csrLocations} />
+            {csrLocation === 'Endpoint' && <FormSelect label="Device type" value={deviceType} onChange={setDeviceType} options={deviceTypes} />}
+          </div>
+        )}
+
+        {step === 4 && (
+          <div className="space-y-4">
+            <ToggleRow label="Auto Approve" checked={autoApprove} onChange={setAutoApprove} />
+            {!autoApprove && (
+              <div className="grid grid-cols-2 gap-4">
+                <FormField label="Level 1 approver email">
+                  <Input value={level1Approver} onChange={(event) => setLevel1Approver(event.target.value)} placeholder="approver1@acme.com" />
+                </FormField>
+                <FormField label="Level 2 approver email">
+                  <Input value={level2Approver} onChange={(event) => setLevel2Approver(event.target.value)} placeholder="approver2@acme.com" />
+                </FormField>
+              </div>
+            )}
+          </div>
+        )}
+
+        {step === 5 && (
+          <div className="space-y-3">
+            <ToggleRow label="DNS validation" checked={dnsValidation} onChange={setDnsValidation} />
+            <ToggleRow label="IP whitelisting" checked={ipWhitelist} onChange={setIpWhitelist} />
+            <ToggleRow label="Firewall rule check" checked={firewallCheck} onChange={setFirewallCheck} />
+          </div>
+        )}
+
+        {step === 6 && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <FormField label="CN">
+                <Input value={cn} onChange={(event) => setCn(event.target.value)} />
+              </FormField>
+              <FormField label="Organisation">
+                <Input value={org} onChange={(event) => setOrg(event.target.value)} />
+              </FormField>
+            </div>
+
+            <FormField label="SANs">
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <Input value={sanInput} onChange={(event) => setSanInput(event.target.value)} placeholder="Add SAN" />
+                  <button type="button" onClick={addSan} className="rounded-md border border-border px-3 py-2 text-xs hover:bg-secondary">
+                    Add
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {sans.map((san) => (
+                    <span key={san} className="rounded-md border border-border bg-background/30 px-2 py-1 font-mono text-[11px] text-foreground">
+                      {san}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </FormField>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField label="Key Type">
+                <RadioGroup value={keyType} onValueChange={(value) => {
+                  const next = value as (typeof keyTypes)[number];
+                  setKeyType(next);
+                  setKeySize(next === 'RSA' ? '2048' : next === 'ECC' ? 'P-256' : '256');
+                }} className="mt-2 flex gap-4">
+                  {keyTypes.map((option) => (
+                    <div key={option} className="flex items-center gap-2">
+                      <RadioGroupItem value={option} id={`key-${option}`} />
+                      <Label htmlFor={`key-${option}`}>{option}</Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </FormField>
+              <FormSelect label="Key Size" value={keySize} onChange={setKeySize} options={keyType === 'RSA' ? ['2048', '3072', '4096'] : keyType === 'ECC' ? ['P-256', 'P-384'] : ['256']} />
+              <FormSelect label="Hash Function" value={hashFunction} onChange={setHashFunction} options={hashFunctions} />
+              <FormField label="Validity">
+                <div className="flex gap-2">
+                  <Input type="number" value={validityValue} onChange={(event) => setValidityValue(Number(event.target.value))} />
+                  <div className="inline-flex rounded-md border border-border bg-background/30 p-1">
+                    {(['Days', 'Months', 'Years'] as const).map((unit) => (
+                      <button key={unit} type="button" onClick={() => setValidityUnit(unit)} className={`rounded px-3 py-1 text-xs ${validityUnit === unit ? 'bg-card text-foreground' : 'text-muted-foreground'}`}>
+                        {unit}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </FormField>
+            </div>
+
+            <div className="rounded-lg border border-border bg-background/30 p-3">
+              <button type="button" onClick={() => setShowCustomFields((value) => !value)} className="flex w-full items-center justify-between text-sm font-medium text-foreground">
+                Custom Fields
+                {showCustomFields ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              </button>
+              {showCustomFields && <Textarea value={customFields} onChange={(event) => setCustomFields(event.target.value)} className="mt-3 min-h-[110px] font-mono text-xs" />}
+            </div>
+          </div>
+        )}
+
+        {step === 7 && (
+          <div className="space-y-4">
+            <ToggleRow label="Push to Device" checked={pushToDevice} onChange={setPushToDevice} />
+            {pushToDevice && (
+              <FormField label="Device target">
+                <Input value={postTarget} onChange={(event) => setPostTarget(event.target.value)} />
+              </FormField>
+            )}
+            <div className="grid gap-4">
+              <FormField label="Started notification emails">
+                <Input value={startedEmails} onChange={(event) => setStartedEmails(event.target.value)} />
+              </FormField>
+              <FormField label="Success notification emails">
+                <Input value={successEmails} onChange={(event) => setSuccessEmails(event.target.value)} />
+              </FormField>
+              <FormField label="Failure notification emails">
+                <Input value={failureEmails} onChange={(event) => setFailureEmails(event.target.value)} />
+              </FormField>
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between border-t border-border pt-4">
+          <button type="button" onClick={() => (step === 1 ? onClose() : setStep((value) => value - 1))} className="rounded-md border border-border px-4 py-2 text-xs font-medium hover:bg-secondary">
+            Back
+          </button>
+          <button type="button" onClick={() => (step === 7 ? submit() : setStep((value) => value + 1))} className="rounded-md bg-teal px-4 py-2 text-xs font-medium text-primary-foreground hover:bg-teal-light">
+            {step === 7 ? 'Submit Request' : 'Next'}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function GenerateCSRModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [commonName, setCommonName] = useState('api.example.com');
+  const [organisation, setOrganisation] = useState('AcmeCorp');
+  const [organisationUnit, setOrganisationUnit] = useState('Platform');
+  const [country, setCountry] = useState('US');
+  const [state, setState] = useState('CA');
+  const [city, setCity] = useState('San Francisco');
+  const [keyType, setKeyType] = useState<'RSA' | 'ECC'>('RSA');
+  const [keySize, setKeySize] = useState('2048');
+  const [hashFunction, setHashFunction] = useState('SHA-256');
+  const [csrOutput, setCsrOutput] = useState('');
+
+  const generate = () => {
+    const output = buildCsrOutput(commonName, organisation, organisationUnit, country, state, city);
+    setCsrOutput(output);
+  };
+
+  const download = () => {
+    const blob = new Blob([csrOutput], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${commonName || 'certificate'}.csr`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title="Generate CSR">
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <FormField label="CN">
+            <Input value={commonName} onChange={(event) => setCommonName(event.target.value)} />
+          </FormField>
+          <FormField label="Organisation">
+            <Input value={organisation} onChange={(event) => setOrganisation(event.target.value)} />
+          </FormField>
+          <FormField label="Organisational Unit">
+            <Input value={organisationUnit} onChange={(event) => setOrganisationUnit(event.target.value)} />
+          </FormField>
+          <FormField label="Country">
+            <Input value={country} onChange={(event) => setCountry(event.target.value.toUpperCase())} maxLength={2} />
+          </FormField>
+          <FormField label="State">
+            <Input value={state} onChange={(event) => setState(event.target.value)} />
+          </FormField>
+          <FormField label="City">
+            <Input value={city} onChange={(event) => setCity(event.target.value)} />
+          </FormField>
+          <FormField label="Key Type">
+            <RadioGroup value={keyType} onValueChange={(value) => { setKeyType(value as 'RSA' | 'ECC'); setKeySize(value === 'RSA' ? '2048' : 'P-256'); }} className="mt-2 flex gap-4">
+              {['RSA', 'ECC'].map((option) => (
+                <div key={option} className="flex items-center gap-2">
+                  <RadioGroupItem value={option} id={`csr-${option}`} />
+                  <Label htmlFor={`csr-${option}`}>{option}</Label>
+                </div>
+              ))}
+            </RadioGroup>
+          </FormField>
+          <FormSelect label="Key Size" value={keySize} onChange={setKeySize} options={keyType === 'RSA' ? ['2048', '3072', '4096'] : ['P-256', 'P-384']} />
+          <FormField label="Hash Function">
+            <RadioGroup value={hashFunction} onValueChange={setHashFunction} className="mt-2 flex gap-4">
+              {hashFunctions.map((option) => (
+                <div key={option} className="flex items-center gap-2">
+                  <RadioGroupItem value={option} id={`hash-${option}`} />
+                  <Label htmlFor={`hash-${option}`}>{option}</Label>
+                </div>
+              ))}
+            </RadioGroup>
+          </FormField>
+        </div>
+
+        {csrOutput && (
+          <div className="space-y-3 rounded-lg border border-border bg-background/40 p-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-foreground">CSR Output</p>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => { navigator.clipboard.writeText(csrOutput); toast.success('CSR copied.'); }} className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:bg-secondary">
+                  <Copy className="h-3.5 w-3.5" />
+                  Copy
+                </button>
+                <button type="button" onClick={download} className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:bg-secondary">
+                  <Download className="h-3.5 w-3.5" />
+                  Download
+                </button>
+              </div>
+            </div>
+            <pre className="overflow-auto rounded-md border border-border bg-card p-3 font-mono text-[11px] leading-5 text-foreground">{csrOutput}</pre>
+          </div>
+        )}
+
+        <div className="flex justify-end border-t border-border pt-4">
+          <button type="button" onClick={generate} className="rounded-md bg-teal px-4 py-2 text-xs font-medium text-primary-foreground hover:bg-teal-light">
+            Generate CSR
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function PushToDeviceModal({ open, onClose, onSubmit }: { open: boolean; onClose: () => void; onSubmit: (request: PolicyRequestRow) => void }) {
+  const [step, setStep] = useState(1);
+  const [selectedCert, setSelectedCert] = useState(clmCertificates[0]?.id ?? '');
+  const [certSearch, setCertSearch] = useState('');
+  const [host, setHost] = useState('nginx-prod-01');
+  const [deviceType, setDeviceType] = useState(deviceTypes[2]);
+  const [username, setUsername] = useState('svc-certpush');
+  const [password, setPassword] = useState('');
+  const [credentialMode, setCredentialMode] = useState<CredentialMode>('password');
+  const [sshKey, setSshKey] = useState('');
+  const [running, setRunning] = useState(false);
+  const [progressIndex, setProgressIndex] = useState(0);
+
+  const filteredCertificates = useMemo(() => {
+    return clmCertificates.filter((cert) => cert.name.toLowerCase().includes(certSearch.toLowerCase()));
+  }, [certSearch]);
+
+  const selectedCertificate = clmCertificates.find((cert) => cert.id === selectedCert) ?? clmCertificates[0];
+  const progressStages = ['Connecting to target', 'Pushing certificate bundle', 'Verifying deployment'];
+
+  useEffect(() => {
+    if (!running) return undefined;
+    if (progressIndex >= progressStages.length) {
+      const request: PolicyRequestRow = {
+        id: `REQ-${Math.floor(41050 + Math.random() * 100)}`,
+        action: 'Push to Device',
+        certificateTarget: `${selectedCertificate.name} -> ${host}`,
+        requestedBy: 'Current User',
+        created: 'Just now',
+        status: 'Pending',
+        subject: selectedCertificate.name,
+        targetCA: selectedCertificate.caIssuer,
+        stages: [
+          { label: 'Enrollment Request', timestamp: 'Just now', status: 'done', details: [{ label: 'Certificate', value: selectedCertificate.name }, { label: 'Target', value: host }] },
+          { label: 'Request Creation', timestamp: 'Queued', status: 'active', details: [{ label: 'Device Type', value: deviceType }] },
+          { label: 'CA Submission', timestamp: 'Pending', status: 'pending', details: [{ label: 'Credential Mode', value: credentialMode === 'password' ? 'Username + Password' : 'SSH Key' }] },
+          { label: 'Certificate Issued', timestamp: 'Pending', status: 'pending', details: [{ label: 'Result', value: 'Awaiting completion' }] },
+        ],
+      };
+      onSubmit(request);
+      toast.success('Certificate push completed.');
+      setRunning(false);
+      setProgressIndex(0);
+      onClose();
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => setProgressIndex((value) => value + 1), 600);
+    return () => window.clearTimeout(timer);
+  }, [running, progressIndex, progressStages.length, selectedCertificate, host, deviceType, credentialMode, onClose, onSubmit]);
+
+  useEffect(() => {
+    if (!open) {
+      setStep(1);
+      setRunning(false);
+      setProgressIndex(0);
+    }
+  }, [open]);
+
+  return (
+    <Modal open={open} onClose={onClose} title="Push to Device">
+      <div className="space-y-4">
+        <div className="inline-flex rounded-md border border-border bg-background/30 p-1 text-xs">
+          {[1, 2, 3].map((value) => (
+            <div key={value} className={`rounded px-3 py-1 ${step === value ? 'bg-card text-foreground' : 'text-muted-foreground'}`}>Step {value}</div>
+          ))}
+        </div>
+
+        {step === 1 && (
+          <div className="space-y-3">
+            <FormField label="Certificate selector">
+              <Input value={certSearch} onChange={(event) => setCertSearch(event.target.value)} placeholder="Search certificate inventory" />
+            </FormField>
+            <div className="max-h-48 space-y-2 overflow-auto rounded-lg border border-border bg-background/30 p-2">
+              {filteredCertificates.map((cert) => (
+                <button
+                  key={cert.id}
+                  type="button"
+                  onClick={() => setSelectedCert(cert.id)}
+                  className={`flex w-full items-center justify-between rounded-md border px-3 py-2 text-left ${selectedCert === cert.id ? 'border-teal bg-teal/5' : 'border-transparent hover:border-border hover:bg-card'}`}
+                >
+                  <div>
+                    <p className="font-medium text-foreground">{cert.name}</p>
+                    <p className="text-[11px] text-muted-foreground">Expiry {cert.expiryDate} · {cert.caIssuer}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div className="grid gap-4">
+            <FormField label="Hostname or IP">
+              <Input value={host} onChange={(event) => setHost(event.target.value)} />
+            </FormField>
+            <FormSelect label="Device type" value={deviceType} onChange={setDeviceType} options={deviceTypes} />
+          </div>
+        )}
+
+        {step === 3 && (
+          <div className="space-y-4">
+            <FormField label="Username">
+              <Input value={username} onChange={(event) => setUsername(event.target.value)} />
+            </FormField>
+            <div>
+              <Label>Credentials</Label>
+              <div className="mt-2 inline-flex rounded-md border border-border bg-background/30 p-1 text-xs">
+                <button type="button" onClick={() => setCredentialMode('password')} className={`rounded px-3 py-1 ${credentialMode === 'password' ? 'bg-card text-foreground' : 'text-muted-foreground'}`}>
+                  Username + Password
+                </button>
+                <button type="button" onClick={() => setCredentialMode('ssh-key')} className={`rounded px-3 py-1 ${credentialMode === 'ssh-key' ? 'bg-card text-foreground' : 'text-muted-foreground'}`}>
+                  SSH Key
+                </button>
+              </div>
+            </div>
+            {credentialMode === 'password' ? (
+              <FormField label="Password">
+                <Input type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
+              </FormField>
+            ) : (
+              <FormField label="SSH Key">
+                <Textarea value={sshKey} onChange={(event) => setSshKey(event.target.value)} className="min-h-[120px] font-mono text-xs" />
+              </FormField>
+            )}
+          </div>
+        )}
+
+        {running && (
+          <div className="space-y-2 rounded-lg border border-border bg-background/40 p-3">
+            {progressStages.map((label, index) => (
+              <div key={label} className="flex items-center gap-2 text-xs">
+                <span className={`h-2.5 w-2.5 rounded-full ${index < progressIndex ? 'bg-teal' : index === progressIndex ? 'animate-pulse bg-amber' : 'bg-muted'}`} />
+                <span className={index <= progressIndex ? 'text-foreground' : 'text-muted-foreground'}>{label}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex items-center justify-between border-t border-border pt-4">
+          <button type="button" onClick={() => (step === 1 ? onClose() : setStep((value) => value - 1))} className="rounded-md border border-border px-4 py-2 text-xs font-medium hover:bg-secondary">
+            Back
+          </button>
+          {step < 3 ? (
+            <button type="button" onClick={() => setStep((value) => value + 1)} className="rounded-md bg-teal px-4 py-2 text-xs font-medium text-primary-foreground hover:bg-teal-light">
+              Next
+            </button>
+          ) : (
+            <button type="button" onClick={() => { setRunning(true); setProgressIndex(0); }} className="rounded-md bg-teal px-4 py-2 text-xs font-medium text-primary-foreground hover:bg-teal-light">
+              Push Certificate
+            </button>
+          )}
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function SSLCheckerDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [hostname, setHostname] = useState(sslCheckMock.hostname);
+  const [port, setPort] = useState(String(sslCheckMock.port));
+  const [loading, setLoading] = useState(false);
+  const [hasRun, setHasRun] = useState(true);
+
+  const runCheck = () => {
+    setLoading(true);
+    setHasRun(false);
+    window.setTimeout(() => {
+      setLoading(false);
+      setHasRun(true);
+    }, 1500);
+  };
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex">
+      <button type="button" className="flex-1 bg-background/60" onClick={onClose} aria-label="Close SSL checker" />
+      <aside className="w-[480px] border-l border-border bg-card shadow-2xl animate-slide-in-right">
+        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Certificate Actions</p>
+            <h3 className="mt-1 text-base font-semibold text-foreground">SSL Checker</h3>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground">
+            Close
+          </button>
+        </div>
+        <div className="space-y-4 px-5 py-4">
+          <div className="grid grid-cols-[1fr_100px_auto] gap-2">
+            <Input value={hostname} onChange={(event) => setHostname(event.target.value)} placeholder="Hostname" />
+            <Input value={port} onChange={(event) => setPort(event.target.value)} placeholder="Port" />
+            <button type="button" onClick={runCheck} className="rounded-md bg-teal px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-teal-light">
+              Run Check
+            </button>
+          </div>
+
+          {loading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-20 w-full rounded-lg" />
+              <Skeleton className="h-20 w-full rounded-lg" />
+              <Skeleton className="h-20 w-full rounded-lg" />
+            </div>
+          ) : hasRun ? (
+            <div className="space-y-4">
+              <div className="space-y-3">
+                {sslCheckMock.chain.map((item) => (
+                  <div key={item.role} className="rounded-lg border border-border bg-background/40 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{item.role}</p>
+                        <p className="mt-1 text-sm font-medium text-foreground">{item.cn}</p>
+                      </div>
+                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${item.daysRemaining < 30 ? 'bg-coral/10 text-coral' : 'bg-teal/10 text-teal'}`}>
+                        {item.daysRemaining} days
+                      </span>
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <p className="text-muted-foreground">Issuer</p>
+                        <p className="text-foreground">{item.issuer}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Serial</p>
+                        <p className="font-mono text-foreground">{item.serial}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Valid From</p>
+                        <p className="font-mono text-foreground">{item.validFrom}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Valid To</p>
+                        <p className="font-mono text-foreground">{item.validTo}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-lg border border-border bg-background/40 p-3">
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Algorithm + Key Size</p>
+                  <span className={`mt-2 inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${/SHA-1|1024/.test(`${sslCheckMock.algorithm} ${sslCheckMock.keySize}`) ? 'bg-coral/10 text-coral' : 'bg-teal/10 text-teal'}`}>
+                    {sslCheckMock.algorithm} · {sslCheckMock.keySize}
+                  </span>
+                </div>
+                <div className="rounded-lg border border-border bg-background/40 p-3">
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">TLS Version</p>
+                  <span className={`mt-2 inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${sslCheckMock.tlsVersion === 'TLS 1.3' ? 'bg-teal/10 text-teal' : sslCheckMock.tlsVersion === 'TLS 1.2' ? 'bg-amber/10 text-amber' : 'bg-coral/10 text-coral'}`}>
+                    {sslCheckMock.tlsVersion}
+                  </span>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-border bg-background/40 p-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Vulnerability Flags</p>
+                  <span className="rounded-full bg-teal/10 px-2 py-0.5 text-[11px] font-medium text-teal">CRS {sslCheckMock.crsScore}</span>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {sslCheckMock.vulnerabilities.map((item) => (
+                    <span key={item.label} className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${item.vulnerable ? 'bg-coral/10 text-coral' : 'bg-teal/10 text-teal'}`}>
+                      {item.label} · {item.vulnerable ? 'Vulnerable' : 'Clear'}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </div>
+        <div className="border-t border-border px-5 py-4">
+          <button type="button" onClick={() => toast.success('Certificate added to inventory.')} className="rounded-md border border-teal/30 px-3 py-2 text-xs font-medium text-teal hover:bg-teal/10">
+            Add to Inventory
+          </button>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function FormField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      {children}
+    </div>
+  );
+}
+
+function FormSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: string[] }) {
+  return (
+    <FormField label={label}>
+      <select value={value} onChange={(event) => onChange(event.target.value)} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground">
+        {options.map((option) => (
+          <option key={option} value={option}>{option}</option>
+        ))}
+      </select>
+    </FormField>
+  );
+}
+
+function ToggleRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: (value: boolean) => void }) {
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-border bg-background/30 px-3 py-2">
+      <Label>{label}</Label>
+      <button type="button" onClick={() => onChange(!checked)} className={`relative h-6 w-11 rounded-full transition-colors ${checked ? 'bg-teal' : 'bg-muted'}`}>
+        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-card transition-transform ${checked ? 'translate-x-5' : 'translate-x-0.5'}`} />
+      </button>
+    </div>
+  );
+}
+
+export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Props) {
+  const [issueFilter, setIssueFilter] = useState<ClmIssueFilter>('all-issues');
+  const [issueSearch, setIssueSearch] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [detailRow, setDetailRow] = useState<ClmIssueRow | null>(null);
+  const [actionRow, setActionRow] = useState<ClmIssueRow | null>(null);
+  const [actionType, setActionType] = useState<ClmIssueAction | null>(null);
+  const [assignOwnerValue, setAssignOwnerValue] = useState(ownerOptions[0]);
+  const [policyRequests, setPolicyRequests] = useState<PolicyRequestRow[]>(policyRequestsSeed);
+  const [queueSearch, setQueueSearch] = useState('');
+  const [queueFilter, setQueueFilter] = useState<QueueFilter>('All');
+  const [logRequest, setLogRequest] = useState<PolicyRequestRow | null>(null);
+  const [enrollOpen, setEnrollOpen] = useState(false);
+  const [csrOpen, setCsrOpen] = useState(false);
+  const [pushOpen, setPushOpen] = useState(false);
+  const [sslDrawerOpen, setSslDrawerOpen] = useState(false);
+
+  const issueCounts = useMemo(() => getIssueCounts(), []);
+
+  const filteredIssues = useMemo(() => {
+    return clmIssues.filter((row) => {
+      const matchesFilter = issueFilter === 'all-issues' || row.issueCategory === issueFilter;
+      const query = issueSearch.toLowerCase();
+      const matchesSearch = !query || [row.asset.name, row.issueText, row.recommended, row.owner].some((value) => value.toLowerCase().includes(query));
+      return matchesFilter && matchesSearch;
+    });
+  }, [issueFilter, issueSearch]);
+
+  const queueRows = useMemo(() => {
+    return policyRequests.filter((row) => {
+      const matchesStatus = queueFilter === 'All' || row.status === queueFilter;
+      const query = queueSearch.toLowerCase();
+      const matchesSearch = !query || [row.id, row.certificateTarget, row.requestedBy, row.subject].some((value) => value.toLowerCase().includes(query));
+      return matchesStatus && matchesSearch;
+    });
+  }, [policyRequests, queueFilter, queueSearch]);
+
+  const allVisibleSelected = filteredIssues.length > 0 && filteredIssues.every((row) => selectedIds.has(row.id));
+
+  const selectedRows = filteredIssues.filter((row) => selectedIds.has(row.id));
+
+  const handleSelectAll = () => {
+    if (allVisibleSelected) {
+      setSelectedIds(new Set());
+      return;
+    }
+    setSelectedIds(new Set(filteredIssues.map((row) => row.id)));
+  };
+
+  const handleSelectRow = (rowId: string) => {
+    setSelectedIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(rowId)) next.delete(rowId);
+      else next.add(rowId);
+      return next;
+    });
+  };
+
+  const handleAction = (action: ClmIssueAction, row: ClmIssueRow) => {
+    setActionType(action);
+    setActionRow(row);
+  };
+
+  const submitAction = () => {
+    if (!actionType || !actionRow) return;
+    toast.success(`${actionType} queued for ${actionRow.asset.name}`);
+    setActionType(null);
+    setActionRow(null);
+  };
+
+  const handleBulkAction = (label: 'Renew' | 'Revoke' | 'CA Switch' | 'Export' | 'Assign Owner') => {
+    if (label === 'Assign Owner') {
+      toast.success(`Owner assignment queued for ${selectedRows.length} certificates.`);
+    } else if (label === 'Export') {
+      toast.success(`Exported ${selectedRows.length} certificates.`);
+    } else {
+      toast.success(`${label} queued for ${selectedRows.length} certificates.`);
+    }
+    setSelectedIds(new Set());
+  };
+
+  const launchIssueNewCertificate = () => {
+    onTabChange('actions');
+    setEnrollOpen(true);
+  };
+
+  const addPolicyRequest = (request: PolicyRequestRow) => {
+    setPolicyRequests((current) => [request, ...current]);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="inline-flex items-center rounded-lg border border-border bg-muted p-1">
+        {([
+          { id: 'issues', label: 'Issues' },
+          { id: 'deployments', label: 'Deployments' },
+          { id: 'actions', label: 'Certificate Actions' },
+        ] as const).map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => onTabChange(tab.id)}
+            className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${activeTab === tab.id ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'issues' && (
+        <div className="space-y-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h1 className="flex items-center gap-2 text-lg font-bold text-foreground">
+                <Lock className="h-5 w-5 text-teal" />
+                Certificates (CLM)
+              </h1>
+              <p className="mt-1 text-xs text-muted-foreground">{formatCount(clmIssues.length)} items need attention</p>
+            </div>
+            <button type="button" onClick={launchIssueNewCertificate} className="inline-flex items-center gap-2 self-start rounded-lg bg-teal px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-teal-light">
+              <FilePlus className="h-4 w-4" />
+              + Issue New Certificate
+            </button>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {clmIssueFilters.map((filter) => (
+              <button
+                key={filter.id}
+                type="button"
+                onClick={() => { setIssueFilter(filter.id); setSelectedIds(new Set()); }}
+                className={`rounded-full border px-3 py-1.5 text-xs font-medium ${issueFilter === filter.id ? 'border-teal/30 bg-teal/10 text-teal' : 'border-transparent bg-muted text-muted-foreground hover:border-border hover:text-foreground'}`}
+              >
+                {filter.label} ({issueCounts[filter.id]})
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="relative w-full max-w-sm">
+              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input value={issueSearch} onChange={(event) => setIssueSearch(event.target.value)} placeholder="Search certificates or issues" className="pl-8" />
+            </div>
+            <button type="button" onClick={() => toast.success('Issue export generated.')} className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-xs font-medium text-foreground hover:bg-secondary">
+              <Download className="h-3.5 w-3.5" />
+              Export
+            </button>
+          </div>
+
+          <div className="overflow-hidden rounded-lg border border-border bg-card">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[1120px] text-sm">
+                <thead className="border-b border-border bg-background/40 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-3">
+                      <input type="checkbox" checked={allVisibleSelected} onChange={handleSelectAll} className="rounded border-border bg-background" />
+                    </th>
+                    <th className="px-3 py-3">Severity</th>
+                    <th className="px-3 py-3">Asset</th>
+                    <th className="px-3 py-3">Issue</th>
+                    <th className="px-3 py-3">Owner</th>
+                    <th className="px-3 py-3">Env</th>
+                    <th className="px-3 py-3">Recommended</th>
+                    <th className="px-3 py-3">Action</th>
+                    <th className="px-3 py-3" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredIssues.map((row) => {
+                    const PrimaryIcon = actionMeta[row.primaryAction].icon;
+                    return (
+                      <tr key={row.id} className="border-b border-border last:border-b-0 hover:bg-background/30">
+                        <td className="px-3 py-3 align-top">
+                          <input type="checkbox" checked={selectedIds.has(row.id)} onChange={() => handleSelectRow(row.id)} className="rounded border-border bg-background" />
+                        </td>
+                        <td className="px-3 py-3 align-top">
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${severityBadgeClass(row.severity)}`}>{row.severity}</span>
+                        </td>
+                        <td className="px-3 py-3 align-top">
+                          <button type="button" onClick={() => setDetailRow(row)} className="font-mono text-xs text-foreground hover:text-teal hover:underline">
+                            {row.asset.name}
+                          </button>
+                        </td>
+                        <td className="px-3 py-3 align-top text-sm text-foreground">{row.issueText}</td>
+                        <td className="px-3 py-3 align-top text-sm text-muted-foreground">{row.owner}</td>
+                        <td className="px-3 py-3 align-top">
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${environmentBadgeClass(row.environment)}`}>{row.environment}</span>
+                        </td>
+                        <td className="px-3 py-3 align-top text-sm text-muted-foreground">{row.recommended}</td>
+                        <td className="px-3 py-3 align-top">
+                          <button type="button" onClick={() => handleAction(row.primaryAction, row)} className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium ${actionMeta[row.primaryAction].className}`}>
+                            <PrimaryIcon className="h-3.5 w-3.5" />
+                            {row.primaryAction}
+                          </button>
+                        </td>
+                        <td className="px-3 py-3 align-top">
+                          <OverflowMenu row={row} onAction={handleAction} />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {filteredIssues.length === 0 && <div className="px-4 py-10 text-center text-sm text-muted-foreground">No issues match the current filters.</div>}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'deployments' && <CertDeploymentsView />}
+
+      {activeTab === 'actions' && (
+        <div className="grid gap-4 xl:grid-cols-[minmax(320px,32%)_minmax(0,68%)]">
+          <div className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-2">
+              {proactiveCards.map((card) => {
+                const Icon = card.icon;
+                const openCard = () => {
+                  if (card.id === 'enroll') setEnrollOpen(true);
+                  if (card.id === 'push') setPushOpen(true);
+                  if (card.id === 'csr') setCsrOpen(true);
+                  if (card.id === 'ssl') setSslDrawerOpen(true);
+                };
+                return (
+                  <Card key={card.id} className="border-border bg-card shadow-none">
+                    <CardHeader className="space-y-3 p-4">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal/10 text-teal">
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base font-semibold text-foreground">{card.title}</CardTitle>
+                        <CardDescription className="mt-1 text-sm text-muted-foreground">{card.description}</CardDescription>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                      <button type="button" onClick={openCard} className="inline-flex items-center gap-2 rounded-md bg-teal px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-teal-light">
+                        {card.cta}
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </button>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+
+            <div className="rounded-lg border border-border border-l-4 border-l-teal bg-card p-4">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg bg-teal/10 text-teal">
+                  <Info className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">Issue-driven actions</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Renew, Regenerate, Reissue, Revoke, CA Switch, and Revocation Check are available directly on each certificate row in the Issues tab.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-border bg-card">
+            <div className="flex flex-col gap-3 border-b border-border p-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-foreground">Policy Requests</h2>
+              </div>
+              <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+                <div className="relative w-full lg:w-64">
+                  <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input value={queueSearch} onChange={(event) => setQueueSearch(event.target.value)} placeholder="Search policy requests" className="pl-8" />
+                </div>
+                <select value={queueFilter} onChange={(event) => setQueueFilter(event.target.value as QueueFilter)} className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground">
+                  {queueStatuses.map((status) => (
+                    <option key={status} value={status}>{status}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[760px] text-sm">
+                <thead className="border-b border-border bg-background/40 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
+                  <tr>
+                    <th className="px-4 py-3">Request ID</th>
+                    <th className="px-4 py-3">Action</th>
+                    <th className="px-4 py-3">Certificate / Target</th>
+                    <th className="px-4 py-3">Requested By</th>
+                    <th className="px-4 py-3">Created</th>
+                    <th className="px-4 py-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {queueRows.map((row) => (
+                    <tr key={row.id} className="border-b border-border last:border-b-0 hover:bg-background/30">
+                      <td className="px-4 py-3 align-top">
+                        <button type="button" onClick={() => setLogRequest(row)} className="inline-flex items-center gap-1 font-mono text-xs text-foreground hover:text-teal hover:underline">
+                          {row.id}
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </button>
+                      </td>
+                      <td className="px-4 py-3 align-top"><span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${actionBadgeClass(row.action)}`}>{row.action}</span></td>
+                      <td className="px-4 py-3 align-top text-sm text-foreground">{row.certificateTarget}</td>
+                      <td className="px-4 py-3 align-top text-sm text-muted-foreground">{row.requestedBy}</td>
+                      <td className="px-4 py-3 align-top text-sm text-muted-foreground">{row.created}</td>
+                      <td className="px-4 py-3 align-top">
+                        <span className={`inline-flex items-center gap-2 rounded-full px-2 py-0.5 text-[11px] font-medium ${requestStatusClass(row.status)}`}>
+                          {row.status === 'In Progress' && <span className="h-2 w-2 animate-pulse rounded-full bg-teal" />}
+                          {row.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {queueRows.length === 0 && <div className="px-4 py-10 text-center text-sm text-muted-foreground">No policy requests match the current filter.</div>}
+          </div>
+        </div>
+      )}
+
+      <BulkActionBar selectedCount={selectedIds.size} onAction={handleBulkAction} />
+
+      <DetailDrawer row={detailRow} open={!!detailRow} onClose={() => setDetailRow(null)} onRunAction={handleAction} />
+      <ExecutionLogDrawer request={logRequest} open={!!logRequest} onClose={() => setLogRequest(null)} />
+      <EnrollWizard open={enrollOpen} onClose={() => setEnrollOpen(false)} onSubmit={addPolicyRequest} />
+      <GenerateCSRModal open={csrOpen} onClose={() => setCsrOpen(false)} />
+      <PushToDeviceModal open={pushOpen} onClose={() => setPushOpen(false)} onSubmit={addPolicyRequest} />
+      <SSLCheckerDrawer open={sslDrawerOpen} onClose={() => setSslDrawerOpen(false)} />
+
+      <Modal open={!!actionType && !!actionRow} onClose={() => { setActionType(null); setActionRow(null); }} title={actionType ? `${actionType} Certificate` : 'Certificate Action'}>
+        {actionType && actionRow && (
+          <div className="space-y-4">
+            <div className="rounded-lg border border-border bg-background/40 p-3 text-sm">
+              <p className="font-medium text-foreground">{actionRow.asset.name}</p>
+              <p className="mt-1 text-muted-foreground">{actionRow.issueText}</p>
+            </div>
+
+            {actionType === 'Revocation Check - OCSP' ? (
+              <div className="rounded-lg border border-border bg-background/40 p-3 text-sm text-muted-foreground">
+                Run an OCSP check against <span className="font-mono text-foreground">{actionRow.asset.serial}</span> and queue the certificate for validation.
+              </div>
+            ) : actionType === 'CA Switch' ? (
+              <FormSelect label="Target CA" value={assignOwnerValue} onChange={setAssignOwnerValue} options={caList} />
+            ) : actionType === 'Migrate' ? (
+              <FormSelect label="Target algorithm" value={assignOwnerValue} onChange={setAssignOwnerValue} options={['ML-DSA-65', 'Hybrid RSA + ML-DSA', 'ML-KEM-768']} />
+            ) : actionType === 'Revoke' ? (
+              <FormField label="Revocation reason">
+                <Textarea defaultValue="Certificate is no longer trusted and must be revoked." className="min-h-[100px]" />
+              </FormField>
+            ) : (
+              <FormSelect label="Assign owner" value={assignOwnerValue} onChange={setAssignOwnerValue} options={ownerOptions} />
+            )}
+
+            <div className="flex justify-end border-t border-border pt-4">
+              <button type="button" onClick={submitAction} className="rounded-md bg-teal px-4 py-2 text-xs font-medium text-primary-foreground hover:bg-teal-light">
+                Submit
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
+}
