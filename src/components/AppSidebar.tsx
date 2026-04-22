@@ -13,6 +13,7 @@ interface NavChild {
   page?: string;
   type?: string;
   count?: number;
+  icon?: React.ElementType;
 }
 
 interface NavItem {
@@ -26,22 +27,24 @@ interface NavItem {
 interface NavSubItemProps {
   label: string;
   count?: number;
+  icon?: React.ElementType;
   isActive: boolean;
   onClick: () => void;
 }
 
-const NavSubItem = ({ label, count, isActive, onClick }: NavSubItemProps) => (
+const NavSubItem = ({ label, count, icon: ItemIcon, isActive, onClick }: NavSubItemProps) => (
   <div
     onClick={onClick}
-    className={`flex items-center justify-between pl-6 pr-3 py-1.5 cursor-pointer rounded-md mx-2 text-sm transition-colors ${
+    className={`flex items-center justify-between gap-2 pl-6 pr-3 py-1.5 cursor-pointer rounded-md mx-2 text-sm transition-colors whitespace-nowrap overflow-hidden ${
       isActive
         ? 'text-teal bg-teal/10 font-medium'
         : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
     }`}
   >
-    <span>{label}</span>
+    <span className="truncate">{label}</span>
+    {ItemIcon && <ItemIcon size={12} className="text-amber shrink-0 ml-auto" />}
     {typeof count === 'number' && (
-      <span className="text-xs bg-white/10 text-muted-foreground px-1.5 py-0.5 rounded-full">
+      <span className="text-xs bg-white/10 text-muted-foreground px-1.5 py-0.5 rounded-full shrink-0">
         {count}
       </span>
     )}
@@ -58,13 +61,12 @@ const navItems: NavItem[] = [
     id: 'remediation',
     label: 'REMEDIATION',
     icon: Wrench,
-    page: 'remediation-objects',
+    page: 'remediation-clm',
     children: [
-      { id: 'remediation-objects', label: 'All Objects', page: 'remediation-objects', count: 68 },
       { id: 'remediation-clm', label: 'Certificates (CLM)', page: 'remediation-clm', count: 40 },
       { id: 'remediation-ssh', label: 'SSH Keys & Certs', page: 'remediation-ssh', count: 7 },
       { id: 'remediation-ai', label: 'AI Agent Tokens', page: 'remediation-ai', count: 7 },
-      { id: 'remediation-secrets', label: 'API Keys & Secrets', page: 'remediation-secrets', count: 3 },
+      { id: 'remediation-secrets', label: 'API Keys & Secrets', page: 'remediation-secrets', count: 3, icon: Lock },
     ],
   },
   { id: 'tickets', label: 'TICKETS', icon: Ticket, page: 'tickets' },
@@ -112,7 +114,7 @@ export default function AppSidebar() {
   const isChildActive = (section: NavItem) => section.children?.some(c => currentPage === (c.page || c.id));
 
   return (
-    <div className="w-56 min-h-screen bg-navy flex flex-col border-r border-navy-lighter flex-shrink-0">
+    <div className="w-[232px] min-h-screen bg-navy flex flex-col border-r border-navy-lighter flex-shrink-0">
       <div className="h-14 flex items-center px-4 border-b border-navy-lighter">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-teal flex items-center justify-center">
@@ -201,6 +203,7 @@ export default function AppSidebar() {
                         key={child.id}
                         label={child.label}
                         count={child.count}
+                        icon={child.icon}
                         isActive={isActive(child.id, child.page)}
                         onClick={() => handleNavClick(child.id, child.page, child.type)}
                       />
