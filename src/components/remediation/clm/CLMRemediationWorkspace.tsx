@@ -333,7 +333,7 @@ const ExecutionLogDrawer = ({ request, open, onClose }: { request: PolicyRequest
   );
 };
 
-const OverflowMenu = ({ row, onAction }: { row: ClmIssueRow; onAction: (action: ClmIssueAction, row: ClmIssueRow) => void }) => {
+const OverflowMenu = ({ row, onAction, onPush }: { row: ClmIssueRow; onAction: (action: ClmIssueAction, row: ClmIssueRow) => void; onPush: (row: ClmIssueRow) => void }) => {
   const [open, setOpen] = useState(false);
   const actions = row.menuActions;
 
@@ -363,6 +363,17 @@ const OverflowMenu = ({ row, onAction }: { row: ClmIssueRow; onAction: (action: 
                 </button>
               );
             })}
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                onPush(row);
+              }}
+              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs text-foreground hover:bg-secondary"
+            >
+              <Upload className="h-3.5 w-3.5 text-muted-foreground" />
+              Push to Device
+            </button>
           </div>
         </>
       )}
@@ -680,6 +691,7 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
   const [csrOpen, setCsrOpen] = useState(false);
   const [pushOpen, setPushOpen] = useState(false);
   const [sslDrawerOpen, setSslDrawerOpen] = useState(false);
+  const [pushSeedRow, setPushSeedRow] = useState<ClmIssueRow | null>(null);
 
   const issueCounts = useMemo(() => getIssueCounts(), []);
 
@@ -748,6 +760,12 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
   const launchIssueNewCertificate = () => {
     onTabChange('actions');
     setEnrollOpen(true);
+  };
+
+  const launchPushToDevice = (row?: ClmIssueRow) => {
+    if (row) setPushSeedRow(row);
+    onTabChange('actions');
+    setPushOpen(true);
   };
 
   const addPolicyRequest = (request: PolicyRequestRow) => {
@@ -860,7 +878,7 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
                           </button>
                         </td>
                         <td className="px-3 py-3 align-top">
-                          <OverflowMenu row={row} onAction={handleAction} />
+                          <OverflowMenu row={row} onAction={handleAction} onPush={launchPushToDevice} />
                         </td>
                       </tr>
                     );
@@ -883,7 +901,7 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
                 const Icon = card.icon;
                 const openCard = () => {
                   if (card.id === 'enroll') setEnrollOpen(true);
-                  if (card.id === 'push') setPushOpen(true);
+                  if (card.id === 'push') launchPushToDevice();
                   if (card.id === 'csr') setCsrOpen(true);
                   if (card.id === 'ssl') setSslDrawerOpen(true);
                 };
@@ -986,7 +1004,7 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
       <ExecutionLogDrawer request={logRequest} open={!!logRequest} onClose={() => setLogRequest(null)} />
       <EnrollCertificateWizard open={enrollOpen} onClose={() => setEnrollOpen(false)} onSubmit={addPolicyRequest} />
       <GenerateCSRModal open={csrOpen} onClose={() => setCsrOpen(false)} />
-      <PushToDeviceModal open={pushOpen} onClose={() => setPushOpen(false)} onSubmit={addPolicyRequest} />
+      <PushToDeviceModal open={pushOpen} onClose={() => { setPushOpen(false); setPushSeedRow(null); }} onSubmit={addPolicyRequest} />
       <SSLCheckerDrawer open={sslDrawerOpen} onClose={() => setSslDrawerOpen(false)} />
 
       <Modal open={!!actionType && !!actionRow} onClose={() => { setActionType(null); setActionRow(null); }} title={actionType ? `${actionType} Certificate` : 'Certificate Action'}>
