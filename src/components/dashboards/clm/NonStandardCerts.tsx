@@ -1,7 +1,6 @@
 import React from 'react';
-import { FileX, Globe, HelpCircle, Building, AlertTriangle, Unlink } from 'lucide-react';
+import { FileX, Globe, HelpCircle, Building, AlertTriangle, Unlink, ArrowRight } from 'lucide-react';
 import { mockAssets } from '@/data/mockData';
-import { useNav } from '@/context/NavigationContext';
 
 const certAssets = mockAssets.filter(a =>
   a.type === 'TLS Certificate' || a.type === 'Code-Signing Certificate' ||
@@ -67,12 +66,15 @@ export default function NonStandardCerts({ openModal }: NonStandardCertsProps) {
           const count = counts[t.key];
           const Icon = t.icon;
           return (
-              <div
+            <div
               key={t.key}
-                onClick={() => openModal?.(`Non-Standard: ${t.label}`, getTileCerts(t.key))}
-                className={`rounded-lg border p-4 cursor-pointer hover:bg-secondary/40 transition-all ${getTint(count)}`}
+              onClick={() => openModal?.(`Non-Standard: ${t.label}`, getTileCerts(t.key))}
+              className={`group rounded-lg border p-4 cursor-pointer hover:bg-secondary/40 transition-all ${getTint(count)}`}
             >
-              <Icon className="w-4 h-4 text-muted-foreground mb-2" />
+              <div className="mb-2 flex items-center justify-between">
+                <Icon className="w-4 h-4 text-muted-foreground" />
+                <ArrowRight className="h-3 w-3 text-teal opacity-0 transition-opacity group-hover:opacity-100" />
+              </div>
               <p className={`text-2xl font-bold ${count > 3 ? 'text-coral' : count >= 1 ? 'text-amber' : 'text-muted-foreground'}`}>{count}</p>
               <p className="text-[10px] text-muted-foreground mt-1">{t.label}</p>
             </div>

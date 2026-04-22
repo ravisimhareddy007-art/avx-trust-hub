@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ESTATE_SUMMARY, mockAssets } from '@/data/mockData';
 import { useNav } from '@/context/NavigationContext';
-import { toast } from 'sonner';
 import {
   PieChart, Pie, Cell, BarChart, Bar, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -10,9 +9,9 @@ import {
 import {
   Clock, RefreshCw, Shield, AlertTriangle, RotateCcw,
   Send, Key, Ruler, SlidersHorizontal, ChevronDown, XCircle,
+  ArrowRight, ExternalLink,
 } from 'lucide-react';
 
-/* ── colors ──────────────────────────────────── */
 const T = {
   teal:   'hsl(160 70% 37%)',
   amber:  'hsl(38 78% 41%)',
@@ -24,7 +23,6 @@ const T = {
 
 const GROUPS = ['Default', 'Certificate-Gateway', 'Private_CA_Certificates', 'Public_CA_Certificates'];
 
-/* ── data ────────────────────────────────────── */
 const shortLived = mockAssets.filter(
   a => (a.type || '').includes('Certificate') && a.daysToExpiry != null && a.daysToExpiry >= 0 && a.daysToExpiry <= 90,
 );
@@ -43,9 +41,9 @@ const ageBuckets = [
 ageBuckets.forEach(b => { b.pct = Math.round((b.count / total) * 100); });
 
 const pushCards = [
-  { title: 'Regenerated Certs', icon: RotateCcw, pushed: 312, notPushed: 89, note: '89 certs regenerated but not yet deployed to target systems' },
-  { title: 'Re-Enrolled Certs', icon: RefreshCw, pushed: 445, notPushed: 67, note: '67 certs pending push to endpoints' },
-  { title: 'Renewed Certs',     icon: Send,      pushed: 521, notPushed: 113, note: '113 renewed certs awaiting deployment' },
+  { title: 'Regenerated Certs', icon: RotateCcw, pushed: 312, notPushed: 89, note: '89 certs regenerated but not yet deployed to target systems', modalTitle: 'Regenerated – Not Pushed' },
+  { title: 'Re-Enrolled Certs', icon: RefreshCw, pushed: 445, notPushed: 67, note: '67 certs pending push to endpoints', modalTitle: 'Re-Enrolled – Not Pushed' },
+  { title: 'Renewed Certs',     icon: Send,      pushed: 521, notPushed: 113, note: '113 renewed certs awaiting deployment', modalTitle: 'Renewed – Not Pushed' },
 ];
 
 const failureReasons = [
@@ -92,7 +90,7 @@ const forecast = (() => {
     const dt = new Date(now);
     dt.setDate(dt.getDate() + i);
     const label = i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : days[dt.getDay()];
-    return { ...d, day: label };
+    return { ...d, day: label, index: i };
   });
 })();
 const anyAtRisk = forecast.some(d => d.atRisk > 0);
@@ -103,7 +101,6 @@ const scoreTrend = [68,69,70,71,70,72,73,74,74,75,74,76,75,74].map((v, i) => {
   return { date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), score: v };
 });
 
-/* ── Gauge ───────────────────────────────────── */
 function SLCGauge({ score }: { score: number }) {
   const R = 52, cx = 64, cy = 64;
   const startAngle = -220, totalDegrees = 260;
@@ -126,13 +123,12 @@ function SLCGauge({ score }: { score: number }) {
   );
 }
 
-/* ── Component ───────────────────────────────── */
 type SLCDashboardProps = {
   openModal?: (title: string, certs: any[]) => void;
 };
 
 export default function SLCDashboard({ openModal }: SLCDashboardProps) {
-  const { setCurrentPage } = useNav();
+  const { setCurrentPage, setFilters } = useNav();
 
   const [groupOpen, setGroupOpen] = useState(false);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([...GROUPS]);
@@ -154,14 +150,21 @@ export default function SLCDashboard({ openModal }: SLCDashboardProps) {
   const toggleAll = () => setSelectedGroups(allSelected ? [] : [...GROUPS]);
   const filteredGroups = GROUPS.filter(g => g.toLowerCase().includes(groupSearch.toLowerCase()));
 
+  const openInventory = (extra: Record<string, string> = {}) => {
+    setFilters({ type: 'TLS Certificate', slc: 'true', ...extra });
+    setCurrentPage('inventory');
+  };
+
+  const openSLCModal = (title: string, certs: any[]) => {
+    openModal?.(title, certs.length > 0 ? certs : shortLived);
+  };
+
   const Card = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
     <div className={`bg-card border border-border rounded-xl p-5 ${className}`}>{children}</div>
   );
 
   return (
     <div className="space-y-4 pr-1">
-
-      {/* ── FILTERS ─────────────────────────── */}
       <div className="flex items-center justify-end gap-2 border-b border-border pb-3 mb-4">
         <div className="relative" ref={groupRef}>
           <button onClick={() => setGroupOpen(o => !o)}
@@ -197,14 +200,13 @@ export default function SLCDashboard({ openModal }: SLCDashboardProps) {
         </div>
       </div>
 
-      {/* ── ROW 1: Compliance + Inventory ──── */}
       <div className="grid grid-cols-12 gap-4">
         <Card className="col-span-5">
           <div className="flex gap-4">
-            <div className="w-[40%] flex flex-col items-center">
+            <button onClick={() => openInventory()} className="w-[40%] flex flex-col items-center cursor-pointer hover:text-teal transition-colors">
               <SLCGauge score={complianceScore} />
               <p className="text-[10px] text-muted-foreground italic text-center mt-1">CA/Browser Forum: 90-day max TLS validity from 2025</p>
-            </div>
+            </button>
             <div className="w-[60%] space-y-2.5">
               {ageBuckets.map(b => (
                 <div key={b.label} className="space-y-0.5">
@@ -223,22 +225,26 @@ export default function SLCDashboard({ openModal }: SLCDashboardProps) {
         <Card className="col-span-7">
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: 'Total SLC', value: total, color: 'text-teal' },
-              { label: 'Expiring < 48h', value: 12, color: 'text-coral', sub: 'immediate risk' },
-              { label: 'Auto-renewal on', value: autoRenewalEnabled, color: 'text-teal' },
-              { label: 'No renewal plan', value: notCovered, color: 'text-amber', sub: 'manual intervention needed' },
+              { label: 'Total SLC', value: total, color: 'text-teal', onClick: () => openInventory(), pattern: 'inventory' },
+              { label: 'Expiring < 48h', value: 12, color: 'text-coral', sub: 'immediate risk', onClick: () => openSLCModal('SLC Expiring < 48h', shortLived.filter(a => a.daysToExpiry <= 2)), pattern: 'modal' },
+              { label: 'Auto-renewal on', value: autoRenewalEnabled, color: 'text-teal', onClick: () => openInventory({ autoRenewal: 'true' }), pattern: 'inventory' },
+              { label: 'No renewal plan', value: notCovered, color: 'text-amber', sub: 'manual intervention needed', onClick: () => openSLCModal('No Renewal Plan', shortLived.filter(a => !a.autoRenewal)), pattern: 'modal' },
             ].map(k => (
-              <div key={k.label} className="p-3 rounded-lg bg-secondary/30 border border-border">
-                <p className={`text-2xl font-bold ${k.color}`}>{k.value}</p>
-                <p className="text-[11px] text-muted-foreground">{k.label}</p>
-                {k.sub && <p className="text-[9px] text-muted-foreground mt-0.5">{k.sub}</p>}
-              </div>
+              <button key={k.label} onClick={k.onClick} className={`group rounded-lg bg-secondary/30 border border-border p-3 text-left ${k.pattern === 'modal' ? 'cursor-pointer hover:bg-secondary/40 transition-colors' : 'cursor-pointer hover:text-teal transition-colors'}`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className={`text-2xl font-bold ${k.color}`}>{k.value}</p>
+                    <p className="text-[11px] text-muted-foreground">{k.label}</p>
+                    {k.sub && <p className="text-[9px] text-muted-foreground mt-0.5">{k.sub}</p>}
+                  </div>
+                  {k.pattern === 'modal' ? <ArrowRight className="h-3 w-3 text-teal opacity-0 transition-opacity group-hover:opacity-100" /> : <ExternalLink className="h-2.5 w-2.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />}
+                </div>
+              </button>
             ))}
           </div>
         </Card>
       </div>
 
-      {/* ── ROW 2: Push Status ─────────────── */}
       <div className="grid grid-cols-3 gap-4">
         {pushCards.map(c => {
           const tot = c.pushed + c.notPushed;
@@ -252,17 +258,24 @@ export default function SLCDashboard({ openModal }: SLCDashboardProps) {
                 <div className="bg-teal h-full" style={{ width: `${(c.pushed / tot) * 100}%` }} />
                 <div className="bg-coral h-full" style={{ width: `${(c.notPushed / tot) * 100}%` }} />
               </div>
-              <div className="flex justify-between mt-2 text-[10px]">
+              <div className="mt-2 flex items-center justify-between text-[10px]">
                 <span className="text-teal">Pushed: {c.pushed}</span>
-                <span className="text-coral">Not Pushed: {c.notPushed}</span>
+                <button onClick={() => openSLCModal(c.modalTitle, shortLived.slice(0, c.notPushed))} className="group inline-flex items-center gap-1 text-coral transition-colors hover:text-foreground">
+                  <span>Not Pushed: {c.notPushed}</span>
+                  <ArrowRight className="h-3 w-3 text-teal opacity-0 transition-opacity group-hover:opacity-100" />
+                </button>
               </div>
               <p className="text-[9px] text-muted-foreground mt-1">{c.note}</p>
+              <div className="mt-2 flex justify-end">
+                <button onClick={() => openSLCModal(c.modalTitle, shortLived.slice(0, c.notPushed))} className="inline-flex items-center gap-1 text-[10px] text-teal hover:underline">
+                  Review & Fix
+                </button>
+              </div>
             </Card>
           );
         })}
       </div>
 
-      {/* ── ROW 3: Lifecycle Timeline + Failure Reasons ── */}
       <div className="grid grid-cols-12 gap-4">
         <Card className="col-span-7">
           <div className="flex items-center gap-2 mb-4">
@@ -270,25 +283,38 @@ export default function SLCDashboard({ openModal }: SLCDashboardProps) {
             <span className="text-xs font-medium text-foreground">Cert Lifecycle Distribution</span>
           </div>
           <div className="h-10 w-full rounded-full overflow-hidden flex">
-            {ageBuckets.map(b => (
-              <div key={b.label} style={{ width: `${b.pct}%`, backgroundColor: b.color }} className="h-full" />
-            ))}
+            <button type="button" onClick={() => openSLCModal('SLC Critical Zone', shortLived.filter(a => a.daysToExpiry <= 2))} style={{ width: `${ageBuckets[0].pct}%`, backgroundColor: ageBuckets[0].color }} className="h-full cursor-pointer transition-opacity hover:opacity-80" />
+            <button type="button" onClick={() => openSLCModal('SLC Renewal Window', shortLived.filter(a => a.daysToExpiry > 2 && a.daysToExpiry <= 30))} style={{ width: `${ageBuckets[1].pct + ageBuckets[2].pct}%`, background: `linear-gradient(90deg, ${ageBuckets[1].color}, ${ageBuckets[2].color})` }} className="h-full cursor-pointer transition-opacity hover:opacity-80" />
+            <button type="button" onClick={() => openInventory({ lifecycle: 'healthy' })} style={{ width: `${ageBuckets[3].pct}%`, backgroundColor: ageBuckets[3].color }} className="h-full cursor-pointer transition-opacity hover:opacity-80" />
           </div>
           <div className="flex justify-between mt-2 text-[10px]">
             <span className="text-muted-foreground">Issued</span>
-            <span className="text-coral">Critical zone (0-48h): {ageBuckets[0].count} certs</span>
-            <span className="text-amber">Renewal window (3-30d): {ageBuckets[1].count + ageBuckets[2].count} certs</span>
-            <span className="text-teal">Healthy (31-90d): {ageBuckets[3].count} certs</span>
+            <button onClick={() => openSLCModal('SLC Critical Zone', shortLived.filter(a => a.daysToExpiry <= 2))} className="group inline-flex items-center gap-1 text-coral transition-colors hover:text-foreground">
+              <span>Critical zone (0-48h): {ageBuckets[0].count} certs</span>
+              <ArrowRight className="h-3 w-3 text-teal opacity-0 transition-opacity group-hover:opacity-100" />
+            </button>
+            <button onClick={() => openSLCModal('SLC Renewal Window', shortLived.filter(a => a.daysToExpiry > 2 && a.daysToExpiry <= 30))} className="group inline-flex items-center gap-1 text-amber transition-colors hover:text-foreground">
+              <span>Renewal window (3-30d): {ageBuckets[1].count + ageBuckets[2].count} certs</span>
+              <ArrowRight className="h-3 w-3 text-teal opacity-0 transition-opacity group-hover:opacity-100" />
+            </button>
+            <button onClick={() => openInventory({ lifecycle: 'healthy' })} className="group inline-flex items-center gap-1 hover:text-teal transition-colors">
+              <span className="text-teal">Healthy (31-90d): {ageBuckets[3].count} certs</span>
+              <ExternalLink className="h-2.5 w-2.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+            </button>
             <span className="text-muted-foreground">Expiry</span>
           </div>
           <div className="mt-3 space-y-1">
-            {ageBuckets[0].count > 20 && (
-              <p className="text-[10px] text-coral flex items-center gap-1">
+            {ageBuckets[0].count > 0 && (
+              <button onClick={() => openSLCModal('SLC Critical Zone', shortLived.filter(a => a.daysToExpiry <= 2))} className="group flex items-center gap-1 text-[10px] text-coral transition-colors hover:text-foreground">
                 <AlertTriangle className="w-3 h-3" />
-                {ageBuckets[0].count} certs in critical renewal zone — auto-renewal must execute within 48 hours
-              </p>
+                <span>{ageBuckets[0].count} certs in critical renewal zone — auto-renewal must execute within 48 hours</span>
+                <ArrowRight className="h-3 w-3 text-teal opacity-0 transition-opacity group-hover:opacity-100" />
+              </button>
             )}
-            <p className="text-[10px] text-teal">{complianceScore}% of SLC estate in healthy lifecycle position</p>
+            <button onClick={() => openInventory({ lifecycle: 'healthy' })} className="group inline-flex items-center gap-1 text-[10px] text-teal hover:text-teal transition-colors">
+              <span>{complianceScore}% of SLC estate in healthy lifecycle position</span>
+              <ExternalLink className="h-2.5 w-2.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+            </button>
           </div>
         </Card>
 
@@ -302,23 +328,24 @@ export default function SLCDashboard({ openModal }: SLCDashboardProps) {
           </div>
           <div className="space-y-2">
             {failureReasons.map(f => (
-              <div key={f.reason} className="flex items-center gap-2">
+              <button key={f.reason} onClick={() => openSLCModal(`Failed: ${f.reason}`, shortLived.slice(0, f.count))} className="group flex w-full items-center gap-2 rounded px-1 py-1 text-left transition-colors hover:bg-secondary/30">
                 <span className="text-[10px] text-muted-foreground w-32 shrink-0 truncate">{f.reason}</span>
                 <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden">
                   <div className={`h-full rounded-full ${f.tw}`} style={{ width: `${(f.count / 48) * 100}%` }} />
                 </div>
                 <span className="text-[10px] text-foreground tabular-nums w-6 text-right font-medium">{f.count}</span>
-              </div>
+                <ArrowRight className="h-3 w-3 text-teal opacity-0 transition-opacity group-hover:opacity-100" />
+              </button>
             ))}
           </div>
-          <p className="text-[10px] text-teal mt-3 cursor-pointer hover:underline"
-            onClick={() => setCurrentPage('integrations')}>
-            CA timeout (48) + Auth expired (31) account for 54% of failures — check DigiCert API credentials
-          </p>
+          <div className="mt-3 flex justify-end">
+            <button className="text-[10px] text-teal hover:underline" onClick={() => setCurrentPage('integrations')}>
+              Check Integration
+            </button>
+          </div>
         </Card>
       </div>
 
-      {/* ── ROW 4: Key Algo + Key Length + Protocol ── */}
       <div className="grid grid-cols-3 gap-4">
         <Card>
           <div className="flex items-center gap-2 mb-3">
@@ -328,8 +355,23 @@ export default function SLCDashboard({ openModal }: SLCDashboardProps) {
           <div className="h-[160px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={keyAlgo} dataKey="value" innerRadius={45} outerRadius={70} paddingAngle={2}>
-                  {keyAlgo.map((e, i) => <Cell key={i} fill={e.color} />)}
+                <Pie
+                  data={keyAlgo}
+                  dataKey="value"
+                  innerRadius={45}
+                  outerRadius={70}
+                  paddingAngle={2}
+                  onClick={(_, index) => {
+                    const item = keyAlgo[index];
+                    if (!item) return;
+                    if (item.name === 'Ed25519') {
+                      openInventory({ algorithm: item.name });
+                      return;
+                    }
+                    openSLCModal(`Quantum-Vulnerable SLC: ${item.name}`, shortLived.filter(a => a.algorithm === item.name));
+                  }}
+                >
+                  {keyAlgo.map((e, i) => <Cell key={i} fill={e.color} className="cursor-pointer" />)}
                 </Pie>
                 <Tooltip contentStyle={{ background: 'hsl(225 30% 13%)', border: '1px solid hsl(225 20% 20%)', borderRadius: 8, fontSize: 11 }} />
                 <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central" fill="hsl(220 20% 90%)">
@@ -360,8 +402,23 @@ export default function SLCDashboard({ openModal }: SLCDashboardProps) {
           <div className="h-[160px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={keyLen} dataKey="value" innerRadius={45} outerRadius={70} paddingAngle={2}>
-                  {keyLen.map((e, i) => <Cell key={i} fill={e.color} />)}
+                <Pie
+                  data={keyLen}
+                  dataKey="value"
+                  innerRadius={45}
+                  outerRadius={70}
+                  paddingAngle={2}
+                  onClick={(_, index) => {
+                    const item = keyLen[index];
+                    if (!item) return;
+                    if (item.name === '2048') {
+                      openSLCModal('Weak Key Length: 2048-bit', shortLived.filter(a => a.algorithm.includes('2048') || a.keyLength === '2048'));
+                      return;
+                    }
+                    openInventory({ keyLength: item.name });
+                  }}
+                >
+                  {keyLen.map((e, i) => <Cell key={i} fill={e.color} className="cursor-pointer" />)}
                 </Pie>
                 <Tooltip contentStyle={{ background: 'hsl(225 30% 13%)', border: '1px solid hsl(225 20% 20%)', borderRadius: 8, fontSize: 11 }} />
                 <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central" fill="hsl(220 20% 90%)">
@@ -390,8 +447,23 @@ export default function SLCDashboard({ openModal }: SLCDashboardProps) {
           <div className="h-[160px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={protocols} dataKey="value" innerRadius={45} outerRadius={70} paddingAngle={2}>
-                  {protocols.map((e, i) => <Cell key={i} fill={e.color} />)}
+                <Pie
+                  data={protocols}
+                  dataKey="value"
+                  innerRadius={45}
+                  outerRadius={70}
+                  paddingAngle={2}
+                  onClick={(_, index) => {
+                    const item = protocols[index];
+                    if (!item) return;
+                    if (item.name === 'Manual') {
+                      openSLCModal('Manual Enrollment – Needs Automation', shortLived.slice(0, 35));
+                      return;
+                    }
+                    openInventory({ protocol: item.name });
+                  }}
+                >
+                  {protocols.map((e, i) => <Cell key={i} fill={e.color} className="cursor-pointer" />)}
                 </Pie>
                 <Tooltip contentStyle={{ background: 'hsl(225 30% 13%)', border: '1px solid hsl(225 20% 20%)', borderRadius: 8, fontSize: 11 }} />
                 <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central" fill="hsl(220 20% 90%)">
@@ -415,7 +487,6 @@ export default function SLCDashboard({ openModal }: SLCDashboardProps) {
         </Card>
       </div>
 
-      {/* ── ROW 5: 7-Day Outage Risk Forecast ── */}
       <Card>
         <div className="flex items-center gap-2 mb-1">
           <span className="text-xs font-medium text-foreground">7-Day SLC Outage Risk Forecast</span>
@@ -432,8 +503,18 @@ export default function SLCDashboard({ openModal }: SLCDashboardProps) {
               <YAxis tick={{ fontSize: 10, fill: 'hsl(220 15% 55%)' }} />
               <Tooltip contentStyle={{ background: 'hsl(225 30% 13%)', border: '1px solid hsl(225 20% 20%)', borderRadius: 8, fontSize: 11 }} />
               <Legend wrapperStyle={{ fontSize: 10 }} />
-              <Bar dataKey="inPipeline" stackId="a" fill={T.teal} name="In renewal pipeline" />
-              <Bar dataKey="atRisk" stackId="a" fill={T.coral} name="No renewal plan" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="inPipeline" stackId="a" fill={T.teal} name="In renewal pipeline" cursor="pointer" onClick={(entry: any) => {
+                const point = entry?.payload;
+                if (!point?.atRisk) return;
+                const certs = shortLived.filter(a => a.daysToExpiry === point.index);
+                openSLCModal(`Expiring ${point.day} – No Renewal Plan`, certs.length ? certs : shortLived.slice(0, point.atRisk));
+              }} />
+              <Bar dataKey="atRisk" stackId="a" fill={T.coral} name="No renewal plan" radius={[3, 3, 0, 0]} cursor="pointer" onClick={(entry: any) => {
+                const point = entry?.payload;
+                if (!point?.atRisk) return;
+                const certs = shortLived.filter(a => a.daysToExpiry === point.index && !a.autoRenewal);
+                openSLCModal(`Expiring ${point.day} – No Renewal Plan`, certs.length ? certs : shortLived.slice(0, point.atRisk));
+              }} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -442,7 +523,7 @@ export default function SLCDashboard({ openModal }: SLCDashboardProps) {
             <p className="text-[10px] text-coral">
               {riskDays.map(d => `${d.day} (${d.atRisk} certs)`).join(' and ')} have unplanned expirations. Initiate renewal workflows now.
             </p>
-            <button onClick={() => setCurrentPage('remediation')}
+            <button onClick={() => { setFilters({ module: 'clm', filter: 'expiry' }); setCurrentPage('remediation'); }}
               className="ml-3 shrink-0 px-3 py-1 bg-teal text-primary-foreground text-[10px] rounded hover:opacity-90">
               Open Remediation
             </button>
@@ -454,7 +535,6 @@ export default function SLCDashboard({ openModal }: SLCDashboardProps) {
         )}
       </Card>
 
-      {/* ── ROW 6: Score Trend ─────────────── */}
       <Card>
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs font-medium text-foreground">SLC Compliance Trend — Last 14 Days</span>
@@ -467,7 +547,7 @@ export default function SLCDashboard({ openModal }: SLCDashboardProps) {
             ))}
           </div>
         </div>
-        <div className="h-[200px] relative">
+        <div className="h-[200px] relative cursor-pointer hover:text-teal transition-colors" onClick={() => openInventory()}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={scoreTrend}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(225 20% 20%)" />
@@ -485,7 +565,6 @@ export default function SLCDashboard({ openModal }: SLCDashboardProps) {
           )}
         </div>
       </Card>
-
     </div>
   );
 }

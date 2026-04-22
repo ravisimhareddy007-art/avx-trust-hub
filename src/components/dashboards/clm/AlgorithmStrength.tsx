@@ -1,6 +1,7 @@
 import React from 'react';
-import { ShieldAlert } from 'lucide-react';
+import { ArrowRight, ExternalLink, ShieldAlert } from 'lucide-react';
 import { mockAssets } from '@/data/mockData';
+import { useNav } from '@/context/NavigationContext';
 
 const certAssets = mockAssets.filter(a =>
   a.type === 'TLS Certificate' || a.type === 'Code-Signing Certificate' ||
@@ -21,25 +22,50 @@ const KEY_BUCKETS: { label: string; test: (a: typeof certAssets[0]) => boolean; 
   { label: 'PQC', test: a => a.algorithm.startsWith('ML-') || a.algorithm.startsWith('SLH-'), color: 'text-purple-light', barColor: 'bg-purple-light' },
 ];
 
-function StackedBar({ segments }: { segments: { pct: number; barColor: string }[] }) {
+function StackedBar({ segments }: { segments: { pct: number; barColor: string; onClick?: () => void; actionable?: boolean }[] }) {
   return (
     <div className="flex h-8 rounded-full overflow-hidden w-full">
       {segments.filter(s => s.pct > 0).map((s, i) => (
-        <div key={i} className={`${s.barColor} h-full`} style={{ width: `${s.pct}%` }} />
+        <button
+          key={i}
+          type="button"
+          onClick={s.onClick}
+          className={`${s.barColor} h-full ${s.actionable ? 'cursor-pointer transition-opacity hover:opacity-80' : ''}`}
+          style={{ width: `${s.pct}%` }}
+        />
       ))}
     </div>
   );
 }
 
-function LegendRow({ items }: { items: { label: string; count: number; pct: number; color: string }[] }) {
+function LegendRow({ items }: { items: { label: string; count: number; pct: number; color: string; actionable?: boolean; onClick?: () => void; pattern?: 'modal' | 'inventory' }[] }) {
   return (
     <div className="flex items-center gap-4 mt-2 flex-wrap">
-      {items.map(it => (
-        <div key={it.label} className="flex items-center gap-1.5 text-xs">
-          <span className={`font-semibold ${it.color}`}>{it.count}</span>
-          <span className="text-muted-foreground">{it.label} ({it.pct}%)</span>
-        </div>
-      ))}
+      {items.map(it => {
+        const content = (
+          <>
+            <span className={`font-semibold ${it.color}`}>{it.count}</span>
+            <span className="text-muted-foreground">{it.label} ({it.pct}%)</span>
+            {it.actionable && it.pattern === 'modal' && <ArrowRight className="h-3 w-3 text-teal opacity-0 transition-opacity group-hover:opacity-100" />}
+            {it.actionable && it.pattern === 'inventory' && <ExternalLink className="h-2.5 w-2.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />}
+          </>
+        );
+
+        if (!it.actionable) {
+          return <div key={it.label} className="flex items-center gap-1.5 text-xs">{content}</div>;
+        }
+
+        return (
+          <button
+            key={it.label}
+            type="button"
+            onClick={it.onClick}
+            className={`group flex items-center gap-1.5 text-xs ${it.pattern === 'modal' ? 'transition-colors hover:text-foreground' : 'cursor-pointer hover:text-teal transition-colors'}`}
+          >
+            {content}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -48,15 +74,19 @@ type AlgorithmStrengthProps = {
   openModal?: (title: string, certs: any[]) => void;
 };
 
-export default function AlgorithmStrength({ openModal: _openModal }: AlgorithmStrengthProps) {
+export default function AlgorithmStrength({ openModal }: AlgorithmStrengthProps) {
+  const { setCurrentPage, setFilters } = useNav();
   const total = certAssets.length;
 
-  // Signature distribution
+  const openInventory = (extra: Record<string, string> = {}) => {
+    setFilters({ type: 'TLS Certificate', ...extra });
+    setCurrentPage('inventory');
+  };
+
   const sigCounts = SIG_BUCKETS.map(b => {
     const count = certAssets.filter(a => b.algs.includes(a.algorithm)).length;
     return { ...b, count, pct: total > 0 ? Math.round((count / total) * 100) : 0 };
   });
-  // Assign uncategorized to "Approved"
   const categorized = sigCounts.reduce((s, b) => s + b.count, 0);
   if (categorized < total) {
     const approvedIdx = sigCounts.findIndex(b => b.label === 'Approved');
@@ -66,7 +96,6 @@ export default function AlgorithmStrength({ openModal: _openModal }: AlgorithmSt
     }
   }
 
-  // Key length distribution
   const keyCounts = KEY_BUCKETS.map(b => {
     const count = certAssets.filter(b.test).length;
     return { label: b.label, count, pct: total > 0 ? Math.round((count / total) * 100) : 0, color: b.color, barColor: b.barColor };
@@ -80,9 +109,25 @@ export default function AlgorithmStrength({ openModal: _openModal }: AlgorithmSt
     }
   }
 
-  // Quantum vulnerable
   const qvAlgs = ['RSA-1024', 'RSA-2048', 'RSA-3072', 'RSA-4096', 'ECC P-256', 'ECC P-384', 'Ed25519', 'DSA', 'DH'];
-  const qvCount = certAssets.filter(a => qvAlgs.includes(a.algorithm)).length;
+  const qvCerts = certAssets.filter(a => qvAlgs.includes(a.algorithm));
+  const qvCount = qvCerts.length;
+
+  const handleSignatureClick = (label: string) => {
+    if (label === 'Disallowed') {
+      openModal?.('Disallowed Algorithms', certAssets.filter(a => ['RSA-1024', 'SHA-1'].includes(a.algorithm)));
+      return;
+    }
+    if (label === 'Legacy') {
+      openModal?.('Legacy Algorithms', certAssets.filter(a => ['RSA-2048', 'RSA-3072'].includes(a.algorithm)));
+      return;
+    }
+    if (label === 'Approved') {
+      openInventory({ algorithmGroup: 'approved' });
+      return;
+    }
+    openInventory({ algorithmGroup: 'pqc-safe' });
+  };
 
   return (
     <div className="bg-card border border-border rounded-xl p-5">
@@ -91,21 +136,32 @@ export default function AlgorithmStrength({ openModal: _openModal }: AlgorithmSt
         <h3 className="text-sm font-semibold text-foreground">Algorithm & Key Strength</h3>
       </div>
 
-      {/* Signature Algorithm */}
       <div className="mb-5">
         <p className="text-xs text-muted-foreground mb-2">Signature Algorithm Distribution</p>
-        <StackedBar segments={sigCounts.map(s => ({ pct: s.pct, barColor: s.barColor }))} />
-        <LegendRow items={sigCounts} />
+        <StackedBar segments={sigCounts.map(s => ({ pct: s.pct, barColor: s.barColor, onClick: () => handleSignatureClick(s.label), actionable: true }))} />
+        <LegendRow items={sigCounts.map((item) => ({
+          label: item.label,
+          count: item.count,
+          pct: item.pct,
+          color: item.color,
+          actionable: true,
+          pattern: item.label === 'Disallowed' || item.label === 'Legacy' ? 'modal' : 'inventory',
+          onClick: () => handleSignatureClick(item.label),
+        }))} />
         {qvCount > 0 && (
-          <p className="text-xs text-amber mt-2">
-            ⚠ {qvCount} of {total} certs use quantum-vulnerable algorithms (RSA/ECC)
-          </p>
+          <button
+            type="button"
+            onClick={() => openModal?.('Quantum-Vulnerable Certs', qvCerts)}
+            className="group mt-2 inline-flex items-center gap-1 text-xs text-amber transition-colors hover:text-foreground"
+          >
+            <span>⚠ {qvCount} of {total} certs use quantum-vulnerable algorithms (RSA/ECC)</span>
+            <ArrowRight className="h-3 w-3 text-teal opacity-0 transition-opacity group-hover:opacity-100" />
+          </button>
         )}
       </div>
 
       <div className="border-t border-border my-4" />
 
-      {/* Key Length */}
       <div>
         <p className="text-xs text-muted-foreground mb-2">Key Length Distribution</p>
         <StackedBar segments={keyCounts.map(s => ({ pct: s.pct, barColor: s.barColor }))} />
