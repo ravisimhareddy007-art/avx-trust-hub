@@ -9,7 +9,6 @@ import {
   ArrowRight, User, Workflow, CheckCircle, Plus, Ticket, LockKeyhole,
   Terminal, Code, Database, Cpu, Sparkles, AlertCircle, Send
 } from 'lucide-react';
-import CertDeploymentsView from '@/components/remediation/CertDeploymentsView';
 import CLMRemediationWorkspace from '@/components/remediation/clm/CLMRemediationWorkspace';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
