@@ -231,6 +231,14 @@ export default function PKIEngineerDashboard() {
     openModal(`${prefix} :: ${nextLabel}`, nextCerts);
   }
 
+  function guardAndOpenDrill(kind: 'severity' | 'ca' | 'scan', label: string, certs: ScoredCert[], count?: number) {
+    if ((count ?? certs.length) === 0 || !certs || certs.length === 0) {
+      toast.info('No certificates in this category');
+      return;
+    }
+    openDrill(kind, label, certs);
+  }
+
   function getScanTypeCerts(scanType: string) {
     let matches: ScoredCert[] = [];
 
@@ -354,8 +362,8 @@ export default function PKIEngineerDashboard() {
                       <button
                         key={bucket.name}
                         type="button"
-                        onClick={() => openDrill(bucket.name, bucket.certs)}
-                        className="flex w-full items-center gap-3 rounded px-2 py-1.5 text-left transition hover:bg-secondary/30"
+                        onClick={() => bucket.certs.length > 0 ? openDrill(bucket.name, bucket.certs) : toast.info('No certificates in this category')}
+                        className={`flex w-full items-center gap-3 rounded px-2 py-1.5 text-left transition ${bucket.certs.length > 0 ? 'hover:bg-secondary/30' : 'cursor-default'}`}
                       >
                         <span className="w-20 text-xs font-semibold text-foreground">{bucket.name}</span>
                         <div className="h-5 flex-1 overflow-hidden rounded bg-secondary/40">
@@ -384,7 +392,14 @@ export default function PKIEngineerDashboard() {
                 <div className="flex flex-col items-center">
                   <div className="relative h-[160px] w-[160px]">
                     <PieChart width={160} height={160}>
-                      <Pie data={donutData} dataKey="value" innerRadius={50} outerRadius={70} paddingAngle={2} onClick={(_, index) => openDrill(donutData[index]?.name ?? 'Expiry', donutData[index]?.certs ?? [])}>
+                      <Pie data={donutData} dataKey="value" innerRadius={50} outerRadius={70} paddingAngle={2} onClick={(_, index) => {
+                        const entry = donutData[index];
+                        if (!entry || entry.value === 0 || entry.certs.length === 0) {
+                          toast.info('No certificates in this category');
+                          return;
+                        }
+                        openDrill(entry.name, entry.certs);
+                      }}>
                         {donutData.map((entry) => <Cell key={entry.name} fill={entry.color} />)}
                       </Pie>
                     </PieChart>
@@ -431,7 +446,7 @@ export default function PKIEngineerDashboard() {
                       <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} angle={-15} textAnchor="end" height={50} axisLine={false} tickLine={false} interval={0} />
                       <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} label={{ value: 'Certificate Counts', angle: -90, position: 'insideLeft', style: { fill: 'hsl(var(--muted-foreground))', fontSize: 10 } }} />
                       <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 11 }} />
-                      <Bar dataKey="value" fill="hsl(230 60% 60%)" radius={[4, 4, 0, 0]} cursor="pointer" onClick={(data) => openDrill('scan', data.name, getScanTypeCerts(data.name))}>
+                      <Bar dataKey="value" fill="hsl(230 60% 60%)" radius={[4, 4, 0, 0]} cursor="pointer" onClick={(data) => guardAndOpenDrill('scan', data.name, getScanTypeCerts(data.name), data.value)}>
                         <LabelList dataKey="value" position="top" style={{ fill: 'hsl(var(--foreground))', fontSize: 10 }} />
                       </Bar>
                     </BarChart>
@@ -460,7 +475,11 @@ export default function PKIEngineerDashboard() {
                         radius={[4, 4, 0, 0]}
                         fill="hsl(230 60% 60%)"
                         cursor="pointer"
-                        onClick={(data) => openDrill('ca', data.name, scored.filter((a) => a.caIssuer === data.name).length > 0 ? scored.filter((a) => a.caIssuer === data.name) : scored)}
+                        onClick={(data) => {
+                          const directMatches = scored.filter((a) => a.caIssuer === data.name);
+                          const certs = directMatches.length > 0 ? directMatches : scored.filter((a) => a.caIssuer.includes(data.name));
+                          guardAndOpenDrill('ca', data.name, certs, data.value);
+                        }}
                       >
                         <LabelList dataKey="value" position="top" style={{ fill: 'hsl(var(--foreground))', fontSize: 10 }} />
                       </Bar>
@@ -486,7 +505,6 @@ export default function PKIEngineerDashboard() {
           <div className="space-y-4 pr-1">
             <NonStandardCerts openModal={openModal} />
             <AlgorithmStrength openModal={openModal} />
-            <SLCCompliance openModal={openModal} />
             <ScanCoverage />
           </div>
         )}
