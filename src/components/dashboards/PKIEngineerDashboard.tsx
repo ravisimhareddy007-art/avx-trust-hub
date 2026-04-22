@@ -185,7 +185,12 @@ const CA_DISTRIBUTION = [
   { name: 'OpenTrust', value: 28 },
   { name: 'OTHERS', value: 345 },
 ] as const;
-const DEFAULT_VISIBLE_COLUMNS = COLUMN_OPTIONS.filter((column) => column.defaultVisible || column.required).map((column) => column.key) as ColumnKey[];
+const DEFAULT_VISIBLE_COLUMNS = COLUMN_OPTIONS.reduce<ColumnKey[]>((acc, column) => {
+  if (('defaultVisible' in column && column.defaultVisible) || ('required' in column && column.required)) {
+    acc.push(column.key);
+  }
+  return acc;
+}, []);
 const REVOKE_REASONS = [
   { value: 'Affiliation Changed', hint: 'Subject no longer affiliated with issuer' },
   { value: 'Cessation of operation', hint: 'Certificate holder stopped relevant operations' },
@@ -291,6 +296,9 @@ export default function PKIEngineerDashboard() {
   const [selected, setSelected] = useState<string[]>([]);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [actionModal, setActionModal] = useState<ActionModal>(null);
+  const [approvalAction, setApprovalAction] = useState<ApprovalAction>(null);
+  const [approvalSearch, setApprovalSearch] = useState('');
+  const [approvalDecisionOpen, setApprovalDecisionOpen] = useState(false);
   const [revokeReason, setRevokeReason] = useState('');
   const [revokeComment, setRevokeComment] = useState('');
   const [exportFormat, setExportFormat] = useState<'csv' | 'xls'>('csv');
@@ -308,6 +316,11 @@ export default function PKIEngineerDashboard() {
   const [reissueReason, setReissueReason] = useState('');
   const [switchCa, setSwitchCa] = useState('Entrust L1K');
   const [bulkUpdateMode, setBulkUpdateMode] = useState<'File Upload' | 'By Group'>('File Upload');
+  const [columnsOpen, setColumnsOpen] = useState(false);
+  const [columnSearch, setColumnSearch] = useState('');
+  const [selectedColumns, setSelectedColumns] = useState<ColumnKey[]>(DEFAULT_VISIBLE_COLUMNS);
+  const [draftSelectedColumns, setDraftSelectedColumns] = useState<ColumnKey[]>(DEFAULT_VISIBLE_COLUMNS);
+  const [previousSelectedColumns, setPreviousSelectedColumns] = useState<ColumnKey[]>(DEFAULT_VISIBLE_COLUMNS);
   const [revocationDone, setRevocationDone] = useState(false);
   const actionsButtonRef = useRef<HTMLButtonElement | null>(null);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
@@ -419,6 +432,130 @@ export default function PKIEngineerDashboard() {
     () => GROUPS.filter((group) => group.toLowerCase().includes(groupSearch.toLowerCase())),
     [groupSearch]
   );
+
+  const visibleColumns = useMemo(
+    () => COLUMN_OPTIONS.filter((column) => selectedColumns.includes(column.key)),
+    [selectedColumns]
+  );
+
+  const filteredColumnOptions = useMemo(
+    () => COLUMN_OPTIONS.filter((column) => column.label.toLowerCase().includes(columnSearch.toLowerCase())),
+    [columnSearch]
+  );
+
+  const selectedCerts = useMemo(
+    () => tabCerts.filter((cert) => selected.includes(cert.id)),
+    [selected, tabCerts]
+  );
+
+  const approvalRows = useMemo(() => {
+    const term = approvalSearch.trim().toLowerCase();
+    if (!term) return selectedCerts;
+    return selectedCerts.filter((cert) =>
+      [cert.commonName, cert.serial, cert.caIssuer, cert.name].some((value) => value.toLowerCase().includes(term))
+    );
+  }, [approvalSearch, selectedCerts]);
+
+  const getOrderId = (cert: CryptoAsset) => `R${cert.id.replace(/\D/g, '').padStart(5, '0')}`;
+  const getThumbprint = (cert: CryptoAsset) => cert.serial.replace(/:/g, '').padEnd(20, '0').slice(0, 20);
+  const getValidFrom = (cert: CryptoAsset) => cert.issueDate || '2026-01-01';
+  const getKubeAttributes = (cert: CryptoAsset) => cert.type === 'K8s Workload Cert' ? 'namespace=prod; workload=managed' : '—';
+  const getQuantumReadiness = (cert: CryptoAsset) => cert.pqcRisk;
+
+  const getColumnValue = (cert: ScoredCert, key: ColumnKey) => {
+    const thumbprint = getThumbprint(cert);
+
+    switch (key) {
+      case 'commonName':
+        return <span className="font-mono text-[10.5px] text-foreground">{cert.commonName || cert.name}</span>;
+      case 'serialNumber':
+        return <span className="font-mono text-[10px] text-muted-foreground">{cert.serial}</span>;
+      case 'group':
+        return <span className="text-[10px] text-muted-foreground">{getGroupLabel(cert)}</span>;
+      case 'issuerCommonName':
+      case 'certificateAuthority':
+        return <span className="text-[10px] text-muted-foreground">{cert.caIssuer}</span>;
+      case 'validTo':
+        return <span className="tabular-nums text-[10px] text-muted-foreground">{getValidTo(cert)}</span>;
+      case 'status': {
+        const statusLabel = getDisplayStatus(cert.status);
+        const statusColor = getStatusTone(cert.status);
+        return <span className="rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ backgroundColor: `${statusColor}22`, color: statusColor }}>{statusLabel}</span>;
+      }
+      case 'kubeAttributes':
+        return <span className="text-[10px] text-muted-foreground">{getKubeAttributes(cert)}</span>;
+      case 'quantumReadiness':
+        return <span className="text-[10px] text-muted-foreground">{getQuantumReadiness(cert)}</span>;
+      case 'subjectOrganizationUnit':
+        return <span className="text-[10px] text-muted-foreground">{cert.team}</span>;
+      case 'subjectLocality':
+        return <span className="text-[10px] text-muted-foreground">San Jose</span>;
+      case 'subjectState':
+        return <span className="text-[10px] text-muted-foreground">California</span>;
+      case 'subjectCountry':
+        return <span className="text-[10px] text-muted-foreground">US</span>;
+      case 'issuerOrganization':
+        return <span className="text-[10px] text-muted-foreground">{cert.caIssuer.split(' ')[0]}</span>;
+      case 'issuerOrganizationUnit':
+        return <span className="text-[10px] text-muted-foreground">PKI Services</span>;
+      case 'issuerLocality':
+        return <span className="text-[10px] text-muted-foreground">New York</span>;
+      case 'issuerState':
+        return <span className="text-[10px] text-muted-foreground">New York</span>;
+      case 'issuerCountry':
+        return <span className="text-[10px] text-muted-foreground">US</span>;
+      case 'version':
+        return <span className="text-[10px] text-muted-foreground">v3</span>;
+      case 'validFrom':
+        return <span className="tabular-nums text-[10px] text-muted-foreground">{getValidFrom(cert)}</span>;
+      case 'keyAlgorithmSize':
+        return <span className="text-[10px] text-muted-foreground">{`${cert.algorithm} / ${cert.keyLength}`}</span>;
+      case 'signatureAlgorithm':
+        return <span className="text-[10px] text-muted-foreground">{getSignatureAlgorithm(cert.algorithm)}</span>;
+      case 'keyUsages':
+        return <span className="text-[10px] text-muted-foreground">Digital Signature, Key Encipherment</span>;
+      case 'extendedKeyUsages':
+        return <span className="text-[10px] text-muted-foreground">Server Auth, Client Auth</span>;
+      case 'basicConstraints':
+        return <span className="text-[10px] text-muted-foreground">CA:FALSE</span>;
+      case 'associatedObject':
+        return <span className="text-[10px] text-muted-foreground">{cert.infrastructure}</span>;
+      case 'applications':
+        return <span className="text-[10px] text-muted-foreground">{cert.application}</span>;
+      case 'subjectAlternativeNames':
+        return <span className="text-[10px] text-muted-foreground">{cert.commonName}, api.{cert.application.toLowerCase().replace(/\s+/g, '-')}.acmecorp.com</span>;
+      case 'compliant':
+        return <span className="text-[10px] text-muted-foreground">{cert.crs < 30 ? 'Yes' : 'No'}</span>;
+      case 'discoveredFileNames':
+        return <span className="text-[10px] text-muted-foreground">{`${cert.name}.pem`}</span>;
+      case 'renewDate':
+        return <span className="tabular-nums text-[10px] text-muted-foreground">{getValidTo(cert)}</span>;
+      case 'validFor':
+        return <span className="text-[10px] text-muted-foreground">{Math.max(cert.daysToExpiry, 0)} days</span>;
+      case 'requestId':
+      case 'orderId':
+        return <span className="text-[10px] text-muted-foreground">{getOrderId(cert)}</span>;
+      case 'subjectEmailAddress':
+        return <span className="text-[10px] text-muted-foreground">{`${cert.owner.toLowerCase().replace(/\s+/g, '.')}@acmecorp.com`}</span>;
+      case 'comments':
+        return <span className="text-[10px] text-muted-foreground">Managed by {cert.team}</span>;
+      case 'countOfSubjectAltNames':
+        return <span className="text-[10px] text-muted-foreground">2</span>;
+      case 'reenrollDate':
+      case 'regenerateDate':
+        return <span className="tabular-nums text-[10px] text-muted-foreground">{getValidFrom(cert)}</span>;
+      case 'thumbprint':
+        return <span className="font-mono text-[10px] text-muted-foreground">{thumbprint}</span>;
+      case 'subjectKeyIdentifier':
+        return <span className="font-mono text-[10px] text-muted-foreground">{thumbprint.slice(0, 12)}</span>;
+      case 'discoverySource':
+        return <span className="text-[10px] text-muted-foreground">{cert.discoverySource}</span>;
+      case 'subjectOrganization':
+        return <span className="text-[10px] text-muted-foreground">AcmeCorp</span>;
+      default:
+        return <span className="text-[10px] text-muted-foreground">—</span>;
+    }
+  };
 
   useEffect(() => {
     if (!actionsOpen) return;
