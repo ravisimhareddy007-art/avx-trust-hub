@@ -3,11 +3,13 @@ import { Info, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { ESTATE_SUMMARY, mockAssets } from '@/data/mockData';
 import { useNav } from '@/context/NavigationContext';
+import type { CertCounts } from './types';
 
 const allCerts = mockAssets.filter((a) => a.type.includes('Certificate'));
 
 type OperationsStatusBandsProps = {
   openModal?: (title: string, certs: any[]) => void;
+  certCounts: CertCounts;
 };
 
 type Segment = {

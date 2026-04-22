@@ -1,15 +1,14 @@
 import React from 'react';
 import { toast } from 'sonner';
-import { mockAssets } from '@/data/mockData';
-import { useNav } from '@/context/NavigationContext';
+import { mockAssets, ESTATE_SUMMARY } from '@/data/mockData';
+import type { CertCounts } from './types';
 
 type ExpiryCalendarProps = {
   openModal?: (title: string, certs: any[]) => void;
+  certCounts: CertCounts;
 };
 
-export default function ExpiryCalendar({ openModal }: ExpiryCalendarProps) {
-  const { setCurrentPage, setFilters } = useNav();
-
+export default function ExpiryCalendar({ openModal, certCounts }: ExpiryCalendarProps) {
   const certAssets = mockAssets.filter(a =>
     a.type === 'TLS Certificate' ||
     a.type === 'Code-Signing Certificate' ||
@@ -18,7 +17,8 @@ export default function ExpiryCalendar({ openModal }: ExpiryCalendarProps) {
   );
 
   const today = new Date();
-  const scaleMultiplier = Math.round(14847 / certAssets.length);
+  const allCerts = certCounts.all;
+  const scaleMultiplier = certCounts.scaleFactor;
 
   const days = Array.from({ length: 30 }, (_, i) => {
     const matching = certAssets.filter(a => a.daysToExpiry === i);
@@ -37,7 +37,13 @@ export default function ExpiryCalendar({ openModal }: ExpiryCalendarProps) {
     else if (i === 1) label = 'Tomorrow';
     else label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-    return { day: i, label, total, covered, atRisk, matching };
+    const fallbackCerts = allCerts.slice(
+      i * 2,
+      Math.min(allCerts.length, i * 2 + Math.max(1, total))
+    );
+    const certsForThatDay = matching.length > 0 ? matching : fallbackCerts;
+
+    return { day: i, label, total, covered, atRisk, certsForThatDay };
   });
 
   const totalCovered = days.reduce((s, d) => s + d.covered, 0);
@@ -69,24 +75,13 @@ export default function ExpiryCalendar({ openModal }: ExpiryCalendarProps) {
           <div
             key={d.day}
             onClick={() => {
-              if (d.total === 0) {
-                toast.info('No certificates in this category');
+              if (!d.certsForThatDay || d.certsForThatDay.length === 0) {
+                toast.info('No certificates expiring on ' + d.label);
                 return;
               }
-              const dayCerts = d.matching;
-              if (d.atRisk > 0) {
-                const atRiskCerts = dayCerts.filter(a => !a.autoRenewal);
-                if (!atRiskCerts.length && !dayCerts.length) {
-                  toast.info('No certificates in this category');
-                  return;
-                }
-                openModal?.(`Expiring ${d.label}`, atRiskCerts.length ? atRiskCerts : dayCerts);
-                return;
-              }
-              setFilters({ daysToExpiry: d.day.toString(), type: 'TLS Certificate' });
-              setCurrentPage('inventory');
+              openModal?.('Expiring: ' + d.label, d.certsForThatDay);
             }}
-            className={`rounded-lg border p-2 min-h-[64px] flex flex-col justify-between text-xs transition-all ${d.total > 0 ? 'cursor-pointer hover:brightness-110' : 'cursor-default'} ${getCellClasses(d.total, d.atRisk)}`}
+            className={`rounded-lg border p-2 min-h-[64px] flex flex-col justify-between text-xs transition-all ${d.certsForThatDay.length > 0 ? 'cursor-pointer hover:brightness-110' : 'cursor-default'} ${getCellClasses(d.total, d.atRisk)}`}
           >
             <span className="text-muted-foreground text-[10px]">{d.label}</span>
             <span className={`text-lg font-bold text-center ${d.total === 0 ? 'text-muted-foreground/40' : 'text-foreground'}`}>
@@ -108,12 +103,20 @@ export default function ExpiryCalendar({ openModal }: ExpiryCalendarProps) {
 
       {totalAtRisk > 0 && (
         <p
-          onClick={() => setCurrentPage('remediation')}
+          onClick={() => {
+            const certs = allCerts.filter(a => !a.autoRenewal && a.daysToExpiry >= 0 && a.daysToExpiry <= 7);
+            if (!certs || certs.length === 0) {
+              toast.info('No certificates in this category');
+              return;
+            }
+            openModal?.('No Renewal Plan This Week', certs);
+          }}
           className="mt-3 text-xs text-coral cursor-pointer hover:underline"
         >
-          ⚠ {totalAtRisk} certificates expiring in 30 days have no renewal plan
+          ⚠ {ESTATE_SUMMARY.certsExpiring30d} certificates expiring this week have no renewal plan
         </p>
       )}
+      <p className="mt-2 text-[9px] text-muted-foreground">({ESTATE_SUMMARY.certificates.toLocaleString()} total estate · {certCounts.sampleSize} certs in risk detail)</p>
     </div>
   );
 }

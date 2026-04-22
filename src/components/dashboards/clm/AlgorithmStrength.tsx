@@ -3,6 +3,7 @@ import { ArrowRight, ExternalLink, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import { mockAssets } from '@/data/mockData';
 import { useNav } from '@/context/NavigationContext';
+import type { CertCounts } from './types';
 
 const certAssets = mockAssets.filter(a =>
   a.type === 'TLS Certificate' || a.type === 'Code-Signing Certificate' ||
@@ -73,6 +74,7 @@ function LegendRow({ items }: { items: { label: string; count: number; pct: numb
 
 type AlgorithmStrengthProps = {
   openModal?: (title: string, certs: any[]) => void;
+  certCounts: CertCounts;
 };
 
 export default function AlgorithmStrength({ openModal }: AlgorithmStrengthProps) {

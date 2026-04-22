@@ -3,6 +3,7 @@ import { ArrowRight, Clock, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { mockAssets } from '@/data/mockData';
 import { useNav } from '@/context/NavigationContext';
+import type { CertCounts } from './types';
 
 interface Stage {
   key: 'detected' | 'initiated' | 'submitted' | 'issued' | 'deployed' | 'no-plan';
@@ -31,6 +32,7 @@ type CertRecord = {
 
 type RenewalPipelineProps = {
   openModal?: (title: string, certs: any[]) => void;
+  certCounts: CertCounts;
 };
 
 const stages: Stage[] = [
