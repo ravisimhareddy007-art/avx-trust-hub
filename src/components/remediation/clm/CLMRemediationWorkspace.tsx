@@ -10,6 +10,7 @@ import {
   CircleDot,
   Download,
   ExternalLink,
+  FileCode,
   FilePlus,
   Info,
   KeyRound,
