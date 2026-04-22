@@ -3,6 +3,7 @@
 // in Remediation > Certificates > Deployments.
 
 export type DeploymentStatus = 'pending' | 'in-progress' | 'success' | 'failed';
+export type DeploymentTarget = 'all' | 'k8s' | 'mesh' | 'traditional';
 
 export interface DeploymentLogEntry {
   ts: string;        // human time
@@ -22,6 +23,7 @@ export interface CertDeployment {
   id: string;                       // e.g. DEP-2026-0421
   certName: string;
   certId: string;
+  deploymentTarget: Exclude<DeploymentTarget, 'all'>;
   initiatedBy: string;
   initiatedAt: string;              // human time
   initiatedAtRaw: string;           // ISO
@@ -40,6 +42,7 @@ export const mockDeployments: CertDeployment[] = [
     id: 'DEP-2026-0421',
     certName: '*.payments.acmecorp.com',
     certId: 'cert-001',
+    deploymentTarget: 'traditional',
     initiatedBy: 'sarah.chen@acmecorp.com',
     initiatedAt: '4 min ago',
     initiatedAtRaw: '2026-04-17T10:26:00Z',
@@ -61,6 +64,7 @@ export const mockDeployments: CertDeployment[] = [
     id: 'DEP-2026-0420',
     certName: 'api.internal.acmecorp.com',
     certId: 'cert-002',
+    deploymentTarget: 'mesh',
     initiatedBy: 'mike.rodriguez@acmecorp.com',
     initiatedAt: '32 min ago',
     initiatedAtRaw: '2026-04-17T09:58:00Z',
@@ -80,6 +84,7 @@ export const mockDeployments: CertDeployment[] = [
     id: 'DEP-2026-0419',
     certName: 'portal.acmecorp.com',
     certId: 'cert-003',
+    deploymentTarget: 'traditional',
     initiatedBy: 'lisa.park@acmecorp.com',
     initiatedAt: '1 hour ago',
     initiatedAtRaw: '2026-04-17T09:30:00Z',
@@ -100,6 +105,7 @@ export const mockDeployments: CertDeployment[] = [
     id: 'DEP-2026-0418',
     certName: 'cdn.acmecorp.com',
     certId: 'cert-004',
+    deploymentTarget: 'traditional',
     initiatedBy: 'sarah.chen@acmecorp.com',
     initiatedAt: '3 hours ago',
     initiatedAtRaw: '2026-04-17T07:30:00Z',
@@ -119,6 +125,7 @@ export const mockDeployments: CertDeployment[] = [
     id: 'DEP-2026-0417',
     certName: 'payments-tls (k8s)',
     certId: 'cert-005',
+    deploymentTarget: 'k8s',
     initiatedBy: 'auto-renew',
     initiatedAt: '6 hours ago',
     initiatedAtRaw: '2026-04-17T04:30:00Z',

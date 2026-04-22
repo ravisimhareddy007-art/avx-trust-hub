@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { mockDeployments, CertDeployment, DeploymentStatus } from '@/data/deploymentsMockData';
+import { mockDeployments, CertDeployment, DeploymentStatus, DeploymentTarget } from '@/data/deploymentsMockData';
 import { Search, CheckCircle2, AlertTriangle, Clock, Loader2, RefreshCw, X, FileText, ArrowUpRight, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -26,14 +26,23 @@ const filterOptions: { id: 'all' | DeploymentStatus; label: string }[] = [
   { id: 'failed', label: 'Failed' },
 ];
 
+const DEPLOYMENT_TARGETS: { label: string; key: DeploymentTarget }[] = [
+  { label: 'All Targets', key: 'all' },
+  { label: 'K8s / cert-manager', key: 'k8s' },
+  { label: 'Service Mesh', key: 'mesh' },
+  { label: 'Traditional', key: 'traditional' },
+];
+
 export default function CertDeploymentsView() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | DeploymentStatus>('all');
+  const [targetFilter, setTargetFilter] = useState<DeploymentTarget>('all');
   const [selected, setSelected] = useState<CertDeployment | null>(null);
 
   const items = useMemo(() => {
     let r = mockDeployments;
     if (filter !== 'all') r = r.filter(d => d.status === filter);
+    if (targetFilter !== 'all') r = r.filter(d => d.deploymentTarget === targetFilter);
     if (search) {
       const q = search.toLowerCase();
       r = r.filter(d =>
@@ -43,7 +52,7 @@ export default function CertDeploymentsView() {
       );
     }
     return r;
-  }, [filter, search]);
+  }, [filter, targetFilter, search]);
 
   const counts = useMemo(() => ({
     all: mockDeployments.length,
@@ -79,6 +88,20 @@ export default function CertDeploymentsView() {
             }`}
           >
             {f.label} ({counts[f.id]})
+          </button>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {DEPLOYMENT_TARGETS.map(target => (
+          <button
+            key={target.key}
+            onClick={() => setTargetFilter(target.key)}
+            className={`px-3 py-1 rounded-full text-[10px] font-medium transition-colors ${
+              targetFilter === target.key ? 'bg-teal/10 text-teal border border-teal/30' : 'bg-muted text-muted-foreground border border-transparent hover:border-border'
+            }`}
+          >
+            {target.label}
           </button>
         ))}
       </div>
