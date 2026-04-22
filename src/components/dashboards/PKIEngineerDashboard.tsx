@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import ReactDOM from 'react-dom';
 import {
   RefreshCw,
   LayoutDashboard,
@@ -448,14 +449,20 @@ export default function PKIEngineerDashboard() {
       <div className="mt-5 flex items-center justify-end gap-2">
         <button
           type="button"
-          onClick={closeActionModal}
+          onClick={(e) => {
+            e.stopPropagation();
+            closeActionModal();
+          }}
           className="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-secondary/40"
         >
           {secondaryLabel}
         </button>
         <button
           type="button"
-          onClick={onPrimary}
+          onClick={(e) => {
+            e.stopPropagation();
+            onPrimary();
+          }}
           className="rounded-md px-3 py-1.5 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90"
           style={primaryStyle ?? { backgroundColor: 'hsl(var(--teal))' }}
         >
@@ -467,10 +474,10 @@ export default function PKIEngineerDashboard() {
     const selectedCount = selected.length;
 
     return (
-      <div className="relative z-[70]">
+      <div className="fixed inset-0 z-[70]" onClick={(e) => e.stopPropagation()}>
         {actionModal === 'export' && (
           <Modal open onClose={closeActionModal} title="Export Certificates">
-            <div className="space-y-4 text-xs text-foreground">
+            <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
               <div>
                 <p className="text-[11px] text-muted-foreground">Group</p>
                 <p className="mt-1 rounded-md border border-border bg-secondary/20 px-3 py-2">all-certificate-groups</p>
@@ -501,7 +508,7 @@ export default function PKIEngineerDashboard() {
 
         {actionModal === 'download' && (
           <Modal open onClose={closeActionModal} title="Download Certificate">
-            <div className="space-y-4 text-xs text-foreground">
+            <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
               <div className="space-y-2">
                 <p className="text-[11px] text-muted-foreground">Choose Download Type</p>
                 <label className="flex items-center gap-2">
@@ -524,7 +531,7 @@ export default function PKIEngineerDashboard() {
 
         {actionModal === 'delete' && (
           <Modal open onClose={closeActionModal} title="Delete Certificate">
-            <div className="space-y-4 text-xs text-foreground">
+            <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
               <div className="rounded-lg border p-3" style={{ backgroundColor: 'hsl(var(--coral) / 0.08)', borderColor: 'hsl(var(--coral) / 0.2)' }}>
                 Delete {selectedCount} certificate(s)? This cannot be undone.
               </div>
@@ -535,7 +542,7 @@ export default function PKIEngineerDashboard() {
 
         {actionModal === 'change-status' && (
           <Modal open onClose={closeActionModal} title="Change Status">
-            <div className="space-y-4 text-xs text-foreground">
+            <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
               <div className="space-y-2">
                 <p>Change Status to:</p>
                 {['Managed', 'Monitored'].map((status) => (
@@ -554,7 +561,7 @@ export default function PKIEngineerDashboard() {
 
         {actionModal === 'assign-group' && (
           <Modal open onClose={closeActionModal} title="Assign to Group">
-            <div className="space-y-4 text-xs text-foreground">
+            <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                 <input value={groupSearch} onChange={(e) => setGroupSearch(e.target.value)} placeholder="Search groups" className="w-full rounded-md border border-border bg-secondary/20 py-2 pl-9 pr-3 text-xs outline-none" />
@@ -579,7 +586,7 @@ export default function PKIEngineerDashboard() {
 
         {actionModal === 'unassign-group' && (
           <Modal open onClose={closeActionModal} title="Unassign Group">
-            <div className="space-y-4 text-xs text-foreground">
+            <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
               <p className="text-muted-foreground">Move to Default group?</p>
               {modalFooter('Unassign', () => handleSuccess(`Unassigned ${selectedCount} certificate(s)`), { backgroundColor: 'hsl(var(--amber))' })}
             </div>
@@ -588,7 +595,7 @@ export default function PKIEngineerDashboard() {
 
         {actionModal === 'add-comments' && (
           <Modal open onClose={closeActionModal} title="Add / Modify Comments">
-            <div className="space-y-4 text-xs text-foreground">
+            <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
               <textarea value={comments} onChange={(e) => setComments(e.target.value)} rows={4} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none" />
               {modalFooter('Save', () => handleSuccess(`Saved comments for ${selectedCount} certificate(s)`))}
             </div>
@@ -597,7 +604,7 @@ export default function PKIEngineerDashboard() {
 
         {actionModal === 'cert-attributes' && (
           <Modal open onClose={closeActionModal} title="Certificate Attributes">
-            <div className="space-y-4 text-xs text-foreground">
+            <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
               {['Owner', 'Environment', 'Business Unit'].map((field) => (
                 <div key={field} className="grid grid-cols-[120px,1fr] items-center gap-3 rounded-md border border-border px-3 py-2">
                   <span className="text-muted-foreground">{field}</span>
@@ -611,7 +618,7 @@ export default function PKIEngineerDashboard() {
 
         {actionModal === 'bulk-update' && (
           <Modal open onClose={closeActionModal} title="Bulk Update Attributes Value">
-            <div className="space-y-4 text-xs text-foreground">
+            <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
               <div className="rounded-lg border p-3" style={{ backgroundColor: 'hsl(var(--amber) / 0.08)', borderColor: 'hsl(var(--amber) / 0.2)' }}>
                 Bulk updates affect multiple certificates and should be validated before import.
               </div>
@@ -635,7 +642,7 @@ export default function PKIEngineerDashboard() {
 
         {actionModal === 'update-renew' && (
           <Modal open onClose={closeActionModal} title="Update Renew Validity">
-            <div className="space-y-4 text-xs text-foreground">
+            <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
               <label className="space-y-2">
                 <span>Renew X days before expiry</span>
                 <input type="number" value={renewDays} onChange={(e) => setRenewDays(Number(e.target.value))} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none" />
@@ -647,7 +654,7 @@ export default function PKIEngineerDashboard() {
 
         {actionModal === 'renew' && (
           <Modal open onClose={closeActionModal} title="Renew Certificate">
-            <div className="space-y-4 text-xs text-foreground">
+            <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
               <p>{selectedCount || tabCerts.length} certificate(s) selected.</p>
               <label className="space-y-2 block">
                 <span>CA</span>
@@ -674,7 +681,7 @@ export default function PKIEngineerDashboard() {
 
         {actionModal === 'regenerate' && (
           <Modal open onClose={closeActionModal} title="Regenerate Certificate">
-            <div className="space-y-4 text-xs text-foreground">
+            <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
               <p>{selectedCount || tabCerts.length} certificate(s) selected.</p>
               <label className="space-y-2 block">
                 <span>Key Type</span>
@@ -698,7 +705,7 @@ export default function PKIEngineerDashboard() {
 
         {actionModal === 'reissue' && (
           <Modal open onClose={closeActionModal} title="Reissue Certificate">
-            <div className="space-y-4 text-xs text-foreground">
+            <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
               <p>{selectedCount || tabCerts.length} certificate(s) selected.</p>
               <label className="space-y-2 block">
                 <span>CA</span>
@@ -723,7 +730,7 @@ export default function PKIEngineerDashboard() {
 
         {actionModal === 'revoke' && (
           <Modal open onClose={closeActionModal} title="Certificate Revoke">
-            <div className="space-y-4 text-xs text-foreground">
+            <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
               <label className="space-y-2 block">
                 <span>* Reason:</span>
                 <select value={revokeReason} onChange={(e) => setRevokeReason(e.target.value)} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none">
@@ -758,7 +765,7 @@ export default function PKIEngineerDashboard() {
 
         {actionModal === 'ca-switch' && (
           <Modal open onClose={closeActionModal} title="CA Switch">
-            <div className="space-y-4 text-xs text-foreground">
+            <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
               <p className="text-muted-foreground">Current CA: {tabCerts[0]?.caIssuer ?? 'Unknown'}</p>
               <label className="space-y-2 block">
                 <span>Switch to</span>
@@ -776,7 +783,7 @@ export default function PKIEngineerDashboard() {
 
         {actionModal === 'revocation-check' && (
           <Modal open onClose={closeActionModal} title="Revocation Check">
-            <div className="space-y-4 text-xs text-foreground">
+            <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
               {!revocationDone ? (
                 <div className="space-y-3">
                   <div className="h-2 overflow-hidden rounded-full bg-secondary/40">
@@ -807,7 +814,7 @@ export default function PKIEngineerDashboard() {
 
         {actionModal === 'archive' && (
           <Modal open onClose={closeActionModal} title="Archive Certificates">
-            <div className="space-y-4 text-xs text-foreground">
+            <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
               <p>{selectedCount} certs will be archived.</p>
               <p className="text-muted-foreground">Archived certificates can be restored later.</p>
               {modalFooter('Archive', () => handleSuccess(`Archived ${selectedCount} certificate(s)`), { backgroundColor: 'hsl(var(--amber))' })}
