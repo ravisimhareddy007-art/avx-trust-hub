@@ -777,8 +777,15 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center border-b border-border">
+    <div className="flex h-full flex-col">
+      <div className="border-b border-border px-6 py-4">
+        <div className="flex items-center gap-2">
+          <Lock size={16} className="text-teal" />
+          <h1 className="text-lg font-semibold text-foreground">Certificates (CLM)</h1>
+        </div>
+      </div>
+
+      <div className="flex items-center border-b border-border px-6">
         {([
           { id: 'issues', label: 'Issues' },
           { id: 'deployments', label: 'Deployments' },
@@ -788,310 +795,308 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
             key={tab.id}
             type="button"
             onClick={() => onTabChange(tab.id)}
-            className={`relative -mb-px px-5 py-3 text-sm font-medium transition-colors ${activeTab === tab.id ? 'border-b-2 border-teal text-teal' : 'text-muted-foreground hover:text-foreground'}`}
+            className={`relative whitespace-nowrap px-4 py-3 text-sm font-medium transition-colors ${activeTab === tab.id ? '-mb-px border-b-2 border-teal text-teal' : 'text-muted-foreground hover:text-foreground'}`}
           >
             {tab.label}
           </button>
         ))}
       </div>
 
-      {activeTab === 'issues' && (
-        <div className="space-y-4">
-          <div className="border-b border-border px-5 pt-3 pb-2">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-              <div>
-                <h1 className="flex items-center gap-2 text-lg font-bold text-foreground">
-                  <Lock className="h-5 w-5 text-teal" />
-                  Certificates (CLM)
-                </h1>
-                <p className="mt-0 text-xs text-muted-foreground">{formatCount(clmIssues.length)} items need attention</p>
-              </div>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button type="button" onClick={launchIssueNewCertificate} className="inline-flex items-center gap-2 self-start rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-foreground hover:bg-secondary">
-                      <FilePlus className="h-4 w-4" />
-                      + Issue New Certificate
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>Create and issue a new certificate (independent of existing issues)</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-
-            <p className="mt-2 text-xs text-muted-foreground">Showing: Issues requiring attention</p>
-
-            <div className="mt-3 flex flex-col gap-3 border-b border-border px-6 py-3 xl:flex-row xl:items-center xl:justify-between">
-              <div className="flex flex-wrap items-center gap-2">
-                {quickFilters.map((filter) => {
-                  const active = quickFilterSelection.has(filter.id);
-                  return (
-                    <button
-                      key={filter.id}
-                      type="button"
-                      onClick={() => toggleQuickFilter(filter.id)}
-                      className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${active ? 'border-teal/40 bg-teal/10 text-teal' : 'border-border bg-background text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
-                    >
-                      {filter.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Search className="h-[15px] w-[15px]" />
-                  <input
-                    type="text"
-                    value={issueSearch}
-                    onChange={(event) => setIssueSearch(event.target.value)}
-                    placeholder="Search certificates or issues..."
-                    className="w-72 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
-                  />
+      <div className="flex-1 overflow-auto">
+        {activeTab === 'issues' && (
+          <div className="space-y-4 py-4">
+            <div className="border-b border-border px-6 pt-0 pb-2">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <p className="mt-0 text-xs text-muted-foreground">{formatCount(clmIssues.length)} items need attention</p>
                 </div>
-                <button type="button" onClick={() => toast.success('Issue export generated.')} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
-                  <Download className="h-3.5 w-3.5" />
-                  Export
-                </button>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2 px-6 py-3 text-xs">
-              <span className="rounded-full border border-coral/20 bg-coral/10 px-2.5 py-1 font-medium text-coral">Critical (0–3 days): {summaryCounts.critical}</span>
-              <span className="rounded-full border border-amber/20 bg-amber/10 px-2.5 py-1 font-medium text-amber">Warning (4–7 days): {summaryCounts.warning}</span>
-              <span className="rounded-full border border-border bg-background px-2.5 py-1 font-medium text-foreground">Total issues: {summaryCounts.total}</span>
-            </div>
-          </div>
-
-          <div className="overflow-hidden rounded-lg border border-border bg-card">
-            <BulkActionBar selectedCount={selectedIds.size} onAction={handleBulkAction} />
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1120px] text-sm">
-                <thead className="border-b border-border bg-background/40 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-3">
-                      <input type="checkbox" checked={allVisibleSelected} onChange={handleSelectAll} className="rounded border-border bg-background" />
-                    </th>
-                    <th className="px-3 py-3">Severity</th>
-                    <th className="px-3 py-3">Asset</th>
-                    <th className="px-3 py-3">
-                      <button type="button" className="inline-flex items-center gap-1 text-[11px] uppercase tracking-wide text-muted-foreground">
-                        Issue
-                        <ChevronDown className="h-3.5 w-3.5" />
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button type="button" onClick={launchIssueNewCertificate} className="inline-flex items-center gap-2 self-start rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-foreground hover:bg-secondary">
+                        <FilePlus className="h-4 w-4" />
+                        + Issue New Certificate
                       </button>
-                    </th>
-                    <th className="px-3 py-3">Owner</th>
-                    <th className="px-3 py-3">Env</th>
-                    <th className="px-3 py-3">Recommended</th>
-                    <th className="px-3 py-3">Action</th>
-                    <th className="px-3 py-3" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredIssues.map((row) => {
-                    const PrimaryIcon = actionMeta[row.primaryAction].icon;
-                    const urgencyDays = getUrgencyDays(row);
-                    const recommendation = getRecommendationMeta(row);
+                    </TooltipTrigger>
+                    <TooltipContent>Create and issue a new certificate (independent of existing issues)</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+
+              <p className="mt-2 text-xs text-muted-foreground">Showing: Issues requiring attention</p>
+
+              <div className="mt-3 flex flex-col gap-3 border-b border-border py-3 xl:flex-row xl:items-center xl:justify-between">
+                <div className="flex flex-wrap items-center gap-2">
+                  {quickFilters.map((filter) => {
+                    const active = quickFilterSelection.has(filter.id);
                     return (
-                      <tr key={row.id} className="cursor-pointer border-b border-border last:border-b-0 hover:bg-background/30" onClick={() => setDetailRow(row)}>
-                        <td className="px-3 py-3 align-top">
-                          <input type="checkbox" checked={selectedIds.has(row.id)} onChange={() => handleSelectRow(row.id)} onClick={(event) => event.stopPropagation()} className="rounded border-border bg-background" />
-                        </td>
-                        <td className="px-3 py-3 align-top">
-                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${severityBadgeClass(row.severity)}`}>{row.severity}</span>
-                        </td>
-                        <td className="px-3 py-3 align-top">
-                          <button type="button" onClick={(event) => { event.stopPropagation(); setDetailRow(row); }} className="font-mono text-xs text-foreground hover:text-teal hover:underline">
-                            {row.asset.name}
-                          </button>
-                        </td>
-                        <td className="px-3 py-3 align-top text-sm text-foreground">
-                          <div className="flex items-center gap-2">
-                            <span>{row.issueText}</span>
-                            {urgencyDays !== null && <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${urgencyBadgeClass(urgencyDays)}`}>{urgencyDays}d</span>}
-                          </div>
-                        </td>
-                        <td className="px-3 py-3 align-top text-sm text-muted-foreground">{row.owner}</td>
-                        <td className="px-3 py-3 align-top">
-                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${environmentBadgeClass(row.environment)}`}>{row.environment}</span>
-                        </td>
-                        <td className="px-3 py-3 align-top">
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <button type="button" onClick={(event) => { event.stopPropagation(); handleAction(recommendation.action, row); }} className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium ${recommendation.className}`}>
-                                  {recommendation.label}
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent>{recommendation.tooltip}</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </td>
-                        <td className="px-3 py-3 align-top">
-                          <button type="button" onClick={(event) => { event.stopPropagation(); handleAction(row.primaryAction, row); }} className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium ${actionMeta[row.primaryAction].className}`}>
-                            <PrimaryIcon className="h-3.5 w-3.5" />
-                            {row.primaryAction}
-                          </button>
-                        </td>
-                        <td className="px-3 py-3 align-top">
-                          <OverflowMenu row={row} onAction={handleAction} onPush={launchPushToDevice} />
-                        </td>
-                      </tr>
+                      <button
+                        key={filter.id}
+                        type="button"
+                        onClick={() => toggleQuickFilter(filter.id)}
+                        className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${active ? 'border-teal/40 bg-teal/10 text-teal' : 'border-border bg-background text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
+                      >
+                        {filter.label}
+                      </button>
                     );
                   })}
-                </tbody>
-              </table>
-            </div>
-            {filteredIssues.length === 0 && <div className="px-4 py-10 text-center text-sm text-muted-foreground">No issues match the current filters.</div>}
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'deployments' && <CertDeploymentsView />}
-
-      {activeTab === 'actions' && (
-        <div className="grid gap-4 xl:grid-cols-[minmax(320px,32%)_minmax(0,68%)]">
-          <div className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-2">
-              {proactiveCards.map((card) => {
-                const Icon = card.icon;
-                const openCard = () => {
-                  if (card.id === 'enroll') setEnrollOpen(true);
-                  if (card.id === 'push') launchPushToDevice();
-                  if (card.id === 'csr') setCsrOpen(true);
-                  if (card.id === 'ssl') setSslDrawerOpen(true);
-                };
-                return (
-                  <Card key={card.id} className="border-border bg-card shadow-none">
-                    <CardHeader className="space-y-3 p-4">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal/10 text-teal">
-                        <Icon className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-base font-semibold text-foreground">{card.title}</CardTitle>
-                        <CardDescription className="mt-1 text-sm text-muted-foreground">{card.description}</CardDescription>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="p-4 pt-0">
-                      <button type="button" onClick={openCard} className="inline-flex items-center gap-2 rounded-md bg-teal px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-teal-light">
-                        {card.cta}
-                        <ArrowRight className="h-3.5 w-3.5" />
-                      </button>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-
-            <div className="rounded-lg border border-border border-l-4 border-l-teal bg-card p-4">
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg bg-teal/10 text-teal">
-                  <Info className="h-4 w-4" />
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-foreground">Issue-driven actions</p>
-                  <p className="mt-1 text-sm text-muted-foreground">Renew, Regenerate, Reissue, Revoke, CA Switch, and Revocation Check are available directly on each certificate row in the Issues tab.</p>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Search className="h-[15px] w-[15px]" />
+                    <input
+                      type="text"
+                      value={issueSearch}
+                      onChange={(event) => setIssueSearch(event.target.value)}
+                      placeholder="Search certificates or issues..."
+                      className="w-72 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+                    />
+                  </div>
+                  <button type="button" onClick={() => toast.success('Issue export generated.')} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
+                    <Download className="h-3.5 w-3.5" />
+                    Export
+                  </button>
                 </div>
               </div>
-            </div>
-          </div>
 
-          <div className="rounded-lg border border-border bg-card">
-            <div className="flex flex-col gap-3 border-b border-border p-4 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <h2 className="text-base font-semibold text-foreground">Policy Requests</h2>
-              </div>
-              <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-                <div className="relative w-full lg:w-64">
-                  <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input value={queueSearch} onChange={(event) => setQueueSearch(event.target.value)} placeholder="Search policy requests" className="pl-8" />
-                </div>
-                <select value={queueFilter} onChange={(event) => setQueueFilter(event.target.value as QueueFilter)} className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground">
-                  {queueStatuses.map((status) => (
-                    <option key={status} value={status}>{status}</option>
-                  ))}
-                </select>
+              <div className="flex flex-wrap items-center gap-2 py-3 text-xs">
+                <span className="rounded-full border border-coral/20 bg-coral/10 px-2.5 py-1 font-medium text-coral">Critical (0–3 days): {summaryCounts.critical}</span>
+                <span className="rounded-full border border-amber/20 bg-amber/10 px-2.5 py-1 font-medium text-amber">Warning (4–7 days): {summaryCounts.warning}</span>
+                <span className="rounded-full border border-border bg-background px-2.5 py-1 font-medium text-foreground">Total issues: {summaryCounts.total}</span>
               </div>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[760px] text-sm">
-                <thead className="border-b border-border bg-background/40 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
-                  <tr>
-                    <th className="px-4 py-3">Request ID</th>
-                    <th className="px-4 py-3">Action</th>
-                    <th className="px-4 py-3">Certificate / Target</th>
-                    <th className="px-4 py-3">Requested By</th>
-                    <th className="px-4 py-3">Created</th>
-                    <th className="px-4 py-3">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {queueRows.map((row) => (
-                    <tr key={row.id} className="border-b border-border last:border-b-0 hover:bg-background/30">
-                      <td className="px-4 py-3 align-top">
-                        <button type="button" onClick={() => setLogRequest(row)} className="inline-flex items-center gap-1 font-mono text-xs text-foreground hover:text-teal hover:underline">
-                          {row.id}
-                          <ExternalLink className="h-3.5 w-3.5" />
+
+            <div className="mx-6 overflow-hidden rounded-lg border border-border bg-card">
+              <BulkActionBar selectedCount={selectedIds.size} onAction={handleBulkAction} />
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[1120px] text-sm">
+                  <thead className="border-b border-border bg-background/40 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
+                    <tr>
+                      <th className="px-3 py-3">
+                        <input type="checkbox" checked={allVisibleSelected} onChange={handleSelectAll} className="rounded border-border bg-background" />
+                      </th>
+                      <th className="px-3 py-3">Severity</th>
+                      <th className="px-3 py-3">Asset</th>
+                      <th className="px-3 py-3">
+                        <button type="button" className="inline-flex items-center gap-1 text-[11px] uppercase tracking-wide text-muted-foreground">
+                          Issue
+                          <ChevronDown className="h-3.5 w-3.5" />
                         </button>
-                      </td>
-                      <td className="px-4 py-3 align-top"><span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${actionBadgeClass(row.action)}`}>{row.action}</span></td>
-                      <td className="px-4 py-3 align-top text-sm text-foreground">{row.certificateTarget}</td>
-                      <td className="px-4 py-3 align-top text-sm text-muted-foreground">{row.requestedBy}</td>
-                      <td className="px-4 py-3 align-top text-sm text-muted-foreground">{row.created}</td>
-                      <td className="px-4 py-3 align-top">
-                        <span className={`inline-flex items-center gap-2 rounded-full px-2 py-0.5 text-[11px] font-medium ${requestStatusClass(row.status)}`}>
-                          {row.status === 'In Progress' && <span className="h-2 w-2 animate-pulse rounded-full bg-teal" />}
-                          {row.status}
-                        </span>
-                      </td>
+                      </th>
+                      <th className="px-3 py-3">Owner</th>
+                      <th className="px-3 py-3">Env</th>
+                      <th className="px-3 py-3">Recommended</th>
+                      <th className="px-3 py-3">Action</th>
+                      <th className="px-3 py-3" />
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {queueRows.length === 0 && <div className="px-4 py-10 text-center text-sm text-muted-foreground">No policy requests match the current filter.</div>}
-          </div>
-        </div>
-      )}
-
-      <DetailDrawer row={detailRow} open={!!detailRow} onClose={() => setDetailRow(null)} onRunAction={handleAction} />
-      <ExecutionLogDrawer request={logRequest} open={!!logRequest} onClose={() => setLogRequest(null)} />
-      <EnrollCertificateWizard open={enrollOpen} onClose={() => setEnrollOpen(false)} onSubmit={addPolicyRequest} />
-      <GenerateCSRModal open={csrOpen} onClose={() => setCsrOpen(false)} onSubmit={addPolicyRequest} />
-      <PushToDeviceModal open={pushOpen} onClose={() => { setPushOpen(false); setPushSeedRow(null); }} initialCertificateId={pushSeedRow?.assetId} />
-      <SSLCheckerDrawer open={sslDrawerOpen} onClose={() => setSslDrawerOpen(false)} />
-
-      <Modal open={!!actionType && !!actionRow} onClose={() => { setActionType(null); setActionRow(null); }} title={actionType ? `${actionType} Certificate` : 'Certificate Action'}>
-        {actionType && actionRow && (
-          <div className="space-y-4">
-            <div className="rounded-lg border border-border bg-background/40 p-3 text-sm">
-              <p className="font-medium text-foreground">{actionRow.asset.name}</p>
-              <p className="mt-1 text-muted-foreground">{actionRow.issueText}</p>
-            </div>
-
-            {actionType === 'Revocation Check - OCSP' ? (
-              <div className="rounded-lg border border-border bg-background/40 p-3 text-sm text-muted-foreground">
-                Run an OCSP check against <span className="font-mono text-foreground">{actionRow.asset.serial}</span> and queue the certificate for validation.
+                  </thead>
+                  <tbody>
+                    {filteredIssues.map((row) => {
+                      const PrimaryIcon = actionMeta[row.primaryAction].icon;
+                      const urgencyDays = getUrgencyDays(row);
+                      const recommendation = getRecommendationMeta(row);
+                      return (
+                        <tr key={row.id} className="cursor-pointer border-b border-border last:border-b-0 hover:bg-background/30" onClick={() => setDetailRow(row)}>
+                          <td className="px-3 py-3 align-top">
+                            <input type="checkbox" checked={selectedIds.has(row.id)} onChange={() => handleSelectRow(row.id)} onClick={(event) => event.stopPropagation()} className="rounded border-border bg-background" />
+                          </td>
+                          <td className="px-3 py-3 align-top">
+                            <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${severityBadgeClass(row.severity)}`}>{row.severity}</span>
+                          </td>
+                          <td className="px-3 py-3 align-top">
+                            <button type="button" onClick={(event) => { event.stopPropagation(); setDetailRow(row); }} className="font-mono text-xs text-foreground hover:text-teal hover:underline">
+                              {row.asset.name}
+                            </button>
+                          </td>
+                          <td className="px-3 py-3 align-top text-sm text-foreground">
+                            <div className="flex items-center gap-2">
+                              <span>{row.issueText}</span>
+                              {urgencyDays !== null && <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${urgencyBadgeClass(urgencyDays)}`}>{urgencyDays}d</span>}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 align-top text-sm text-muted-foreground">{row.owner}</td>
+                          <td className="px-3 py-3 align-top">
+                            <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${environmentBadgeClass(row.environment)}`}>{row.environment}</span>
+                          </td>
+                          <td className="px-3 py-3 align-top">
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button type="button" onClick={(event) => { event.stopPropagation(); handleAction(recommendation.action, row); }} className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium ${recommendation.className}`}>
+                                    {recommendation.label}
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent>{recommendation.tooltip}</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </td>
+                          <td className="px-3 py-3 align-top">
+                            <button type="button" onClick={(event) => { event.stopPropagation(); handleAction(row.primaryAction, row); }} className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium ${actionMeta[row.primaryAction].className}`}>
+                              <PrimaryIcon className="h-3.5 w-3.5" />
+                              {row.primaryAction}
+                            </button>
+                          </td>
+                          <td className="px-3 py-3 align-top">
+                            <OverflowMenu row={row} onAction={handleAction} onPush={launchPushToDevice} />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-            ) : actionType === 'CA Switch' ? (
-              <FormSelect label="Target CA" value={assignOwnerValue} onChange={setAssignOwnerValue} options={caList} />
-            ) : actionType === 'Migrate' ? (
-              <FormSelect label="Target algorithm" value={assignOwnerValue} onChange={setAssignOwnerValue} options={['ML-DSA-65', 'Hybrid RSA + ML-DSA', 'ML-KEM-768']} />
-            ) : actionType === 'Revoke' ? (
-              <FormField label="Revocation reason">
-                <Textarea defaultValue="Certificate is no longer trusted and must be revoked." className="min-h-[100px]" />
-              </FormField>
-            ) : (
-              <FormSelect label="Assign owner" value={assignOwnerValue} onChange={setAssignOwnerValue} options={ownerOptions} />
-            )}
-
-            <div className="flex justify-end border-t border-border pt-4">
-              <button type="button" onClick={submitAction} className="rounded-md bg-teal px-4 py-2 text-xs font-medium text-primary-foreground hover:bg-teal-light">
-                Submit
-              </button>
+              {filteredIssues.length === 0 && <div className="px-4 py-10 text-center text-sm text-muted-foreground">No issues match the current filters.</div>}
             </div>
           </div>
         )}
-      </Modal>
+
+        {activeTab === 'deployments' && <CertDeploymentsView />}
+
+        {activeTab === 'actions' && (
+          <div className="grid gap-4 p-4 xl:grid-cols-[minmax(320px,32%)_minmax(0,68%)]">
+            <div className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-2">
+                {proactiveCards.map((card) => {
+                  const Icon = card.icon;
+                  const openCard = () => {
+                    if (card.id === 'enroll') setEnrollOpen(true);
+                    if (card.id === 'push') launchPushToDevice();
+                    if (card.id === 'csr') setCsrOpen(true);
+                    if (card.id === 'ssl') setSslDrawerOpen(true);
+                  };
+                  return (
+                    <Card key={card.id} className="border-border bg-card shadow-none">
+                      <CardHeader className="space-y-3 p-4">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal/10 text-teal">
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-base font-semibold text-foreground">{card.title}</CardTitle>
+                          <CardDescription className="mt-1 text-sm text-muted-foreground">{card.description}</CardDescription>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="p-4 pt-0">
+                        <button type="button" onClick={openCard} className="inline-flex items-center gap-2 rounded-md bg-teal px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-teal-light">
+                          {card.cta}
+                          <ArrowRight className="h-3.5 w-3.5" />
+                        </button>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+
+              <div className="rounded-lg border border-border border-l-4 border-l-teal bg-card p-4">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg bg-teal/10 text-teal">
+                    <Info className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Issue-driven actions</p>
+                    <p className="mt-1 text-sm text-muted-foreground">Renew, Regenerate, Reissue, Revoke, CA Switch, and Revocation Check are available directly on each certificate row in the Issues tab.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-border bg-card">
+              <div className="flex flex-col gap-3 border-b border-border p-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <h2 className="text-base font-semibold text-foreground">Policy Requests</h2>
+                </div>
+                <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+                  <div className="relative w-full lg:w-64">
+                    <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input value={queueSearch} onChange={(event) => setQueueSearch(event.target.value)} placeholder="Search policy requests" className="pl-8" />
+                  </div>
+                  <select value={queueFilter} onChange={(event) => setQueueFilter(event.target.value as QueueFilter)} className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground">
+                    {queueStatuses.map((status) => (
+                      <option key={status} value={status}>{status}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[760px] text-sm">
+                  <thead className="border-b border-border bg-background/40 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
+                    <tr>
+                      <th className="px-4 py-3">Request ID</th>
+                      <th className="px-4 py-3">Action</th>
+                      <th className="px-4 py-3">Certificate / Target</th>
+                      <th className="px-4 py-3">Requested By</th>
+                      <th className="px-4 py-3">Created</th>
+                      <th className="px-4 py-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {queueRows.map((row) => (
+                      <tr key={row.id} className="border-b border-border last:border-b-0 hover:bg-background/30">
+                        <td className="px-4 py-3 align-top">
+                          <button type="button" onClick={() => setLogRequest(row)} className="inline-flex items-center gap-1 font-mono text-xs text-foreground hover:text-teal hover:underline">
+                            {row.id}
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </button>
+                        </td>
+                        <td className="px-4 py-3 align-top"><span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${actionBadgeClass(row.action)}`}>{row.action}</span></td>
+                        <td className="px-4 py-3 align-top text-sm text-foreground">{row.certificateTarget}</td>
+                        <td className="px-4 py-3 align-top text-sm text-muted-foreground">{row.requestedBy}</td>
+                        <td className="px-4 py-3 align-top text-sm text-muted-foreground">{row.created}</td>
+                        <td className="px-4 py-3 align-top">
+                          <span className={`inline-flex items-center gap-2 rounded-full px-2 py-0.5 text-[11px] font-medium ${requestStatusClass(row.status)}`}>
+                            {row.status === 'In Progress' && <span className="h-2 w-2 animate-pulse rounded-full bg-teal" />}
+                            {row.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {queueRows.length === 0 && <div className="px-4 py-10 text-center text-sm text-muted-foreground">No policy requests match the current filter.</div>}
+            </div>
+          </div>
+        )}
+
+        <DetailDrawer row={detailRow} open={!!detailRow} onClose={() => setDetailRow(null)} onRunAction={handleAction} />
+        <ExecutionLogDrawer request={logRequest} open={!!logRequest} onClose={() => setLogRequest(null)} />
+        <EnrollCertificateWizard open={enrollOpen} onClose={() => setEnrollOpen(false)} onSubmit={addPolicyRequest} />
+        <GenerateCSRModal open={csrOpen} onClose={() => setCsrOpen(false)} onSubmit={addPolicyRequest} />
+        <PushToDeviceModal open={pushOpen} onClose={() => { setPushOpen(false); setPushSeedRow(null); }} initialCertificateId={pushSeedRow?.assetId} />
+        <SSLCheckerDrawer open={sslDrawerOpen} onClose={() => setSslDrawerOpen(false)} />
+
+        <Modal open={!!actionType && !!actionRow} onClose={() => { setActionType(null); setActionRow(null); }} title={actionType ? `${actionType} Certificate` : 'Certificate Action'}>
+          {actionType && actionRow && (
+            <div className="space-y-4">
+              <div className="rounded-lg border border-border bg-background/40 p-3 text-sm">
+                <p className="font-medium text-foreground">{actionRow.asset.name}</p>
+                <p className="mt-1 text-muted-foreground">{actionRow.issueText}</p>
+              </div>
+
+              {actionType === 'Revocation Check - OCSP' ? (
+                <div className="rounded-lg border border-border bg-background/40 p-3 text-sm text-muted-foreground">
+                  Run an OCSP check against <span className="font-mono text-foreground">{actionRow.asset.serial}</span> and queue the certificate for validation.
+                </div>
+              ) : actionType === 'CA Switch' ? (
+                <FormSelect label="Target CA" value={assignOwnerValue} onChange={setAssignOwnerValue} options={caList} />
+              ) : actionType === 'Migrate' ? (
+                <FormSelect label="Target algorithm" value={assignOwnerValue} onChange={setAssignOwnerValue} options={['ML-DSA-65', 'Hybrid RSA + ML-DSA', 'ML-KEM-768']} />
+              ) : actionType === 'Revoke' ? (
+                <FormField label="Revocation reason">
+                  <Textarea defaultValue="Certificate is no longer trusted and must be revoked." className="min-h-[100px]" />
+                </FormField>
+              ) : (
+                <FormSelect label="Assign owner" value={assignOwnerValue} onChange={setAssignOwnerValue} options={ownerOptions} />
+              )}
+
+              <div className="flex justify-end border-t border-border pt-4">
+                <button type="button" onClick={submitAction} className="rounded-md bg-teal px-4 py-2 text-xs font-medium text-primary-foreground hover:bg-teal-light">
+                  Submit
+                </button>
+              </div>
+            </div>
+          )}
+        </Modal>
+      </div>
     </div>
   );
 }
