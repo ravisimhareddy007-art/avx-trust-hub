@@ -164,7 +164,7 @@ export default function EnrollCertificateWizard({ open, onClose, onSubmit }: { o
   const [caAccount, setCaAccount] = useState<string>(caAccounts[0]);
   const [certificateType, setCertificateType] = useState<string>('OV');
   const [division, setDivision] = useState('Division A');
-  const [certificateProfile, setCertificateProfile] = useState(certificateProfiles[0]);
+  const [certificateProfile, setCertificateProfile] = useState<string>(certificateProfiles[0]);
   const [raWorkflow, setRaWorkflow] = useState('RA-Workflow-01');
   const [issuerLocation, setIssuerLocation] = useState('us-central1');
   const [issuerName, setIssuerName] = useState('issuer-prod');
@@ -241,7 +241,7 @@ export default function EnrollCertificateWizard({ open, onClose, onSubmit }: { o
   const [renewalMessage, setRenewalMessage] = useState('Renew during scheduled maintenance window');
   const [vendorNotes, setVendorNotes] = useState('');
   const [seatId, setSeatId] = useState('SEAT-101');
-  const [globalSignProfile, setGlobalSignProfile] = useState('Profile-Standard');
+  const [globalSignProfile, setGlobalSignProfile] = useState<string>('Profile-Standard');
   const [expiryEmails, setExpiryEmails] = useState('ops@acme.com,security@acme.com');
   const [procedures, setProcedures] = useState('Default Procedure');
   const [challengeType, setChallengeType] = useState('HTTP');
