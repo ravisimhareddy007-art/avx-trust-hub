@@ -1,13 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { mockITAssets } from '@/data/inventoryMockData';
 import { mockAssets, type CryptoAsset } from '@/data/mockData';
-import { useNav } from '@/context/NavigationContext';
 import { computeCRS, getCrsFactors } from '@/lib/risk/crs';
-import { arsFor } from '@/lib/risk/ars';
 import { toast } from 'sonner';
-import AgentDetailPanel from '@/components/inventory/AgentDetailPanel';
 import AccessGraphTimeline, { getAgentTimelineEvents } from '@/components/remediation/ai/AccessGraphTimeline';
-import { AlertTriangle, CheckCircle2, Search, Send, Server, ShieldCheck, X, Zap } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Search, Send, Server, X, Zap } from 'lucide-react';
 
 const AI_AGENTS = mockAssets.filter(a => a.type === 'AI Agent Token');
 
@@ -24,7 +20,7 @@ const crsBadgeCls = (score: number) => {
         : 'bg-teal/10 text-teal';
 };
 
-type WTab = 'agents' | 'hitl' | 'mcp' | 'timeline';
+type WTab = 'agents' | 'hitl' | 'mcp';
 
 type HitlItem = {
   id: string;
@@ -48,7 +44,7 @@ const HITL_QUEUE: HitlItem[] = [
   { id:'H1', agent:'customer-support-bot', action:'pip install jinja2', severity:'High', reason:'Supply chain risk: 5 CVEs detected (GHSA-462w-v97r-4m45, GHSA-8r7q-cvjq-x353, GHSA-cpwx-vrp4-4pq7, GHSA-fqh9-2qgg-h84h, GHSA-g3rq-g295-4j3m). Package flagged as vulnerable.', time:'6:34 AM', status:'Pending' },
   { id:'H2', agent:'gpt-orchestrator-token', action:'Read file: app/db_config.py', severity:'High', reason:'Action deviates from stated agent intent (database-check task). Sensitive config access blocked per policy.', time:'6:40 AM', status:'Denied' },
   { id:'H3', agent:'hr-onboarding-copilot', action:'ad:groups.addMember — Admins', severity:'Critical', reason:'Admin group membership outside scope of HR onboarding intent. Requires CISO approval.', time:'6:41 AM', status:'Pending' },
-] ;
+];
 
 const MCP_SERVERS: McpServer[] = [
   { id:'m1', name:'Aws-Mcp-Server-MCP', agent:'copilot-code-review-agent', status:'Unsanctioned', protected:false },
@@ -57,11 +53,6 @@ const MCP_SERVERS: McpServer[] = [
   { id:'m4', name:'BigQuery-MCP', agent:'data-analyst-mcp-server', status:'Approved', protected:true },
 ];
 
-
-function serviceSensitive(service: string) {
-  return /active directory|firewall|pii|crowdstrike|hsm|splunk/i.test(service);
-}
-
 function buildFindings(agent: CryptoAsset) {
   const findings: string[] = [];
   if (agent.status === 'Expired') findings.push(`- Token expired — cached access risk remains active. Expired ${Math.abs(agent.daysToExpiry)} day(s) ago.`);
@@ -69,7 +60,7 @@ function buildFindings(agent: CryptoAsset) {
   if (agent.agentMeta?.permissionRisk === 'Over-privileged') findings.push('- Permission scope exceeds stated intent and should be right-sized.');
   if (agent.policyViolations >= 2) findings.push(`- ${agent.policyViolations} policy violations are active on this credential.`);
   else if (agent.policyViolations === 1) findings.push('- 1 policy violation is active.');
-  if ((agent.agentMeta?.servicesAccessed || []).some(serviceSensitive)) findings.push('- Agent reaches high-sensitivity resources and needs explicit governance review.');
+  if ((agent.agentMeta?.servicesAccessed || []).some(service => /active directory|firewall|pii|crowdstrike|hsm|splunk/i.test(service))) findings.push('- Agent reaches high-sensitivity resources and needs explicit governance review.');
   return findings.length ? findings.join('\n') : '- No critical findings.';
 }
 
@@ -85,23 +76,49 @@ function buildInitialMsg(agent: CryptoAsset) {
   return `${agent.name} posture is acceptable. CRS: ${crs}/100. Monitor for scope creep as usage scales.`;
 }
 
+function factorTone(raw: number) {
+  if (raw >= 80) return 'bg-coral';
+  if (raw >= 60) return 'bg-amber';
+  if (raw >= 30) return 'bg-purple-light';
+  return 'bg-teal';
+}
+
+function factorLabel(id: ReturnType<typeof getCrsFactors>[number]['id']) {
+  switch (id) {
+    case 'algorithm':
+      return 'Encryption strength';
+    case 'lifecycle':
+      return 'How fresh is this credential?';
+    case 'exposure':
+      return 'How much can it reach?';
+    case 'access':
+      return 'Does it have more access than it needs?';
+    case 'compliance':
+      return 'Is it audit-ready?';
+  }
+}
+
+function crsSummary(score: number) {
+  if (score >= 80) return 'This credential is critically at risk and needs immediate action.';
+  if (score >= 60) return 'Significant issues that should be addressed soon.';
+  if (score >= 30) return 'Some concerns — monitor and plan remediation.';
+  return 'This credential is in good shape.';
+}
 
 export default function AIAgentRemediationWorkspace() {
-  const { setCurrentPage, setFilters } = useNav();
   const [wsTab, setWsTab] = useState<WTab>('agents');
   const [selectedAgent, setSelectedAgent] = useState<CryptoAsset | null>(null);
-  const [showDetailPanel, setShowDetailPanel] = useState(false);
   const [search, setSearch] = useState('');
   const [hitlItems, setHitlItems] = useState<HitlItem[]>([...HITL_QUEUE]);
   const [mcpServers, setMcpServers] = useState<McpServer[]>([...MCP_SERVERS]);
   const [msgs, setMsgs] = useState<{ role:'guardian'|'user', text:string }[]>([]);
   const [input, setInput] = useState('');
+  const [showCrsPanel, setShowCrsPanel] = useState(false);
 
   const filtered = AI_AGENTS.filter(a => !search || a.name.toLowerCase().includes(search.toLowerCase()) || (a.agentMeta?.framework || '').toLowerCase().includes(search.toLowerCase()));
   const pendingHITL = hitlItems.filter(h => h.status === 'Pending').length;
   const selectedCRS = selectedAgent ? computeCRS(selectedAgent).crs : null;
-  const selectedItAsset = selectedAgent ? mockITAssets.find(a => a.cryptoObjectIds.includes(selectedAgent.id)) : null;
-  const selectedARS = selectedItAsset ? arsFor(selectedItAsset).ars : null;
+  const selectedFactors = selectedAgent ? getCrsFactors(selectedAgent) : [];
 
   useEffect(() => {
     if (!selectedAgent && filtered.length) setSelectedAgent(filtered[0]);
@@ -110,6 +127,10 @@ export default function AIAgentRemediationWorkspace() {
   useEffect(() => {
     if (!selectedAgent) setMsgs([]);
     else setMsgs([{ role: 'guardian', text: buildInitialMsg(selectedAgent) }]);
+  }, [selectedAgent]);
+
+  useEffect(() => {
+    setShowCrsPanel(false);
   }, [selectedAgent]);
 
   const send = (text?: string) => {
@@ -137,58 +158,16 @@ export default function AIAgentRemediationWorkspace() {
     setInput('');
   };
 
-  const credentials = selectedAgent ? [
-    { credential: selectedAgent.serial || `${selectedAgent.name}-cred`, type: selectedAgent.algorithm.includes('HMAC') ? 'HMAC Token' : selectedAgent.algorithm.includes('JWT') ? 'JWT/OAuth' : 'API Key', algorithm: selectedAgent.algorithm, ttl: selectedAgent.rotationFrequency, crs: selectedCRS || 0 },
-    ...((selectedAgent.agentMeta?.servicesAccessed || []).some(s => /Azure|Workday/i.test(s)) ? [{ credential: 'azure-ad-app-secret', type: 'Service Account', algorithm: 'RSA-2048', ttl: '365d', crs: 72 }] : []),
-    ...((selectedAgent.agentMeta?.servicesAccessed || []).some(s => /Vault/i.test(s)) ? [{ credential: 'vault-approle-token', type: 'Dynamic Secret', algorithm: 'HMAC-SHA256', ttl: '24h', crs: 12 }] : []),
-  ] : [];
-
   return (
     <div className="flex h-full overflow-hidden">
-      <div className="flex w-64 flex-col border-r border-border bg-card">
-        <div className="border-b border-border p-3">
-          <div className="flex items-center gap-2 text-sm font-semibold text-foreground"><span>🤖</span> AI Agents <span className="text-[10px] text-muted-foreground">{AI_AGENTS.length}</span></div>
-        </div>
-        <div className="p-3 border-b border-border">
-          <div className="relative">
-            <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search agents..." className="w-full rounded-md border border-border bg-muted pl-7 pr-3 py-1.5 text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal" />
-          </div>
-        </div>
-        <div className="flex-1 overflow-y-auto">
-          {filtered.map(agent => {
-            const score = computeCRS(agent).crs;
-            const selected = selectedAgent?.id === agent.id;
-            return (
-              <button key={agent.id} onClick={() => setSelectedAgent(agent)} className={`w-full border-b border-border px-3 py-2.5 text-left hover:bg-muted/30 ${selected ? 'bg-teal/5 border-l-2 border-l-teal' : ''}`}>
-                <div className="flex items-start gap-2">
-                  <span className="text-sm">🤖</span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="truncate text-[10px] font-medium text-foreground">{agent.name}</p>
-                      <span className={`rounded-full px-1.5 py-0.5 text-[8px] font-medium ${crsBadgeCls(score)}`}>CRS {score}</span>
-                    </div>
-                    <div className="mt-1 flex items-center justify-between gap-2 text-[9px]">
-                      <span className="truncate text-muted-foreground">{agent.agentMeta?.framework || 'Unknown'}</span>
-                      <span className={agent.status === 'Expired' ? 'text-coral' : agent.status === 'Expiring' ? 'text-amber' : 'text-muted-foreground'}>{agent.status}</span>
-                    </div>
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
       <div className="flex flex-1 flex-col overflow-hidden">
         <div className="flex border-b border-border bg-card px-4">
           {[
-            { id: 'agents', label: 'Agents' },
-            { id: 'hitl', label: 'HITL' },
-            { id: 'mcp', label: 'MCP' },
-            { id: 'timeline', label: 'Timeline' },
+            { id: 'agents', label: 'AI Agents' },
+            { id: 'hitl', label: 'HITL Approval' },
+            { id: 'mcp', label: 'MCP Gateway' },
           ].map(tab => (
-            <button key={tab.id} onClick={() => setWsTab(tab.id as WTab)} className={`relative px-4 py-3 text-sm font-medium border-b-2 transition-colors ${wsTab === tab.id ? 'border-teal text-teal' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
+            <button key={tab.id} onClick={() => setWsTab(tab.id as WTab)} className={`relative border-b-2 px-4 py-3 text-sm font-medium transition-colors ${wsTab === tab.id ? 'border-teal text-teal' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
               <span className="inline-flex items-center gap-2">
                 {tab.label}
                 {tab.id === 'hitl' && pendingHITL > 0 && <span className="rounded-full bg-amber/10 px-1.5 py-0.5 text-[9px] text-amber">{pendingHITL}</span>}
@@ -200,95 +179,103 @@ export default function AIAgentRemediationWorkspace() {
         <div className="flex-1 overflow-hidden">
           {wsTab === 'agents' && (
             <div className="flex h-full">
-              <div className="flex-1 overflow-y-auto p-4">
-                {!selectedAgent ? (
-                  <div className="flex h-full items-center justify-center text-[10px] text-muted-foreground">Select an agent to inspect remediation posture.</div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="rounded-lg border border-border p-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg">🤖</span>
-                            <h2 className="text-sm font-semibold text-foreground">{selectedAgent.name}</h2>
-                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${crsBadgeCls(selectedCRS || 0)}`}>CRS {selectedCRS}</span>
-                          </div>
-                          <p className="mt-1 text-[10px] text-muted-foreground">{selectedAgent.agentMeta?.agentType} · {selectedAgent.agentMeta?.framework} · owner {selectedAgent.owner}</p>
-                          <p className="mt-1 text-[10px] text-muted-foreground">actions/day: {selectedAgent.agentMeta?.actionsPerDay?.toLocaleString() || '0'} · last active: {selectedAgent.agentMeta?.lastActivity || 'Unknown'}</p>
-                        </div>
-                        <button onClick={() => setShowDetailPanel(true)} className="rounded-md border border-teal/20 bg-teal/10 px-3 py-1.5 text-[10px] font-medium text-teal hover:bg-teal/20">Full Access Graph</button>
-                      </div>
-                    </div>
-
-                    <div className="rounded-lg border border-border p-4">
-                      <div className="mb-3">
-                        <h3 className="text-sm font-semibold text-foreground">Credential CRS — {selectedCRS}/100 <span className={`ml-2 rounded-full px-1.5 py-0.5 text-[9px] font-medium ${crsBadgeCls(selectedCRS || 0)}`}>{crsLabel(selectedCRS || 0)}</span></h3>
-                        <p className="text-[10px] text-muted-foreground">Crypto Risk Score of the agent&apos;s credential — same scoring as certificates and SSH keys.</p>
-                      </div>
-                      <div className="space-y-3">
-                        {getCrsFactors(selectedAgent).map(factor => (
-                          <div key={factor.id}>
-                            <div className="mb-1 flex items-center justify-between text-[10px]">
-                              <span className="font-medium text-foreground">{factor.label}</span>
-                              <span className="text-muted-foreground">{factor.raw}</span>
+              <div className="flex w-64 flex-col border-r border-border bg-card">
+                <div className="border-b border-border p-3">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-foreground"><span>🤖</span> AI Agents <span className="text-[10px] text-muted-foreground">{AI_AGENTS.length}</span></div>
+                </div>
+                <div className="border-b border-border p-3">
+                  <div className="relative">
+                    <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search agents..." className="w-full rounded-md border border-border bg-muted py-1.5 pl-7 pr-3 text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal" />
+                  </div>
+                </div>
+                <div className="flex-1 overflow-y-auto">
+                  {filtered.map(agent => {
+                    const score = computeCRS(agent).crs;
+                    const selected = selectedAgent?.id === agent.id;
+                    return (
+                      <button key={agent.id} onClick={() => setSelectedAgent(agent)} className={`w-full border-b border-border px-3 py-2.5 text-left hover:bg-muted/30 ${selected ? 'border-l-2 border-l-teal bg-teal/5' : ''}`}>
+                        <div className="flex items-start gap-2">
+                          <span className="text-sm">🤖</span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="truncate text-[10px] font-medium text-foreground">{agent.name}</p>
+                              <span className={`rounded-full px-1.5 py-0.5 text-[8px] font-medium ${crsBadgeCls(score)}`}>CRS {score}</span>
                             </div>
-                            <div className="h-1.5 rounded-full bg-secondary overflow-hidden"><div className={`${(factor.raw >= 80 ? 'bg-coral' : factor.raw >= 60 ? 'bg-amber' : factor.raw >= 30 ? 'bg-purple-light' : 'bg-teal')} h-full rounded-full`} style={{ width: `${factor.raw}%` }} /></div>
-                            <p className="mt-1 text-[9px] text-muted-foreground">{factor.why}</p>
+                            <div className="mt-1 flex items-center justify-between gap-2 text-[9px]">
+                              <span className="truncate text-muted-foreground">{agent.agentMeta?.framework || 'Unknown'}</span>
+                              <span className={agent.status === 'Expired' ? 'text-coral' : agent.status === 'Expiring' ? 'text-amber' : 'text-muted-foreground'}>{agent.status}</span>
+                            </div>
                           </div>
-                        ))}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex flex-1 flex-col overflow-hidden">
+                {!selectedAgent ? (
+                  <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
+                    <span className="text-2xl">🤖</span>
+                    <p className="text-sm font-medium text-foreground">Select an agent to view its access graph</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="border-b border-border px-4 py-3">
+                      <div className="flex items-start gap-3">
+                        <span className="text-lg">🤖</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h2 className="text-sm font-semibold text-foreground">{selectedAgent.name}</h2>
+                            <button onClick={() => setShowCrsPanel(prev => !prev)} className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${crsBadgeCls(selectedCRS || 0)}`}>
+                              CRS {selectedCRS}
+                              {showCrsPanel ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                            </button>
+                          </div>
+                          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-muted-foreground">
+                            <span>{selectedAgent.agentMeta?.framework || 'Unknown framework'}</span>
+                            <span>·</span>
+                            <span>{selectedAgent.agentMeta?.agentType || 'Unknown type'}</span>
+                            <span>·</span>
+                            <span>{selectedAgent.owner}</span>
+                            <span>·</span>
+                            <span>{selectedAgent.agentMeta?.actionsPerDay?.toLocaleString() || '0'} actions/day</span>
+                            <span>·</span>
+                            <span className={selectedAgent.status === 'Expired' ? 'text-coral' : selectedAgent.status === 'Expiring' ? 'text-amber' : 'text-muted-foreground'}>{selectedAgent.status}</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
-                    {selectedItAsset && (
-                      <div className="rounded-lg border border-border p-4">
-                        <h3 className="text-sm font-semibold text-foreground">Agent ARS — {selectedARS}/100</h3>
-                        <p className="text-[10px] text-muted-foreground">Asset Risk Score — rolls up from CRS of credentials on this agent.</p>
-                        <p className="mt-2 text-[10px] text-muted-foreground">Host: {selectedItAsset.name}</p>
-                        <button onClick={() => { setFilters({ tab: 'it-assets' }); setCurrentPage('inventory'); }} className="mt-2 text-[10px] text-teal hover:underline">View host asset →</button>
+                    {showCrsPanel && (
+                      <div className="animate-in slide-in-from-top-2 border-b border-border bg-card px-4 py-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-xs font-semibold text-foreground">Why CRS {selectedCRS}?</h3>
+                          <p className="text-[10px] text-muted-foreground">{crsSummary(selectedCRS || 0)}</p>
+                        </div>
+                        <div className="mt-2 space-y-2">
+                          {selectedFactors.map(factor => (
+                            <div key={factor.id}>
+                              <div className="mb-1 flex items-center justify-between gap-2 text-[10px]">
+                                <span className="font-medium text-foreground">{factorLabel(factor.id)}</span>
+                                <span className="text-muted-foreground">{factor.raw}</span>
+                              </div>
+                              <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
+                                <div className={`${factorTone(factor.raw)} h-full rounded-full`} style={{ width: `${factor.raw}%` }} />
+                              </div>
+                              <p className="mt-1 text-[9px] text-muted-foreground">{factor.why}</p>
+                            </div>
+                          ))}
+                        </div>
+                        <button onClick={() => setShowCrsPanel(false)} className="mt-2 text-[10px] text-teal">Hide ↑</button>
                       </div>
                     )}
 
-                    <div className="rounded-lg border border-border p-4">
-                      <h3 className="text-sm font-semibold text-foreground">Agent Credentials (crypto objects)</h3>
-                      <div className="mt-3 overflow-hidden rounded-lg border border-border">
-                        <table className="w-full text-[10px]">
-                          <thead className="bg-secondary/50 text-muted-foreground">
-                            <tr>
-                              <th className="px-3 py-2 text-left font-medium">Credential</th>
-                              <th className="px-3 py-2 text-left font-medium">Type</th>
-                              <th className="px-3 py-2 text-left font-medium">Algorithm</th>
-                              <th className="px-3 py-2 text-left font-medium">TTL</th>
-                              <th className="px-3 py-2 text-left font-medium">CRS</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {credentials.map(row => (
-                              <tr key={row.credential} className="border-t border-border">
-                                <td className="px-3 py-2 font-mono text-foreground">{row.credential}</td>
-                                <td className="px-3 py-2 text-foreground">{row.type}</td>
-                                <td className="px-3 py-2 text-foreground">{row.algorithm}</td>
-                                <td className="px-3 py-2 text-muted-foreground">{row.ttl}</td>
-                                <td className={`px-3 py-2 font-semibold ${selectedCRS && row.crs >= 80 ? 'text-coral' : row.crs >= 60 ? 'text-amber' : row.crs >= 30 ? 'text-purple-light' : 'text-teal'}`}>{row.crs}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                    <div className="flex-1 overflow-y-auto p-4">
+                      <AccessGraphTimeline agent={selectedAgent} events={getAgentTimelineEvents(selectedAgent)} />
                     </div>
-
-                    <div className="rounded-lg border border-border p-4">
-                      <h3 className="text-sm font-semibold text-foreground">Connected Services ({selectedAgent.agentMeta?.servicesAccessed?.length || 0})</h3>
-                      <div className="mt-3 grid grid-cols-2 gap-2">
-                        {(selectedAgent.agentMeta?.servicesAccessed || []).map(service => (
-                          <div key={service} className="flex items-center gap-2 rounded-md border border-border px-2.5 py-2 text-[10px] text-foreground">
-                            <span className={`h-2 w-2 rounded-full ${serviceSensitive(service) ? 'bg-coral' : 'bg-blue-400'}`} />
-                            <span className="truncate">{service}</span>
-                            {serviceSensitive(service) && <span>⚠</span>}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+                  </>
                 )}
               </div>
 
@@ -320,12 +307,14 @@ export default function AIAgentRemediationWorkspace() {
           )}
 
           {wsTab === 'hitl' && (
-            <div className="overflow-y-auto p-5">
-              <div className="mb-4 flex items-center gap-3">
-                <h2 className="text-sm font-semibold text-foreground">Human-in-the-Loop Approval</h2>
-                <span className="rounded-full bg-amber/10 px-2 py-0.5 text-[10px] text-amber">{pendingHITL} pending</span>
+            <div className="overflow-y-auto p-6">
+              <div className="mb-5 flex flex-wrap items-center gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground">Human-in-the-Loop Approval</h2>
+                  <p className="mt-1 max-w-3xl text-sm text-muted-foreground">High-risk AI agent actions that require human approval before execution. These requests come from any agent in your environment.</p>
+                </div>
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${pendingHITL > 0 ? 'bg-amber/10 text-amber' : 'bg-teal/10 text-teal'}`}>{pendingHITL > 0 ? `${pendingHITL} pending` : 'All clear'}</span>
               </div>
-              <p className="mb-4 text-[10px] text-muted-foreground">Risky agent actions are paused here for operator review.</p>
               <div className="space-y-3">
                 {hitlItems.map(item => {
                   const stateCls = item.status === 'Pending' ? 'border-amber/30 bg-amber/5' : item.status === 'Denied' ? 'border-coral/20 bg-coral/5 opacity-60' : 'border-teal/20 bg-teal/5 opacity-60';
@@ -360,8 +349,12 @@ export default function AIAgentRemediationWorkspace() {
           )}
 
           {wsTab === 'mcp' && (
-            <div className="overflow-y-auto p-5">
-              <div className="mb-4 rounded-lg border border-teal/20 bg-teal/5 p-3 text-[10px] text-foreground">✦ Eos MCP Proxy enforces just-in-time credential issuance. Place unsanctioned MCP servers behind the gateway to eliminate static credentials.</div>
+            <div className="overflow-y-auto p-6">
+              <div className="mb-5">
+                <h2 className="text-lg font-semibold text-foreground">MCP Gateway</h2>
+                <p className="mt-1 max-w-3xl text-sm text-muted-foreground">All MCP servers across your environment. Place unsanctioned servers behind the Eos MCP Proxy to enforce just-in-time credential issuance and centralise access control.</p>
+                <div className="mt-3 rounded-lg border border-teal/20 bg-teal/5 px-4 py-2.5 text-sm text-foreground">✦ Eos MCP Proxy issues short-lived, scoped credentials at runtime — eliminating static API keys and reducing blast radius if a server is compromised.</div>
+              </div>
               <div className="space-y-3">
                 {mcpServers.map(server => (
                   <div key={server.id} className="rounded-lg border border-border bg-card p-4">
@@ -387,24 +380,8 @@ export default function AIAgentRemediationWorkspace() {
               </div>
             </div>
           )}
-
-          {wsTab === 'timeline' && (
-            <div className="overflow-y-auto p-5">
-              <h2 className="text-sm font-semibold text-foreground">Access Graph Timeline</h2>
-              <p className="mb-4 text-[10px] text-muted-foreground">Visual audit trail — watch agent activity replay on the access graph. Click any event to jump to that moment.</p>
-              {!selectedAgent ? (
-                <div className="text-[10px] text-muted-foreground">Select an agent from the list to replay its activity timeline.</div>
-              ) : (
-                <AccessGraphTimeline agent={selectedAgent} events={getAgentTimelineEvents(selectedAgent)} />
-              )}
-            </div>
-          )}
         </div>
       </div>
-
-      {showDetailPanel && selectedAgent && (
-        <AgentDetailPanel agent={selectedAgent} onClose={() => setShowDetailPanel(false)} onCreateTicket={() => toast.success('Ticket created')} licensed={true} />
-      )}
     </div>
   );
 }
