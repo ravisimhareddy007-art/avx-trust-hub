@@ -13,6 +13,7 @@ interface ClassicRow extends AssetViolation {
   ownerTeam: string;
   daysToFailure: number | null;
   primaryAction: string;
+  description?: string;
 }
 
 interface PqcRow extends AssetViolation {
