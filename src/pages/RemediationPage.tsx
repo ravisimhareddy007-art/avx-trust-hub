@@ -409,7 +409,7 @@ function LockedModuleOverlay({ module, onRequestLicense }: { module: ModuleDef; 
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
 export default function RemediationPage() {
-  const { filters, setFilters } = useNav();
+  const { currentPage, filters, setFilters } = useNav();
   const [activeModule, setActiveModule] = useState<ModuleId>('all');
   const [activeFilter, setActiveFilter] = useState<FilterId>('all-issues');
   const [search, setSearch] = useState('');
@@ -421,6 +421,12 @@ export default function RemediationPage() {
 
   // Honor cross-link filters set by Integrations / Device drawer / Inventory violations.
   useEffect(() => {
+    if (currentPage === 'remediation-objects') setActiveModule('all');
+    if (currentPage === 'remediation-clm') setActiveModule('clm');
+    if (currentPage === 'remediation-ssh') setActiveModule('ssh');
+    if (currentPage === 'remediation-ai') setActiveModule('ai-agents');
+    if (currentPage === 'remediation-secrets') setActiveModule('secrets');
+
     if (filters.module === 'clm') {
       setActiveModule('clm');
       if (filters.view === 'deployments' || filters.view === 'actions' || filters.view === 'issues') {
@@ -433,7 +439,7 @@ export default function RemediationPage() {
     if (filters.assetId) {
       setSearch(filters.assetId);
     }
-  }, [filters.module, filters.view, filters.category, filters.assetId]);
+  }, [currentPage, filters.module, filters.view, filters.category, filters.assetId]);
 
   const currentModule = modules.find(m => m.id === activeModule)!;
   const isLocked = activeModule !== 'all' && !currentModule.licensed;
