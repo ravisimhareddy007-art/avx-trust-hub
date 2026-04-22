@@ -215,7 +215,9 @@ export default function PKIEngineerDashboard() {
   const [switchCa, setSwitchCa] = useState('Entrust L1K');
   const [bulkUpdateMode, setBulkUpdateMode] = useState<'File Upload' | 'By Group'>('File Upload');
   const [revocationDone, setRevocationDone] = useState(false);
+  const actionsButtonRef = useRef<HTMLButtonElement | null>(null);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 });
   const { setFilters } = useNav();
 
   const allCerts = useMemo(
@@ -326,11 +328,27 @@ export default function PKIEngineerDashboard() {
 
   useEffect(() => {
     if (!actionsOpen) return;
+
+    const rect = actionsButtonRef.current?.getBoundingClientRect();
+    if (rect) {
+      setDropdownPos({
+        top: rect.bottom + 4,
+        right: window.innerWidth - rect.right,
+      });
+    }
+
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (
+        actionsButtonRef.current &&
+        !actionsButtonRef.current.contains(target) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(target)
+      ) {
         setActionsOpen(false);
       }
     };
+
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [actionsOpen]);
