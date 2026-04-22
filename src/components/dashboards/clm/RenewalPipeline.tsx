@@ -54,7 +54,7 @@ function formatDate(offset: number) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-export default function RenewalPipeline(_: RenewalPipelineProps) {
+export default function RenewalPipeline({ certCounts }: RenewalPipelineProps) {
   const { setCurrentPage, setFilters } = useNav();
   const [panelStage, setPanelStage] = useState<Stage['key'] | null>(null);
   const [planFormOpen, setPlanFormOpen] = useState<string | null>(null);
@@ -160,7 +160,7 @@ export default function RenewalPipeline(_: RenewalPipelineProps) {
             <div>
               <div className="flex items-center gap-2">
                 <h4 className="text-sm font-semibold text-foreground">{panelInfo.label}</h4>
-                <span className="text-xs text-muted-foreground">{panelInfo.count.toLocaleString()} certs</span>
+                <span className="text-xs text-muted-foreground">{panelInfo.count.toLocaleString()} estate-wide · {panelRecords.length} in detail view</span>
                 {panelInfo.stalled ? <span className="rounded-full bg-amber/15 px-2 py-0.5 text-[10px] font-medium text-amber">Stalled</span> : null}
                 {panelInfo.complete ? <span className="rounded-full bg-teal/15 px-2 py-0.5 text-[10px] font-medium text-teal">Complete</span> : null}
               </div>
