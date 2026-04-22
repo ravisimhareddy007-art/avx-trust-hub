@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { mockAssets } from '@/data/mockData';
+import { ESTATE_SUMMARY, mockAssets } from '@/data/mockData';
 import { useNav } from '@/context/NavigationContext';
 import { toast } from 'sonner';
 import {
@@ -29,16 +29,16 @@ const shortLived = mockAssets.filter(
   a => (a.type || '').includes('Certificate') && a.daysToExpiry != null && a.daysToExpiry >= 0 && a.daysToExpiry <= 90,
 );
 
-const total = shortLived.length || 847;
-const autoRenewalEnabled = shortLived.filter(a => a.autoRenewal).length || 634;
+const total = ESTATE_SUMMARY.certsExpiring30d;
+const autoRenewalEnabled = 198;
 const notCovered = total - autoRenewalEnabled;
-const complianceScore = total ? Math.round((autoRenewalEnabled / total) * 100) : 74;
+const complianceScore = 70;
 
 const ageBuckets = [
-  { label: '0-48 hours', count: shortLived.filter(a => a.daysToExpiry! <= 2).length || 23, pct: 0, color: T.coral, tw: 'bg-coral' },
-  { label: '3-7 days',   count: shortLived.filter(a => a.daysToExpiry! >= 3 && a.daysToExpiry! <= 7).length || 89, pct: 0, color: T.amber, tw: 'bg-amber' },
-  { label: '8-30 days',  count: shortLived.filter(a => a.daysToExpiry! >= 8 && a.daysToExpiry! <= 30).length || 142, pct: 0, color: T.purple, tw: 'bg-purple-light' },
-  { label: '31-90 days', count: shortLived.filter(a => a.daysToExpiry! >= 31 && a.daysToExpiry! <= 90).length || 593, pct: 0, color: T.teal, tw: 'bg-teal' },
+  { label: '0-48 hours', count: 12, pct: 0, color: T.coral, tw: 'bg-coral' },
+  { label: '3-7 days',   count: 34, pct: 0, color: T.amber, tw: 'bg-amber' },
+  { label: '8-30 days',  count: 67, pct: 0, color: T.purple, tw: 'bg-purple-light' },
+  { label: '31-90 days', count: 171, pct: 0, color: T.teal, tw: 'bg-teal' },
 ];
 ageBuckets.forEach(b => { b.pct = Math.round((b.count / total) * 100); });
 
@@ -220,7 +220,7 @@ export default function SLCDashboard() {
           <div className="grid grid-cols-2 gap-3">
             {[
               { label: 'Total SLC', value: total, color: 'text-teal' },
-              { label: 'Expiring < 48h', value: 23, color: 'text-coral', sub: 'immediate risk' },
+              { label: 'Expiring < 48h', value: 12, color: 'text-coral', sub: 'immediate risk' },
               { label: 'Auto-renewal on', value: autoRenewalEnabled, color: 'text-teal' },
               { label: 'No renewal plan', value: notCovered, color: 'text-amber', sub: 'manual intervention needed' },
             ].map(k => (
