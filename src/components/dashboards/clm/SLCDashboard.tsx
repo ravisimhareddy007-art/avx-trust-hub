@@ -129,7 +129,7 @@ type SLCDashboardProps = {
   certCounts: CertCounts;
 };
 
-export default function SLCDashboard({ openModal }: SLCDashboardProps) {
+export default function SLCDashboard({ openModal, certCounts }: SLCDashboardProps) {
   const { setCurrentPage, setFilters } = useNav();
 
   const [groupOpen, setGroupOpen] = useState(false);
@@ -158,7 +158,7 @@ export default function SLCDashboard({ openModal }: SLCDashboardProps) {
   };
 
   const openSLCModal = (title: string, certs: any[]) => {
-    openModal?.(title, certs.length > 0 ? certs : shortLived);
+    openModal?.(title, certs.length > 0 ? certs : certCounts.all.slice(0, Math.max(1, certCounts.sampleSize)));
   };
 
   const Card = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
