@@ -33,6 +33,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import EnrollCertificateWizard from './actions/EnrollCertificateWizard';
 import GenerateCSRModal from './actions/GenerateCSRModal';
 import PushToDeviceModal from './actions/PushToDeviceModal';
@@ -47,6 +48,7 @@ interface Props {
 type EnvironmentFilter = 'All' | 'Production' | 'Staging' | 'Development';
 type QueueFilter = 'All' | 'Pending' | 'In Progress' | 'Completed' | 'Failed';
 type ValidityUnit = 'Days' | 'Months' | 'Years';
+type IssueQuickFilter = 'expiringSoon' | 'production' | 'highSeverity' | 'unassigned';
 
 const proactiveCards = [
   {
@@ -100,6 +102,62 @@ const caList = ['DigiCert Global G2', 'Entrust L1K', "Let's Encrypt", 'MSCA Ente
 const groupOptions = ['Payments', 'Platform', 'Security', 'Identity', 'Infrastructure'];
 
 const formatCount = (value: number) => new Intl.NumberFormat('en-US').format(value);
+
+const quickFilters: Array<{ id: IssueQuickFilter; label: string }> = [
+  { id: 'expiringSoon', label: 'Expiring < 7 days' },
+  { id: 'production', label: 'Production' },
+  { id: 'highSeverity', label: 'High severity' },
+  { id: 'unassigned', label: 'Unassigned owner' },
+];
+
+const getUrgencyDays = (row: ClmIssueRow) => {
+  if (row.issueType !== 'Expiring / Expired') return null;
+  return Math.max(0, row.asset.daysToExpiry);
+};
+
+const urgencyBadgeClass = (days: number) => {
+  if (days <= 3) return 'bg-coral/10 text-coral';
+  if (days <= 7) return 'bg-amber/10 text-amber';
+  return 'bg-muted text-muted-foreground';
+};
+
+const getRecommendationMeta = (row: ClmIssueRow) => {
+  const recommended = row.recommended;
+
+  if (recommended.includes('Renew')) {
+    return {
+      label: 'Renew from CA',
+      tooltip: 'Reissue the certificate through the current CA workflow.',
+      className: 'bg-teal text-primary-foreground hover:bg-teal-light',
+      action: 'Renew' as ClmIssueAction,
+    };
+  }
+
+  if (recommended.includes('Revoke') || recommended.includes('Reissue')) {
+    return {
+      label: 'Revoke & Reissue',
+      tooltip: 'Revoke the current certificate and issue a clean replacement.',
+      className: 'bg-coral/10 text-coral hover:bg-coral/20',
+      action: 'Reissue' as ClmIssueAction,
+    };
+  }
+
+  if (recommended.includes('CA Switch')) {
+    return {
+      label: 'CA Switch',
+      tooltip: 'Move issuance to a different CA profile for policy alignment.',
+      className: 'bg-amber/10 text-amber hover:bg-amber/20',
+      action: 'CA Switch' as ClmIssueAction,
+    };
+  }
+
+  return {
+    label: recommended,
+    tooltip: 'Start the recommended remediation workflow for this certificate.',
+    className: 'bg-muted text-foreground hover:bg-secondary',
+    action: row.primaryAction,
+  };
+};
 
 const environmentBadgeClass = (env: ClmIssueRow['environment']) => {
   if (env === 'Production') return 'bg-coral/10 text-coral';
@@ -191,6 +249,7 @@ const DetailDrawer = ({
           <div className="rounded-lg border border-coral/20 bg-coral/5 p-3">
             <p className="text-[11px] font-medium uppercase tracking-wide text-coral">Current issue</p>
             <p className="mt-1 text-sm text-foreground">{row.issueText}</p>
+            <p className="mt-2 text-xs text-muted-foreground">Recommended path: {row.recommended}</p>
           </div>
 
           <div className="grid grid-cols-2 gap-3 text-sm">
@@ -202,6 +261,8 @@ const DetailDrawer = ({
             <InfoTile label="Valid To" value={row.asset.expiryDate} mono />
             <InfoTile label="Algorithm" value={row.asset.algorithm} />
             <InfoTile label="Key Size" value={row.asset.keyLength} />
+            <InfoTile label="Owner" value={row.owner} />
+            <InfoTile label="Environment" value={row.environment} />
           </div>
 
           <div className="rounded-lg border border-border bg-background/40 p-3">
@@ -222,6 +283,27 @@ const DetailDrawer = ({
                   {san}
                 </span>
               ))}
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-border bg-background/40 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">History</p>
+              <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${severityBadgeClass(row.severity)}`}>{row.severity}</span>
+            </div>
+            <div className="mt-3 space-y-3 text-xs">
+              <div className="flex items-start justify-between gap-3">
+                <span className="text-muted-foreground">Discovered</span>
+                <span className="text-right text-foreground">Discovery scan flagged this certificate for {row.issueType.toLowerCase()}.</span>
+              </div>
+              <div className="flex items-start justify-between gap-3">
+                <span className="text-muted-foreground">Ownership</span>
+                <span className="text-right text-foreground">Current owner: {row.owner}</span>
+              </div>
+              <div className="flex items-start justify-between gap-3">
+                <span className="text-muted-foreground">Recommended next step</span>
+                <span className="text-right text-foreground">{row.recommended}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -385,20 +467,20 @@ function BulkActionBar({
   onAction,
 }: {
   selectedCount: number;
-  onAction: (label: 'Renew' | 'Revoke' | 'CA Switch' | 'Export' | 'Assign Owner') => void;
+  onAction: (label: 'Renew' | 'Revoke & Reissue' | 'Export' | 'Assign Owner') => void;
 }) {
   if (selectedCount === 0) return null;
 
   return (
-    <div className="pointer-events-none fixed bottom-6 left-1/2 z-40 -translate-x-1/2 animate-in slide-in-from-bottom-4 duration-200">
-      <div className="pointer-events-auto flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-3 shadow-2xl">
-        <span className="text-sm font-medium text-foreground">{selectedCount} selected</span>
-        {(['Renew', 'Revoke', 'CA Switch', 'Export', 'Assign Owner'] as const).map((action) => (
+    <div className="sticky top-0 z-30 -mb-2 animate-in slide-in-from-top-2 duration-200 px-5">
+      <div className="flex items-center gap-2 overflow-x-auto rounded-lg border border-border bg-card/95 px-4 py-3 shadow-lg backdrop-blur">
+        <span className="whitespace-nowrap text-sm font-medium text-foreground">{selectedCount} items selected</span>
+        {(['Renew', 'Revoke & Reissue', 'Assign Owner', 'Export'] as const).map((action) => (
           <button
             key={action}
             type="button"
             onClick={() => onAction(action)}
-            className={`rounded-md px-3 py-1.5 text-xs font-medium ${action === 'Renew' ? 'bg-teal text-primary-foreground hover:bg-teal-light' : action === 'Revoke' ? 'bg-coral/10 text-coral hover:bg-coral/20' : action === 'CA Switch' ? 'bg-amber/10 text-amber hover:bg-amber/20' : 'bg-muted text-foreground hover:bg-secondary'}`}
+            className={`whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium ${action === 'Renew' ? 'bg-teal text-primary-foreground hover:bg-teal-light' : action === 'Revoke & Reissue' ? 'bg-coral/10 text-coral hover:bg-coral/20' : 'bg-muted text-foreground hover:bg-secondary'}`}
           >
             {action}
           </button>
@@ -564,6 +646,7 @@ function ToggleRow({ label, checked, onChange }: { label: string; checked: boole
 
 export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Props) {
   const [issueSearch, setIssueSearch] = useState('');
+  const [quickFilterSelection, setQuickFilterSelection] = useState<Set<IssueQuickFilter>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [detailRow, setDetailRow] = useState<ClmIssueRow | null>(null);
   const [actionRow, setActionRow] = useState<ClmIssueRow | null>(null);
@@ -580,12 +663,41 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
   const [pushSeedRow, setPushSeedRow] = useState<ClmIssueRow | null>(null);
 
   const filteredIssues = useMemo(() => {
-    return clmIssues.filter((row) => {
+    return [...clmIssues]
+      .filter((row) => {
       const query = issueSearch.toLowerCase();
       const matchesSearch = !query || [row.asset.name, row.issueText, row.recommended, row.owner].some((value) => value.toLowerCase().includes(query));
-      return matchesSearch;
-    });
-  }, [issueSearch]);
+      if (!matchesSearch) return false;
+      if (quickFilterSelection.has('expiringSoon')) {
+        const urgencyDays = getUrgencyDays(row);
+        if (urgencyDays === null || urgencyDays >= 7) return false;
+      }
+      if (quickFilterSelection.has('production') && row.environment !== 'Production') return false;
+      if (quickFilterSelection.has('highSeverity') && !['Critical', 'High'].includes(row.severity)) return false;
+      if (quickFilterSelection.has('unassigned') && !/unassigned|unknown|none/i.test(row.owner)) return false;
+      return true;
+      })
+      .sort((a, b) => {
+        const aDays = getUrgencyDays(a);
+        const bDays = getUrgencyDays(b);
+        if (aDays !== null && bDays !== null) return aDays - bDays;
+        if (aDays !== null) return -1;
+        if (bDays !== null) return 1;
+        return a.asset.daysToExpiry - b.asset.daysToExpiry;
+      });
+  }, [issueSearch, quickFilterSelection]);
+
+  const summaryCounts = useMemo(() => {
+    const critical = filteredIssues.filter((row) => {
+      const days = getUrgencyDays(row);
+      return days !== null && days <= 3;
+    }).length;
+    const warning = filteredIssues.filter((row) => {
+      const days = getUrgencyDays(row);
+      return days !== null && days >= 4 && days <= 7;
+    }).length;
+    return { critical, warning, total: filteredIssues.length };
+  }, [filteredIssues]);
 
   const queueRows = useMemo(() => {
     return policyRequests.filter((row) => {
@@ -629,7 +741,16 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
     setActionRow(null);
   };
 
-  const handleBulkAction = (label: 'Renew' | 'Revoke' | 'CA Switch' | 'Export' | 'Assign Owner') => {
+  const toggleQuickFilter = (filterId: IssueQuickFilter) => {
+    setQuickFilterSelection((current) => {
+      const next = new Set(current);
+      if (next.has(filterId)) next.delete(filterId);
+      else next.add(filterId);
+      return next;
+    });
+  };
+
+  const handleBulkAction = (label: 'Renew' | 'Revoke & Reissue' | 'Export' | 'Assign Owner') => {
     if (label === 'Assign Owner') {
       toast.success(`Owner assignment queued for ${selectedRows.length} certificates.`);
     } else if (label === 'Export') {
@@ -685,31 +806,64 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
                 </h1>
                 <p className="mt-0 text-xs text-muted-foreground">{formatCount(clmIssues.length)} items need attention</p>
               </div>
-              <button type="button" onClick={launchIssueNewCertificate} className="inline-flex items-center gap-2 self-start rounded-lg bg-teal px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-teal-light">
-                <FilePlus className="h-4 w-4" />
-                + Issue New Certificate
-              </button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button type="button" onClick={launchIssueNewCertificate} className="inline-flex items-center gap-2 self-start rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-foreground hover:bg-secondary">
+                      <FilePlus className="h-4 w-4" />
+                      + Issue New Certificate
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Create and issue a new certificate (independent of existing issues)</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
 
-            <div className="mt-2 flex items-center justify-between border-b border-border px-6 py-3">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Search className="h-[15px] w-[15px]" />
-                <input
-                  type="text"
-                  value={issueSearch}
-                  onChange={(event) => setIssueSearch(event.target.value)}
-                  placeholder="Search certificates or issues..."
-                  className="w-72 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
-                />
+            <p className="mt-2 text-xs text-muted-foreground">Showing: Issues requiring attention</p>
+
+            <div className="mt-3 flex flex-col gap-3 border-b border-border px-6 py-3 xl:flex-row xl:items-center xl:justify-between">
+              <div className="flex flex-wrap items-center gap-2">
+                {quickFilters.map((filter) => {
+                  const active = quickFilterSelection.has(filter.id);
+                  return (
+                    <button
+                      key={filter.id}
+                      type="button"
+                      onClick={() => toggleQuickFilter(filter.id)}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${active ? 'border-teal/40 bg-teal/10 text-teal' : 'border-border bg-background text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
+                    >
+                      {filter.label}
+                    </button>
+                  );
+                })}
               </div>
-              <button type="button" onClick={() => toast.success('Issue export generated.')} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
-                <Download className="h-3.5 w-3.5" />
-                Export
-              </button>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Search className="h-[15px] w-[15px]" />
+                  <input
+                    type="text"
+                    value={issueSearch}
+                    onChange={(event) => setIssueSearch(event.target.value)}
+                    placeholder="Search certificates or issues..."
+                    className="w-72 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+                  />
+                </div>
+                <button type="button" onClick={() => toast.success('Issue export generated.')} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
+                  <Download className="h-3.5 w-3.5" />
+                  Export
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 px-6 py-3 text-xs">
+              <span className="rounded-full border border-coral/20 bg-coral/10 px-2.5 py-1 font-medium text-coral">Critical (0–3 days): {summaryCounts.critical}</span>
+              <span className="rounded-full border border-amber/20 bg-amber/10 px-2.5 py-1 font-medium text-amber">Warning (4–7 days): {summaryCounts.warning}</span>
+              <span className="rounded-full border border-border bg-background px-2.5 py-1 font-medium text-foreground">Total issues: {summaryCounts.total}</span>
             </div>
           </div>
 
           <div className="overflow-hidden rounded-lg border border-border bg-card">
+            <BulkActionBar selectedCount={selectedIds.size} onAction={handleBulkAction} />
             <div className="overflow-x-auto">
               <table className="w-full min-w-[1120px] text-sm">
                 <thead className="border-b border-border bg-background/40 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
@@ -719,7 +873,12 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
                     </th>
                     <th className="px-3 py-3">Severity</th>
                     <th className="px-3 py-3">Asset</th>
-                    <th className="px-3 py-3">Issue</th>
+                    <th className="px-3 py-3">
+                      <button type="button" className="inline-flex items-center gap-1 text-[11px] uppercase tracking-wide text-muted-foreground">
+                        Issue
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      </button>
+                    </th>
                     <th className="px-3 py-3">Owner</th>
                     <th className="px-3 py-3">Env</th>
                     <th className="px-3 py-3">Recommended</th>
@@ -730,27 +889,45 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
                 <tbody>
                   {filteredIssues.map((row) => {
                     const PrimaryIcon = actionMeta[row.primaryAction].icon;
+                    const urgencyDays = getUrgencyDays(row);
+                    const recommendation = getRecommendationMeta(row);
                     return (
-                      <tr key={row.id} className="border-b border-border last:border-b-0 hover:bg-background/30">
+                      <tr key={row.id} className="cursor-pointer border-b border-border last:border-b-0 hover:bg-background/30" onClick={() => setDetailRow(row)}>
                         <td className="px-3 py-3 align-top">
-                          <input type="checkbox" checked={selectedIds.has(row.id)} onChange={() => handleSelectRow(row.id)} className="rounded border-border bg-background" />
+                          <input type="checkbox" checked={selectedIds.has(row.id)} onChange={() => handleSelectRow(row.id)} onClick={(event) => event.stopPropagation()} className="rounded border-border bg-background" />
                         </td>
                         <td className="px-3 py-3 align-top">
                           <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${severityBadgeClass(row.severity)}`}>{row.severity}</span>
                         </td>
                         <td className="px-3 py-3 align-top">
-                          <button type="button" onClick={() => setDetailRow(row)} className="font-mono text-xs text-foreground hover:text-teal hover:underline">
+                          <button type="button" onClick={(event) => { event.stopPropagation(); setDetailRow(row); }} className="font-mono text-xs text-foreground hover:text-teal hover:underline">
                             {row.asset.name}
                           </button>
                         </td>
-                        <td className="px-3 py-3 align-top text-sm text-foreground">{row.issueText}</td>
+                        <td className="px-3 py-3 align-top text-sm text-foreground">
+                          <div className="flex items-center gap-2">
+                            <span>{row.issueText}</span>
+                            {urgencyDays !== null && <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${urgencyBadgeClass(urgencyDays)}`}>{urgencyDays}d</span>}
+                          </div>
+                        </td>
                         <td className="px-3 py-3 align-top text-sm text-muted-foreground">{row.owner}</td>
                         <td className="px-3 py-3 align-top">
                           <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${environmentBadgeClass(row.environment)}`}>{row.environment}</span>
                         </td>
-                        <td className="px-3 py-3 align-top text-sm text-muted-foreground">{row.recommended}</td>
                         <td className="px-3 py-3 align-top">
-                          <button type="button" onClick={() => handleAction(row.primaryAction, row)} className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium ${actionMeta[row.primaryAction].className}`}>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button type="button" onClick={(event) => { event.stopPropagation(); handleAction(recommendation.action, row); }} className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium ${recommendation.className}`}>
+                                  {recommendation.label}
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>{recommendation.tooltip}</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </td>
+                        <td className="px-3 py-3 align-top">
+                          <button type="button" onClick={(event) => { event.stopPropagation(); handleAction(row.primaryAction, row); }} className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium ${actionMeta[row.primaryAction].className}`}>
                             <PrimaryIcon className="h-3.5 w-3.5" />
                             {row.primaryAction}
                           </button>
@@ -875,8 +1052,6 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
           </div>
         </div>
       )}
-
-      <BulkActionBar selectedCount={selectedIds.size} onAction={handleBulkAction} />
 
       <DetailDrawer row={detailRow} open={!!detailRow} onClose={() => setDetailRow(null)} onRunAction={handleAction} />
       <ExecutionLogDrawer request={logRequest} open={!!logRequest} onClose={() => setLogRequest(null)} />
