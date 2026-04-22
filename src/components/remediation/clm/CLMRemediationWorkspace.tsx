@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import CertDeploymentsView from '@/components/remediation/CertDeploymentsView';
 import { Modal } from '@/components/shared/UIComponents';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
