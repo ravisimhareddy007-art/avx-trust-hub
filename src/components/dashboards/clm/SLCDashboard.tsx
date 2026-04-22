@@ -153,7 +153,7 @@ export default function SLCDashboard({ openModal }: SLCDashboardProps) {
   const filteredGroups = GROUPS.filter(g => g.toLowerCase().includes(groupSearch.toLowerCase()));
 
   const openInventory = (extra: Record<string, string> = {}) => {
-    setFilters({ type: 'TLS Certificate', slc: 'true', ...extra });
+    setFilters({ tab: 'identities', type: 'TLS Certificate', slc: 'true', ...extra });
     setCurrentPage('inventory');
   };
 
@@ -228,9 +228,9 @@ export default function SLCDashboard({ openModal }: SLCDashboardProps) {
           <div className="grid grid-cols-2 gap-3">
             {[
               { label: 'Total SLC', value: total, color: 'text-teal', onClick: () => openInventory(), pattern: 'inventory' },
-              { label: 'Expiring < 48h', value: 12, color: 'text-coral', sub: 'immediate risk', onClick: () => openSLCModal('SLC Expiring < 48h', shortLived.filter(a => a.daysToExpiry <= 2)), pattern: 'modal' },
+              { label: 'Expiring < 48h', value: 12, color: 'text-coral', sub: 'immediate risk', onClick: () => openInventory({ status: 'Expiring' }), pattern: 'inventory' },
               { label: 'Auto-renewal on', value: autoRenewalEnabled, color: 'text-teal', onClick: () => openInventory({ autoRenewal: 'true' }), pattern: 'inventory' },
-              { label: 'No renewal plan', value: notCovered, color: 'text-amber', sub: 'manual intervention needed', onClick: () => openSLCModal('No Renewal Plan', shortLived.filter(a => !a.autoRenewal)), pattern: 'modal' },
+              { label: 'No renewal plan', value: notCovered, color: 'text-amber', sub: 'manual intervention needed', onClick: () => openInventory({ autoRenewal: 'false' }), pattern: 'inventory' },
             ].map(k => (
               <button key={k.label} onClick={k.onClick} className={`group rounded-lg bg-secondary/30 border border-border p-3 text-left ${k.pattern === 'modal' ? 'cursor-pointer hover:bg-secondary/40 transition-colors' : 'cursor-pointer hover:text-teal transition-colors'}`}>
                 <div className="flex items-start justify-between gap-2">

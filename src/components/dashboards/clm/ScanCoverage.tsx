@@ -46,7 +46,7 @@ export default function ScanCoverage() {
       toast.info('No certificates in this category');
       return;
     }
-    setFilters({ type: 'TLS Certificate', discoverySource: sourceKey });
+    setFilters({ tab: 'identities', type: 'TLS Certificate', discoverySource: sourceKey });
     setCurrentPage('inventory');
   };
 
