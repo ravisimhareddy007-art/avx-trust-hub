@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { mockITAssets } from '@/data/inventoryMockData';
 import { mockAssets, type CryptoAsset } from '@/data/mockData';
 import { useNav } from '@/context/NavigationContext';
@@ -6,7 +6,8 @@ import { computeCRS, getCrsFactors } from '@/lib/risk/crs';
 import { arsFor } from '@/lib/risk/ars';
 import { toast } from 'sonner';
 import AgentDetailPanel from '@/components/inventory/AgentDetailPanel';
-import { AlertTriangle, CheckCircle2, Clock3, Search, Send, Server, ShieldCheck, X, Zap } from 'lucide-react';
+import AccessGraphTimeline, { getAgentTimelineEvents } from '@/components/remediation/ai/AccessGraphTimeline';
+import { AlertTriangle, CheckCircle2, Search, Send, Server, ShieldCheck, X, Zap } from 'lucide-react';
 
 const AI_AGENTS = mockAssets.filter(a => a.type === 'AI Agent Token');
 
@@ -56,28 +57,6 @@ const MCP_SERVERS: McpServer[] = [
   { id:'m4', name:'BigQuery-MCP', agent:'data-analyst-mcp-server', status:'Approved', protected:true },
 ];
 
-const TIMELINE_EVENTS = [
-  { text:'Agent registered — security-soc-autonomous', time:'Apr 22, 01:12 AM', type:'info' },
-  { text:'Agent updated — Github_Copilot-AVXLM184', time:'Apr 22, 01:20 AM', type:'info' },
-  { text:'Subagent spawned — cleanup-agent', time:'Apr 22, 01:33 AM', type:'warn' },
-  { text:'MCP server connected — Aws-Mcp-Server-MCP (unsanctioned)', time:'Apr 22, 02:00 AM', type:'warn' },
-  { text:'Policy evaluation triggered — over-privilege detected', time:'Apr 22, 02:17 AM', type:'warn' },
-  { text:'Subagent completed — cleanup-agent', time:'Apr 22, 02:20 AM', type:'info' },
-  { text:'Supply chain attack blocked — jinja2 install (5 CVEs)', time:'Apr 22, 06:34 AM', type:'alert' },
-  { text:'Sensitive file access denied — app/db_config.py', time:'Apr 22, 06:40 AM', type:'alert' },
-  { text:'HITL approval sent to Slack — admin group membership', time:'Apr 22, 06:41 AM', type:'warn' },
-  { text:'Token expired — security-soc-autonomous (cached access risk)', time:'Apr 22, 06:50 AM', type:'alert' },
-] as const;
-
-type TimelineItem = typeof TIMELINE_EVENTS[number];
-
-function timelineDot(type: TimelineItem['type']) {
-  return type === 'alert' ? 'bg-coral' : type === 'warn' ? 'bg-amber' : 'bg-teal';
-}
-
-function timelineText(type: TimelineItem['type']) {
-  return type === 'alert' ? 'text-coral' : type === 'warn' ? 'text-amber' : 'text-foreground';
-}
 
 function serviceSensitive(service: string) {
   return /active directory|firewall|pii|crowdstrike|hsm|splunk/i.test(service);
@@ -106,87 +85,6 @@ function buildInitialMsg(agent: CryptoAsset) {
   return `${agent.name} posture is acceptable. CRS: ${crs}/100. Monitor for scope creep as usage scales.`;
 }
 
-const AnimatedTimeline = ({ events }: { events: readonly TimelineItem[] }) => {
-  const [step, setStep] = useState(0);
-  const [playing, setPlaying] = useState(false);
-  const [speed, setSpeed] = useState(1);
-  const bottomRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!playing) return;
-    const timer = window.setInterval(() => {
-      setStep(prev => {
-        if (prev >= events.length) {
-          setPlaying(false);
-          return prev;
-        }
-        const next = prev + 1;
-        if (next >= events.length) setPlaying(false);
-        return next;
-      });
-    }, 550 / speed);
-    return () => window.clearInterval(timer);
-  }, [events.length, playing, speed]);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [step]);
-
-  const visible = events.slice(0, step);
-
-  return (
-    <div className="rounded-lg border border-border bg-card p-3">
-      <div className="flex items-center justify-between gap-2">
-        <button
-          onClick={() => {
-            if (step >= events.length) {
-              setStep(0);
-              setPlaying(false);
-              window.setTimeout(() => setPlaying(true), 50);
-            } else if (!playing && step === 0) setPlaying(true);
-            else setPlaying(prev => !prev);
-          }}
-          className="rounded-md border border-border px-2.5 py-1 text-[10px] text-foreground hover:bg-secondary"
-        >
-          {step >= events.length ? '↺ Replay' : playing ? '⏸ Pause' : step > 0 ? '▶ Resume' : '▶ Play'}
-        </button>
-        <div className="flex items-center gap-1">
-          {[0.5, 1, 2].map(v => (
-            <button key={v} onClick={() => setSpeed(v)} className={`rounded px-1.5 py-0.5 text-[9px] ${speed === v ? 'bg-teal/20 text-teal' : 'text-muted-foreground hover:bg-secondary'}`}>{v}×</button>
-          ))}
-        </div>
-      </div>
-      <div className="mt-2 h-1 rounded-full bg-muted overflow-hidden">
-        <div className="h-full bg-teal transition-all duration-300" style={{ width: `${events.length ? (step / events.length) * 100 : 0}%` }} />
-      </div>
-      {step === 0 && !playing ? (
-        <div className="flex flex-col items-center justify-center gap-2 py-6 text-center">
-          <Clock3 className="h-6 w-6 text-muted-foreground" />
-          <p className="text-[10px] text-muted-foreground">Press Play to replay agent activity sequence</p>
-        </div>
-      ) : (
-        <div className="mt-3 space-y-0">
-          {visible.map((event, index) => {
-            const latest = index === visible.length - 1;
-            return (
-              <div key={`${event.text}-${event.time}`} className="flex gap-2.5 text-[10px] transition-all duration-300" style={{ opacity: 1, transform: 'translateY(0)' }}>
-                <div className="flex flex-col items-center">
-                  <div className={`h-2.5 w-2.5 rounded-full ${timelineDot(event.type)} ${latest && playing ? 'animate-pulse' : ''}`} />
-                  {index !== visible.length - 1 && <div className="w-px flex-1 bg-border" />}
-                </div>
-                <div className={`pb-2.5 ${latest ? '-ml-1.5 rounded px-1.5 bg-muted/20' : ''}`}>
-                  <p className={`font-medium ${timelineText(event.type)}`}>{event.text}</p>
-                  <p className="text-[9px] text-muted-foreground">{event.time}</p>
-                </div>
-              </div>
-            );
-          })}
-          <div ref={bottomRef} />
-        </div>
-      )}
-    </div>
-  );
-};
 
 export default function AIAgentRemediationWorkspace() {
   const { setCurrentPage, setFilters } = useNav();
@@ -492,9 +390,13 @@ export default function AIAgentRemediationWorkspace() {
 
           {wsTab === 'timeline' && (
             <div className="overflow-y-auto p-5">
-              <h2 className="text-sm font-semibold text-foreground">Activity Timeline</h2>
-              <p className="mb-4 text-[10px] text-muted-foreground">Sequential log of all agent activities — press Play to replay</p>
-              <AnimatedTimeline events={TIMELINE_EVENTS} />
+              <h2 className="text-sm font-semibold text-foreground">Access Graph Timeline</h2>
+              <p className="mb-4 text-[10px] text-muted-foreground">Visual audit trail — watch agent activity replay on the access graph. Click any event to jump to that moment.</p>
+              {!selectedAgent ? (
+                <div className="text-[10px] text-muted-foreground">Select an agent from the list to replay its activity timeline.</div>
+              ) : (
+                <AccessGraphTimeline agent={selectedAgent} events={getAgentTimelineEvents(selectedAgent)} />
+              )}
             </div>
           )}
         </div>
