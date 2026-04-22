@@ -919,7 +919,12 @@ export default function PKIEngineerDashboard() {
               <div className="rounded-lg border p-3" style={{ backgroundColor: 'hsl(var(--teal) / 0.08)', borderColor: 'hsl(var(--teal) / 0.18)' }}>
                 Same key pair and template will be used for renewal.
               </div>
-              {modalFooter('Renew', () => handleSuccess(`Renewal initiated for ${selectedCount || tabCerts.length} certificate(s)`))}
+              {modalFooter('Renew', () => {
+                setActionModal(null);
+                setApprovalAction('renew');
+                setApprovalSearch('');
+                setApprovalDecisionOpen(false);
+              })}
             </div>
           </Modal>
         )}
@@ -987,6 +992,21 @@ export default function PKIEngineerDashboard() {
                 <p className="text-[11px] italic text-muted-foreground">{REVOKE_REASONS.find((reason) => reason.value === revokeReason)?.hint}</p>
               )}
               <textarea value={revokeComment} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setRevokeComment(e.target.value); }} rows={4} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none" placeholder="Add comments about this revocation request" />
+              <div className="rounded border border-border p-3 text-xs leading-relaxed text-muted-foreground">
+                Please revoke the certificate individually if the reason for revocation is not listed. Already Revoked/expired certificates, certificates with status other than 'Managed' and certificates with existing active Requests cannot be revoked. Download the list to check if the selected certificates are eligible{' '}
+                <button
+                  type="button"
+                  className="underline"
+                  style={{ color: 'hsl(var(--teal))' }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toast.info('Downloading eligibility list...');
+                  }}
+                >
+                  here
+                </button>
+                .
+              </div>
               {!revokeReason && (
                 <div className="rounded-lg border p-3 text-[11px]" style={{ backgroundColor: 'hsl(var(--coral) / 0.08)', borderColor: 'hsl(var(--coral) / 0.2)' }}>
                   A revoke reason is required before submitting.
@@ -997,7 +1017,13 @@ export default function PKIEngineerDashboard() {
                 <button
                   type="button"
                   disabled={!revokeReason}
-                  onClick={(e) => { e.stopPropagation(); handleSuccess(`Revocation: ${revokeReason} (${selectedCount || tabCerts.length} certificate(s))`); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActionModal(null);
+                    setApprovalAction('revoke');
+                    setApprovalSearch('');
+                    setApprovalDecisionOpen(false);
+                  }}
                   className="rounded-md px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
                   style={{ backgroundColor: 'hsl(var(--teal))' }}
                 >
