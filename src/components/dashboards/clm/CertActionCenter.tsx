@@ -399,11 +399,9 @@ export default function CertActionCenter({ open, severityFilter, setOpen, setSev
                 <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
                   <th className="w-8 py-2">&nbsp;</th>
                   <th className="py-2">Common Name</th>
-                  <th className="py-2">Subject Alternative Names</th>
                   <th className="py-2">Key Algorithm</th>
                   <th className="py-2">Signature Algorithm</th>
                   <th className="py-2">CRS score</th>
-                  <th className="py-2">Quantum</th>
                   <th className="py-2">Group</th>
                   <th className="py-2">Valid To</th>
                   <th className="py-2">Status</th>
@@ -412,7 +410,7 @@ export default function CertActionCenter({ open, severityFilter, setOpen, setSev
               <tbody>
                 {tabFilteredData.length === 0 && (
                   <tr>
-                    <td colSpan={10} className="py-10 text-center text-xs text-muted-foreground">
+                      <td colSpan={8} className="py-10 text-center text-xs text-muted-foreground">
                       No certificates match the current filter
                     </td>
                   </tr>
@@ -437,7 +435,6 @@ export default function CertActionCenter({ open, severityFilter, setOpen, setSev
                         />
                       </td>
                       <td className="max-w-[200px] border-b border-border py-3 pr-3 font-mono text-xs text-foreground truncate">{record.asset.commonName}</td>
-                      <td className="border-b border-border py-3 pr-3 text-xs text-muted-foreground truncate">{record.sans}</td>
                       <td className="border-b border-border py-3 pr-3 text-xs text-foreground">{record.asset.algorithm}</td>
                       <td className="border-b border-border py-3 pr-3 text-xs text-muted-foreground">{record.asset.algorithm}</td>
                       <td className="border-b border-border py-3 pr-3">
@@ -446,15 +443,6 @@ export default function CertActionCenter({ open, severityFilter, setOpen, setSev
                           style={{ color: severityColor, borderColor: severityColor, backgroundColor: `${severityColor}1A` }}
                         >
                           CRS {record.crs}
-                        </span>
-                      </td>
-                      <td className="border-b border-border py-3 pr-3">
-                        <span title={record.isQuantumVulnerable ? 'Quantum vulnerable' : 'PQC safer profile'}>
-                          {record.isQuantumVulnerable ? (
-                            <Atom className="h-4 w-4 text-purple-light" />
-                          ) : (
-                            <Shield className="h-4 w-4 text-teal" />
-                          )}
                         </span>
                       </td>
                       <td className="border-b border-border py-3 pr-3 text-xs text-muted-foreground">{record.group}</td>
@@ -471,28 +459,6 @@ export default function CertActionCenter({ open, severityFilter, setOpen, setSev
             </table>
           </div>
 
-          <div className="border-t border-border px-6 py-3">
-            <div className="flex items-center justify-between gap-4 rounded-lg border border-purple/30 bg-gradient-to-r from-purple/20 to-purple/5 p-3">
-              <div className="flex items-start gap-3">
-                <div className="rounded-lg bg-purple/15 p-2 text-purple-light">
-                  <Atom className="h-4 w-4" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Explore Your PQC Readiness</p>
-                  <p className="text-xs text-muted-foreground">Post-quantum threats are real. Begin your certificate readiness checks now.</p>
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  setCurrentPage('quantum-posture');
-                  closeAll();
-                }}
-                className="rounded-lg border border-purple/40 px-3 py-2 text-xs font-medium text-purple-light hover:bg-purple/10"
-              >
-                Go to Quantum Trust Hub
-              </button>
-            </div>
-          </div>
         </div>
       </div>
 
