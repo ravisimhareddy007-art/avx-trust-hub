@@ -10,6 +10,7 @@ import {
   Terminal, Code, Database, Cpu, Sparkles, AlertCircle, Send
 } from 'lucide-react';
 import CertDeploymentsView from '@/components/remediation/CertDeploymentsView';
+import CLMRemediationWorkspace from '@/components/remediation/clm/CLMRemediationWorkspace';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -416,13 +417,15 @@ export default function RemediationPage() {
   const [wizardItem, setWizardItem] = useState<RemediationItem | null>(null);
   const [provisionModule, setProvisionModule] = useState<ModuleDef | null>(null);
   const [ticketModule, setTicketModule] = useState<ModuleDef | null>(null);
-  const [clmView, setClmView] = useState<'issues' | 'deployments'>('issues');
+  const [clmView, setClmView] = useState<'issues' | 'deployments' | 'actions'>('issues');
 
   // Honor cross-link filters set by Integrations / Device drawer / Inventory violations.
   useEffect(() => {
     if (filters.module === 'clm') {
       setActiveModule('clm');
-      if (filters.view === 'deployments') setClmView('deployments');
+      if (filters.view === 'deployments' || filters.view === 'actions' || filters.view === 'issues') {
+        setClmView(filters.view as 'issues' | 'deployments' | 'actions');
+      }
     }
     if (filters.category && ['expiry', 'pqc', 'orphaned', 'policy'].includes(filters.category)) {
       setActiveFilter(filters.category as FilterId);
@@ -508,13 +511,13 @@ export default function RemediationPage() {
                 {currentModule.label}
               </h1>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {activeModule === 'clm' && clmView === 'deployments'
-                  ? 'Track certificate deployment workflows · execution layer'
+                {activeModule === 'clm'
+                  ? 'Certificate remediation workflows and policy requests'
                   : `${items.length} items need attention`}
               </p>
             </div>
             <div className="flex items-center gap-2">
-              {activeModule !== 'all' && currentModule.provisionLabel && (
+              {activeModule !== 'all' && activeModule !== 'clm' && currentModule.provisionLabel && (
                 <button onClick={() => setProvisionModule(currentModule)} className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-teal text-primary-foreground rounded-lg hover:bg-teal-light">
                   <Plus className="w-3.5 h-3.5" /> {currentModule.provisionLabel}
                 </button>
@@ -522,32 +525,8 @@ export default function RemediationPage() {
             </div>
           </div>
 
-          {/* Issues / Deployments segmented (CLM only — devices are a CLM-scoped concept) */}
-          {activeModule === 'clm' && (
-            <div className="inline-flex items-center bg-muted rounded-lg p-0.5 border border-border">
-              <button
-                onClick={() => setClmView('issues')}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                  clmView === 'issues' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <AlertCircle className="w-3.5 h-3.5" />
-                Issues
-              </button>
-              <button
-                onClick={() => setClmView('deployments')}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                  clmView === 'deployments' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <Send className="w-3.5 h-3.5" />
-                Deployments
-              </button>
-            </div>
-          )}
-
-          {activeModule === 'clm' && clmView === 'deployments' ? (
-            <CertDeploymentsView />
+          {activeModule === 'clm' ? (
+            <CLMRemediationWorkspace activeTab={clmView} onTabChange={setClmView} />
           ) : (
             <>
               {/* Issue filters */}
