@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import {
   CheckCircle2,
-  Clock,
   ChevronLeft,
   ChevronRight,
+  Clock,
   Info,
   LayoutDashboard,
   RefreshCw,
@@ -37,12 +37,10 @@ import CertDrillModal from './clm/CertDrillModal';
 import { ESTATE_SUMMARY, mockAssets, type CryptoAsset } from '@/data/mockData';
 import { mockITAssets } from '@/data/inventoryMockData';
 import { computeCRS } from '@/lib/risk/crs';
-import { useNav } from '@/context/NavigationContext';
 import { toast } from 'sonner';
 
 type CLMTab = 'overview' | 'operations' | 'risk' | 'slc';
 type ScoredCert = CryptoAsset & { crs: number };
-
 
 const TABS: { id: CLMTab; label: string; icon: React.ElementType }[] = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -189,44 +187,27 @@ export default function PKIEngineerDashboard() {
     [exp1to10, exp11to30, exp31to90, expExpired]
   );
 
-  const tabCerts = useMemo(
-    () => drillCerts.filter((a) =>
-      certTab === 'server'
-        ? a.type === 'TLS Certificate' || a.type === 'K8s Workload Cert'
-        : certTab === 'client'
-          ? a.type === 'SSH Certificate'
-          : a.type === 'Code-Signing Certificate'
-    ),
-    [certTab, drillCerts]
-  );
+  const gaugeDots = [
+    { pct: 0, color: scoreZoneColors.bad },
+    { pct: 25, color: scoreZoneColors.poor },
+    { pct: 50, color: scoreZoneColors.fair },
+    { pct: 75, color: scoreZoneColors.good },
+    { pct: 100, color: scoreZoneColors.excellent },
+  ].map((dot) => {
+    const point = polar(80, 80, 65, -220 + (dot.pct / 100) * 260);
+    return { ...dot, ...point };
+  });
 
-  const filteredGroups = useMemo(
-    () => GROUPS.filter((group) => group.toLowerCase().includes(groupSearch.toLowerCase())),
-    [groupSearch]
-  );
+  const zoneLabels = [
+    { label: 'BAD', angle: -205 },
+    { label: 'POOR', angle: -150 },
+    { label: 'FAIR', angle: -90 },
+    { label: 'GOOD', angle: -20 },
+    { label: 'EXCELLENT', angle: 28 },
+  ].map((item) => ({ ...item, ...polar(80, 80, 85, item.angle) }));
 
-  const visibleColumns = useMemo(
-    () => COLUMN_OPTIONS.filter((column) => selectedColumns.includes(column.key)),
-    [selectedColumns]
-  );
-
-  const filteredColumnOptions = useMemo(
-    () => COLUMN_OPTIONS.filter((column) => column.label.toLowerCase().includes(columnSearch.toLowerCase())),
-    [columnSearch]
-  );
-
-  const selectedCerts = useMemo(
-    () => tabCerts.filter((cert) => selected.includes(cert.id)),
-    [selected, tabCerts]
-  );
-
-  const approvalRows = useMemo(() => {
-    const term = approvalSearch.trim().toLowerCase();
-    if (!term) return selectedCerts;
-    return selectedCerts.filter((cert) =>
-      [cert.commonName, cert.serial, cert.caIssuer, cert.name].some((value) => value.toLowerCase().includes(term))
-    );
-  }, [approvalSearch, selectedCerts]);
+  const backgroundArc = describeArc(80, 80, 65, -220, 40);
+  const filledArc = describeArc(80, 80, 65, -220, -220 + (Math.max(0, Math.min(100, overallScore)) / 100) * 260);
 
   const handleRefresh = () => toast.success('CLM overview refreshed');
 
@@ -276,405 +257,6 @@ export default function PKIEngineerDashboard() {
     return matches.length > 0 ? matches : scored;
   }
 
-  const gaugeDots = [
-    { pct: 0, color: scoreZoneColors.bad },
-    { pct: 25, color: scoreZoneColors.poor },
-    { pct: 50, color: scoreZoneColors.fair },
-    { pct: 75, color: scoreZoneColors.good },
-    { pct: 100, color: scoreZoneColors.excellent },
-  ].map((dot) => {
-    const point = polar(80, 80, 65, -220 + (dot.pct / 100) * 260);
-    return { ...dot, ...point };
-  });
-
-  const zoneLabels = [
-    { label: 'BAD', angle: -205 },
-    { label: 'POOR', angle: -150 },
-    { label: 'FAIR', angle: -90 },
-    { label: 'GOOD', angle: -20 },
-    { label: 'EXCELLENT', angle: 28 },
-  ].map((item) => ({ ...item, ...polar(80, 80, 85, item.angle) }));
-
-  const backgroundArc = describeArc(80, 80, 65, -220, 40);
-  const filledArc = describeArc(80, 80, 65, -220, -220 + (Math.max(0, Math.min(100, overallScore)) / 100) * 260);
-  return (
-      <div className="fixed inset-0 z-[70]" onClick={(e) => e.stopPropagation()}>
-        {actionModal === 'export' && (
-          <Modal open onClose={closeActionModal} title="Export Certificates">
-            <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
-              <div>
-                <p className="text-[11px] text-muted-foreground">Group</p>
-                <p className="mt-1 rounded-md border border-border bg-secondary/20 px-3 py-2">all-certificate-groups</p>
-              </div>
-              <div className="space-y-2">
-                <p className="text-[11px] text-muted-foreground">Columns</p>
-                {['All Columns', 'Displayed Columns'].map((option) => (
-                  <label key={option} className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                    <input type="radio" name="columns" defaultChecked={option === 'Displayed Columns'} onClick={(e) => e.stopPropagation()} />
-                    <span>{option}</span>
-                  </label>
-                ))}
-              </div>
-              <div className="space-y-2">
-                <p className="text-[11px] text-muted-foreground">Format</p>
-                {(['csv', 'xls'] as const).map((format) => (
-                  <label key={format} className="flex items-center gap-2 uppercase" onClick={(e) => e.stopPropagation()}>
-                    <input type="radio" name="format" checked={exportFormat === format} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setExportFormat(format); }} />
-                    <span>{format}</span>
-                  </label>
-                ))}
-              </div>
-              <p className="text-[11px] text-muted-foreground">Exporting all certificate columns may take time.</p>
-              {modalFooter('Export', () => handleSuccess(`Exporting ${selectedCount || tabCerts.length} certificate(s) as ${exportFormat.toUpperCase()}`))}
-            </div>
-          </Modal>
-        )}
-
-        {actionModal === 'download' && (
-          <Modal open onClose={closeActionModal} title="Download Certificate">
-            <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
-              <div className="space-y-2">
-                <p className="text-[11px] text-muted-foreground">Choose Download Type</p>
-                <label className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                  <input type="radio" name="downloadType" checked={downloadType === 'certs'} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setDownloadType('certs'); }} />
-                  <span>Certificates Only</span>
-                </label>
-                <label className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                  <input type="radio" name="downloadType" checked={downloadType === 'keys'} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setDownloadType('keys'); }} />
-                  <span>Certificates and Keys</span>
-                </label>
-              </div>
-              <label className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                <input type="checkbox" checked={downloadTruststore} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setDownloadTruststore(e.target.checked); }} />
-                <span>Download Truststore Certificates</span>
-              </label>
-              {modalFooter('Download', () => handleSuccess(`Downloading ${selectedCount || tabCerts.length} certificate(s)`))}
-            </div>
-          </Modal>
-        )}
-
-        {actionModal === 'delete' && (
-          <Modal open onClose={closeActionModal} title="Delete Certificate">
-            <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
-              <div className="rounded-lg border p-3" style={{ backgroundColor: 'hsl(var(--coral) / 0.08)', borderColor: 'hsl(var(--coral) / 0.2)' }}>
-                Delete {selectedCount} certificate(s)? This cannot be undone.
-              </div>
-              {modalFooter('Yes Delete', () => handleSuccess(`${selectedCount} deleted`, { closeDrill: true }), { backgroundColor: 'hsl(var(--coral))' }, 'No Cancel')}
-            </div>
-          </Modal>
-        )}
-
-        {actionModal === 'change-status' && (
-          <Modal open onClose={closeActionModal} title="Change Status">
-            <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
-              <div className="space-y-2">
-                <p>Change Status to:</p>
-                {['Managed', 'Monitored'].map((status) => (
-                  <label key={status} className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                    <input type="radio" checked={newStatus === status} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setNewStatus(status); }} />
-                    <span>{status}</span>
-                  </label>
-                ))}
-              </div>
-              <div className="rounded-md border border-border bg-secondary/20 p-3 text-[11px] text-muted-foreground">Changing status may impact existing workflows.</div>
-              <textarea value={statusComment} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setStatusComment(e.target.value); }} rows={4} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none" placeholder="Comments" />
-              {modalFooter('Yes', () => handleSuccess(`Status updated to ${newStatus} for ${selectedCount} certificate(s)`), { backgroundColor: 'hsl(var(--teal))' }, 'No')}
-            </div>
-          </Modal>
-        )}
-
-        {actionModal === 'assign-group' && (
-          <Modal open onClose={closeActionModal} title="Assign to Group">
-            <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                <input value={groupSearch} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setGroupSearch(e.target.value); }} placeholder="Search groups" className="w-full rounded-md border border-border bg-secondary/20 py-2 pl-9 pr-3 text-xs outline-none" />
-              </div>
-              <div className="rounded-md border border-border bg-secondary/20 px-3 py-2"><span className="text-muted-foreground">Selected:</span> <strong>{selectedGroup}</strong></div>
-              <div className="space-y-2">
-                {filteredGroups.map((group) => (
-                  <label key={group} className="flex items-center justify-between rounded-md border border-border px-3 py-2" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center gap-2">
-                      <input type="radio" checked={selectedGroup === group} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setSelectedGroup(group); }} />
-                      <span>{group}</span>
-                    </div>
-                    {selectedGroup === group && <CheckCircle2 className="h-4 w-4" style={{ color: 'hsl(var(--teal))' }} />}
-                  </label>
-                ))}
-              </div>
-              <textarea value={comments} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setComments(e.target.value); }} rows={4} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none" placeholder="Comments" />
-              {modalFooter('Assign', () => handleSuccess(`Assigned ${selectedCount} certificate(s) to ${selectedGroup}`))}
-            </div>
-          </Modal>
-        )}
-
-        {actionModal === 'unassign-group' && (
-          <Modal open onClose={closeActionModal} title="Unassign Group">
-            <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
-              <p className="text-muted-foreground">Move to Default group?</p>
-              {modalFooter('Unassign', () => handleSuccess(`Unassigned ${selectedCount} certificate(s)`), { backgroundColor: 'hsl(var(--amber))' })}
-            </div>
-          </Modal>
-        )}
-
-        {actionModal === 'add-comments' && (
-          <Modal open onClose={closeActionModal} title="Add / Modify Comments">
-            <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
-              <textarea value={comments} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setComments(e.target.value); }} rows={4} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none" />
-              {modalFooter('Save', () => handleSuccess(`Saved comments for ${selectedCount} certificate(s)`))}
-            </div>
-          </Modal>
-        )}
-
-        {actionModal === 'cert-attributes' && (
-          <Modal open onClose={closeActionModal} title="Certificate Attributes">
-            <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
-              {['Owner', 'Environment', 'Business Unit'].map((field) => (
-                <div key={field} className="grid grid-cols-[120px,1fr] items-center gap-3 rounded-md border border-border px-3 py-2">
-                  <span className="text-muted-foreground">{field}</span>
-                  <input defaultValue={field === 'Owner' ? 'Sarah Chen' : field === 'Environment' ? 'Production' : 'Platform'} onClick={(e) => e.stopPropagation()} className="rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none" />
-                </div>
-              ))}
-              {modalFooter('Save', () => handleSuccess(`Updated attributes for ${selectedCount} certificate(s)`))}
-            </div>
-          </Modal>
-        )}
-
-        {actionModal === 'bulk-update' && (
-          <Modal open onClose={closeActionModal} title="Bulk Update Attributes Value">
-            <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
-              <div className="rounded-lg border p-3" style={{ backgroundColor: 'hsl(var(--amber) / 0.08)', borderColor: 'hsl(var(--amber) / 0.2)' }}>
-                Bulk updates affect multiple certificates and should be validated before import.
-              </div>
-              <div className="space-y-2">
-                {(['File Upload', 'By Group'] as const).map((mode) => (
-                  <label key={mode} className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                    <input type="radio" checked={bulkUpdateMode === mode} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setBulkUpdateMode(mode); }} />
-                    <span>{mode}</span>
-                  </label>
-                ))}
-              </div>
-              <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
-                <span>Download Template</span>
-                <button type="button" onClick={(e) => e.stopPropagation()} className="rounded-md border border-border px-3 py-1 text-[11px]">Download</button>
-              </div>
-              <input type="file" onClick={(e) => e.stopPropagation()} className="w-full text-[11px] text-muted-foreground" />
-              {modalFooter('Save', () => handleSuccess(`Bulk update queued for ${selectedCount} certificate(s)`))}
-            </div>
-          </Modal>
-        )}
-
-        {actionModal === 'update-renew' && (
-          <Modal open onClose={closeActionModal} title="Update Renew Validity">
-            <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
-              <label className="space-y-2">
-                <span>Renew X days before expiry</span>
-                <input type="number" value={renewDays} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setRenewDays(Number(e.target.value)); }} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none" />
-              </label>
-              {modalFooter('Save', () => handleSuccess(`Updated renew validity for ${selectedCount} certificate(s)`))}
-            </div>
-          </Modal>
-        )}
-
-        {actionModal === 'renew' && (
-          <Modal open onClose={closeActionModal} title="Renew Certificate">
-            <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
-              <p>{selectedCount || tabCerts.length} certificate(s) selected.</p>
-              <label className="space-y-2 block">
-                <span>CA</span>
-                <select value={renewCa} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setRenewCa(e.target.value); }} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none">
-                  {CA_OPTIONS.map((option) => <option key={option}>{option}</option>)}
-                </select>
-              </label>
-              <div className="space-y-2">
-                <span>Schedule</span>
-                {(['Immediately', 'Next maintenance window'] as const).map((option) => (
-                  <label key={option} className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                    <input type="radio" checked={renewSchedule === option} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setRenewSchedule(option); }} />
-                    <span>{option}</span>
-                  </label>
-                ))}
-              </div>
-              <div className="rounded-lg border p-3" style={{ backgroundColor: 'hsl(var(--teal) / 0.08)', borderColor: 'hsl(var(--teal) / 0.18)' }}>
-                Same key pair and template will be used for renewal.
-              </div>
-              {modalFooter('Renew', () => {
-                setActionModal(null);
-                setApprovalAction('renew');
-                setApprovalSearch('');
-                setApprovalDecisionOpen(false);
-              })}
-            </div>
-          </Modal>
-        )}
-
-        {actionModal === 'regenerate' && (
-          <Modal open onClose={closeActionModal} title="Regenerate Certificate">
-            <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
-              <p>{selectedCount || tabCerts.length} certificate(s) selected.</p>
-              <label className="space-y-2 block">
-                <span>Key Type</span>
-                <select value={regenerateKeyType} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setRegenerateKeyType(e.target.value); }} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none">
-                  {['RSA-4096', 'ECC P-384', 'Ed25519'].map((option) => <option key={option}>{option}</option>)}
-                </select>
-              </label>
-              <label className="space-y-2 block">
-                <span>CA</span>
-                <select value={renewCa} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setRenewCa(e.target.value); }} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none">
-                  {CA_OPTIONS.map((option) => <option key={option}>{option}</option>)}
-                </select>
-              </label>
-              <div className="rounded-lg border p-3" style={{ backgroundColor: 'hsl(var(--teal) / 0.08)', borderColor: 'hsl(var(--teal) / 0.18)' }}>
-                Regeneration creates a new key pair before issuing the replacement certificate.
-              </div>
-              {modalFooter('Regenerate', () => handleSuccess(`Regeneration initiated for ${selectedCount || tabCerts.length} certificate(s)`))}
-            </div>
-          </Modal>
-        )}
-
-        {actionModal === 'reissue' && (
-          <Modal open onClose={closeActionModal} title="Reissue Certificate">
-            <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
-              <p>{selectedCount || tabCerts.length} certificate(s) selected.</p>
-              <label className="space-y-2 block">
-                <span>CA</span>
-                <select value={renewCa} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setRenewCa(e.target.value); }} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none">
-                  {CA_OPTIONS.map((option) => <option key={option}>{option}</option>)}
-                </select>
-              </label>
-              <div className="space-y-2">
-                <span>Schedule</span>
-                {(['Immediately', 'Next maintenance window'] as const).map((option) => (
-                  <label key={option} className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                    <input type="radio" checked={renewSchedule === option} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setRenewSchedule(option); }} />
-                    <span>{option}</span>
-                  </label>
-                ))}
-              </div>
-              <textarea value={reissueReason} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setReissueReason(e.target.value); }} rows={4} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none" placeholder="Reason for reissue" />
-              {modalFooter('Reissue', () => handleSuccess(`Reissue initiated for ${selectedCount || tabCerts.length} certificate(s)`))}
-            </div>
-          </Modal>
-        )}
-
-        {actionModal === 'revoke' && (
-          <Modal open onClose={closeActionModal} title="Certificate Revoke">
-            <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
-              <label className="space-y-2 block">
-                <span>* Reason:</span>
-                <select value={revokeReason} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setRevokeReason(e.target.value); }} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none">
-                  <option value="">Select a reason</option>
-                  {REVOKE_REASONS.map((reason) => <option key={reason.value} value={reason.value}>{reason.value}</option>)}
-                </select>
-              </label>
-              {revokeReason && (
-                <p className="text-[11px] italic text-muted-foreground">{REVOKE_REASONS.find((reason) => reason.value === revokeReason)?.hint}</p>
-              )}
-              <textarea value={revokeComment} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setRevokeComment(e.target.value); }} rows={4} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none" placeholder="Add comments about this revocation request" />
-              <div className="rounded border border-border p-3 text-xs leading-relaxed text-muted-foreground">
-                Please revoke the certificate individually if the reason for revocation is not listed. Already Revoked/expired certificates, certificates with status other than 'Managed' and certificates with existing active Requests cannot be revoked. Download the list to check if the selected certificates are eligible{' '}
-                <button
-                  type="button"
-                  className="underline"
-                  style={{ color: 'hsl(var(--teal))' }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toast.info('Downloading eligibility list...');
-                  }}
-                >
-                  here
-                </button>
-                .
-              </div>
-              {!revokeReason && (
-                <div className="rounded-lg border p-3 text-[11px]" style={{ backgroundColor: 'hsl(var(--coral) / 0.08)', borderColor: 'hsl(var(--coral) / 0.2)' }}>
-                  A revoke reason is required before submitting.
-                </div>
-              )}
-              <div className="mt-5 flex items-center justify-end gap-2">
-                <button type="button" onClick={(e) => { e.stopPropagation(); closeActionModal(); }} className="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-secondary/40">Close</button>
-                <button
-                  type="button"
-                  disabled={!revokeReason}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setActionModal(null);
-                    setApprovalAction('revoke');
-                    setApprovalSearch('');
-                    setApprovalDecisionOpen(false);
-                  }}
-                  className="rounded-md px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                  style={{ backgroundColor: 'hsl(var(--teal))' }}
-                >
-                  Submit
-                </button>
-              </div>
-            </div>
-          </Modal>
-        )}
-
-        {actionModal === 'ca-switch' && (
-          <Modal open onClose={closeActionModal} title="CA Switch">
-            <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
-              <p className="text-muted-foreground">Current CA: {tabCerts[0]?.caIssuer ?? 'Unknown'}</p>
-              <label className="space-y-2 block">
-                <span>Switch to</span>
-                <select value={switchCa} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); setSwitchCa(e.target.value); }} className="w-full rounded-md border border-border bg-secondary/20 px-3 py-2 text-xs outline-none">
-                  {CA_OPTIONS.map((option) => <option key={option}>{option}</option>)}
-                </select>
-              </label>
-              <div className="rounded-lg border p-3" style={{ backgroundColor: 'hsl(var(--amber) / 0.08)', borderColor: 'hsl(var(--amber) / 0.2)' }}>
-                Switching the issuing CA may require updated certificate chains on dependent services.
-              </div>
-              {modalFooter('Switch', () => handleSuccess(`CA switched for ${selectedCount || tabCerts.length} certificate(s)`))}
-            </div>
-          </Modal>
-        )}
-
-        {actionModal === 'revocation-check' && (
-          <Modal open onClose={closeActionModal} title="Revocation Check">
-            <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
-              {!revocationDone ? (
-                <div className="space-y-3">
-                  <div className="h-2 overflow-hidden rounded-full bg-secondary/40">
-                    <div className="h-full animate-pulse rounded-full" style={{ width: '70%', backgroundColor: 'hsl(var(--teal))' }} />
-                  </div>
-                  <p className="text-muted-foreground">Running revocation status checks across selected certificates...</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { label: 'Valid', value: Math.max(1, Math.round((selectedCount || tabCerts.length) * 0.72)), color: 'hsl(var(--teal))' },
-                    { label: 'Revoked', value: Math.round((selectedCount || tabCerts.length) * 0.18), color: 'hsl(var(--coral))' },
-                    { label: 'Unknown', value: Math.max(0, (selectedCount || tabCerts.length) - Math.max(1, Math.round((selectedCount || tabCerts.length) * 0.72)) - Math.round((selectedCount || tabCerts.length) * 0.18)), color: 'hsl(var(--amber))' },
-                  ].map((item) => (
-                    <div key={item.label} className="rounded-lg border border-border bg-secondary/20 p-3 text-center">
-                      <div className="text-lg font-bold" style={{ color: item.color }}>{item.value}</div>
-                      <div className="text-[11px] text-muted-foreground">{item.label}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className="mt-5 flex items-center justify-end">
-                <button type="button" onClick={(e) => { e.stopPropagation(); closeActionModal(); }} className="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-secondary/40">Close</button>
-              </div>
-            </div>
-          </Modal>
-        )}
-
-        {actionModal === 'archive' && (
-          <Modal open onClose={closeActionModal} title="Archive Certificates">
-            <div className="space-y-4 text-xs text-foreground" onClick={(e) => e.stopPropagation()}>
-              <p>{selectedCount} certs will be archived.</p>
-              <p className="text-muted-foreground">Archived certificates can be restored later.</p>
-              {modalFooter('Archive', () => handleSuccess(`Archived ${selectedCount} certificate(s)`), { backgroundColor: 'hsl(var(--amber))' })}
-            </div>
-          </Modal>
-        )}
-      </div>
-    );
-  };
-
   return (
     <div className="flex max-h-[calc(100vh-120px)] flex-col space-y-0">
       <div className="flex flex-shrink-0 items-end justify-between pb-3 pt-1">
@@ -715,10 +297,10 @@ export default function PKIEngineerDashboard() {
               </div>
               <div className="flex divide-x divide-border">
                 {[
-                    { label: 'Total Certificates', value: ESTATE_SUMMARY.certificates.toLocaleString() },
+                  { label: 'Total Certificates', value: ESTATE_SUMMARY.certificates.toLocaleString() },
                   { label: 'Cert Manager', value: 0, subtitle: 'not configured' },
                   { label: 'Total Issuing CAs', value: 4 },
-                    { label: 'Code Signing Certs', value: ESTATE_SUMMARY.codeSigning.toLocaleString() },
+                  { label: 'Code Signing Certs', value: ESTATE_SUMMARY.codeSigning.toLocaleString() },
                   { label: 'Total Devices', value: mockITAssets.length },
                 ].map((tile) => (
                   <div key={tile.label} className="flex-1 px-4 py-2">
@@ -765,22 +347,20 @@ export default function PKIEngineerDashboard() {
                   </div>
 
                   <div className="flex-1 space-y-2">
-                    {severityBuckets.map((bucket) => {
-                      return (
-                        <button
-                          key={bucket.name}
-                          type="button"
-                          onClick={() => openDrill(bucket.name, bucket.certs)}
-                          className="flex w-full items-center gap-3 rounded px-2 py-1.5 text-left transition hover:bg-secondary/30"
-                        >
-                          <span className="w-20 text-xs font-semibold text-foreground">{bucket.name}</span>
-                          <div className="h-5 flex-1 overflow-hidden rounded bg-secondary/40">
-                            <div className="h-full min-w-[2px] rounded" style={{ width: `${Math.max((bucket.certs.length / total) * 100, bucket.certs.length > 0 ? 2 : 0)}%`, backgroundColor: severityHsl[bucket.name] }} />
-                          </div>
-                          <span className="text-xs tabular-nums text-muted-foreground">{bucket.certs.length} · {bucket.pct}%</span>
-                        </button>
-                      );
-                    })}
+                    {severityBuckets.map((bucket) => (
+                      <button
+                        key={bucket.name}
+                        type="button"
+                        onClick={() => openDrill(bucket.name, bucket.certs)}
+                        className="flex w-full items-center gap-3 rounded px-2 py-1.5 text-left transition hover:bg-secondary/30"
+                      >
+                        <span className="w-20 text-xs font-semibold text-foreground">{bucket.name}</span>
+                        <div className="h-5 flex-1 overflow-hidden rounded bg-secondary/40">
+                          <div className="h-full min-w-[2px] rounded" style={{ width: `${Math.max((bucket.certs.length / total) * 100, bucket.certs.length > 0 ? 2 : 0)}%`, backgroundColor: severityHsl[bucket.name] }} />
+                        </div>
+                        <span className="text-xs tabular-nums text-muted-foreground">{bucket.certs.length} · {bucket.pct}%</span>
+                      </button>
+                    ))}
                     <div className="flex items-center gap-1.5 rounded border border-amber/20 bg-amber/5 p-2 text-[10px] text-muted-foreground">
                       <Info className="h-3 w-3 flex-shrink-0 text-amber" />
                       <span>Click any Certificate Severity category to drill down and take remediation actions</span>
@@ -890,6 +470,7 @@ export default function PKIEngineerDashboard() {
             <CLMActionTrend />
           </div>
         )}
+
         {tab === 'operations' && (
           <div className="space-y-4 pr-1">
             <RenewalPipeline openModal={openModal} />
