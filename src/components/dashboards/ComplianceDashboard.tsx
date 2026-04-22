@@ -207,7 +207,12 @@ function CompletionRing({ pct, size = 40 }: { pct: number; size?: number }) {
 
 // ─── VIOLATION DRAWER ────────────────────────────────────────────────────────
 
-function ViolationDrawer({ v, onClose }: { v: Violation | null; onClose: () => void }) {
+function ViolationDrawer({ v, onClose, onEscalate, onTicket }: {
+  v: Violation | null;
+  onClose: () => void;
+  onEscalate: (v: Violation) => void;
+  onTicket: (v: Violation) => void;
+}) {
   const [assigned, setAssigned] = React.useState(v?.owner || 'Unassigned');
   React.useEffect(() => { if (v) setAssigned(v.owner); }, [v]);
   if (!v) return null;
@@ -271,7 +276,7 @@ function ViolationDrawer({ v, onClose }: { v: Violation | null; onClose: () => v
             className="flex items-center justify-center gap-1.5 py-2 rounded-lg border border-teal/30 bg-teal/5 text-teal text-xs font-medium hover:bg-teal/10">
             <Download className="w-3.5 h-3.5" /> Generate Evidence
           </button>
-          <button onClick={() => { toast.success('Remediation ticket created'); onClose(); }}
+          <button onClick={() => { onClose(); setTimeout(() => onTicket(v), 80); }}
             className="flex items-center justify-center gap-1.5 py-2 rounded-lg border border-amber/30 bg-amber/5 text-amber text-xs font-medium hover:bg-amber/10">
             <Ticket className="w-3.5 h-3.5" /> Create Ticket
           </button>
@@ -279,13 +284,188 @@ function ViolationDrawer({ v, onClose }: { v: Violation | null; onClose: () => v
             className="flex items-center justify-center gap-1.5 py-2 rounded-lg border border-border bg-muted/30 text-foreground text-xs font-medium hover:bg-muted/50">
             <RefreshCw className="w-3.5 h-3.5" /> Mark In Remediation
           </button>
-          <button onClick={() => { toast.success('Escalation sent to CISO'); onClose(); }}
+          <button onClick={() => { onClose(); setTimeout(() => onEscalate(v), 80); }}
             className="flex items-center justify-center gap-1.5 py-2 rounded-lg border border-coral/30 bg-coral/5 text-coral text-xs font-medium hover:bg-coral/10">
-            <AlertTriangle className="w-3.5 h-3.5" /> Escalate to CISO
+            <AlertTriangle className="w-3.5 h-3.5" /> Escalate to Sec Admin
           </button>
         </div>
       </div>
     </Drawer>
+  );
+}
+
+// ─── ESCALATE TO SEC ADMIN MODAL ─────────────────────────────────────────────
+
+function EscalateModal({ v, onClose, onConfirm }: {
+  v: Violation | null;
+  onClose: () => void;
+  onConfirm: (v: Violation, comments: string) => void;
+}) {
+  const [comments, setComments] = React.useState('');
+  if (!v) return null;
+  return (
+    <Modal open={!!v} onClose={onClose} title="Escalate to Security Admin">
+      <div className="space-y-4">
+        <div className="bg-coral/5 border border-coral/20 rounded-lg p-3">
+          <div className="flex items-center gap-2 mb-1">
+            <SeverityBadge severity={v.severity} />
+            <span className="text-xs font-semibold">{v.asset}</span>
+          </div>
+          <p className="text-[10px] text-muted-foreground">{v.rule}</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">{v.framework} · {v.bu}</p>
+        </div>
+        <div>
+          <label className="text-[11px] font-medium text-muted-foreground block mb-2">
+            Comments for Security Admin
+          </label>
+          <textarea
+            value={comments}
+            onChange={e => setComments(e.target.value)}
+            placeholder="Explain why this needs Security Admin attention — context, deadline, business impact..."
+            rows={4}
+            className="w-full text-xs border border-border rounded-lg px-3 py-2 bg-background focus:outline-none focus:ring-1 focus:ring-teal resize-none"
+          />
+        </div>
+        <p className="text-[10px] text-muted-foreground">
+          The Security Admin will receive a notification with this violation detail and your comments on their dashboard.
+        </p>
+        <div className="flex gap-2">
+          <button onClick={onClose}
+            className="flex-1 py-2 border border-border text-xs rounded-lg hover:bg-muted/30 text-muted-foreground">
+            Cancel
+          </button>
+          <button
+            onClick={() => { onConfirm(v, comments); onClose(); }}
+            disabled={!comments.trim()}
+            className="flex-1 py-2 bg-coral/10 text-coral text-xs font-semibold rounded-lg hover:bg-coral/20 border border-coral/30 disabled:opacity-40 disabled:cursor-not-allowed">
+            Send Escalation
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// ─── CREATE TICKET MODAL ─────────────────────────────────────────────────────
+
+function CreateTicketModal({ v, onClose, onConfirm }: {
+  v: Violation | null;
+  onClose: () => void;
+  onConfirm: (v: Violation, ticketData: { title: string; priority: string; assignee: string; description: string }) => void;
+}) {
+  const [form, setForm] = React.useState({
+    title: v ? `[${v.framework}] ${v.rule} — ${v.asset}` : '',
+    priority: v?.severity || 'High',
+    assignee: v?.owner || 'Unassigned',
+    description: v ? `Violation ${v.id}\n\n${v.description}\n\nRecommended action: ${v.remediation}` : '',
+  });
+  React.useEffect(() => {
+    if (v) setForm({
+      title: `[${v.framework}] ${v.rule} — ${v.asset}`,
+      priority: v.severity,
+      assignee: v.owner,
+      description: `Violation ${v.id}\n\n${v.description}\n\nRecommended action: ${v.remediation}`,
+    });
+  }, [v?.id]);
+
+  if (!v) return null;
+  const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+    setForm(f => ({ ...f, [k]: e.target.value }));
+
+  return (
+    <Modal open={!!v} onClose={onClose} title="Create Remediation Ticket" wide>
+      <div className="space-y-4">
+        <div>
+          <label className="text-[11px] font-medium text-muted-foreground block mb-1.5">Title</label>
+          <input value={form.title} onChange={set('title')}
+            className="w-full text-xs border border-border rounded-lg px-3 py-2 bg-background focus:outline-none focus:ring-1 focus:ring-teal" />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-[11px] font-medium text-muted-foreground block mb-1.5">Priority</label>
+            <select value={form.priority} onChange={set('priority')}
+              className="w-full text-xs border border-border rounded-lg px-3 py-2 bg-background focus:outline-none focus:ring-1 focus:ring-teal">
+              {['Critical','High','Medium','Low'].map(p => <option key={p}>{p}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-[11px] font-medium text-muted-foreground block mb-1.5">Assignee</label>
+            <select value={form.assignee} onChange={set('assignee')}
+              className="w-full text-xs border border-border rounded-lg px-3 py-2 bg-background focus:outline-none focus:ring-1 focus:ring-teal">
+              {['Unassigned','Priya K.','Arjun S.','Dev P.','Anjali M.','Ravi T.'].map(a => <option key={a}>{a}</option>)}
+            </select>
+          </div>
+        </div>
+        <div>
+          <label className="text-[11px] font-medium text-muted-foreground block mb-1.5">Description</label>
+          <textarea value={form.description} onChange={set('description')} rows={5}
+            className="w-full text-xs border border-border rounded-lg px-3 py-2 bg-background focus:outline-none focus:ring-1 focus:ring-teal resize-none font-mono" />
+        </div>
+        <div className="flex items-center gap-2 text-[10px] text-muted-foreground bg-muted/30 rounded-lg px-3 py-2">
+          <span>Linked to:</span>
+          <span className="font-mono text-purple">{v.id}</span>
+          <span>·</span><span>{v.framework}</span>
+          <span>·</span><span>{v.bu}</span>
+          <span>·</span><span className="font-mono text-teal">{v.control}</span>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={onClose}
+            className="flex-1 py-2 border border-border text-xs rounded-lg hover:bg-muted/30 text-muted-foreground">
+            Cancel
+          </button>
+          <button onClick={() => { onConfirm(v, form); onClose(); }}
+            className="flex-1 py-2 bg-teal/10 text-teal text-xs font-semibold rounded-lg hover:bg-teal/20 border border-teal/30">
+            Create Ticket
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// ─── FRAMEWORK DRILL MODAL ────────────────────────────────────────────────────
+
+function FrameworkDrillModal({ framework, onClose, onViolationClick }: {
+  framework: string | null;
+  onClose: () => void;
+  onViolationClick: (v: Violation) => void;
+}) {
+  const violations = VIOLATIONS.filter(v => framework && v.framework.startsWith(framework.split(' ')[0]));
+  const fd = FRAMEWORK_POSTURE.find(f => f.framework === framework);
+  return (
+    <Modal open={!!framework} onClose={onClose} title={`${framework} — Violations`} wide>
+      <div className="space-y-3">
+        {fd && (
+          <div className="flex items-center gap-4 pb-3 border-b border-border">
+            <div className="flex gap-4 text-xs">
+              <span className="text-teal font-semibold">{fd.compliant}% compliant</span>
+              <span className="text-amber">{fd.atRisk}% at risk</span>
+              <span className="text-coral">{fd.violated}% violated</span>
+            </div>
+            <span className="text-[10px] text-muted-foreground ml-auto">Next audit: {fd.nextAudit} ({fd.daysToAudit}d)</span>
+          </div>
+        )}
+        {violations.length === 0
+          ? <p className="text-xs text-muted-foreground py-6 text-center">No violations for this framework.</p>
+          : violations.map(v => (
+              <div key={v.id} className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/20 cursor-pointer"
+                onClick={() => { onClose(); setTimeout(() => onViolationClick(v), 80); }}>
+                <div className="flex items-start gap-2 flex-1 min-w-0">
+                  <SeverityBadge severity={v.severity} />
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium truncate">{v.asset}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">{v.rule}</p>
+                    <p className="text-[10px] text-muted-foreground">{v.bu} · {v.agedays}d old · Owner: {v.owner}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <StatusPill status={v.status} />
+                  <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                </div>
+              </div>
+            ))}
+      </div>
+    </Modal>
   );
 }
 
@@ -387,11 +567,49 @@ function BUDrillModal({ bu, framework, onClose, onViolationClick }: {
 
 export default function ComplianceDashboard() {
   const { setCurrentPage, setFilters } = useNav();
+  const { addEscalation } = useNotifications();
   const [tab, setTab] = React.useState<Tab>('overview');
   const [activeViolation, setActiveViolation] = React.useState<Violation | null>(null);
+  const [escalateViolation, setEscalateViolation] = React.useState<Violation | null>(null);
+  const [ticketViolation, setTicketViolation] = React.useState<Violation | null>(null);
+  const [frameworkDrill, setFrameworkDrill] = React.useState<string | null>(null);
   const [auditFramework, setAuditFramework] = React.useState<string | null>(null);
   const [buDrill, setBuDrill] = React.useState<{ bu: string; fw: string } | null>(null);
   const [vFilter, setVFilter] = React.useState({ severity: '', framework: '', bu: '', status: '', search: '' });
+
+  const handleEscalate = (v: Violation, comments: string) => {
+    addEscalation({
+      type: 'escalation',
+      violationId: v.id,
+      violationAsset: v.asset,
+      violationRule: v.rule,
+      violationFramework: v.framework,
+      violationSeverity: v.severity,
+      violationBU: v.bu,
+      fromPersona: 'compliance-officer',
+      toPersona: 'security-admin',
+      comments,
+    });
+    toast.success('Escalation sent to Security Admin — they'll see it on their dashboard');
+  };
+
+  const handleCreateTicket = (v: Violation, data: { title: string; priority: string; assignee: string; description: string }) => {
+    const ticketId = `TKT-${Math.floor(1000 + Math.random() * 9000)}`;
+    addEscalation({
+      type: 'ticket',
+      violationId: v.id,
+      violationAsset: v.asset,
+      violationRule: v.rule,
+      violationFramework: v.framework,
+      violationSeverity: data.priority as any,
+      violationBU: v.bu,
+      fromPersona: 'compliance-officer',
+      toPersona: 'security-admin',
+      comments: data.description,
+      ticketId,
+    });
+    toast.success(`Ticket ${ticketId} created and assigned to ${data.assignee}`);
+  };
 
   const filteredViolations = useMemo(() =>
     VIOLATIONS.filter(v =>
@@ -454,16 +672,18 @@ export default function ComplianceDashboard() {
               <div className="bg-card rounded-lg border border-border p-4">
                 <h3 className="text-sm font-semibold mb-0.5">Compliance Posture by Framework</h3>
                 <p className="text-[10px] text-muted-foreground mb-3">% of controls — Compliant / At Risk / Violated</p>
-                <ResponsiveContainer width="100%" height={215}>
-                  <BarChart data={FRAMEWORK_POSTURE} barSize={14} layout="vertical">
+                <p className="text-[9px] text-teal mb-1 cursor-pointer">↑ Click any bar to drill into violations</p>
+                <ResponsiveContainer width="100%" height={210}>
+                  <BarChart data={FRAMEWORK_POSTURE} barSize={14} layout="vertical"
+                    onClick={(d) => { if (d?.activePayload?.[0]?.payload?.framework) setFrameworkDrill(d.activePayload[0].payload.framework); }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 13% 91%)" horizontal={false} />
                     <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(220 9% 46%)" domain={[0, 100]} unit="%" />
                     <YAxis dataKey="framework" type="category" tick={{ fontSize: 10 }} stroke="hsl(220 9% 46%)" width={76} />
                     <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} formatter={(v: number) => `${v}%`} />
                     <Legend wrapperStyle={{ fontSize: 10 }} />
-                    <Bar dataKey="compliant" stackId="a" fill="hsl(160 70% 37%)" name="Compliant" />
-                    <Bar dataKey="atRisk"    stackId="a" fill="hsl(38 78% 41%)"  name="At Risk" />
-                    <Bar dataKey="violated"  stackId="a" fill="hsl(15 72% 52%)"  name="Violated" radius={[0,3,3,0]} />
+                    <Bar dataKey="compliant" stackId="a" fill="hsl(160 70% 37%)" name="Compliant" cursor="pointer" />
+                    <Bar dataKey="atRisk"    stackId="a" fill="hsl(38 78% 41%)"  name="At Risk" cursor="pointer" />
+                    <Bar dataKey="violated"  stackId="a" fill="hsl(15 72% 52%)"  name="Violated" radius={[0,3,3,0]} cursor="pointer" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -519,9 +739,17 @@ export default function ComplianceDashboard() {
               {/* Violation Trend */}
               <div className="bg-card rounded-lg border border-border p-4">
                 <h3 className="text-sm font-semibold mb-0.5">Violation Trend (6 months)</h3>
-                <p className="text-[10px] text-muted-foreground mb-3">Open violations by framework</p>
-                <ResponsiveContainer width="100%" height={180}>
-                  <AreaChart data={VIOLATION_TREND}>
+                <p className="text-[10px] text-muted-foreground mb-1">Open violations by framework</p>
+                <p className="text-[9px] text-teal mb-2 cursor-pointer">↑ Click any line to filter violations tab</p>
+                <ResponsiveContainer width="100%" height={175}>
+                  <AreaChart data={VIOLATION_TREND}
+                    onClick={(d) => {
+                      if (d?.activePayload?.[0]?.name) {
+                        const fw = d.activePayload[0].name;
+                        setTab('violations');
+                        setVFilter(f => ({ ...f, framework: fw === 'PCI' ? 'PCI-DSS' : fw === 'FIPS' ? 'FIPS' : fw }));
+                      }
+                    }}>
                     <defs>
                       {[['DORA','210 80% 56%'],['PCI','15 72% 52%'],['NIS2','38 78% 41%'],['HIPAA','160 70% 37%'],['FIPS','280 60% 55%']].map(([k,c]) => (
                         <linearGradient key={k} id={`g-${k}`} x1="0" y1="0" x2="0" y2="1">
@@ -535,7 +763,7 @@ export default function ComplianceDashboard() {
                     <YAxis tick={{ fontSize: 10 }} stroke="hsl(220 9% 46%)" />
                     <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
                     {[['DORA','210 80% 56%'],['PCI','15 72% 52%'],['NIS2','38 78% 41%'],['HIPAA','160 70% 37%'],['FIPS','280 60% 55%']].map(([k,c]) => (
-                      <Area key={k} type="monotone" dataKey={k} stroke={`hsl(${c})`} fill={`url(#g-${k})`} strokeWidth={1.5} dot={false} name={k} />
+                      <Area key={k} type="monotone" dataKey={k} stroke={`hsl(${c})`} fill={`url(#g-${k})`} strokeWidth={1.5} dot={false} name={k} cursor="pointer" />
                     ))}
                   </AreaChart>
                 </ResponsiveContainer>
@@ -547,9 +775,9 @@ export default function ComplianceDashboard() {
                 <p className="text-[10px] text-muted-foreground mb-3">% compliant across all active frameworks</p>
                 <div className="space-y-2.5">
                   {CONTROL_DOMAINS.map(d => (
-                    <div key={d.domain}>
+                    <div key={d.domain} className="cursor-pointer hover:opacity-80" onClick={() => { setTab('violations'); setVFilter(f => ({ ...f, search: d.domain.split(' ')[0] })); }}>
                       <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="font-medium">{d.domain}</span>
+                        <span className="font-medium underline decoration-dotted">{d.domain}</span>
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] text-muted-foreground">{d.compliant}/{d.total}</span>
                           <span className={`text-[10px] font-semibold ${d.pct >= 80 ? 'text-teal' : d.pct >= 60 ? 'text-amber' : 'text-coral'}`}>{d.pct}%</span>
@@ -823,7 +1051,27 @@ export default function ComplianceDashboard() {
       </div>
 
       {/* Modals & Drawers */}
-      <ViolationDrawer v={activeViolation} onClose={() => setActiveViolation(null)} />
+      <ViolationDrawer
+        v={activeViolation}
+        onClose={() => setActiveViolation(null)}
+        onEscalate={(v) => setEscalateViolation(v)}
+        onTicket={(v) => setTicketViolation(v)}
+      />
+      <EscalateModal
+        v={escalateViolation}
+        onClose={() => setEscalateViolation(null)}
+        onConfirm={handleEscalate}
+      />
+      <CreateTicketModal
+        v={ticketViolation}
+        onClose={() => setTicketViolation(null)}
+        onConfirm={handleCreateTicket}
+      />
+      <FrameworkDrillModal
+        framework={frameworkDrill}
+        onClose={() => setFrameworkDrill(null)}
+        onViolationClick={(v) => setActiveViolation(v)}
+      />
       <AuditChecklistModal framework={auditFramework} onClose={() => setAuditFramework(null)} />
       {buDrill && (
         <BUDrillModal
