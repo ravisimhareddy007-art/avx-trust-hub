@@ -12,6 +12,7 @@ interface NavChild {
   label: string;
   page?: string;
   type?: string;
+  count?: number;
 }
 
 interface NavItem {
@@ -28,7 +29,19 @@ const navItems: NavItem[] = [
   { id: 'inventory', label: 'INVENTORY', icon: Package, page: 'inventory' },
   { id: 'policy-builder', label: 'POLICIES', icon: ScrollText, page: 'policy-builder' },
   { id: 'violations', label: 'VIOLATIONS', icon: AlertTriangle, page: 'violations' },
-  { id: 'remediation', label: 'REMEDIATION', icon: Wrench, page: 'remediation' },
+  {
+    id: 'remediation',
+    label: 'REMEDIATION',
+    icon: Wrench,
+    page: 'remediation-objects',
+    children: [
+      { id: 'remediation-objects', label: 'All Objects', page: 'remediation-objects', count: 68 },
+      { id: 'remediation-clm', label: 'Certificates (CLM)', page: 'remediation-clm', count: 40 },
+      { id: 'remediation-ssh', label: 'SSH Keys & Certs', page: 'remediation-ssh', count: 7 },
+      { id: 'remediation-ai', label: 'AI Agent Tokens', page: 'remediation-ai', count: 7 },
+      { id: 'remediation-secrets', label: 'API Keys & Secrets', page: 'remediation-secrets', count: 3 },
+    ],
+  },
   { id: 'tickets', label: 'TICKETS', icon: Ticket, page: 'tickets' },
   {
     id: 'integrations',
@@ -51,10 +64,14 @@ const personaOptions: { value: Persona; label: string }[] = [
 
 export default function AppSidebar() {
   const { persona, setPersona } = usePersona();
-  const { setCurrentPage, setFilters } = useNav();
-  const [expandedGroups, setExpandedGroups] = useState<string[]>(['inventory-section', 'integrations']);
+  const { currentPage, setCurrentPage, setFilters } = useNav();
+  const remediationPages = ['remediation-objects', 'remediation-clm', 'remediation-ssh', 'remediation-ai', 'remediation-secrets'];
+  const [expandedGroups, setExpandedGroups] = useState<string[]>([
+    'inventory-section',
+    'integrations',
+    ...(remediationPages.includes(currentPage) ? ['remediation'] : []),
+  ]);
   const [personaOpen, setPersonaOpen] = useState(false);
-  const [activeNavId, setActiveNavId] = useState<string>('dashboard');
 
   const toggleGroup = (id: string) => {
     setExpandedGroups(prev =>
@@ -63,13 +80,12 @@ export default function AppSidebar() {
   };
 
   const handleNavClick = (id: string, page?: string, type?: string) => {
-    setActiveNavId(id);
     setCurrentPage(page || id);
     setFilters(type && type !== 'All' ? { type } : {});
   };
 
-  const isActive = (id: string) => activeNavId === id;
-  const isChildActive = (section: NavItem) => section.children?.some(c => activeNavId === c.id);
+  const isActive = (id: string, page?: string) => currentPage === (page || id);
+  const isChildActive = (section: NavItem) => section.children?.some(c => currentPage === (c.page || c.id));
 
   return (
     <div className="w-56 min-h-screen bg-navy flex flex-col border-r border-navy-lighter flex-shrink-0">
@@ -161,10 +177,17 @@ export default function AppSidebar() {
                         key={child.id}
                         onClick={() => handleNavClick(child.id, child.page, child.type)}
                         className={`w-full text-left px-3 py-1.5 rounded-md text-xs transition-colors ${
-                          isActive(child.id) ? 'bg-teal/10 text-teal font-medium' : 'text-sidebar-foreground hover:bg-navy-light hover:text-primary-foreground'
+                          isActive(child.id, child.page) ? 'bg-teal/10 text-teal font-medium' : 'text-sidebar-foreground hover:bg-navy-light hover:text-primary-foreground'
                         }`}
                       >
-                        {child.label}
+                        <span className="flex items-center justify-between gap-2">
+                          <span>{child.label}</span>
+                          {typeof child.count === 'number' && (
+                            <span className="min-w-[20px] px-1.5 py-0.5 rounded-full bg-navy-light text-[10px] font-semibold text-muted-foreground text-center">
+                              {child.count}
+                            </span>
+                          )}
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -174,7 +197,7 @@ export default function AppSidebar() {
               <button
                 onClick={() => handleNavClick(item.id, item.page)}
                 className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-[11px] font-semibold uppercase tracking-wide transition-colors ${
-                  isActive(item.id) ? 'text-teal' : 'text-sidebar-foreground hover:text-primary-foreground'
+                  isActive(item.id, item.page) ? 'text-teal' : 'text-sidebar-foreground hover:text-primary-foreground'
                 }`}
               >
                 <item.icon className="w-4 h-4" />
