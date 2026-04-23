@@ -782,6 +782,7 @@ function AgentSidePanel({ agent, onClose }: { agent: CryptoAsset; onClose: () =>
 }
 
 export default function AIAgentRemediationWorkspace() {
+  const { setCurrentPage, setFilters } = useNav();
   const [wsTab, setWsTab] = useState<WTab>('agents');
   const [selectedAgent, setSelectedAgent] = useState<CryptoAsset | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -790,6 +791,7 @@ export default function AIAgentRemediationWorkspace() {
   const [search, setSearch] = useState('');
   const [sortCol, setSortCol] = useState<'crs' | 'name' | 'status'>('crs');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
 
   const pendingHITL = hitlItems.filter(h => h.status === 'Pending').length;
   const unsanctionedMCP = mcpServers.filter(m => !m.protected).length;
@@ -817,6 +819,21 @@ export default function AIAgentRemediationWorkspace() {
   const sortIndicator = (col: 'crs' | 'name' | 'status') => {
     if (sortCol !== col) return <span className="text-muted-foreground">↕</span>;
     return <span className="text-teal">{sortDir === 'desc' ? '↓' : '↑'}</span>;
+  };
+
+  const handleRowAction = (agent: CryptoAsset & { crs: number }, action: string) => {
+    setOpenActionMenuId(null);
+    if (action === 'Create Ticket') {
+      const ticketId = `TKT-${Math.floor(1000 + Math.random() * 9000)}`;
+      toast.success(`Ticket ${ticketId} created`);
+      return;
+    }
+    if (action === 'View in Violations') {
+      setFilters({ type: 'AI Agent Token', search: agent.name });
+      setCurrentPage('violations');
+      return;
+    }
+    toast.success(`${action} initiated for ${agent.name}`);
   };
 
   return (
@@ -867,6 +884,7 @@ export default function AIAgentRemediationWorkspace() {
 
             <div className="flex-1 overflow-y-auto">
               <div className="mx-6 my-4 overflow-hidden rounded-lg border border-border bg-card">
+                {openActionMenuId && <button type="button" aria-label="Close menu" className="fixed inset-0 z-10 cursor-default" onClick={() => setOpenActionMenuId(null)} />}
                 <table className="w-full text-xs">
                   <thead className="sticky top-0 border-b border-border bg-muted/30">
                     <tr>
@@ -907,18 +925,52 @@ export default function AIAgentRemediationWorkspace() {
                         <td className={`px-4 py-3 text-center text-[10px] ${statusCls(agent.status)}`}>{agent.status}</td>
                         <td className="px-4 py-3 text-right text-[10px] text-foreground">{agent.agentMeta?.actionsPerDay?.toLocaleString() || '0'}</td>
                         <td className="px-4 py-3 text-[10px] text-foreground">{agent.agentMeta?.lastActivity || '—'}</td>
-                        <td className="px-4 py-3 text-right">
+                        <td className="relative z-20 px-4 py-3 text-right">
                           <button
                             type="button"
                             onClick={e => {
                               e.stopPropagation();
-                              setSelectedAgent(agent);
-                              setPanelOpen(true);
+                              setOpenActionMenuId(prev => prev === agent.id ? null : agent.id);
                             }}
-                            className="text-[10px] text-teal"
+                            className="rounded p-1.5 hover:bg-muted/50"
+                            aria-label="Open actions"
                           >
-                            View →
+                            <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
                           </button>
+                          {openActionMenuId === agent.id && (
+                            <div className="absolute right-0 top-full z-20 mt-1 w-48 rounded-lg border border-border bg-card py-1 shadow-xl">
+                              {[
+                                'Rotate Token',
+                                'Right-size Permissions',
+                                'Place behind MCP Gateway',
+                                'Create Ticket',
+                                'View in Violations',
+                              ].map(action => (
+                                <button
+                                  key={action}
+                                  type="button"
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                    handleRowAction(agent, action);
+                                  }}
+                                  className="flex w-full items-center justify-between px-3 py-2 text-left text-xs text-foreground hover:bg-muted/30"
+                                >
+                                  <span>{action}</span>
+                                </button>
+                              ))}
+                              <div className="my-1 border-t border-border" />
+                              <button
+                                type="button"
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  handleRowAction(agent, 'Revoke Access');
+                                }}
+                                className="flex w-full items-center justify-between px-3 py-2 text-left text-xs text-coral hover:bg-muted/30"
+                              >
+                                <span>Revoke Access</span>
+                              </button>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     ))}
