@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { arsFor } from '@/lib/risk/ars';
 import { computeCRS, getCrsFactors } from '@/lib/risk/crs';
 import { mockITAssets } from '@/data/inventoryMockData';
@@ -11,6 +11,7 @@ import {
   ChevronDown,
   ChevronUp,
   CheckCircle2,
+  Lock,
   Minus,
   MoreVertical,
   Search,
