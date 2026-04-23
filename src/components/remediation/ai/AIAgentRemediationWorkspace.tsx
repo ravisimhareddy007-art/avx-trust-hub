@@ -1104,7 +1104,6 @@ function AgentSidePanel({ agent, onClose }: { agent: CryptoAsset; onClose: () =>
           </div>
         </div>
       </div>
-    </div>
   );
 }
 
