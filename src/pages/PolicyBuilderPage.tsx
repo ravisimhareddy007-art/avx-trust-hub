@@ -12,8 +12,6 @@ import {
   ChevronDown,
   ChevronUp,
   Shield,
-  AlertTriangle,
-  CheckSquare,
   Key,
   Lock,
   Bot,
@@ -46,22 +44,6 @@ interface CustomPolicy {
 }
 
 type PolicyType = 'ssh-key' | 'certificates' | 'secrets' | 'ai-agents' | '';
-
-
-const mockViolations = [
-  { id: 'v-001', policyName: 'Weak Algorithm Detection', objectName: '*.payments.acmecorp.com', objectType: 'TLS Certificate', severity: 'Critical' as const, environment: 'Production', group: 'RSA-2048 Production Certs', detectedAt: '2026-04-14 09:12', status: 'Open' },
-  { id: 'v-002', policyName: 'Certificate Expiry Alert', objectName: 'vault.internal.acmecorp.com', objectType: 'TLS Certificate', severity: 'Critical' as const, environment: 'Production', group: 'Expiring < 30 Days', detectedAt: '2026-04-14 08:45', status: 'Open' },
-  { id: 'v-003', policyName: 'Weak Algorithm Detection', objectName: 'prod-db-01-authorized-key', objectType: 'SSH Key', severity: 'High' as const, environment: 'Production', group: 'RSA-2048 Production Certs', detectedAt: '2026-04-13 22:00', status: 'Open' },
-  { id: 'v-004', policyName: 'Orphaned SSH Key', objectName: 'gitlab-deploy-key', objectType: 'SSH Key', severity: 'High' as const, environment: 'Production', group: 'Orphaned & Unowned Keys', detectedAt: '2026-04-13 18:30', status: 'Open' },
-  { id: 'v-005', policyName: 'Certificate Expiry Alert', objectName: 'mail.acmecorp.com', objectType: 'TLS Certificate', severity: 'High' as const, environment: 'Production', group: 'Expiring < 30 Days', detectedAt: '2026-04-13 14:20', status: 'Open' },
-  { id: 'v-006', policyName: 'PCI-DSS Cardholder Zone', objectName: 'k8s-node-ssh-cert', objectType: 'SSH Certificate', severity: 'Critical' as const, environment: 'Production', group: 'Payments Team Assets', detectedAt: '2026-04-13 11:05', status: 'Acknowledged' },
-  { id: 'v-007', policyName: 'Weak Algorithm Detection', objectName: 'auth-gateway.acmecorp.com', objectType: 'TLS Certificate', severity: 'High' as const, environment: 'Production', group: 'RSA-2048 Production Certs', detectedAt: '2026-04-12 16:42', status: 'Open' },
-  { id: 'v-008', policyName: 'DORA Compliance', objectName: 'staging-api.acmecorp.com', objectType: 'TLS Certificate', severity: 'Medium' as const, environment: 'Staging', group: '', detectedAt: '2026-04-12 10:00', status: 'Open' },
-  { id: 'v-009', policyName: 'Orphaned SSH Key', objectName: 'bastion-host-key-legacy', objectType: 'SSH Key', severity: 'High' as const, environment: 'Production', group: 'Orphaned & Unowned Keys', detectedAt: '2026-04-11 22:15', status: 'Open' },
-  { id: 'v-010', policyName: 'Certificate Expiry Alert', objectName: 'cdn-edge-cert-03', objectType: 'TLS Certificate', severity: 'Medium' as const, environment: 'Production', group: 'Expiring < 30 Days', detectedAt: '2026-04-11 15:30', status: 'Remediated' },
-  { id: 'v-011', policyName: 'Weak Algorithm Detection', objectName: 'legacy-erp-cert', objectType: 'TLS Certificate', severity: 'Critical' as const, environment: 'Production', group: 'RSA-2048 Production Certs', detectedAt: '2026-04-10 09:00', status: 'Open' },
-  { id: 'v-012', policyName: 'AI Agent Over-Privilege', objectName: 'data-pipeline-agent', objectType: 'AI Agent Token', severity: 'High' as const, environment: 'Production', group: 'Over-Privileged AI Agents', detectedAt: '2026-04-10 08:15', status: 'Open' },
-];
 
 const getPolicyTypeMeta = (type: PolicyType) => {
   switch (type) {
