@@ -422,26 +422,35 @@ Return ONLY the JSON object. No other text.`;
           model: 'claude-sonnet-4-20250514',
           max_tokens: 1000,
           system: systemPrompt,
-          messages: [{
-            role: 'user',
-            content: formDescription,
-          }],
+          messages: [{ role: 'user', content: formDescription }],
         }),
       });
 
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`API error ${response.status}: ${errText}`);
+      }
+
       const data = await response.json();
 
-      const text = data.content
+      const rawText = data?.content
         ?.filter((b: any) => b.type === 'text')
         ?.map((b: any) => b.text)
         ?.join('') || '';
 
-      const clean = text
-        .replace(/```json/gi, '')
-        .replace(/```/g, '')
-        .trim();
+      if (!rawText) {
+        throw new Error('Empty response from API');
+      }
 
-      const result = JSON.parse(clean);
+      const start = rawText.indexOf('{');
+      const end = rawText.lastIndexOf('}');
+
+      if (start === -1 || end === -1 || end <= start) {
+        throw new Error(`No JSON found in response: ${rawText.slice(0, 200)}`);
+      }
+
+      const jsonStr = rawText.slice(start, end + 1);
+      const result = JSON.parse(jsonStr);
 
       if (result.name) setFormName(result.name);
       if (result.description) setFormDescription(result.description);
@@ -494,7 +503,8 @@ Return ONLY the JSON object. No other text.`;
         setFormDeviceApproval(result.deviceApproval);
 
       if (result.k8sIssuer) setFormK8sIssuer(result.k8sIssuer);
-      if (result.k8sNamespace) setFormK8sNamespace(result.k8sNamespace);
+      if (result.k8sNamespace !== undefined)
+        setFormK8sNamespace(result.k8sNamespace);
 
       toast.success('Policy generated — review and adjust if needed');
     } catch (err) {
