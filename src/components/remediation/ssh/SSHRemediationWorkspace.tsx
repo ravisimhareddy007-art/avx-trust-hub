@@ -748,12 +748,12 @@ export default function SSHRemediationWorkspace() {
   const [wsTab, setWsTab] = useState<WTab>('remediation');
   const [selectedKey, setSelectedKey] = useState<SSHWorkspaceAsset | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
-  const [riskFilter, setRiskFilter] = useState('');
+  const [activeFilter, setActiveFilter] = useState('');
   const [search, setSearch] = useState('');
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [provisionOpen, setProvisionOpen] = useState(false);
   const [sortCol, setSortCol] = useState<SortCol>('crs');
-  const [sortDir] = useState<'asc' | 'desc'>('desc');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [confirmAction, setConfirmAction] = useState<{ key: SSHWorkspaceAsset; action: string } | null>(null);
   const [blastRadiusKey, setBlastRadiusKey] = useState<CryptoAsset | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -764,32 +764,36 @@ export default function SSHRemediationWorkspace() {
   const workspaceAllSSH = useMemo(() => [...workspaceSSHKeys, ...workspaceSSHCerts], [workspaceSSHCerts, workspaceSSHKeys]);
 
   const counts = useMemo(() => ({
-    Shared: workspaceSSHKeys.filter(k => k.sshRiskStatus?.includes('Shared')).length,
+    Shared: workspaceAllSSH.filter(k => k.sshRiskStatus?.includes('Shared')).length,
     Weak: workspaceAllSSH.filter(k => k.sshRiskStatus?.includes('Weak')).length,
-    Rogue: workspaceSSHKeys.filter(k => k.sshRiskStatus?.includes('Rogue')).length,
-    Misplaced: workspaceSSHKeys.filter(k => k.sshRiskStatus?.includes('Misplaced')).length,
-    Suspicious: workspaceSSHKeys.filter(k => k.sshRiskStatus?.includes('Suspicious')).length,
-  }), [workspaceAllSSH, workspaceSSHKeys]);
+    Rogue: workspaceAllSSH.filter(k => k.sshRiskStatus?.includes('Rogue')).length,
+    Misplaced: workspaceAllSSH.filter(k => k.sshRiskStatus?.includes('Misplaced')).length,
+    Suspicious: workspaceAllSSH.filter(k => k.sshRiskStatus?.includes('Suspicious')).length,
+  }), [workspaceAllSSH]);
 
-  const filteredKeys = useMemo(() => {
-    const rows = workspaceSSHKeys
-      .filter(k => !search || k.name.toLowerCase().includes(search.toLowerCase()))
-      .filter(k => !riskFilter || k.sshRiskStatus?.includes(riskFilter as SSHRisk))
-      .map(k => ({ ...k, crs: computeCRS(k).crs }));
+  const isRotationOverdue = (k: CryptoAsset) => {
+    if (!k.rotationFrequency || k.rotationFrequency === 'Never') return false;
+    const days = parseInt(k.rotationFrequency, 10);
+    if (Number.isNaN(days)) return false;
+    return (k.keyAge || 0) > days;
+  };
 
-    return rows.sort((a, b) => {
-      const dir = sortDir === 'desc' ? -1 : 1;
-      if (sortCol === 'name') return a.name.localeCompare(b.name) * dir;
-      if (sortCol === 'age') return ((a.keyAge || 0) - (b.keyAge || 0)) * dir;
-      if (sortCol === 'algorithm') return a.algorithm.localeCompare(b.algorithm) * dir;
-      return ((a.crs || 0) - (b.crs || 0)) * dir;
-    });
-  }, [riskFilter, search, sortCol, sortDir, workspaceSSHKeys]);
-
-  const rotationDue = useMemo(() => filteredKeys.filter(k => k.rotationFrequency !== 'Never' && !k.autoRenewal && (k.keyAge || 0) > parseRotationDays(k.rotationFrequency || '999')), [filteredKeys]);
-  const rogueKeys = useMemo(() => workspaceSSHKeys.filter(k => k.sshRiskStatus?.includes('Rogue')), [workspaceSSHKeys]);
-  const weakKeys = useMemo(() => workspaceAllSSH.filter(k => k.sshRiskStatus?.includes('Weak')).map(k => ({ ...k, crs: computeCRS(k).crs })), [workspaceAllSSH]);
-  const sharedKeys = useMemo(() => workspaceSSHKeys.filter(k => k.sshRiskStatus?.includes('Shared')), [workspaceSSHKeys]);
+  const displayKeys = useMemo(() => {
+    return workspaceAllSSH
+      .filter(k => {
+        if (!activeFilter) return true;
+        return k.sshRiskStatus?.includes(activeFilter as SSHRisk) || (activeFilter === 'Overdue' && isRotationOverdue(k));
+      })
+      .filter(k => !search || k.name.toLowerCase().includes(search.toLowerCase()) || (k.algorithm || '').toLowerCase().includes(search.toLowerCase()) || (k.keyComplianceGroup || '').toLowerCase().includes(search.toLowerCase()))
+      .map(k => ({ ...k, crs: computeCRS(k).crs }))
+      .sort((a, b) => {
+        if (sortCol === 'crs') return sortDir === 'desc' ? (b.crs || 0) - (a.crs || 0) : (a.crs || 0) - (b.crs || 0);
+        if (sortCol === 'name') return sortDir === 'desc' ? b.name.localeCompare(a.name) : a.name.localeCompare(b.name);
+        if (sortCol === 'age') return sortDir === 'desc' ? (b.keyAge || 0) - (a.keyAge || 0) : (a.keyAge || 0) - (b.keyAge || 0);
+        if (sortCol === 'algorithm') return sortDir === 'desc' ? (b.algorithm || '').localeCompare(a.algorithm || '') : (a.algorithm || '').localeCompare(b.algorithm || '');
+        return 0;
+      });
+  }, [activeFilter, search, sortCol, sortDir, workspaceAllSSH]);
 
   const toggleSelected = (id: string) => {
     setSelectedRows(prev => {
@@ -818,7 +822,7 @@ export default function SSHRemediationWorkspace() {
   };
 
   const handleBulkRotate = () => {
-    const selectedKeys = workspaceSSHKeys.filter(key => selectedRows.has(key.id));
+    const selectedKeys = displayKeys.filter(key => selectedRows.has(key.id));
     const riskyKey = selectedKeys.find(hasBlastRadius);
     if (riskyKey) {
       setBlastRadiusKey(riskyKey);
