@@ -73,7 +73,7 @@ const getPolicyTypeBadgeFromAsset = (assetType?: string) => getPolicyTypeMeta(ge
 
 export default function PolicyBuilderPage() {
   const { setCurrentPage, setFilters } = useNav();
-  const [tab, setTab] = useState<'outofbox' | 'custom' | 'violations' | 'compliance'>('outofbox');
+  const [tab, setTab] = useState<'outofbox' | 'custom' | 'compliance'>('outofbox');
   const [policyStates, setPolicyStates] = useState<Record<string, boolean>>(Object.fromEntries(policyRules.map(p => [p.id, p.enabled])));
   const [configModal, setConfigModal] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -136,12 +136,6 @@ export default function PolicyBuilderPage() {
   const [sshFlagOrphaned, setSshFlagOrphaned] = useState(true);
   const [formRequireHITL, setFormRequireHITL] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
-
-  const [violationSearch, setViolationSearch] = useState('');
-  const [violationSeverity, setViolationSeverity] = useState('');
-  const [violationStatus, setViolationStatus] = useState('');
-  const [selectedViolations, setSelectedViolations] = useState<string[]>([]);
-  const [bulkConfirm, setBulkConfirm] = useState(false);
 
   const resetCreateForm = () => {
     setFormPolicyType('Managed Certificate Policy');
@@ -570,23 +564,6 @@ Return ONLY the JSON object. No other text.`;
     p.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const filteredViolations = mockViolations.filter(v => {
-    if (violationSearch && !v.objectName.toLowerCase().includes(violationSearch.toLowerCase()) && !v.policyName.toLowerCase().includes(violationSearch.toLowerCase())) return false;
-    if (violationSeverity && v.severity !== violationSeverity) return false;
-    if (violationStatus && v.status !== violationStatus) return false;
-    return true;
-  });
-
-  const toggleViolationSelection = (id: string) => {
-    setSelectedViolations(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-  };
-  const toggleAllViolations = () => {
-    if (selectedViolations.length === filteredViolations.length) setSelectedViolations([]);
-    else setSelectedViolations(filteredViolations.map(v => v.id));
-  };
-
-  const openViolationCount = mockViolations.filter(v => v.status === 'Open').length;
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -597,14 +574,10 @@ Return ONLY the JSON object. No other text.`;
         {[
           { id: 'outofbox' as const, label: 'Out-of-Box Policies' },
           { id: 'custom' as const, label: 'Custom Policies' },
-          { id: 'violations' as const, label: `Violations`, count: openViolationCount },
           { id: 'compliance' as const, label: 'Compliance Frameworks' },
         ].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} className={`px-4 py-2 text-xs font-medium border-b-2 transition-colors flex items-center gap-1.5 ${tab === t.id ? 'border-teal text-teal' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
             {t.label}
-            {'count' in t && t.count! > 0 && (
-              <span className={`min-w-[18px] px-1.5 py-0.5 rounded-full text-[9px] font-bold ${tab === t.id ? 'bg-coral/10 text-coral' : 'bg-coral/10 text-coral'}`}>{t.count}</span>
-            )}
           </button>
         ))}
       </div>
