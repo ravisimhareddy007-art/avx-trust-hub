@@ -7,7 +7,6 @@ import { toast } from 'sonner';
 import {
   AlertTriangle,
   ArrowRightLeft,
-  ArrowRight,
   Atom,
   CheckCircle2,
   ChevronDown,
@@ -40,7 +39,7 @@ const ALL_SSH = [...SSH_KEYS, ...SSH_CERTS];
 type SSHRisk = 'Shared' | 'Weak' | 'Rogue' | 'Misplaced' | 'Suspicious';
 type KeyStatus = 'Managed' | 'Monitored';
 type ComplianceStatus = 'Compliant' | 'Non-Compliant';
-type WTab = 'remediation' | 'provisioning' | 'certificates' | 'migration';
+type WTab = 'remediation' | 'certificates' | 'migration';
 type SortCol = 'crs' | 'name' | 'age' | 'algorithm';
 
 type AssociatedUser = { ip: string; username: string };
@@ -699,7 +698,7 @@ function ProvisionKeyWizard({ open, onClose }: { open: boolean; onClose: () => v
 }
 
 export default function SSHRemediationWorkspace() {
-  const { setCurrentPage, setFilters } = useNav();
+  const { setCurrentPage } = useNav();
   const [wsTab, setWsTab] = useState<WTab>('remediation');
   const [selectedKey, setSelectedKey] = useState<SSHWorkspaceAsset | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -807,7 +806,6 @@ export default function SSHRemediationWorkspace() {
       <div className="flex flex-shrink-0 border-b border-border bg-card px-6">
         {[
           { id: 'remediation', label: 'Key Remediation' },
-          { id: 'provisioning', label: 'Provisioning' },
           { id: 'certificates', label: 'SSH Certificates', badge: 'Next Release', badgeCls: 'text-amber' },
           { id: 'migration', label: 'Key → Cert Migration', badge: 'Roadmap', badgeCls: 'text-purple' },
         ].map(tab => (
