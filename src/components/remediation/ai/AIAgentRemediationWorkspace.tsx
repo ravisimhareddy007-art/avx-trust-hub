@@ -933,7 +933,7 @@ function EosGuardianFloat({
 function AgentSidePanel({ agent, onClose }: { agent: CryptoAsset; onClose: () => void }) {
   const { setCurrentPage, setFilters } = useNav();
   const [showCrsPanel, setShowCrsPanel] = useState(false);
-  const [rightTab, setRightTab] = useState<'graph' | 'credentials'>('graph');
+  const [bodyTab, setBodyTab] = useState<'graph' | 'details'>('graph');
   const score = computeCRS(agent).crs;
   const itAsset = mockITAssets.find(asset => asset.cryptoObjectIds.includes(agent.id));
   const arsScore = itAsset ? arsFor(itAsset).ars : null;
@@ -943,7 +943,7 @@ function AgentSidePanel({ agent, onClose }: { agent: CryptoAsset; onClose: () =>
 
   useEffect(() => {
     setShowCrsPanel(false);
-    setRightTab('graph');
+    setBodyTab('graph');
   }, [agent.id]);
 
   return (
@@ -981,96 +981,90 @@ function AgentSidePanel({ agent, onClose }: { agent: CryptoAsset; onClose: () =>
               <X className="h-4 w-4" />
             </button>
           </div>
-          {showCrsPanel && <CsrExplanationPanel asset={agent} />}
-        </div>
-
-        <div className="grid flex-1 grid-cols-[40%_60%] overflow-hidden">
-          <div className="scrollbar-thin space-y-4 overflow-y-auto border-r border-border p-4">
-            <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[10px]">
-              <span className="text-muted-foreground">Agent Type</span><span className="text-foreground">{agent.agentMeta?.agentType || '—'}</span>
-              <span className="text-muted-foreground">Framework</span><span className="text-foreground">{agent.agentMeta?.framework || '—'}</span>
-              <span className="text-muted-foreground">Owner</span><span className="text-foreground">{agent.owner}</span>
-              <span className="text-muted-foreground">Team</span><span className="text-foreground">{agent.team}</span>
-              <span className="text-muted-foreground">Platform</span><span className="text-foreground">{agent.infrastructure}</span>
-              <span className="text-muted-foreground">Status</span><span className={statusCls(agent.status)}>{agent.status}</span>
-              <span className="text-muted-foreground">Token Issued</span><span className="text-foreground">{agent.issueDate}</span>
-              <span className="text-muted-foreground">Token Expires</span><span className="text-foreground">{agent.expiryDate}</span>
-              <span className="text-muted-foreground">Last Activity</span><span className="text-foreground">{agent.agentMeta?.lastActivity || '—'}</span>
-              <span className="text-muted-foreground">Actions/Day</span><span className="text-foreground">{agent.agentMeta?.actionsPerDay?.toLocaleString() || '0'}</span>
-              <span className="text-muted-foreground">Auto-Renewal</span><span className="text-foreground">{agent.autoRenewal ? 'Enabled' : 'Disabled'}</span>
-              <span className="text-muted-foreground">Rotation</span><span className="text-foreground">{agent.rotationFrequency}</span>
-              <span className="text-muted-foreground">Policy Violations</span><span className={agent.policyViolations > 0 ? 'text-amber' : 'text-foreground'}>{agent.policyViolations}</span>
-              <span className="text-muted-foreground">Discovery</span><span className="text-foreground">{agent.discoverySource}</span>
-            </div>
-
-            <RiskGauge score={score} />
-
-            <div className="border-t border-border pt-3">
-              {itAsset && arsScore !== null ? (
-                <>
-                  <div className={`text-sm font-semibold ${crsCls(arsScore)}`}>Agent ARS: {arsScore}</div>
-                  <p className="mt-1 text-[10px] text-muted-foreground">Asset Risk Score — rolls up from credential CRS</p>
-                  <p className="mt-2 text-[10px] text-muted-foreground">{itAsset.name}</p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFilters({ tab: 'it-assets' });
-                      setCurrentPage('inventory');
-                    }}
-                    className="mt-1 text-[10px] text-teal"
-                  >
-                    View host →
-                  </button>
-                </>
-              ) : (
-                <>
-                  <p className="text-[10px] text-muted-foreground">Host not in managed inventory</p>
-                  <p className="mt-1 text-[10px] text-foreground">{agent.infrastructure}</p>
-                </>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <h3 className="text-xs font-semibold text-foreground">Findings</h3>
-              {findings.map((finding, index) => (
-                <div key={`${finding.title}-${index}`} className="rounded-lg border border-border p-2.5">
-                  <div className="flex items-center gap-2">
-                    <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-medium ${severityBadgeCls(finding.severity)}`}>{finding.severity}</span>
-                    <span className="text-[10px] font-medium text-foreground">{finding.title}</span>
-                  </div>
-                  <p className="mt-1.5 text-[10px] leading-relaxed text-muted-foreground">{finding.detail}</p>
-                  <button type="button" onClick={() => toast.success(`${finding.action} initiated for ${agent.name}`)} className="mt-2 text-[10px] text-teal">
-                    {finding.action} →
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex min-h-0 flex-col overflow-hidden">
-            <div className="flex border-b border-border">
+            <div className="flex border-t border-border">
               {[
                 { id: 'graph', label: 'Access Graph' },
-                { id: 'credentials', label: 'Credentials & Services' },
+                { id: 'details', label: 'Agent Details' },
               ].map(tab => (
                 <button
                   key={tab.id}
                   type="button"
-                  onClick={() => setRightTab(tab.id as 'graph' | 'credentials')}
-                  className={`border-b-2 px-4 py-3 text-sm font-medium transition-colors ${rightTab === tab.id ? 'border-teal text-teal' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+                  onClick={() => setBodyTab(tab.id as 'graph' | 'details')}
+                  className={`border-b-2 px-4 py-3 text-sm font-medium transition-colors ${bodyTab === tab.id ? 'border-teal text-teal' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
                 >
                   {tab.label}
                 </button>
               ))}
             </div>
+            {showCrsPanel && <CsrExplanationPanel asset={agent} />}
+          </div>
 
-            {rightTab === 'graph' ? (
-              <div className="min-h-0 flex-1 overflow-hidden">
-                <SidePanelAccessGraphTab agent={agent} />
-              </div>
+          <div className="min-h-0 flex-1 overflow-hidden">
+            {bodyTab === 'graph' ? (
+              <SidePanelAccessGraphTab agent={agent} />
             ) : (
-              <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto p-4 space-y-4">
-                <div>
+              <div className="scrollbar-thin h-full overflow-y-auto p-5 space-y-5">
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[10px]">
+                  <span className="text-muted-foreground">Agent Type</span><span className="text-foreground">{agent.agentMeta?.agentType || '—'}</span>
+                  <span className="text-muted-foreground">Framework</span><span className="text-foreground">{agent.agentMeta?.framework || '—'}</span>
+                  <span className="text-muted-foreground">Owner</span><span className="text-foreground">{agent.owner}</span>
+                  <span className="text-muted-foreground">Team</span><span className="text-foreground">{agent.team}</span>
+                  <span className="text-muted-foreground">Platform</span><span className="text-foreground">{agent.infrastructure}</span>
+                  <span className="text-muted-foreground">Status</span><span className={statusCls(agent.status)}>{agent.status}</span>
+                  <span className="text-muted-foreground">Token Issued</span><span className="text-foreground">{agent.issueDate}</span>
+                  <span className="text-muted-foreground">Token Expires</span><span className="text-foreground">{agent.expiryDate}</span>
+                  <span className="text-muted-foreground">Last Activity</span><span className="text-foreground">{agent.agentMeta?.lastActivity || '—'}</span>
+                  <span className="text-muted-foreground">Actions/Day</span><span className="text-foreground">{agent.agentMeta?.actionsPerDay?.toLocaleString() || '0'}</span>
+                  <span className="text-muted-foreground">Auto-Renewal</span><span className="text-foreground">{agent.autoRenewal ? 'Enabled' : 'Disabled'}</span>
+                  <span className="text-muted-foreground">Rotation</span><span className="text-foreground">{agent.rotationFrequency}</span>
+                  <span className="text-muted-foreground">Policy Violations</span><span className={agent.policyViolations > 0 ? 'text-amber' : 'text-foreground'}>{agent.policyViolations}</span>
+                  <span className="text-muted-foreground">Discovery</span><span className="text-foreground">{agent.discoverySource}</span>
+                </div>
+
+                <RiskGauge score={score} />
+
+                <div className="border-t border-border pt-3">
+                  {itAsset && arsScore !== null ? (
+                    <>
+                      <div className={`text-sm font-semibold ${crsCls(arsScore)}`}>Agent ARS: {arsScore}</div>
+                      <p className="mt-1 text-[10px] text-muted-foreground">Asset Risk Score — rolls up from credential CRS</p>
+                      <p className="mt-2 text-[10px] text-muted-foreground">{itAsset.name}</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFilters({ tab: 'it-assets' });
+                          setCurrentPage('inventory');
+                        }}
+                        className="mt-1 text-[10px] text-teal"
+                      >
+                        View host →
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-[10px] text-muted-foreground">Host not in managed inventory</p>
+                      <p className="mt-1 text-[10px] text-foreground">{agent.infrastructure}</p>
+                    </>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="text-xs font-semibold text-foreground">Findings</h3>
+                  {findings.map((finding, index) => (
+                    <div key={`${finding.title}-${index}`} className="rounded-lg border border-border p-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-medium ${severityBadgeCls(finding.severity)}`}>{finding.severity}</span>
+                        <span className="text-[10px] font-medium text-foreground">{finding.title}</span>
+                      </div>
+                      <p className="mt-1.5 text-[10px] leading-relaxed text-muted-foreground">{finding.detail}</p>
+                      <button type="button" onClick={() => toast.success(`${finding.action} initiated for ${agent.name}`)} className="mt-2 text-[10px] text-teal">
+                        {finding.action} →
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="border-t border-border pt-4">
                   <h3 className="text-xs font-semibold text-foreground">Agent Credentials</h3>
                   <p className="text-[9px] text-muted-foreground">Cryptographic objects — CRS applies</p>
                   <div className="mt-2 space-y-2">
@@ -1092,20 +1086,18 @@ function AgentSidePanel({ agent, onClose }: { agent: CryptoAsset; onClose: () =>
                   </div>
                 </div>
 
-                <div>
+                <div className="space-y-1.5 mt-3">
                   <h3 className="text-xs font-semibold text-foreground">Connected Services ({services.length})</h3>
-                  <div className="mt-2 space-y-1.5">
-                    {services.map(service => {
-                      const sensitive = SENSITIVE_SERVICES.some(term => service.includes(term));
-                      return (
-                        <div key={service} className="flex items-center gap-2 text-[10px]">
-                          <span className={`h-2 w-2 rounded-full ${sensitive ? 'bg-coral' : 'bg-primary'}`} />
-                          <span className="text-foreground">{service}</span>
-                          {sensitive && <span className="text-coral">⚠</span>}
-                        </div>
-                      );
-                    })}
-                  </div>
+                  {services.map(service => {
+                    const sensitive = SENSITIVE_SERVICES.some(term => service.includes(term));
+                    return (
+                      <div key={service} className="flex items-center gap-2 text-[10px]">
+                        <span className={`h-2 w-2 rounded-full ${sensitive ? 'bg-coral' : 'bg-primary'}`} />
+                        <span className="text-foreground">{service}</span>
+                        {sensitive && <span className="text-coral">⚠</span>}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
