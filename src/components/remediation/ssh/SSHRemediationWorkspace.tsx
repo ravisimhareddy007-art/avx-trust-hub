@@ -6,23 +6,31 @@ import { Modal } from '@/components/shared/UIComponents';
 import { toast } from 'sonner';
 import {
   AlertTriangle,
+  ArrowRightLeft,
   ArrowRight,
   Atom,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
   Copy,
+  Download,
   Info,
+  Key,
   KeyRound,
   Lock,
   MoreVertical,
+  Pencil,
   Pause,
   Play,
+  Plus,
+  RotateCw,
   RotateCcw,
   Search,
-  ShieldAlert,
+  Trash,
   Trash2,
+  Undo2,
   X,
+  XCircle,
 } from 'lucide-react';
 
 const SSH_KEYS = mockAssets.filter(a => a.type === 'SSH Key');
@@ -771,7 +779,7 @@ export default function SSHRemediationWorkspace() {
     Suspicious: workspaceAllSSH.filter(k => k.sshRiskStatus?.includes('Suspicious')).length,
   }), [workspaceAllSSH]);
 
-  const isRotationOverdue = (k: CryptoAsset) => {
+  const isRotationOverdue = (k: SSHWorkspaceAsset) => {
     if (!k.rotationFrequency || k.rotationFrequency === 'Never') return false;
     const days = parseInt(k.rotationFrequency, 10);
     if (Number.isNaN(days)) return false;
