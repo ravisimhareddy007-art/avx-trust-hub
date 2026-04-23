@@ -41,7 +41,6 @@ type SSHRisk = 'Shared' | 'Weak' | 'Rogue' | 'Misplaced' | 'Suspicious';
 type KeyStatus = 'Managed' | 'Monitored';
 type ComplianceStatus = 'Compliant' | 'Non-Compliant';
 type WTab = 'remediation' | 'provisioning' | 'certificates' | 'migration';
-type DetailTab = 'details' | 'map';
 type SortCol = 'crs' | 'name' | 'age' | 'algorithm';
 
 type AssociatedUser = { ip: string; username: string };
@@ -307,7 +306,6 @@ function SSHKpiStrip({ counts, activeFilter, onFilter }: { counts: Record<SSHRis
 }
 
 function SSHKeyDetailPanel({ asset, onClose, onAction }: { asset: SSHWorkspaceAsset; onClose: () => void; onAction: (action: string, key: SSHWorkspaceAsset) => void }) {
-  const [tab, setTab] = useState<DetailTab>('details');
   const crs = computeCRS(asset).crs;
   const risks = asset.sshRiskStatus || [];
   const hostEndpoints = (asset.sshEndpoints || []).filter(endpoint => endpoint.role === 'host');
@@ -340,15 +338,10 @@ function SSHKeyDetailPanel({ asset, onClose, onAction }: { asset: SSHWorkspaceAs
               <X className="h-4 w-4" />
             </button>
           </div>
-          <div className="mt-3 flex items-center gap-4 border-t border-border pt-3">
-            <button className={tabBtn(tab === 'details')} onClick={() => setTab('details')}>Key Details</button>
-            <button className={tabBtn(tab === 'map')} onClick={() => setTab('map')}>Access Map</button>
-          </div>
         </div>
 
         <div className="min-h-0 flex-1 overflow-hidden">
-          {tab === 'details' ? (
-            <div className="grid h-full grid-cols-[260px_1fr] overflow-hidden">
+          <div className="grid h-full grid-cols-[260px_1fr] overflow-hidden">
               <div className="space-y-4 overflow-y-auto border-r border-border p-4">
                 <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-[10px]">
                   {[
@@ -518,52 +511,6 @@ function SSHKeyDetailPanel({ asset, onClose, onAction }: { asset: SSHWorkspaceAs
                 </section>
               </div>
             </div>
-          ) : (
-            <div className="space-y-3 overflow-y-auto p-4">
-              <div>
-                <div className="text-xs font-semibold text-foreground">Access Map</div>
-                <div className="text-[10px] text-muted-foreground">Which users have access to which hosts via this key</div>
-              </div>
-              <svg viewBox="0 0 600 320" className="w-full rounded-lg border border-border bg-secondary/20">
-                <circle cx="300" cy="160" r="28" fill={severityFill(crs)} stroke={severityStroke(crs)} strokeWidth="2" />
-                <text x="300" y="166" textAnchor="middle" fontSize="18">🔑</text>
-                <text x="300" y="205" textAnchor="middle" fontSize="10" fill="hsl(var(--foreground))">{asset.name.slice(0, 24)}</text>
-                <text x="300" y="219" textAnchor="middle" fontSize="9" fill={severityStroke(crs)}>CRS {crs}</text>
-
-                {(asset.associatedUsers || []).slice(0, 4).map((user, index) => {
-                  const y = 70 + index * 60;
-                  return (
-                    <g key={`${user.ip}-${user.username}`}>
-                      <line x1="104" y1={y} x2="272" y2="160" stroke="hsl(var(--amber))" strokeWidth="1.5" />
-                      <circle cx="86" cy={y} r="18" fill="hsl(var(--amber) / 0.15)" stroke="hsl(var(--amber))" strokeWidth="1.5" />
-                      <text x="86" y={y + 4} textAnchor="middle" fontSize="12">👤</text>
-                      <text x="86" y={y + 28} textAnchor="middle" fontSize="8" fill="hsl(var(--foreground))">{user.username.slice(0, 12)}</text>
-                    </g>
-                  );
-                })}
-
-                {hostEndpoints.slice(0, 4).map((endpoint, index) => {
-                  const y = 70 + index * 60;
-                  const danger = risks.includes('Rogue') || risks.includes('Suspicious');
-                  return (
-                    <g key={`${endpoint.ip}-${endpoint.port}`}>
-                      <line x1="328" y1="160" x2="496" y2={y} stroke={asset.complianceStatus === 'Non-Compliant' ? 'hsl(var(--coral))' : 'hsl(var(--teal))'} strokeWidth="1.5" strokeDasharray={asset.complianceStatus === 'Non-Compliant' ? '5 5' : undefined} />
-                      <circle cx="514" cy={y} r="18" fill="hsl(var(--teal) / 0.15)" stroke={danger ? 'hsl(var(--coral))' : 'hsl(var(--teal))'} strokeWidth="1.5" />
-                      <text x="514" y={y + 4} textAnchor="middle" fontSize="12">🖥</text>
-                      {danger ? <text x="534" y={y - 10} fontSize="10" fill="hsl(var(--coral))">⚠</text> : null}
-                      <text x="514" y={y + 28} textAnchor="middle" fontSize="8" fill="hsl(var(--foreground))">{endpoint.host.slice(0, 14)}</text>
-                    </g>
-                  );
-                })}
-              </svg>
-              <div className="flex flex-wrap items-center gap-4 text-[10px] text-muted-foreground">
-                <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber" />User</span>
-                <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: severityStroke(crs) }} />Key</span>
-                <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-teal" />Host</span>
-                <span className="inline-flex items-center gap-1"><span className="h-px w-4 border-t border-dashed border-coral" />Non-compliant connection</span>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
