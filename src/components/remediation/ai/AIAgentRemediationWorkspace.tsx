@@ -398,6 +398,37 @@ function SidePanelAccessGraphTab({ agent }: { agent: CryptoAsset }) {
   const [speed, setSpeed] = useState<0.5 | 1 | 2>(1);
   const activeEventRef = useRef<HTMLButtonElement | null>(null);
 
+  const severityDot = (severity: 'info' | 'warn' | 'alert') => {
+    if (severity === 'alert') return 'bg-coral';
+    if (severity === 'warn') return 'bg-amber';
+    return 'bg-teal';
+  };
+
+  const severityText = (severity: 'info' | 'warn' | 'alert', active: boolean) => {
+    if (!active) return 'text-foreground';
+    if (severity === 'alert') return 'text-coral';
+    if (severity === 'warn') return 'text-amber';
+    return 'text-teal';
+  };
+
+  const severityStroke = (severity: 'info' | 'warn' | 'alert') => {
+    if (severity === 'alert') return 'hsl(var(--coral))';
+    if (severity === 'warn') return 'hsl(var(--amber))';
+    return 'hsl(var(--teal))';
+  };
+
+  const serviceEmoji = (service: string) => {
+    const s = service.toLowerCase();
+    if (/openai|bedrock|vertex|claude/.test(s)) return '⚡';
+    if (/s3|storage|bigquery|snowflake/.test(s)) return '🗄';
+    if (/github|gitlab/.test(s)) return '🔀';
+    if (/slack|teams|pagerduty/.test(s)) return '💬';
+    if (/active directory|workday/.test(s)) return '👥';
+    if (/firewall|crowdstrike|splunk/.test(s)) return '🛡';
+    if (/vault|secret/.test(s)) return '🔒';
+    return '🔗';
+  };
+
   useEffect(() => {
     setActiveEventIndex(-1);
     setPlaying(false);
@@ -422,6 +453,82 @@ function SidePanelAccessGraphTab({ agent }: { agent: CryptoAsset }) {
   }, [activeEventIndex]);
 
   const progress = events.length ? ((activeEventIndex + 1) / events.length) * 100 : 0;
+  const currentEvent = activeEventIndex >= 0 ? events[activeEventIndex] : null;
+  const visitedNodes = useMemo(() => new Set(events.slice(0, Math.max(activeEventIndex, 0)).map(event => event.targetNode)), [activeEventIndex, events]);
+  const visitedEdges = useMemo(() => new Set(events.slice(0, Math.max(activeEventIndex, 0)).map(event => {
+    if (event.targetNode === 'owner') return 'owner-agent';
+    if (event.targetNode === 'subagent-1') return 'agent-subagent-1';
+    if (event.targetNode === 'subagent-2') return 'agent-subagent-2';
+    if (event.targetNode !== 'agent') return `agent-${event.targetNode}`;
+    return '';
+  }).filter(Boolean)), [activeEventIndex, events]);
+
+  const activeEdge = useMemo(() => {
+    if (!currentEvent) return null;
+    if (currentEvent.targetNode === 'owner') return 'owner-agent';
+    if (currentEvent.targetNode === 'subagent-1') return 'agent-subagent-1';
+    if (currentEvent.targetNode === 'subagent-2') return 'agent-subagent-2';
+    if (currentEvent.targetNode !== 'agent') return `agent-${currentEvent.targetNode}`;
+    return null;
+  }, [currentEvent]);
+
+  const crs = computeCRS(agent).crs;
+  const services = (agent.agentMeta?.servicesAccessed ?? []).slice(0, 5);
+  const showSubAgents = ['Orchestrator', 'Autonomous Agent'].includes(agent.agentMeta?.agentType || '');
+  const centerX = 250;
+  const centerY = 170;
+  const serviceRadius = 150;
+  const graphHeight = 340;
+  const graphWidth = 560;
+
+  const serviceNodes = services.map((service, index, arr) => {
+    const angle = (-55 + (arr.length === 1 ? 55 : (110 / Math.max(arr.length - 1, 1)) * index)) * (Math.PI / 180);
+    return {
+      id: service,
+      x: centerX + serviceRadius * Math.cos(angle),
+      y: centerY + serviceRadius * Math.sin(angle),
+      r: 18,
+      sensitive: SENSITIVE_SERVICES.some(term => service.includes(term)),
+      label: truncate(service, 14),
+    };
+  });
+
+  const nodes = [
+    { id: 'owner', x: 76, y: centerY, r: 22, label: truncate(agent.owner, 18), kind: 'owner' as const },
+    { id: 'agent', x: centerX, y: centerY, r: 36, label: agent.name, kind: 'agent' as const },
+    ...(showSubAgents ? [
+      { id: 'subagent-1', x: 200, y: 70, r: 15, label: 'sub-agent', kind: 'subagent' as const },
+      { id: 'subagent-2', x: 300, y: 66, r: 15, label: 'sub-agent', kind: 'subagent' as const },
+    ] : []),
+    ...serviceNodes.map(node => ({ ...node, kind: 'service' as const })),
+  ];
+
+  const graphNodeState = (nodeId: string) => {
+    if (currentEvent?.targetNode === nodeId) return 'active';
+    if (visitedNodes.has(nodeId)) return 'visited';
+    return 'idle';
+  };
+
+  const renderEdge = (id: string, x1: number, y1: number, x2: number, y2: number) => {
+    const active = activeEdge === id;
+    const visited = visitedEdges.has(id);
+    const stroke = active && currentEvent ? severityStroke(currentEvent.severity) : visited ? 'hsl(var(--muted-foreground))' : 'hsl(var(--border))';
+    return (
+      <line
+        key={id}
+        x1={x1}
+        y1={y1}
+        x2={x2}
+        y2={y2}
+        stroke={stroke}
+        strokeWidth={active ? 2 : visited ? 1 : 1}
+        strokeOpacity={active ? 0.95 : visited ? 0.45 : 0.3}
+        strokeDasharray={active ? '6 3' : visited ? '4 3' : '3 0'}
+      >
+        {active && <animate attributeName="stroke-dashoffset" from="0" to="-18" dur="1s" repeatCount="indefinite" />}
+      </line>
+    );
+  };
 
   const play = () => {
     if (activeEventIndex === -1 || activeEventIndex >= events.length - 1) {
@@ -441,29 +548,95 @@ function SidePanelAccessGraphTab({ agent }: { agent: CryptoAsset }) {
     }, 100);
   };
 
-  const severityDot = (severity: 'info' | 'warn' | 'alert') => {
-    if (severity === 'alert') return 'bg-coral';
-    if (severity === 'warn') return 'bg-amber';
-    return 'bg-teal';
-  };
-
-  const severityText = (severity: 'info' | 'warn' | 'alert', active: boolean) => {
-    if (!active) return 'text-foreground';
-    if (severity === 'alert') return 'text-coral';
-    if (severity === 'warn') return 'text-amber';
-    return 'text-teal';
-  };
-
   return (
-    <div className="flex h-full min-h-[420px] flex-row overflow-hidden">
-      <div className="flex min-w-0 flex-1 flex-col p-4">
-        <div className="min-h-0 flex-1">
-          <WorkspaceAccessGraphTimeline agent={agent} compact />
+    <div className="flex h-full min-h-0 flex-row overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col p-3">
+        <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-border bg-secondary/20 p-3">
+          <svg viewBox={`0 0 ${graphWidth} ${graphHeight}`} className="h-full w-full rounded-lg">
+            {renderEdge('owner-agent', 76, centerY, centerX, centerY)}
+            {showSubAgents && (
+              <>
+                {renderEdge('agent-subagent-1', centerX, centerY, 200, 70)}
+                {renderEdge('agent-subagent-2', centerX, centerY, 300, 66)}
+              </>
+            )}
+            {serviceNodes.map(node => renderEdge(`agent-${node.id}`, centerX, centerY, node.x, node.y))}
+
+            {nodes.map(node => {
+              const state = activeEventIndex === -1 ? 'idle' : graphNodeState(node.id);
+              const eventSeverity = currentEvent?.targetNode === node.id ? currentEvent.severity : 'info';
+              const glow = severityStroke(eventSeverity);
+              const baseOpacity = state === 'idle' ? 1 : state === 'visited' ? 0.85 : 1;
+              const strokeWidth = state === 'active' ? 4 : node.kind === 'agent' ? 3 : 2;
+              const sensitive = node.kind === 'service' && 'sensitive' in node && node.sensitive;
+              const fill = node.kind === 'owner'
+                ? 'hsl(var(--amber) / 0.15)'
+                : node.kind === 'agent'
+                  ? crs >= 80
+                    ? 'hsl(var(--coral) / 0.15)'
+                    : crs >= 60
+                      ? 'hsl(var(--amber) / 0.15)'
+                      : 'hsl(var(--teal) / 0.10)'
+                  : node.kind === 'subagent'
+                    ? 'hsl(var(--purple) / 0.15)'
+                    : sensitive
+                      ? 'hsl(var(--coral) / 0.15)'
+                      : 'hsl(var(--primary) / 0.12)';
+              const stroke = state === 'active'
+                ? glow
+                : node.kind === 'owner'
+                  ? 'hsl(var(--amber))'
+                  : node.kind === 'agent'
+                    ? crs >= 80
+                      ? 'hsl(var(--coral))'
+                      : crs >= 60
+                        ? 'hsl(var(--amber))'
+                        : 'hsl(var(--teal))'
+                    : node.kind === 'subagent'
+                      ? 'hsl(var(--purple))'
+                      : sensitive
+                        ? 'hsl(var(--coral))'
+                        : 'hsl(var(--primary))';
+
+              return (
+                <g key={node.id} opacity={baseOpacity} style={state === 'active' ? { filter: `drop-shadow(0 0 10px ${glow})` } : undefined}>
+                  {state === 'active' && (
+                    <circle cx={node.x} cy={node.y} r={node.r + 8} fill="none" stroke={glow} strokeWidth="2" className="animate-ping" opacity="0.7" />
+                  )}
+                  <circle cx={node.x} cy={node.y} r={node.r} fill={fill} stroke={stroke} strokeWidth={strokeWidth} />
+                  {node.kind === 'agent' && <circle cx={node.x} cy={node.y} r={30} fill="hsl(220 20% 15%)" />}
+                  <text x={node.x} y={node.y + (node.kind === 'agent' ? 5 : 3)} textAnchor="middle" fontSize={node.kind === 'agent' ? 18 : node.kind === 'service' ? 11 : 12}>
+                    {node.kind === 'owner' ? '👤' : node.kind === 'service' ? serviceEmoji(node.id) : '🤖'}
+                  </text>
+                  {node.kind === 'agent' && (
+                    <>
+                      <rect x={node.x - 23} y={node.y + 38} rx="6" ry="6" width="46" height="16" fill={crs >= 80 ? 'hsl(var(--coral) / 0.2)' : crs >= 60 ? 'hsl(var(--amber) / 0.2)' : 'hsl(var(--teal) / 0.2)'} />
+                      <text x={node.x} y={node.y + 49} textAnchor="middle" fill="hsl(var(--foreground))" fontSize="8">CRS {crs}</text>
+                    </>
+                  )}
+                  {node.kind === 'service' && sensitive && <text x={node.x + 11} y={node.y - 10} fontSize="10">⚠</text>}
+                  {state === 'visited' && <circle cx={node.x + node.r - 2} cy={node.y - node.r + 4} r="3.5" fill={stroke} />}
+                  <text x={node.x} y={node.y + node.r + 12} textAnchor="middle" fill={node.kind === 'subagent' ? 'hsl(var(--purple))' : 'hsl(var(--muted-foreground))'} fontSize="7">
+                    {node.kind === 'owner' ? 'owner' : node.kind === 'subagent' ? 'sub-agent' : truncate(node.label, node.kind === 'agent' ? 18 : 14)}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+        <div className="flex justify-center pt-3">
+          <button
+            type="button"
+            onClick={play}
+            className="rounded-md border border-teal/20 bg-teal/10 px-3 py-1.5 text-[10px] font-medium text-teal hover:bg-teal/20"
+          >
+            Play audit replay
+          </button>
         </div>
       </div>
 
-      <div className="flex w-56 flex-shrink-0 flex-col border-l border-border">
-        <div className="border-b border-border px-3 py-2">
+      <div className="flex w-64 flex-shrink-0 flex-col border-l border-border">
+        <div className="flex flex-shrink-0 items-center gap-2 border-b border-border px-3 py-2">
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -476,26 +649,26 @@ function SidePanelAccessGraphTab({ agent }: { agent: CryptoAsset }) {
             >
               {playing ? '⏸ Pause' : activeEventIndex >= events.length - 1 && events.length > 0 ? '↺ Replay' : activeEventIndex > -1 ? '▶ Resume' : '▶ Play'}
             </button>
-            <div className="flex items-center gap-1">
-              {[0.5, 1, 2].map(value => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setSpeed(value as 0.5 | 1 | 2)}
-                  className={`rounded px-1 py-0.5 text-[9px] ${speed === value ? 'bg-teal/20 text-teal' : 'text-muted-foreground hover:bg-secondary'}`}
-                >
-                  {value}×
-                </button>
-              ))}
-            </div>
-            <span className="ml-auto text-[10px] text-muted-foreground">{Math.max(activeEventIndex + 1, 0)} / {events.length}</span>
           </div>
-          <div className="mt-2 h-1 overflow-hidden rounded-full bg-muted">
-            <div className="h-full bg-teal transition-all duration-300" style={{ width: `${progress}%` }} />
+          <div className="flex items-center gap-1 text-[10px]">
+            {[0.5, 1, 2].map(value => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setSpeed(value as 0.5 | 1 | 2)}
+                className={`${speed === value ? 'text-teal' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                {value}×
+              </button>
+            ))}
           </div>
+          <span className="ml-auto text-[10px] text-muted-foreground">{Math.max(activeEventIndex + 1, 0)} / {events.length}</span>
+        </div>
+        <div className="h-1 flex-shrink-0 overflow-hidden bg-muted">
+          <div className="h-full bg-teal transition-all duration-300" style={{ width: `${progress}%` }} />
         </div>
 
-        <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
+        <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2">
           {events.map((event, index) => {
             const active = index === activeEventIndex;
             const past = index < activeEventIndex;
