@@ -391,6 +391,145 @@ function WorkspaceAccessGraphTimeline({ agent, compact = false }: { agent: Crypt
   );
 }
 
+function SidePanelAccessGraphTab({ agent }: { agent: CryptoAsset }) {
+  const events = useMemo(() => getAgentTimelineEvents(agent), [agent]);
+  const [activeEventIndex, setActiveEventIndex] = useState(-1);
+  const [playing, setPlaying] = useState(false);
+  const [speed, setSpeed] = useState<0.5 | 1 | 2>(1);
+  const activeEventRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    setActiveEventIndex(-1);
+    setPlaying(false);
+  }, [agent.id]);
+
+  useEffect(() => {
+    if (!playing || events.length === 0) return;
+    const interval = window.setInterval(() => {
+      setActiveEventIndex(prev => {
+        if (prev + 1 >= events.length) {
+          setPlaying(false);
+          return prev;
+        }
+        return prev + 1;
+      });
+    }, 1800 / speed);
+    return () => window.clearInterval(interval);
+  }, [events.length, playing, speed]);
+
+  useEffect(() => {
+    activeEventRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [activeEventIndex]);
+
+  const progress = events.length ? ((activeEventIndex + 1) / events.length) * 100 : 0;
+
+  const play = () => {
+    if (activeEventIndex === -1 || activeEventIndex >= events.length - 1) {
+      setActiveEventIndex(0);
+      setPlaying(true);
+      return;
+    }
+    setPlaying(true);
+  };
+
+  const replay = () => {
+    setActiveEventIndex(-1);
+    setPlaying(false);
+    window.setTimeout(() => {
+      setActiveEventIndex(0);
+      setPlaying(true);
+    }, 100);
+  };
+
+  const severityDot = (severity: 'info' | 'warn' | 'alert') => {
+    if (severity === 'alert') return 'bg-coral';
+    if (severity === 'warn') return 'bg-amber';
+    return 'bg-teal';
+  };
+
+  const severityText = (severity: 'info' | 'warn' | 'alert', active: boolean) => {
+    if (!active) return 'text-foreground';
+    if (severity === 'alert') return 'text-coral';
+    if (severity === 'warn') return 'text-amber';
+    return 'text-teal';
+  };
+
+  return (
+    <div className="flex h-full min-h-[420px] flex-row overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col p-4">
+        <div className="min-h-0 flex-1">
+          <WorkspaceAccessGraphTimeline agent={agent} compact />
+        </div>
+      </div>
+
+      <div className="flex w-56 flex-shrink-0 flex-col border-l border-border">
+        <div className="border-b border-border px-3 py-2">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (playing) setPlaying(false);
+                else if (activeEventIndex >= events.length - 1) replay();
+                else play();
+              }}
+              className="rounded-md border border-teal/20 bg-teal/10 px-2 py-1 text-[10px] font-medium text-teal hover:bg-teal/20"
+            >
+              {playing ? '⏸ Pause' : activeEventIndex >= events.length - 1 && events.length > 0 ? '↺ Replay' : activeEventIndex > -1 ? '▶ Resume' : '▶ Play'}
+            </button>
+            <div className="flex items-center gap-1">
+              {[0.5, 1, 2].map(value => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setSpeed(value as 0.5 | 1 | 2)}
+                  className={`rounded px-1 py-0.5 text-[9px] ${speed === value ? 'bg-teal/20 text-teal' : 'text-muted-foreground hover:bg-secondary'}`}
+                >
+                  {value}×
+                </button>
+              ))}
+            </div>
+            <span className="ml-auto text-[10px] text-muted-foreground">{Math.max(activeEventIndex + 1, 0)} / {events.length}</span>
+          </div>
+          <div className="mt-2 h-1 overflow-hidden rounded-full bg-muted">
+            <div className="h-full bg-teal transition-all duration-300" style={{ width: `${progress}%` }} />
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
+          {events.map((event, index) => {
+            const active = index === activeEventIndex;
+            const past = index < activeEventIndex;
+            const future = index > activeEventIndex;
+            return (
+              <button
+                key={event.id}
+                ref={active ? activeEventRef : null}
+                type="button"
+                onClick={() => {
+                  setPlaying(false);
+                  setActiveEventIndex(index);
+                }}
+                className={`-mx-1.5 block w-[calc(100%+0.75rem)] rounded px-1.5 py-1.5 text-left ${active ? 'bg-muted/30' : ''} ${past ? 'opacity-60' : future ? 'opacity-25' : ''}`}
+              >
+                <div className="flex items-start gap-2">
+                  <span className={`mt-1 h-2 w-2 flex-shrink-0 rounded-full ${severityDot(event.severity)}`} />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] font-medium ${severityText(event.severity, active)}`}>{event.label}</span>
+                      <span className="text-[9px] text-muted-foreground">{event.time}</span>
+                    </div>
+                    <p className="truncate text-[9px] text-muted-foreground">{event.description}</p>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function EosGuardianFloat({
   wsTab,
   selectedAgent,
