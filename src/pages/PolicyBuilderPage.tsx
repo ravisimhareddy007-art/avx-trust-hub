@@ -299,50 +299,205 @@ export default function PolicyBuilderPage() {
     ssh: { name: '', assetType: 'SSH Key', condition: 'No rotation in', value: '60 days', severity: 'High', envs: ['All'], actions: ['Alert only', 'Auto-remediate'], groups: ['grp-003'], type: 'ssh-key' },
   };
 
-  const handleAIDraft = () => {
-    if (!formDescription || formDescription.length < 10) {
-      toast.error('Enter a description first so AI can parse your intent');
+  const handleAIDraft = async () => {
+    if (!formDescription || formDescription.trim().length < 10) {
+      toast.error('Enter a description so AI can fill the policy');
       return;
     }
+
     setAiLoading(true);
-    setTimeout(() => {
-      const desc = formDescription.toLowerCase();
-      let matched = false;
-      for (const [keyword, template] of Object.entries(aiTemplates)) {
-        if (desc.includes(keyword)) {
-          const draftName = formDescription.length > 60 ? `${formDescription.slice(0, 57)}...` : formDescription;
-          const firstGroup = template.groups[0] ? mockGroups.find(group => group.id === template.groups[0])?.name || '' : '';
-          setFormName(draftName);
-          setTemplatePolicyType(template.type || getPolicyTypeFromAssetType(template.assetType));
-          setFormSeverity(template.severity);
-          setFormEnvironment(template.envs[0] || 'All');
-          setFormGroup(firstGroup);
-          setFormAction(template.actions[template.actions.length - 1] || 'Alert only');
-          if ((template.type || getPolicyTypeFromAssetType(template.assetType)) === 'ssh-key') {
-            setFormAllowedAlgorithms(template.value === 'Ed25519 only' ? 'Ed25519' : 'Ed25519, RSA-4096');
-            setFormMaxKeyAge(template.value.includes('90') ? '90 days' : template.value.includes('60') ? '60 days' : '365 days');
-            setFormAutoRotate(template.actions.includes('Auto-remediate'));
-          } else if ((template.type || getPolicyTypeFromAssetType(template.assetType)) === 'certificates') {
-            setFormCertAction(template.actions.includes('Block issuance') ? 'Enroll' : 'Alert Only');
-            setFormMaxValidity(template.value.includes('90') ? '90 days' : '365 days');
-          } else if ((template.type || getPolicyTypeFromAssetType(template.assetType)) === 'secrets') {
-            setFormSecretType(desc.includes('oauth') ? 'OAuth Tokens' : 'API Keys');
-            setFormSecretMaxAge(template.value.includes('30') ? '30 days' : '90 days');
-            setFormSecretAutoRotate(template.actions.includes('Auto-remediate'));
-          } else if ((template.type || getPolicyTypeFromAssetType(template.assetType)) === 'ai-agents') {
-            setFormAgentMaxTTL(template.value === '24 hours' ? '24 hours' : '7 days');
-            setFormEnforceJIT(desc.includes('jit') || desc.includes('static'));
-          }
-          matched = true;
-          break;
-        }
-      }
-      if (!matched) {
-        setFormName(formDescription.length > 60 ? `${formDescription.slice(0, 57)}...` : formDescription);
-      }
+
+    try {
+      const systemPrompt = `You are a policy configuration assistant 
+for AVX Trust Platform, a cryptographic identity governance platform.
+
+The user will describe a policy in plain English. You must extract 
+structured configuration from their description and return ONLY a 
+valid JSON object — no markdown, no explanation, no backticks.
+
+The user has selected policy type: "${formPolicyType}"
+
+Return a JSON object with ONLY the fields relevant to that policy 
+type. Use these exact field names and allowed values:
+
+ALWAYS include:
+
+- name: string (short descriptive policy name, max 60 chars)
+
+- description: string (1-2 sentence plain English summary)
+
+- tag: one of ["Default","PCI-DSS","DORA","NIS2","HIPAA","NIST","Zero-Trust","Internal"]
+
+- environment: one of ["All","Production","Staging","Development"]
+
+- severity: one of ["Low","Medium","High","Critical"]
+
+- action: one of ["Alert only","Block action","Auto-remediate","Create ticket","Escalate to owner"]
+
+- requireApproval: boolean
+
+- notifyOnFail: boolean
+
+- notifyOnComplete: boolean
+
+- notifyVia: one of ["Email","Slack"]
+
+- itsm: boolean
+
+FOR "Managed Certificate Policy" add:
+
+- certType: one of ["TLS / SSL","Code-Signing","S/MIME","Client Auth"]
+
+- certAction: one of ["Alert Only","Enroll","Auto-Renew","Re-Enroll"]
+
+- ca: one of ["Any","AppViewX CA","DigiCert","GlobalSign","Entrust","Let's Encrypt","Microsoft CA","Sectigo","HashiCorp Vault PKI"]
+
+- maxValidity: one of ["30 days","60 days","90 days","180 days","365 days","2 years","3 years","No limit"]
+
+- minKeyType: one of ["RSA-2048","RSA-4096","ECDSA-256","Ed25519"]
+
+- autoRenew: boolean
+
+- renewBefore: one of ["7 days","14 days","30 days","45 days","60 days"]
+
+FOR "SSH Key Policy" add:
+
+- allowedAlgorithms: string (comma-separated, e.g. "Ed25519, RSA-4096")
+
+- maxKeyAge: one of ["30 days","60 days","90 days","180 days","365 days","No limit"]
+
+- autoRotate: boolean
+
+- rotationPeriod: one of ["30 days","60 days","90 days","180 days","365 days"]
+
+- targetAlgorithm: one of ["Ed25519","RSA-4096","ECDSA-256"]
+
+FOR "Secrets & API Keys Policy" add:
+
+- secretType: one of ["All","API Keys","OAuth Tokens","Database Credentials","Service Account Keys","Vault Secrets"]
+
+- secretMaxAge: one of ["30 days","60 days","90 days","180 days","365 days"]
+
+- secretVault: one of ["Any","HashiCorp Vault","AWS Secrets Manager","Azure Key Vault","CyberArk Conjur","GCP Secret Manager"]
+
+- secretAutoRotate: boolean
+
+FOR "AI Agent Token Policy" add:
+
+- agentMaxTTL: one of ["1 hour","6 hours","24 hours","7 days","30 days","90 days","No limit"]
+
+- enforceJIT: boolean
+
+- enforceRightSize: boolean
+
+FOR "Kubernetes Certificate Policy" add:
+
+- k8sIssuer: one of ["cert-manager","Vault PKI","SPIFFE/SPIRE","ACME","AWS PCA","Custom"]
+
+- k8sNamespace: string (namespace pattern or empty string)
+
+- maxValidity: one of ["1 hour","6 hours","24 hours","7 days","30 days","90 days","365 days"]
+
+- minKeyType: one of ["RSA-2048","RSA-4096","ECDSA-256","Ed25519"]
+
+FOR "Device Management Policy" add:
+
+- deviceAction: one of ["Onboard Device","Re-Onboard","Update Config"]
+
+- deviceVendor: one of ["Linux Server","Microsoft Server","IIS","Apache","Nginx","F5 (ADC)","MS SQL","Tomcat","Custom"]
+
+- deviceApproval: one of ["Auto-approve","Require approval","Auto-approve with notification"]
+
+Return ONLY the JSON object. No other text.`;
+
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          system: systemPrompt,
+          messages: [{
+            role: 'user',
+            content: formDescription,
+          }],
+        }),
+      });
+
+      const data = await response.json();
+
+      const text = data.content
+        ?.filter((b: any) => b.type === 'text')
+        ?.map((b: any) => b.text)
+        ?.join('') || '';
+
+      const clean = text
+        .replace(/```json/gi, '')
+        .replace(/```/g, '')
+        .trim();
+
+      const result = JSON.parse(clean);
+
+      if (result.name) setFormName(result.name);
+      if (result.description) setFormDescription(result.description);
+      if (result.tag) setFormTag(result.tag);
+      if (result.environment) setFormEnvironment(result.environment);
+      if (result.severity) setFormSeverity(result.severity);
+      if (result.action) setFormAction(result.action);
+      if (result.requireApproval !== undefined)
+        setFormRequireApproval(result.requireApproval);
+      if (result.notifyOnFail !== undefined)
+        setFormNotifyOnFail(result.notifyOnFail);
+      if (result.notifyOnComplete !== undefined)
+        setFormNotifyOnComplete(result.notifyOnComplete);
+      if (result.notifyVia) setFormNotifyVia(result.notifyVia);
+      if (result.itsm !== undefined) setFormITSM(result.itsm);
+
+      if (result.certType) setFormCertType(result.certType);
+      if (result.certAction) setFormCertAction(result.certAction);
+      if (result.ca) setFormCA(result.ca);
+      if (result.maxValidity) setFormMaxValidity(result.maxValidity);
+      if (result.minKeyType) setFormMinKeyType(result.minKeyType);
+      if (result.autoRenew !== undefined) setFormAutoRenew(result.autoRenew);
+      if (result.renewBefore) setFormRenewBefore(result.renewBefore);
+
+      if (result.allowedAlgorithms)
+        setFormAllowedAlgorithms(result.allowedAlgorithms);
+      if (result.maxKeyAge) setFormMaxKeyAge(result.maxKeyAge);
+      if (result.autoRotate !== undefined)
+        setFormAutoRotate(result.autoRotate);
+      if (result.rotationPeriod)
+        setFormRotationPeriod(result.rotationPeriod);
+      if (result.targetAlgorithm)
+        setFormTargetAlgorithm(result.targetAlgorithm);
+
+      if (result.secretType) setFormSecretType(result.secretType);
+      if (result.secretMaxAge) setFormSecretMaxAge(result.secretMaxAge);
+      if (result.secretVault) setFormSecretVault(result.secretVault);
+      if (result.secretAutoRotate !== undefined)
+        setFormSecretAutoRotate(result.secretAutoRotate);
+
+      if (result.agentMaxTTL) setFormAgentMaxTTL(result.agentMaxTTL);
+      if (result.enforceJIT !== undefined)
+        setFormEnforceJIT(result.enforceJIT);
+      if (result.enforceRightSize !== undefined)
+        setFormEnforceRightSize(result.enforceRightSize);
+
+      if (result.deviceAction) setFormDeviceAction(result.deviceAction);
+      if (result.deviceVendor) setFormDeviceVendor(result.deviceVendor);
+      if (result.deviceApproval)
+        setFormDeviceApproval(result.deviceApproval);
+
+      if (result.k8sIssuer) setFormK8sIssuer(result.k8sIssuer);
+      if (result.k8sNamespace) setFormK8sNamespace(result.k8sNamespace);
+
+      toast.success('Policy generated — review and adjust if needed');
+    } catch (err) {
+      console.error('AI draft error:', err);
+      toast.error('Could not generate policy — check your description and try again');
+    } finally {
       setAiLoading(false);
-      toast.success('AI parsed your policy — review and adjust fields below');
-    }, 800);
+    }
   };
 
   const handleSave = (draft: boolean) => {
