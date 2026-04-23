@@ -1403,6 +1403,61 @@ export default function SSHRemediationWorkspace() {
 
       {provisionOpen ? <ProvisionKeyWizard open={provisionOpen} onClose={() => setProvisionOpen(false)} /> : null}
 
+      {blastRadiusKey ? (
+        <Modal open={!!blastRadiusKey} onClose={() => setBlastRadiusKey(null)} title="Rotation Impact Analysis">
+          <div className="space-y-4">
+            <div className="flex items-start gap-2 rounded-lg border border-amber/20 bg-amber/5 p-3">
+              <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber" />
+              <div className="text-[10px] text-amber">This key is shared across multiple hosts. Rotating it will invalidate access on all dependent endpoints simultaneously.</div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary text-foreground">🔑</div>
+              <div>
+                <div className="font-semibold text-foreground">{blastRadiusKey.name}</div>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  <span className="rounded bg-muted px-2 py-0.5 text-[10px] font-mono text-foreground">{blastRadiusKey.algorithm}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${crsBgCls(computeCRS(blastRadiusKey).crs)}`}>CRS {computeCRS(blastRadiusKey).crs}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="overflow-hidden rounded-lg border border-border">
+              <table className="w-full text-[10px]">
+                <thead className="border-b border-border bg-muted/30">
+                  <tr>
+                    {['Host', 'File Path', 'Associated User', 'Impact'].map(label => <th key={label} className="px-3 py-2 text-left font-medium text-muted-foreground">{label}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {(((blastRadiusKey as SSHWorkspaceAsset).filePaths) || []).map(path => {
+                    const [ip, filePath] = path.split('~~');
+                    const user = ((blastRadiusKey as SSHWorkspaceAsset).associatedUsers || []).find(item => item.ip === ip);
+                    return (
+                      <tr key={path} className="border-t border-border">
+                        <td className="px-3 py-2 text-foreground">{ip}</td>
+                        <td className="px-3 py-2 font-mono text-muted-foreground">{filePath}</td>
+                        <td className="px-3 py-2 text-muted-foreground">{user ? `${user.ip}~~${user.username}` : '—'}</td>
+                        <td className="px-3 py-2 text-amber">Access interrupted until re-provisioned</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="text-[10px] text-muted-foreground">{((blastRadiusKey as SSHWorkspaceAsset).filePaths?.length || 0)} hosts affected · {((blastRadiusKey as SSHWorkspaceAsset).associatedUsers?.length || 0)} users lose access · estimated downtime: seconds (automated re-provision)</div>
+
+            <div className="rounded-lg border border-teal/20 bg-teal/5 p-3 text-[10px] text-foreground">✦ Recommendation: Schedule this rotation during a maintenance window and ensure all {((blastRadiusKey as SSHWorkspaceAsset).filePaths?.length || 0)} hosts are reachable before proceeding. A work order will track re-provisioning on each host.</div>
+
+            <div className="flex gap-2 pt-2">
+              <button onClick={() => setBlastRadiusKey(null)} className="flex-1 rounded-lg border border-border py-2 text-xs text-muted-foreground hover:bg-muted/30">Cancel</button>
+              <button onClick={() => { const activeKey = blastRadiusKey as SSHWorkspaceAsset; toast.success(`Rotating ${activeKey.name} across ${activeKey.filePaths?.length} hosts — work order ${workOrderId()} created. Track progress in Work Order Status.`); setBlastRadiusKey(null); setSelectedRows(new Set()); }} className="flex-1 rounded-lg bg-teal py-2 text-xs font-semibold text-primary-foreground hover:bg-teal-light">Proceed with Rotation</button>
+            </div>
+          </div>
+        </Modal>
+      ) : null}
+
       {confirmAction ? (
         <Modal open={!!confirmAction} onClose={() => setConfirmAction(null)} title={`Confirm: ${confirmAction.action}`}>
           <div className="space-y-4">
