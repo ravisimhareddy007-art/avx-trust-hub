@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { arsFor } from '@/lib/risk/ars';
 import { computeCRS, getCrsFactors } from '@/lib/risk/crs';
 import { mockITAssets } from '@/data/inventoryMockData';
@@ -11,6 +11,7 @@ import {
   ChevronDown,
   ChevronUp,
   CheckCircle2,
+  Lock,
   Minus,
   MoreVertical,
   Search,
@@ -390,6 +391,145 @@ function WorkspaceAccessGraphTimeline({ agent, compact = false }: { agent: Crypt
   );
 }
 
+function SidePanelAccessGraphTab({ agent }: { agent: CryptoAsset }) {
+  const events = useMemo(() => getAgentTimelineEvents(agent), [agent]);
+  const [activeEventIndex, setActiveEventIndex] = useState(-1);
+  const [playing, setPlaying] = useState(false);
+  const [speed, setSpeed] = useState<0.5 | 1 | 2>(1);
+  const activeEventRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    setActiveEventIndex(-1);
+    setPlaying(false);
+  }, [agent.id]);
+
+  useEffect(() => {
+    if (!playing || events.length === 0) return;
+    const interval = window.setInterval(() => {
+      setActiveEventIndex(prev => {
+        if (prev + 1 >= events.length) {
+          setPlaying(false);
+          return prev;
+        }
+        return prev + 1;
+      });
+    }, 1800 / speed);
+    return () => window.clearInterval(interval);
+  }, [events.length, playing, speed]);
+
+  useEffect(() => {
+    activeEventRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [activeEventIndex]);
+
+  const progress = events.length ? ((activeEventIndex + 1) / events.length) * 100 : 0;
+
+  const play = () => {
+    if (activeEventIndex === -1 || activeEventIndex >= events.length - 1) {
+      setActiveEventIndex(0);
+      setPlaying(true);
+      return;
+    }
+    setPlaying(true);
+  };
+
+  const replay = () => {
+    setActiveEventIndex(-1);
+    setPlaying(false);
+    window.setTimeout(() => {
+      setActiveEventIndex(0);
+      setPlaying(true);
+    }, 100);
+  };
+
+  const severityDot = (severity: 'info' | 'warn' | 'alert') => {
+    if (severity === 'alert') return 'bg-coral';
+    if (severity === 'warn') return 'bg-amber';
+    return 'bg-teal';
+  };
+
+  const severityText = (severity: 'info' | 'warn' | 'alert', active: boolean) => {
+    if (!active) return 'text-foreground';
+    if (severity === 'alert') return 'text-coral';
+    if (severity === 'warn') return 'text-amber';
+    return 'text-teal';
+  };
+
+  return (
+    <div className="flex h-full min-h-[420px] flex-row overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col p-4">
+        <div className="min-h-0 flex-1">
+          <WorkspaceAccessGraphTimeline agent={agent} compact />
+        </div>
+      </div>
+
+      <div className="flex w-56 flex-shrink-0 flex-col border-l border-border">
+        <div className="border-b border-border px-3 py-2">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (playing) setPlaying(false);
+                else if (activeEventIndex >= events.length - 1) replay();
+                else play();
+              }}
+              className="rounded-md border border-teal/20 bg-teal/10 px-2 py-1 text-[10px] font-medium text-teal hover:bg-teal/20"
+            >
+              {playing ? '⏸ Pause' : activeEventIndex >= events.length - 1 && events.length > 0 ? '↺ Replay' : activeEventIndex > -1 ? '▶ Resume' : '▶ Play'}
+            </button>
+            <div className="flex items-center gap-1">
+              {[0.5, 1, 2].map(value => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setSpeed(value as 0.5 | 1 | 2)}
+                  className={`rounded px-1 py-0.5 text-[9px] ${speed === value ? 'bg-teal/20 text-teal' : 'text-muted-foreground hover:bg-secondary'}`}
+                >
+                  {value}×
+                </button>
+              ))}
+            </div>
+            <span className="ml-auto text-[10px] text-muted-foreground">{Math.max(activeEventIndex + 1, 0)} / {events.length}</span>
+          </div>
+          <div className="mt-2 h-1 overflow-hidden rounded-full bg-muted">
+            <div className="h-full bg-teal transition-all duration-300" style={{ width: `${progress}%` }} />
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
+          {events.map((event, index) => {
+            const active = index === activeEventIndex;
+            const past = index < activeEventIndex;
+            const future = index > activeEventIndex;
+            return (
+              <button
+                key={event.id}
+                ref={active ? activeEventRef : null}
+                type="button"
+                onClick={() => {
+                  setPlaying(false);
+                  setActiveEventIndex(index);
+                }}
+                className={`-mx-1.5 block w-[calc(100%+0.75rem)] rounded px-1.5 py-1.5 text-left ${active ? 'bg-muted/30' : ''} ${past ? 'opacity-60' : future ? 'opacity-25' : ''}`}
+              >
+                <div className="flex items-start gap-2">
+                  <span className={`mt-1 h-2 w-2 flex-shrink-0 rounded-full ${severityDot(event.severity)}`} />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] font-medium ${severityText(event.severity, active)}`}>{event.label}</span>
+                      <span className="text-[9px] text-muted-foreground">{event.time}</span>
+                    </div>
+                    <p className="truncate text-[9px] text-muted-foreground">{event.description}</p>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function EosGuardianFloat({
   wsTab,
   selectedAgent,
@@ -620,6 +760,7 @@ function EosGuardianFloat({
 function AgentSidePanel({ agent, onClose }: { agent: CryptoAsset; onClose: () => void }) {
   const { setCurrentPage, setFilters } = useNav();
   const [showCrsPanel, setShowCrsPanel] = useState(false);
+  const [rightTab, setRightTab] = useState<'graph' | 'credentials'>('graph');
   const score = computeCRS(agent).crs;
   const itAsset = mockITAssets.find(asset => asset.cryptoObjectIds.includes(agent.id));
   const arsScore = itAsset ? arsFor(itAsset).ars : null;
@@ -629,6 +770,7 @@ function AgentSidePanel({ agent, onClose }: { agent: CryptoAsset; onClose: () =>
 
   useEffect(() => {
     setShowCrsPanel(false);
+    setRightTab('graph');
   }, [agent.id]);
 
   return (
@@ -732,48 +874,68 @@ function AgentSidePanel({ agent, onClose }: { agent: CryptoAsset; onClose: () =>
             </div>
           </div>
 
-          <div className="scrollbar-thin overflow-y-auto p-4">
-            <h3 className="text-xs font-semibold text-foreground">Access Graph</h3>
-            <p className="mb-3 text-[10px] text-muted-foreground">Visual audit trail — press Play to replay activity on the graph</p>
-            <WorkspaceAccessGraphTimeline agent={agent} compact />
+          <div className="flex min-h-0 flex-col overflow-hidden">
+            <div className="flex border-b border-border">
+              {[
+                { id: 'graph', label: 'Access Graph' },
+                { id: 'credentials', label: 'Credentials & Services' },
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setRightTab(tab.id as 'graph' | 'credentials')}
+                  className={`border-b-2 px-4 py-3 text-sm font-medium transition-colors ${rightTab === tab.id ? 'border-teal text-teal' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
 
-            <div className="mt-4 border-t border-border pt-4">
-              <h3 className="text-xs font-semibold text-foreground">Agent Credentials</h3>
-              <p className="text-[9px] text-muted-foreground">Cryptographic objects — CRS applies</p>
-              <div className="mt-2 space-y-2">
-                {credentials.map(credential => (
-                  <div key={credential.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2">
-                    <div className="min-w-0 flex items-center gap-2">
-                      <span className="text-sm">🔐</span>
-                      <div className="min-w-0">
-                        <p className="truncate text-[10px] text-foreground">{credential.name}</p>
-                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                          <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[9px] text-foreground">{credential.algorithm}</span>
-                          <span className="text-[9px] text-muted-foreground">{credential.type}</span>
+            {rightTab === 'graph' ? (
+              <div className="min-h-0 flex-1 overflow-hidden">
+                <SidePanelAccessGraphTab agent={agent} />
+              </div>
+            ) : (
+              <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto p-4 space-y-4">
+                <div>
+                  <h3 className="text-xs font-semibold text-foreground">Agent Credentials</h3>
+                  <p className="text-[9px] text-muted-foreground">Cryptographic objects — CRS applies</p>
+                  <div className="mt-2 space-y-2">
+                    {credentials.map(credential => (
+                      <div key={credential.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2">
+                        <div className="min-w-0 flex items-center gap-2">
+                          <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+                          <div className="min-w-0">
+                            <p className="truncate text-[10px] text-foreground">{credential.name}</p>
+                            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                              <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[9px] text-foreground">{credential.algorithm}</span>
+                              <span className="text-[9px] text-muted-foreground">{credential.type}</span>
+                            </div>
+                          </div>
                         </div>
+                        <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-medium ${crsBgCls(credential.crs)}`}>CRS {credential.crs}</span>
                       </div>
-                    </div>
-                    <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-medium ${crsBgCls(credential.crs)}`}>CRS {credential.crs}</span>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
+                </div>
 
-            <div className="mt-3">
-              <h3 className="text-xs font-semibold text-foreground">Connected Services ({services.length})</h3>
-              <div className="mt-2 space-y-1.5">
-                {services.map(service => {
-                  const sensitive = SENSITIVE_SERVICES.some(term => service.includes(term));
-                  return (
-                    <div key={service} className="flex items-center gap-2 text-[10px]">
-                      <span className={`h-2 w-2 rounded-full ${sensitive ? 'bg-coral' : 'bg-primary'}`} />
-                      <span className="text-foreground">{service}</span>
-                      {sensitive && <span className="text-coral">⚠</span>}
-                    </div>
-                  );
-                })}
+                <div>
+                  <h3 className="text-xs font-semibold text-foreground">Connected Services ({services.length})</h3>
+                  <div className="mt-2 space-y-1.5">
+                    {services.map(service => {
+                      const sensitive = SENSITIVE_SERVICES.some(term => service.includes(term));
+                      return (
+                        <div key={service} className="flex items-center gap-2 text-[10px]">
+                          <span className={`h-2 w-2 rounded-full ${sensitive ? 'bg-coral' : 'bg-primary'}`} />
+                          <span className="text-foreground">{service}</span>
+                          {sensitive && <span className="text-coral">⚠</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
