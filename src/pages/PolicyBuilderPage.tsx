@@ -623,11 +623,25 @@ export default function PolicyBuilderPage() {
                 </div>
 
                 <div className="mt-4">
-                  <label className="block text-[11px] font-medium mb-1">Description</label>
-                  <textarea value={formDescription} onChange={e => setFormDescription(e.target.value)} rows={2} placeholder="What does this policy enforce and why?" className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground" />
-                  <button onClick={handleAIDraft} className="mt-1 text-[10px] text-teal cursor-pointer inline-flex items-center gap-1">
-                    <Sparkles className="w-3 h-3" /> ✦ AI Assist {aiLoading ? '…' : ''}
-                  </button>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[11px] font-medium">Description</label>
+                    <button
+                      type="button"
+                      onClick={handleAIDraft}
+                      disabled={formDescription.trim().length < 10}
+                      className="inline-flex items-center gap-1 text-[10px] text-teal font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <Sparkles className={aiLoading ? 'w-3 h-3 animate-spin' : 'w-3 h-3'} />
+                      Generate from description
+                    </button>
+                  </div>
+                  <textarea
+                    value={formDescription}
+                    onChange={e => setFormDescription(e.target.value)}
+                    rows={2}
+                    placeholder="Describe what you want this policy to do — e.g. rotate all production SSH keys every 90 days and block RSA-1024"
+                    className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground"
+                  />
                 </div>
               </div>
 
