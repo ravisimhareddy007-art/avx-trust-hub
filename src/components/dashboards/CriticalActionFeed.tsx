@@ -241,33 +241,33 @@ export default function CriticalActionFeed() {
 
   return (
     <div className="bg-card rounded-xl border border-border h-full flex flex-col">
-      <div className="px-5 pt-5 pb-3 border-b border-border space-y-3">
+      <div className="px-4 pt-4 pb-2.5 border-b border-border space-y-2.5">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0">
             <AlertTriangle className="w-4 h-4 text-coral" />
             <h2 className="text-sm font-semibold text-foreground">Critical Action Feed</h2>
-            <span className="text-[10px] text-muted-foreground">· ranked by impact × urgency · click row to inspect</span>
+            <span className="truncate text-[10px] text-muted-foreground">· ranked by impact × urgency · click row to inspect</span>
           </div>
           <span className="text-[10px] text-muted-foreground">
             {filter === 'All' ? `${FEED.length} items` : `${items.length} of ${FEED.length}`}
           </span>
         </div>
         {/* Always-visible filter chips */}
-        <div className="flex items-center gap-1.5 flex-wrap">
+        <div className="flex items-center gap-1 flex-wrap">
           {FILTERS.map(f => {
             const active = filter === f;
             return (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-full border transition-colors ${
+                className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${
                   active
                     ? 'bg-teal text-primary-foreground border-teal shadow-[0_0_0_2px_hsl(var(--teal)/0.15)]'
                     : 'bg-secondary/40 text-muted-foreground border-border hover:text-foreground hover:border-teal/40'
                 }`}
               >
                 {f}
-                <span className={`text-[9px] px-1 rounded ${active ? 'bg-primary-foreground/20' : 'bg-background/60'}`}>
+                  <span className={`min-w-4 text-center text-[9px] px-1 rounded ${active ? 'bg-primary-foreground/20' : 'bg-background/60'}`}>
                   {counts[f]}
                 </span>
               </button>
@@ -305,15 +305,15 @@ export default function CriticalActionFeed() {
                 <button
                   onClick={() => !isQueued && setExpanded(isExpanded ? null : item.id)}
                   disabled={isQueued}
-                  className="w-full text-left px-5 py-3 flex items-start gap-3 disabled:cursor-default"
+                  className="w-full text-left px-4 py-2.5 flex items-start gap-2.5 disabled:cursor-default"
                 >
-                  <div className={`w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                  <div className={`w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5 ${
                     isQueued ? 'bg-teal/20' : 'bg-secondary/60'
                   }`}>
-                    {isQueued ? <Check className="w-3.5 h-3.5 text-teal" /> : <Icon className="w-3.5 h-3.5 text-foreground" />}
+                    {isQueued ? <Check className="w-3 h-3 text-teal" /> : <Icon className="w-3 h-3 text-foreground" />}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                    <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
                       <span className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded border ${SEV_STYLES[item.severity]}`}>{item.severity}</span>
                       <span className="text-[9.5px] text-muted-foreground">{item.category}</span>
                       <span className="text-[9.5px] text-muted-foreground flex items-center gap-0.5">
@@ -321,7 +321,7 @@ export default function CriticalActionFeed() {
                       </span>
                       {item.remediationGroups && !isQueued && (
                         <span className="text-[9.5px] text-purple-light flex items-center gap-0.5">
-                          <Layers className="w-2.5 h-2.5" /> {item.remediationGroups.length} CA groups
+                          <Layers className="w-2.5 h-2.5" /> {item.remediationGroups.length}
                         </span>
                       )}
                       {item.licenseGated && !isQueued && (
@@ -335,7 +335,7 @@ export default function CriticalActionFeed() {
                         </span>
                       )}
                     </div>
-                    <p className="text-[12px] font-medium text-foreground leading-snug">{item.title}</p>
+                    <p className="text-[11.5px] font-medium text-foreground leading-snug">{item.title}</p>
                     <p className="text-[10.5px] text-muted-foreground mt-0.5 leading-snug">{item.detail}</p>
                   </div>
                   {!isQueued && (
