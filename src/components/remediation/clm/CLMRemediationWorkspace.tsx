@@ -904,9 +904,9 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
         {activeTab === 'deployments' && <CertDeploymentsView />}
 
         {activeTab === 'actions' && (
-          <div className="grid gap-4 p-4 xl:grid-cols-[minmax(320px,32%)_minmax(0,68%)]">
+          <div className="grid items-start gap-4 p-4 xl:grid-cols-[22rem_minmax(0,1fr)]">
             <div className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2">
                 {proactiveCards.map((card) => {
                   const Icon = card.icon;
                   const openCard = () => {
@@ -917,13 +917,13 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
                   };
                   return (
                     <Card key={card.id} className="border-border bg-card shadow-none">
-                      <CardHeader className="space-y-3 p-4">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal/10 text-teal">
+                      <CardHeader className="space-y-2 p-4 pb-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-teal/10 text-teal">
                           <Icon className="h-4 w-4" />
                         </div>
                         <div>
-                          <CardTitle className="text-base font-semibold text-foreground">{card.title}</CardTitle>
-                          <CardDescription className="mt-1 text-sm text-muted-foreground">{card.description}</CardDescription>
+                          <CardTitle className="text-base font-semibold leading-tight text-foreground">{card.title}</CardTitle>
+                          <CardDescription className="mt-1 min-h-[2.75rem] text-sm leading-6 text-muted-foreground">{card.description}</CardDescription>
                         </div>
                       </CardHeader>
                       <CardContent className="p-4 pt-0">
