@@ -6,23 +6,31 @@ import { Modal } from '@/components/shared/UIComponents';
 import { toast } from 'sonner';
 import {
   AlertTriangle,
+  ArrowRightLeft,
   ArrowRight,
   Atom,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
   Copy,
+  Download,
   Info,
+  Key,
   KeyRound,
   Lock,
   MoreVertical,
+  Pencil,
   Pause,
   Play,
+  Plus,
+  RotateCw,
   RotateCcw,
   Search,
-  ShieldAlert,
+  Trash,
   Trash2,
+  Undo2,
   X,
+  XCircle,
 } from 'lucide-react';
 
 const SSH_KEYS = mockAssets.filter(a => a.type === 'SSH Key');
@@ -263,7 +271,7 @@ function tabBtn(active: boolean) {
   return `px-4 py-3 text-xs font-medium border-b-2 transition-colors ${active ? 'border-teal text-teal' : 'border-transparent text-muted-foreground hover:text-foreground'}`;
 }
 
-function SSHKpiStrip({ counts, onFilter }: { counts: Record<SSHRisk, number>; onFilter: (risk: SSHRisk) => void }) {
+function SSHKpiStrip({ counts, activeFilter, onFilter }: { counts: Record<SSHRisk, number>; activeFilter: string; onFilter: (risk: SSHRisk) => void }) {
   const tiles: { risk: SSHRisk; label: string; value: number; subtitle: string; border: string; valueCls: string; info?: string }[] = [
     { risk: 'Shared', label: 'SHARED KEYS', value: counts.Shared, subtitle: 'Same key on multiple hosts', border: 'border-l-amber', valueCls: 'text-amber' },
     { risk: 'Weak', label: 'WEAK KEYS', value: counts.Weak, subtitle: 'Deprecated algorithm or short key length', border: 'border-l-coral', valueCls: 'text-coral' },
@@ -273,17 +281,17 @@ function SSHKpiStrip({ counts, onFilter }: { counts: Record<SSHRisk, number>; on
   ];
 
   return (
-    <div className="flex gap-3">
+    <div className="grid grid-cols-5 gap-3">
       {tiles.map(tile => (
         <button
           key={tile.risk}
           onClick={() => onFilter(tile.risk)}
-          className={`flex-1 rounded-lg border border-border border-l-4 bg-card p-3 text-left transition-all hover:shadow-md ${tile.border}`}
+          className={`rounded-lg border border-border border-l-4 p-3 text-left transition-all hover:shadow-md ${tile.border} ${activeFilter === tile.risk ? `${tile.risk === 'Weak' || tile.risk === 'Rogue' ? 'ring-2 ring-coral/40' : 'ring-2 ring-amber/40'} ring-offset-1` : 'bg-card'}`}
         >
           <div className="flex items-start justify-between gap-2">
             <div>
               <div className={`text-2xl font-bold ${tile.valueCls}`}>{tile.value}</div>
-              <div className="text-[10px] text-muted-foreground">{tile.label}</div>
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{tile.label}</div>
             </div>
             {tile.info ? (
               <span title={tile.info} className="mt-1 inline-flex h-4 w-4 items-center justify-center rounded-full border border-border text-muted-foreground">
@@ -748,12 +756,12 @@ export default function SSHRemediationWorkspace() {
   const [wsTab, setWsTab] = useState<WTab>('remediation');
   const [selectedKey, setSelectedKey] = useState<SSHWorkspaceAsset | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
-  const [riskFilter, setRiskFilter] = useState('');
+  const [activeFilter, setActiveFilter] = useState('');
   const [search, setSearch] = useState('');
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [provisionOpen, setProvisionOpen] = useState(false);
   const [sortCol, setSortCol] = useState<SortCol>('crs');
-  const [sortDir] = useState<'asc' | 'desc'>('desc');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [confirmAction, setConfirmAction] = useState<{ key: SSHWorkspaceAsset; action: string } | null>(null);
   const [blastRadiusKey, setBlastRadiusKey] = useState<CryptoAsset | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -764,32 +772,36 @@ export default function SSHRemediationWorkspace() {
   const workspaceAllSSH = useMemo(() => [...workspaceSSHKeys, ...workspaceSSHCerts], [workspaceSSHCerts, workspaceSSHKeys]);
 
   const counts = useMemo(() => ({
-    Shared: workspaceSSHKeys.filter(k => k.sshRiskStatus?.includes('Shared')).length,
+    Shared: workspaceAllSSH.filter(k => k.sshRiskStatus?.includes('Shared')).length,
     Weak: workspaceAllSSH.filter(k => k.sshRiskStatus?.includes('Weak')).length,
-    Rogue: workspaceSSHKeys.filter(k => k.sshRiskStatus?.includes('Rogue')).length,
-    Misplaced: workspaceSSHKeys.filter(k => k.sshRiskStatus?.includes('Misplaced')).length,
-    Suspicious: workspaceSSHKeys.filter(k => k.sshRiskStatus?.includes('Suspicious')).length,
-  }), [workspaceAllSSH, workspaceSSHKeys]);
+    Rogue: workspaceAllSSH.filter(k => k.sshRiskStatus?.includes('Rogue')).length,
+    Misplaced: workspaceAllSSH.filter(k => k.sshRiskStatus?.includes('Misplaced')).length,
+    Suspicious: workspaceAllSSH.filter(k => k.sshRiskStatus?.includes('Suspicious')).length,
+  }), [workspaceAllSSH]);
 
-  const filteredKeys = useMemo(() => {
-    const rows = workspaceSSHKeys
-      .filter(k => !search || k.name.toLowerCase().includes(search.toLowerCase()))
-      .filter(k => !riskFilter || k.sshRiskStatus?.includes(riskFilter as SSHRisk))
-      .map(k => ({ ...k, crs: computeCRS(k).crs }));
+  const isRotationOverdue = (k: SSHWorkspaceAsset) => {
+    if (!k.rotationFrequency || k.rotationFrequency === 'Never') return false;
+    const days = parseInt(k.rotationFrequency, 10);
+    if (Number.isNaN(days)) return false;
+    return (k.keyAge || 0) > days;
+  };
 
-    return rows.sort((a, b) => {
-      const dir = sortDir === 'desc' ? -1 : 1;
-      if (sortCol === 'name') return a.name.localeCompare(b.name) * dir;
-      if (sortCol === 'age') return ((a.keyAge || 0) - (b.keyAge || 0)) * dir;
-      if (sortCol === 'algorithm') return a.algorithm.localeCompare(b.algorithm) * dir;
-      return ((a.crs || 0) - (b.crs || 0)) * dir;
-    });
-  }, [riskFilter, search, sortCol, sortDir, workspaceSSHKeys]);
-
-  const rotationDue = useMemo(() => filteredKeys.filter(k => k.rotationFrequency !== 'Never' && !k.autoRenewal && (k.keyAge || 0) > parseRotationDays(k.rotationFrequency || '999')), [filteredKeys]);
-  const rogueKeys = useMemo(() => workspaceSSHKeys.filter(k => k.sshRiskStatus?.includes('Rogue')), [workspaceSSHKeys]);
-  const weakKeys = useMemo(() => workspaceAllSSH.filter(k => k.sshRiskStatus?.includes('Weak')).map(k => ({ ...k, crs: computeCRS(k).crs })), [workspaceAllSSH]);
-  const sharedKeys = useMemo(() => workspaceSSHKeys.filter(k => k.sshRiskStatus?.includes('Shared')), [workspaceSSHKeys]);
+  const displayKeys = useMemo(() => {
+    return workspaceAllSSH
+      .filter(k => {
+        if (!activeFilter) return true;
+        return k.sshRiskStatus?.includes(activeFilter as SSHRisk) || (activeFilter === 'Overdue' && isRotationOverdue(k));
+      })
+      .filter(k => !search || k.name.toLowerCase().includes(search.toLowerCase()) || (k.algorithm || '').toLowerCase().includes(search.toLowerCase()) || (k.keyComplianceGroup || '').toLowerCase().includes(search.toLowerCase()))
+      .map(k => ({ ...k, crs: computeCRS(k).crs }))
+      .sort((a, b) => {
+        if (sortCol === 'crs') return sortDir === 'desc' ? (b.crs || 0) - (a.crs || 0) : (a.crs || 0) - (b.crs || 0);
+        if (sortCol === 'name') return sortDir === 'desc' ? b.name.localeCompare(a.name) : a.name.localeCompare(b.name);
+        if (sortCol === 'age') return sortDir === 'desc' ? (b.keyAge || 0) - (a.keyAge || 0) : (a.keyAge || 0) - (b.keyAge || 0);
+        if (sortCol === 'algorithm') return sortDir === 'desc' ? (b.algorithm || '').localeCompare(a.algorithm || '') : (a.algorithm || '').localeCompare(b.algorithm || '');
+        return 0;
+      });
+  }, [activeFilter, search, sortCol, sortDir, workspaceAllSSH]);
 
   const toggleSelected = (id: string) => {
     setSelectedRows(prev => {
@@ -818,7 +830,7 @@ export default function SSHRemediationWorkspace() {
   };
 
   const handleBulkRotate = () => {
-    const selectedKeys = workspaceSSHKeys.filter(key => selectedRows.has(key.id));
+    const selectedKeys = displayKeys.filter(key => selectedRows.has(key.id));
     const riskyKey = selectedKeys.find(hasBlastRadius);
     if (riskyKey) {
       setBlastRadiusKey(riskyKey);
@@ -847,215 +859,173 @@ export default function SSHRemediationWorkspace() {
       <div className="min-h-0 flex-1 overflow-hidden">
         {wsTab === 'remediation' ? (
           <div className="flex h-full flex-col overflow-hidden">
-            <div className="flex-shrink-0 space-y-4 border-b border-border p-4">
-              <SSHKpiStrip counts={counts} onFilter={risk => { setRiskFilter(prev => prev === risk ? '' : risk); setWsTab('remediation'); }} />
+            <div className="flex-shrink-0 border-b border-border p-4">
+              <SSHKpiStrip
+                counts={counts}
+                activeFilter={activeFilter}
+                onFilter={risk => {
+                  setActiveFilter(prev => (prev === risk ? '' : risk));
+                  setSelectedRows(new Set());
+                  setOpenMenuId(null);
+                }}
+              />
+            </div>
 
-              {riskFilter ? (
-                <div className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1 text-[10px] text-foreground">
-                  <span>Filtered: {riskFilter}</span>
-                  <button onClick={() => setRiskFilter('')} className="text-muted-foreground hover:text-foreground"><X className="h-3 w-3" /></button>
+            <div className="flex flex-shrink-0 items-center gap-3 border-b border-border px-4 py-3">
+              {activeFilter ? (
+                <div className="flex items-center gap-1.5 rounded-full border border-border bg-muted px-3 py-1 text-[10px] text-foreground">
+                  <span>{activeFilter} Keys</span>
+                  <button onClick={() => setActiveFilter('')} className="text-muted-foreground hover:text-foreground"><X className="h-3 w-3" /></button>
                 </div>
               ) : null}
-
-              <div className="flex items-center gap-3">
-                <div className="relative w-64">
-                  <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                  <input value={search} onChange={e => setSearch(e.target.value)} className="w-full rounded-lg border border-border bg-muted py-2 pl-7 pr-3 text-xs text-foreground" placeholder="Search keys..." />
-                </div>
-                <label className="text-xs text-muted-foreground">Sort by</label>
-                <select value={sortCol} onChange={e => setSortCol(e.target.value as SortCol)} className="rounded-lg border border-border bg-muted px-3 py-2 text-xs text-foreground">
-                  <option value="crs">CRS</option>
-                  <option value="name">Name</option>
-                  <option value="age">Age</option>
-                  <option value="algorithm">Algorithm</option>
-                </select>
-                <div className="ml-auto flex items-center gap-2">
-                  {selectedRows.size > 0 ? (
-                    <>
-                      <button onClick={handleBulkRotate} className="rounded-lg bg-teal px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-teal-light">Rotate {selectedRows.size} selected</button>
-                      <button onClick={() => { toast.success(`Revoke ${selectedRows.size} selected — work orders created`); setSelectedRows(new Set()); }} className="rounded-lg border border-coral/30 bg-coral/10 px-3 py-2 text-xs font-medium text-coral hover:bg-coral/20">Revoke {selectedRows.size} selected</button>
-                    </>
-                  ) : null}
-                  <button onClick={() => setProvisionOpen(true)} className="rounded-lg bg-teal px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-teal-light">Provision New Key +</button>
-                </div>
+              <div className="relative flex items-center">
+                <Search className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                <input value={search} onChange={e => setSearch(e.target.value)} className="w-56 rounded-lg border border-border bg-muted/50 py-1.5 pl-8 pr-3 text-[10px] text-foreground" placeholder="Search keys..." />
+              </div>
+              <span className="text-[10px] text-muted-foreground">Sort by</span>
+              <select value={sortCol} onChange={e => setSortCol(e.target.value as SortCol)} className="rounded-lg border border-border bg-card px-2 py-1.5 text-[10px] text-foreground">
+                <option value="crs">CRS</option>
+                <option value="name">Name</option>
+                <option value="age">Age</option>
+                <option value="algorithm">Algorithm</option>
+              </select>
+              <div className="ml-auto flex items-center gap-2">
+                {selectedRows.size > 0 ? (
+                  <div className="flex items-center gap-2 transition-all">
+                    <span className="text-[10px] text-muted-foreground">{selectedRows.size} selected</span>
+                    {(() => {
+                      const selectedKeys = displayKeys.filter(key => selectedRows.has(key.id));
+                      const hasRogue = selectedKeys.some(key => key.sshRiskStatus?.includes('Rogue'));
+                      return (
+                        <button title={hasRogue ? 'Cannot rotate rogue keys — add to inventory first' : undefined} disabled={hasRogue} onClick={handleBulkRotate} className={`rounded-lg bg-teal px-3 py-1.5 text-[10px] text-primary-foreground ${hasRogue ? 'cursor-not-allowed opacity-40' : 'hover:bg-teal-light'}`}>
+                          Rotate
+                        </button>
+                      );
+                    })()}
+                    <button onClick={() => {
+                      if (selectedRows.size === 1) {
+                        const key = displayKeys.find(item => selectedRows.has(item.id));
+                        if (key) setConfirmAction({ key, action: 'Revoke' });
+                      } else {
+                        toast.success(`Revoke ${selectedRows.size} selected — work orders created`);
+                        setSelectedRows(new Set());
+                      }
+                    }} className="rounded-lg border border-coral/20 bg-coral/10 px-3 py-1.5 text-[10px] text-coral hover:bg-coral/20">Revoke</button>
+                    <button onClick={() => toast.success(`Exporting ${selectedRows.size} keys as CSV`)} className="rounded-lg border border-border px-3 py-1.5 text-[10px] text-foreground hover:bg-muted/30">Export</button>
+                    <div className="mx-1 h-5 w-px bg-border" />
+                    <button onClick={() => setSelectedRows(new Set())} className="text-[10px] text-muted-foreground hover:text-foreground">Clear</button>
+                  </div>
+                ) : null}
+                <button onClick={() => setProvisionOpen(true)} className="rounded-lg bg-teal px-3 py-1.5 text-[10px] font-medium text-primary-foreground hover:bg-teal-light">Provision New Key +</button>
               </div>
             </div>
 
-            <div className="flex-1 space-y-6 overflow-y-auto p-4">
-              <section className="space-y-3">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <div className="text-sm font-semibold text-foreground">Rotation Queue</div>
-                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${rotationDue.length > 0 ? 'bg-coral/10 text-coral' : 'bg-teal/10 text-teal'}`}>{rotationDue.length} keys overdue</span>
-                    </div>
-                    <div className="text-[10px] text-muted-foreground">Keys past their rotation schedule — rotate to reduce credential age risk</div>
-                  </div>
-                  {rotationDue.length > 0 ? <button onClick={() => toast.success(`Rotating ${rotationDue.length} keys — work orders created`)} className="rounded-lg border border-coral/20 bg-coral/10 px-3 py-2 text-xs font-medium text-coral hover:bg-coral/20">Rotate All Overdue</button> : null}
-                </div>
-                <div className="overflow-hidden rounded-lg border border-border bg-card">
-                  <table className="w-full text-xs">
-                    <thead className="border-b border-border bg-muted/30">
+            <div className="flex-1 overflow-y-auto px-4 py-3">
+              <div className="w-full overflow-hidden rounded-lg border border-border bg-card">
+                <table className="w-full border-collapse text-xs">
+                  <thead className="sticky top-0 z-10 border-b border-border bg-muted/40">
+                    <tr>
+                      <th className="w-10 px-3 py-2.5 text-left">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4"
+                          ref={node => {
+                            if (node) node.indeterminate = selectedRows.size > 0 && !displayKeys.every(key => selectedRows.has(key.id));
+                          }}
+                          checked={displayKeys.length > 0 && displayKeys.every(key => selectedRows.has(key.id))}
+                          onChange={() => {
+                            if (displayKeys.length > 0 && displayKeys.every(key => selectedRows.has(key.id))) setSelectedRows(new Set());
+                            else setSelectedRows(new Set(displayKeys.map(key => key.id)));
+                          }}
+                        />
+                      </th>
+                      {[
+                        { key: 'name', label: 'Key Name', cls: 'min-w-[180px] text-left' },
+                        { key: '', label: 'Type', cls: 'text-left' },
+                        { key: 'algorithm', label: 'Algorithm', cls: 'text-left' },
+                        { key: '', label: 'Length', cls: 'text-left' },
+                        { key: 'age', label: 'Age', cls: 'text-left' },
+                        { key: '', label: 'Last Rotated', cls: 'text-left' },
+                        { key: '', label: 'Compliance Group', cls: 'text-left' },
+                        { key: '', label: 'Risk Flags', cls: 'text-left' },
+                        { key: '', label: 'Hosts', cls: 'w-16 text-center' },
+                        { key: 'crs', label: 'CRS', cls: 'w-16 text-center' },
+                        { key: '', label: 'Actions', cls: 'w-16 text-center' },
+                      ].map(col => (
+                        <th key={col.label} onClick={() => {
+                          if (!col.key) return;
+                          const nextKey = col.key as SortCol;
+                          if (sortCol === nextKey) setSortDir(prev => (prev === 'desc' ? 'asc' : 'desc'));
+                          else {
+                            setSortCol(nextKey);
+                            setSortDir(nextKey === 'crs' ? 'desc' : 'asc');
+                          }
+                        }} className={`px-3 py-2.5 text-[10px] font-medium text-muted-foreground ${col.cls} ${col.key ? 'cursor-pointer select-none' : ''}`}>
+                          <span className="inline-flex items-center gap-1">{col.label}{col.key && sortCol === col.key ? <ChevronDown className={`h-3 w-3 transition-transform ${sortDir === 'asc' ? 'rotate-180' : ''}`} /> : null}</span>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {displayKeys.length === 0 ? (
                       <tr>
-                        <th className="w-10 px-3 py-2 text-left"><input type="checkbox" checked={rotationDue.length > 0 && rotationDue.every(item => selectedRows.has(item.id))} onChange={e => setSelectedRows(e.target.checked ? new Set(rotationDue.map(item => item.id)) : new Set())} /></th>
-                        <th className="px-3 py-2 text-left font-medium text-muted-foreground">Key Name</th>
-                        <th className="px-3 py-2 text-left font-medium text-muted-foreground">Algorithm</th>
-                        <th className="px-3 py-2 text-left font-medium text-muted-foreground">Key Length</th>
-                        <th className="px-3 py-2 text-left font-medium text-muted-foreground">Age</th>
-                        <th className="px-3 py-2 text-left font-medium text-muted-foreground">Last Rotated</th>
-                        <th className="px-3 py-2 text-left font-medium text-muted-foreground">Compliance Group</th>
-                        <th className="px-3 py-2 text-left font-medium text-muted-foreground">Hosts</th>
-                        <th className="px-3 py-2 text-left font-medium text-muted-foreground">CRS</th>
-                        <th className="px-3 py-2 text-left font-medium text-muted-foreground">Actions</th>
+                        <td colSpan={12} className="py-12 text-center">
+                          <CheckCircle2 className="mx-auto mb-2 h-6 w-6 text-teal" />
+                          <div className="text-sm font-medium text-foreground">{activeFilter ? `No ${activeFilter} keys found` : search ? 'No keys match your search' : 'No SSH keys in inventory'}</div>
+                          {activeFilter ? <div className="mt-1 text-[10px] text-muted-foreground">All keys in this category are clean.</div> : null}
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {rotationDue.length ? rotationDue.map(key => (
-                        <tr key={key.id} className="border-t border-border hover:bg-muted/20">
-                          <td className="px-3 py-2"><input type="checkbox" checked={selectedRows.has(key.id)} onChange={() => toggleSelected(key.id)} /></td>
-                          <td className="px-3 py-2">
-                            <div className="flex items-center gap-2">
-                              <KeyRound className="h-3.5 w-3.5 text-muted-foreground" />
-                              <div className="min-w-0">
-                                <div className="truncate font-medium text-foreground">{key.name}</div>
-                                <div className="mt-1 flex flex-wrap gap-1">{(key.sshRiskStatus || []).map(risk => <span key={risk} className={`rounded-full border px-1.5 py-0.5 text-[9px] ${badgeTone(risk)}`}>{risk}</span>)}</div>
-                              </div>
+                    ) : displayKeys.map(key => {
+                      const isSelected = selectedRows.has(key.id);
+                      const hostCount = key.filePaths?.length || 0;
+                      const weakAlg = key.algorithm === 'RSA-1024' || key.algorithm === 'DSA';
+                      const agingCls = (key.keyAge || 0) > 365 ? 'text-coral' : (key.keyAge || 0) > 180 ? 'text-amber' : 'text-muted-foreground';
+                      const algorithmCls = weakAlg ? 'text-coral' : key.algorithm === 'RSA-2048' ? 'text-amber' : ['Ed25519', 'RSA-4096', 'ECDSA-256', 'ECDSA'].includes(key.algorithm) ? 'text-teal' : 'text-foreground';
+                      const rotateDisabled = key.sshRiskStatus?.includes('Rogue') || key.rotationFrequency === 'Never';
+                      const revokeDisabled = hostCount === 0;
+                      const rollbackDisabled = key.lastRotated === key.issueDate;
+                      const inventoryDisabled = key.keyStatus === 'Managed';
+                      return (
+                        <tr key={key.id} onClick={() => openDetails(key)} className={`cursor-pointer border-b border-border transition-colors last:border-0 hover:bg-muted/20 ${isSelected ? 'bg-teal/5' : ''}`}>
+                          <td className="w-10 px-3 py-2.5"><input type="checkbox" className="h-4 w-4" checked={isSelected} onClick={e => e.stopPropagation()} onChange={() => toggleSelected(key.id)} /></td>
+                          <td className="px-3 py-2.5"><div className="flex flex-col gap-0.5"><div className="flex items-center gap-1.5"><Key className="h-3 w-3 text-muted-foreground" /><span className="max-w-[160px] truncate text-[11px] font-medium text-foreground" title={key.name}>{key.name}</span></div>{isRotationOverdue(key) ? <span className="text-[9px] font-medium text-coral">Rotation overdue</span> : null}</div></td>
+                          <td className="px-3 py-2.5"><span className="text-[10px] text-muted-foreground">{key.type === 'SSH Certificate' ? 'SSH Cert' : 'SSH Key'}</span></td>
+                          <td className="px-3 py-2.5"><span className={`font-mono text-[10px] ${algorithmCls}`}>{key.algorithm}</span></td>
+                          <td className="px-3 py-2.5"><span className="text-[10px] text-muted-foreground">{key.keyLength}</span></td>
+                          <td className="px-3 py-2.5"><span className={`text-[10px] ${agingCls}`}>{key.keyAge ? `${key.keyAge}d` : '—'}</span></td>
+                          <td className="px-3 py-2.5">{key.lastRotated === key.issueDate && key.rotationFrequency !== 'Never' ? <span className="text-[10px] text-coral">Never rotated</span> : <span className="text-[10px] text-muted-foreground">{key.lastRotated}</span>}</td>
+                          <td className="px-3 py-2.5"><span className="block max-w-[120px] truncate rounded bg-muted px-1.5 py-0.5 text-[9px] font-medium text-foreground" title={key.keyComplianceGroup}>{key.keyComplianceGroup || '—'}</span></td>
+                          <td className="px-3 py-2.5"><div className="flex flex-wrap gap-1">{(!key.sshRiskStatus || key.sshRiskStatus.length === 0) && !isRotationOverdue(key) ? <span className="text-[10px] text-muted-foreground">—</span> : null}{(key.sshRiskStatus || []).map(risk => <span key={risk} className={`rounded-full px-1.5 py-0.5 text-[9px] font-medium ${risk === 'Rogue' || risk === 'Weak' ? 'bg-coral/10 text-coral' : 'bg-amber/10 text-amber'}`}>{risk}</span>)}{isRotationOverdue(key) ? <span className="rounded-full bg-coral/10 px-1.5 py-0.5 text-[9px] font-medium text-coral">Overdue</span> : null}</div></td>
+                          <td className="px-3 py-2.5 text-center">{hostCount === 0 ? <span className="text-[10px] text-muted-foreground">—</span> : <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-foreground">{hostCount}</span>}</td>
+                          <td className="px-3 py-2.5 text-center"><span className={`rounded px-2 py-0.5 text-[10px] font-semibold ${crsBgCls(key.crs || 0)}`}>{key.crs}</span></td>
+                          <td className="relative px-3 py-2.5 text-center" onClick={e => e.stopPropagation()}>
+                            <div className="relative">
+                              <button onClick={() => setOpenMenuId(prev => (prev === key.id ? null : key.id))} className="rounded p-1.5 text-muted-foreground hover:bg-muted/50 hover:text-foreground"><MoreVertical className="h-3.5 w-3.5" /></button>
+                              {openMenuId === key.id ? (
+                                <>
+                                  <button className="fixed inset-0 z-20" onClick={() => setOpenMenuId(null)} aria-label="Close actions" />
+                                  <div className="absolute right-0 top-8 z-30 w-52 overflow-hidden rounded-lg border border-border bg-card py-1 shadow-xl">
+                                    <div title={key.sshRiskStatus?.includes('Rogue') ? 'Add to inventory before rotating' : key.rotationFrequency === 'Never' ? 'No rotation policy — define one in Policy Builder first' : undefined}><button disabled={rotateDisabled} onClick={() => { setOpenMenuId(null); if (rotateDisabled) return; if (hasBlastRadius(key)) setBlastRadiusKey(key); else toast.success(`Rotating ${key.name} — ${workOrderId()} created`); }} className={`flex w-full items-center justify-between px-3 py-2 text-xs ${rotateDisabled ? 'pointer-events-none cursor-not-allowed opacity-40' : 'hover:bg-muted/30'}`}><span className="flex items-center gap-2"><RotateCw className="h-3.5 w-3.5" />Rotate</span></button></div>
+                                    <div title={revokeDisabled ? 'No endpoints to revoke from' : undefined}><button disabled={revokeDisabled} onClick={() => { setOpenMenuId(null); if (!revokeDisabled) setConfirmAction({ key, action: 'Revoke' }); }} className={`flex w-full items-center justify-between px-3 py-2 text-xs text-coral ${revokeDisabled ? 'pointer-events-none cursor-not-allowed opacity-40' : 'hover:bg-muted/30'}`}><span className="flex items-center gap-2"><XCircle className="h-3.5 w-3.5" />Revoke</span></button></div>
+                                    <button onClick={() => { setOpenMenuId(null); toast.success(`Downloading ${key.name} (Public Key, OpenSSH format)`); }} className="flex w-full items-center justify-between px-3 py-2 text-xs hover:bg-muted/30"><span className="flex items-center gap-2"><Download className="h-3.5 w-3.5" />Download</span></button>
+                                    <button onClick={() => { setOpenMenuId(null); toast.success(`Opening modify dialog for ${key.name}`); }} className="flex w-full items-center justify-between px-3 py-2 text-xs hover:bg-muted/30"><span className="flex items-center gap-2"><Pencil className="h-3.5 w-3.5" />Modify</span></button>
+                                    <button onClick={() => { setOpenMenuId(null); const next = key.keyStatus === 'Managed' ? 'Monitored' : 'Managed'; toast.success(`${key.name} status changed to ${next}`); }} className="flex w-full items-center justify-between px-3 py-2 text-xs hover:bg-muted/30"><span className="flex items-center gap-2"><ArrowRightLeft className="h-3.5 w-3.5" />Change Status</span><span className="text-[10px] text-muted-foreground">{key.keyStatus || 'Monitored'}</span></button>
+                                    <div title={inventoryDisabled ? 'Already in managed inventory' : undefined}><button disabled={inventoryDisabled} onClick={() => { setOpenMenuId(null); if (!inventoryDisabled) toast.success(`${key.name} added to Default_Key_Group — status: Managed`); }} className={`flex w-full items-center justify-between px-3 py-2 text-xs ${inventoryDisabled ? 'pointer-events-none cursor-not-allowed opacity-40' : 'hover:bg-muted/30'}`}><span className="flex items-center gap-2"><Plus className="h-3.5 w-3.5" />Add to Inventory</span></button></div>
+                                    <hr className="my-1 border-border" />
+                                    <div title={rollbackDisabled ? 'Never rotated — no backup available' : undefined}><button disabled={rollbackDisabled} onClick={() => { setOpenMenuId(null); if (!rollbackDisabled) toast.success(`Rolling back ${key.name} to previous version`); }} className={`flex w-full items-center justify-between px-3 py-2 text-xs ${rollbackDisabled ? 'pointer-events-none cursor-not-allowed opacity-40' : 'hover:bg-muted/30'}`}><span className="flex items-center gap-2"><Undo2 className="h-3.5 w-3.5" />Rollback</span></button></div>
+                                    <div title={revokeDisabled ? 'No endpoints found' : undefined}><button disabled={revokeDisabled} onClick={() => { setOpenMenuId(null); if (!revokeDisabled) setConfirmAction({ key, action: 'Delete from Endpoints' }); }} className={`flex w-full items-center justify-between px-3 py-2 text-xs text-coral ${revokeDisabled ? 'pointer-events-none cursor-not-allowed opacity-40' : 'hover:bg-muted/30'}`}><span className="flex items-center gap-2"><Trash2 className="h-3.5 w-3.5" />Delete from Endpoints</span></button></div>
+                                    <button onClick={() => { setOpenMenuId(null); setConfirmAction({ key, action: 'Delete from Inventory' }); }} className="flex w-full items-center justify-between px-3 py-2 text-xs hover:bg-muted/30"><span className="flex items-center gap-2"><Trash className="h-3.5 w-3.5" />Delete from Inventory</span></button>
+                                  </div>
+                                </>
+                              ) : null}
                             </div>
                           </td>
-                          <td className="px-3 py-2 font-mono text-[10px] text-foreground">{key.algorithm}</td>
-                          <td className="px-3 py-2 text-[10px] text-muted-foreground">{key.keyLength}</td>
-                          <td className={`px-3 py-2 text-[10px] ${Number(key.keyAge) > 365 ? 'text-coral' : Number(key.keyAge) > 180 ? 'text-amber' : 'text-teal'}`}>{key.keyAge}d</td>
-                          <td className="px-3 py-2 text-[10px] text-muted-foreground">{key.lastRotated}</td>
-                          <td className="px-3 py-2"><span className="rounded bg-muted px-1.5 py-0.5 text-[9px] text-foreground">{key.keyComplianceGroup}</span></td>
-                          <td className="px-3 py-2"><span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-foreground">{key.filePaths?.length || 0}</span></td>
-                          <td className="px-3 py-2"><span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${crsBgCls(key.crs || 0)}`}>{key.crs}</span></td>
-                          <td className="relative px-3 py-2">
-                            <button onClick={() => setOpenMenuId(prev => prev === key.id ? null : key.id)} className="rounded p-1 hover:bg-muted"><MoreVertical className="h-3.5 w-3.5 text-muted-foreground" /></button>
-                            {openMenuId === key.id ? (
-                              <div className="absolute right-3 top-8 z-10 w-40 rounded-lg border border-border bg-card p-1 shadow-lg">
-                                <button onClick={() => handleSingleRotate(key)} className="block w-full rounded px-2 py-1.5 text-left text-[10px] hover:bg-muted/30">Rotate</button>
-                                <button onClick={() => { toast.success('Skipped this cycle'); setOpenMenuId(null); }} className="block w-full rounded px-2 py-1.5 text-left text-[10px] hover:bg-muted/30">Skip this cycle</button>
-                                <button onClick={() => openDetails(key)} className="block w-full rounded px-2 py-1.5 text-left text-[10px] hover:bg-muted/30">View details</button>
-                                <div className="my-1 border-t border-border" />
-                                <button onClick={() => { toast.success('Key group updated'); setOpenMenuId(null); }} className="block w-full rounded px-2 py-1.5 text-left text-[10px] hover:bg-muted/30">Change Key Group</button>
-                              </div>
-                            ) : null}
-                          </td>
                         </tr>
-                      )) : (
-                        <tr>
-                          <td colSpan={10} className="px-3 py-6 text-center">
-                            <div className="inline-flex items-center gap-2 text-[10px] text-muted-foreground"><CheckCircle2 className="h-4 w-4 text-teal" />All keys are within their rotation schedule</div>
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-
-              <section className="space-y-3">
-                <div className="flex items-start gap-3">
-                  <ShieldAlert className="mt-0.5 h-4 w-4 text-coral" />
-                  <div>
-                    <div className="flex items-center gap-2"><div className="text-sm font-semibold text-foreground">Rogue Keys</div><span className="rounded-full bg-coral/10 px-2 py-0.5 text-[10px] font-medium text-coral">{rogueKeys.length}</span></div>
-                    <div className="text-[10px] text-muted-foreground">Keys found on hosts that were not provisioned through AppViewX — potential unauthorized access</div>
-                  </div>
-                  <div className="ml-auto text-[9px] italic text-muted-foreground">Rogue keys are automatically backed up before any action</div>
-                </div>
-                {rogueKeys.length === 0 ? (
-                  <div className="rounded-lg border border-teal/20 bg-teal/5 p-4 text-sm text-teal">No rogue keys detected</div>
-                ) : (
-                  <div className="space-y-3">
-                    {rogueKeys.map(key => (
-                      <div key={key.id} className="flex gap-4 rounded-lg border border-coral/30 bg-coral/5 p-4">
-                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-coral/15 text-coral">🔑</div>
-                        <div>
-                          <div className="text-sm font-semibold text-foreground">{key.name}</div>
-                          <div className="mt-1 flex flex-wrap gap-1">{(key.sshRiskStatus || []).map(risk => <span key={risk} className={`rounded-full border px-2 py-0.5 text-[10px] ${badgeTone(risk)}`}>{risk}</span>)}</div>
-                          <div className="mt-2 flex gap-2 text-[10px]"><span className="rounded bg-muted px-2 py-0.5 font-mono text-foreground">{key.algorithm}</span><span className="rounded bg-muted px-2 py-0.5 text-foreground">{key.keyLength}</span></div>
-                        </div>
-                        <div className="grid flex-1 grid-cols-3 gap-3 px-4 text-[10px]">
-                          <div>
-                            <div className="font-medium text-foreground">Found on</div>
-                            {(key.filePaths || []).slice(0, 2).map(path => {
-                              const [host, file] = path.split('~~');
-                              return <div key={path} className="mt-1 text-muted-foreground">{host}<div className="truncate font-mono text-[9px]">{file}</div></div>;
-                            })}
-                            {(key.filePaths?.length || 0) > 2 ? <div className="mt-1 text-muted-foreground">+{(key.filePaths?.length || 0) - 2} more</div> : null}
-                          </div>
-                          <div>
-                            <div className="font-medium text-foreground">Associated User</div>
-                            {(key.associatedUsers || []).length ? (key.associatedUsers || []).map(user => <div key={`${user.ip}-${user.username}`} className="mt-1 text-muted-foreground">{user.ip}~~{user.username}</div>) : <div className="mt-1 text-muted-foreground">No associated users</div>}
-                          </div>
-                          <div>
-                            <div className="font-medium text-foreground">Discovery</div>
-                            <div className="mt-1 text-muted-foreground">{key.discoverySource}</div>
-                            <div className="text-muted-foreground">Discovered {key.keyAge} days ago</div>
-                            <div className={`mt-1 font-medium ${crsColor(computeCRS(key).crs)}`}>CRS: {computeCRS(key).crs}</div>
-                          </div>
-                        </div>
-                        <div className="flex flex-shrink-0 flex-col gap-2">
-                          <button onClick={() => setConfirmAction({ key, action: 'Revoke' })} className="rounded-lg border border-coral/20 bg-coral/10 px-3 py-1.5 text-[10px] font-medium text-coral hover:bg-coral/20">Revoke</button>
-                          <button onClick={() => toast.success('Key added to Default_Key_Group — status set to Monitored')} className="rounded-lg border border-amber/20 bg-amber/10 px-3 py-1.5 text-[10px] font-medium text-amber hover:bg-amber/20">Add to Inventory</button>
-                          <button onClick={() => openDetails(key)} className="text-[10px] text-teal hover:underline">View Details</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </section>
-
-              <section className="space-y-3">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-start gap-3">
-                    <AlertTriangle className="mt-0.5 h-4 w-4 text-amber" />
-                    <div>
-                      <div className="flex items-center gap-2"><div className="text-sm font-semibold text-foreground">Weak Keys</div><span className="rounded-full bg-amber/10 px-2 py-0.5 text-[10px] font-medium text-amber">{weakKeys.length}</span></div>
-                      <div className="text-[10px] text-muted-foreground">Keys using deprecated algorithms or insufficient key lengths — upgrade to stronger algorithm</div>
-                    </div>
-                  </div>
-                  <button onClick={() => toast.success(`Bulk upgrade initiated — ${weakKeys.length} work orders created`)} className="rounded-lg border border-amber/20 bg-amber/10 px-3 py-2 text-xs font-medium text-amber hover:bg-amber/20">Upgrade All Weak Keys</button>
-                </div>
-                {weakKeys.length === 0 ? (
-                  <div className="rounded-lg border border-teal/20 bg-teal/5 p-4 text-sm text-teal">No weak keys detected</div>
-                ) : (
-                  <div className="overflow-hidden rounded-lg border border-border bg-card">
-                    <table className="w-full text-xs">
-                      <thead className="border-b border-border bg-muted/30">
-                        <tr>
-                          <th className="px-3 py-2 text-left font-medium text-muted-foreground">Key Name</th>
-                          <th className="px-3 py-2 text-left font-medium text-muted-foreground">Current Algorithm</th>
-                          <th className="px-3 py-2 text-left font-medium text-muted-foreground">Key Length</th>
-                          <th className="px-3 py-2 text-left font-medium text-muted-foreground">Recommended</th>
-                          <th className="px-3 py-2 text-left font-medium text-muted-foreground">Compliance Group</th>
-                          <th className="px-3 py-2 text-left font-medium text-muted-foreground">Hosts</th>
-                          <th className="px-3 py-2 text-left font-medium text-muted-foreground">CRS</th>
-                          <th className="px-3 py-2 text-left font-medium text-muted-foreground">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {weakKeys.map(key => {
-                          const recommended = getRecommendedAlgorithm(key.algorithm);
-                          return (
-                            <tr key={key.id} className="border-t border-border hover:bg-muted/20">
-                              <td className="px-3 py-2"><div className="font-medium text-foreground">{key.name}</div><div className="mt-1 flex flex-wrap gap-1">{(key.sshRiskStatus || []).map(risk => <span key={risk} className={`rounded-full border px-1.5 py-0.5 text-[9px] ${badgeTone(risk)}`}>{risk}</span>)}</div></td>
-                              <td className="px-3 py-2 font-mono text-[10px] text-coral">{key.algorithm}</td>
-                              <td className="px-3 py-2 text-[10px] text-coral">{key.keyLength}</td>
-                              <td className={`px-3 py-2 text-[10px] ${recommended.includes('or') ? 'text-amber' : 'text-teal'}`}>{recommended}</td>
-                              <td className="px-3 py-2"><span className="rounded bg-muted px-1.5 py-0.5 text-[9px] text-foreground">{key.keyComplianceGroup}</span></td>
-                              <td className="px-3 py-2"><span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-foreground">{key.filePaths?.length || 0}</span></td>
-                              <td className="px-3 py-2"><span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${crsBgCls(key.crs || 0)}`}>{key.crs}</span></td>
-                              <td className="px-3 py-2"><button onClick={() => setConfirmAction({ key, action: `Upgrade to ${recommended}` })} className="rounded-lg border border-amber/20 bg-amber/10 px-3 py-1 text-[10px] font-medium text-amber hover:bg-amber/20">Upgrade</button></td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </section>
-
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
               <section className="mt-4 space-y-3">
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-2">
