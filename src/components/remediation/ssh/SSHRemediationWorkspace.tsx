@@ -755,6 +755,7 @@ export default function SSHRemediationWorkspace() {
   const [sortCol, setSortCol] = useState<SortCol>('crs');
   const [sortDir] = useState<'asc' | 'desc'>('desc');
   const [confirmAction, setConfirmAction] = useState<{ key: SSHWorkspaceAsset; action: string } | null>(null);
+  const [blastRadiusKey, setBlastRadiusKey] = useState<CryptoAsset | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [assessedKeys, setAssessedKeys] = useState<Record<string, string>>({});
 
@@ -804,6 +805,29 @@ export default function SSHRemediationWorkspace() {
     setOpenMenuId(null);
   };
 
+  const hasBlastRadius = (key: SSHWorkspaceAsset) => key.sshRiskStatus?.includes('Shared') || (key.filePaths?.length || 0) > 1;
+
+  const handleSingleRotate = (key: SSHWorkspaceAsset) => {
+    if (hasBlastRadius(key)) {
+      setBlastRadiusKey(key);
+      setOpenMenuId(null);
+      return;
+    }
+    toast.success(`Rotate initiated — work order ${workOrderId()} created`);
+    setOpenMenuId(null);
+  };
+
+  const handleBulkRotate = () => {
+    const selectedKeys = workspaceSSHKeys.filter(key => selectedRows.has(key.id));
+    const riskyKey = selectedKeys.find(hasBlastRadius);
+    if (riskyKey) {
+      setBlastRadiusKey(riskyKey);
+      return;
+    }
+    toast.success(`Rotate ${selectedRows.size} selected — work orders created`);
+    setSelectedRows(new Set());
+  };
+
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <div className="flex flex-shrink-0 border-b border-border bg-card px-6">
@@ -848,7 +872,7 @@ export default function SSHRemediationWorkspace() {
                 <div className="ml-auto flex items-center gap-2">
                   {selectedRows.size > 0 ? (
                     <>
-                      <button onClick={() => { toast.success(`Rotate ${selectedRows.size} selected — work orders created`); setSelectedRows(new Set()); }} className="rounded-lg bg-teal px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-teal-light">Rotate {selectedRows.size} selected</button>
+                      <button onClick={handleBulkRotate} className="rounded-lg bg-teal px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-teal-light">Rotate {selectedRows.size} selected</button>
                       <button onClick={() => { toast.success(`Revoke ${selectedRows.size} selected — work orders created`); setSelectedRows(new Set()); }} className="rounded-lg border border-coral/30 bg-coral/10 px-3 py-2 text-xs font-medium text-coral hover:bg-coral/20">Revoke {selectedRows.size} selected</button>
                     </>
                   ) : null}
@@ -909,7 +933,7 @@ export default function SSHRemediationWorkspace() {
                             <button onClick={() => setOpenMenuId(prev => prev === key.id ? null : key.id)} className="rounded p-1 hover:bg-muted"><MoreVertical className="h-3.5 w-3.5 text-muted-foreground" /></button>
                             {openMenuId === key.id ? (
                               <div className="absolute right-3 top-8 z-10 w-40 rounded-lg border border-border bg-card p-1 shadow-lg">
-                                <button onClick={() => { toast.success(`Rotate initiated — work order ${workOrderId()} created`); setOpenMenuId(null); }} className="block w-full rounded px-2 py-1.5 text-left text-[10px] hover:bg-muted/30">Rotate</button>
+                                <button onClick={() => handleSingleRotate(key)} className="block w-full rounded px-2 py-1.5 text-left text-[10px] hover:bg-muted/30">Rotate</button>
                                 <button onClick={() => { toast.success('Skipped this cycle'); setOpenMenuId(null); }} className="block w-full rounded px-2 py-1.5 text-left text-[10px] hover:bg-muted/30">Skip this cycle</button>
                                 <button onClick={() => openDetails(key)} className="block w-full rounded px-2 py-1.5 text-left text-[10px] hover:bg-muted/30">View details</button>
                                 <div className="my-1 border-t border-border" />
@@ -1030,6 +1054,135 @@ export default function SSHRemediationWorkspace() {
                     </table>
                   </div>
                 )}
+              </section>
+
+              <section className="mt-4 space-y-3">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-2">
+                    <div className="text-sm font-semibold text-foreground">Rotation Schedules</div>
+                    <div className="text-[10px] text-muted-foreground">Policy-driven rotation per compliance group</div>
+                  </div>
+                  <button onClick={() => { toast('Schedule configuration — opens in Policy Builder'); setCurrentPage('policy-builder'); }} className="text-[10px] text-teal hover:underline">Configure schedules →</button>
+                </div>
+                <div className="overflow-hidden rounded-lg border border-border bg-card">
+                  <table className="w-full text-xs">
+                    <thead className="border-b border-border bg-muted/30 text-[10px] text-muted-foreground">
+                      <tr>
+                        {['Compliance Group', 'Keys in Group', 'Rotation Policy', 'Last Run', 'Next Run', 'Status', 'Run Now'].map(label => <th key={label} className="px-3 py-2 text-left font-medium">{label}</th>)}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        {
+                          group: 'CI_CD_Key_Group',
+                          count: workspaceSSHKeys.filter(k => k.keyComplianceGroup === 'CI_CD_Key_Group').length,
+                          policy: 'Every 90 days',
+                          lastRun: '2026-01-24',
+                          nextRun: '2026-04-24',
+                          nextRunCls: 'text-amber',
+                          status: 'Due in 1 day',
+                          statusCls: 'bg-amber/10 text-amber',
+                          buttonCls: 'border-teal/30 text-teal hover:bg-teal/10',
+                          onRun: () => toast.success(`Rotation job queued for CI_CD_Key_Group — work order ${workOrderId()} created`),
+                          disabled: false,
+                        },
+                        {
+                          group: 'Infra_Key_Group',
+                          count: workspaceSSHKeys.filter(k => k.keyComplianceGroup === 'Infra_Key_Group').length,
+                          policy: 'Every 180 days',
+                          lastRun: '2025-11-01',
+                          nextRun: '2026-05-01',
+                          nextRunCls: 'text-foreground',
+                          status: 'On schedule',
+                          statusCls: 'bg-teal/10 text-teal',
+                          buttonCls: 'border-teal/30 text-teal hover:bg-teal/10',
+                          onRun: () => toast.success(`Rotation job queued for Infra_Key_Group — work order ${workOrderId()} created`),
+                          disabled: false,
+                        },
+                        {
+                          group: 'Payments_Key_Group',
+                          count: workspaceSSHKeys.filter(k => k.keyComplianceGroup === 'Payments_Key_Group').length,
+                          policy: 'Every 90 days',
+                          lastRun: '2025-08-22',
+                          nextRun: '2025-11-20',
+                          nextRunCls: 'text-coral',
+                          status: 'Overdue 154 days',
+                          statusCls: 'bg-coral/10 text-coral',
+                          buttonCls: 'border-coral/30 text-coral hover:bg-coral/10',
+                          onRun: () => setBlastRadiusKey(workspaceSSHKeys.find(k => k.keyComplianceGroup === 'Payments_Key_Group') || null),
+                          disabled: false,
+                        },
+                        {
+                          group: 'Security_Key_Group',
+                          count: workspaceSSHKeys.filter(k => k.keyComplianceGroup === 'Security_Key_Group').length,
+                          policy: 'Every 90 days',
+                          lastRun: '2026-01-01',
+                          nextRun: '2026-04-01',
+                          nextRunCls: 'text-coral',
+                          status: 'Overdue 22 days',
+                          statusCls: 'bg-coral/10 text-coral',
+                          buttonCls: 'border-coral/30 text-coral hover:bg-coral/10',
+                          onRun: () => toast.success(`Rotation job queued for Security_Key_Group — work order ${workOrderId()} created`),
+                          disabled: false,
+                        },
+                        {
+                          group: 'Default_Key_Group',
+                          count: workspaceSSHKeys.filter(k => k.keyComplianceGroup === 'Default_Key_Group').length,
+                          policy: 'No policy set',
+                          lastRun: '—',
+                          nextRun: '—',
+                          nextRunCls: 'text-muted-foreground',
+                          status: 'Unmanaged',
+                          statusCls: 'bg-muted text-muted-foreground',
+                          buttonCls: 'border-border text-muted-foreground',
+                          onRun: () => undefined,
+                          disabled: true,
+                        },
+                      ].map(row => (
+                        <tr key={row.group} className="border-t border-border hover:bg-muted/20">
+                          <td className="px-3 py-2 font-medium text-foreground">{row.group}</td>
+                          <td className="px-3 py-2 text-muted-foreground">{row.count}</td>
+                          <td className="px-3 py-2 text-muted-foreground">{row.policy}</td>
+                          <td className="px-3 py-2 text-muted-foreground">{row.lastRun}</td>
+                          <td className={`px-3 py-2 ${row.nextRunCls}`}>{row.nextRun}</td>
+                          <td className="px-3 py-2"><span className={`rounded-full px-2 py-0.5 text-[10px] ${row.statusCls}`}>{row.status}</span></td>
+                          <td className="px-3 py-2">
+                            <button
+                              onClick={row.onRun}
+                              disabled={row.disabled}
+                              title={row.disabled ? 'Assign a rotation policy first' : undefined}
+                              className={`rounded border px-2 py-1 text-[10px] ${row.buttonCls} ${row.disabled ? 'cursor-not-allowed opacity-40 hover:bg-transparent' : ''}`}
+                            >
+                              Run Now
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section className="mt-4 flex-shrink-0 border-t border-border pt-4">
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="text-xs font-semibold text-foreground">Recent SSH Work Orders</div>
+                  <button onClick={() => setCurrentPage('work-order-status')} className="text-[10px] text-teal hover:underline">View all →</button>
+                </div>
+                <div className="flex gap-3">
+                  {[
+                    { id: 'WO-SSH-1042', detail: 'Rotate · jenkins-deploy-key', status: 'Completed', date: 'Apr 20', dot: 'bg-teal', statusCls: 'text-teal' },
+                    { id: 'WO-SSH-1041', detail: 'Provision · bastion-host-key', status: 'Completed', date: 'Apr 18', dot: 'bg-teal', statusCls: 'text-teal' },
+                    { id: 'WO-SSH-1038', detail: 'Delete · gitlab-deploy-key', status: 'In Progress', date: 'Apr 16', dot: 'bg-amber', statusCls: 'text-amber' },
+                  ].map(item => (
+                    <button key={item.id} onClick={() => setCurrentPage('work-order-status')} className="flex flex-1 items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 text-[10px] hover:bg-muted/20">
+                      <span className={`h-2 w-2 rounded-full ${item.dot}`} />
+                      <span className="font-mono font-medium text-foreground">{item.id}</span>
+                      <span className="flex-1 text-left text-muted-foreground">{item.detail}</span>
+                      <span className={`text-[9px] ${item.statusCls}`}>{item.status}</span>
+                      <span className="text-[9px] text-muted-foreground">{item.date}</span>
+                    </button>
+                  ))}
+                </div>
               </section>
             </div>
           </div>
@@ -1249,6 +1402,61 @@ export default function SSHRemediationWorkspace() {
       ) : null}
 
       {provisionOpen ? <ProvisionKeyWizard open={provisionOpen} onClose={() => setProvisionOpen(false)} /> : null}
+
+      {blastRadiusKey ? (
+        <Modal open={!!blastRadiusKey} onClose={() => setBlastRadiusKey(null)} title="Rotation Impact Analysis">
+          <div className="space-y-4">
+            <div className="flex items-start gap-2 rounded-lg border border-amber/20 bg-amber/5 p-3">
+              <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber" />
+              <div className="text-[10px] text-amber">This key is shared across multiple hosts. Rotating it will invalidate access on all dependent endpoints simultaneously.</div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary text-foreground">🔑</div>
+              <div>
+                <div className="font-semibold text-foreground">{blastRadiusKey.name}</div>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  <span className="rounded bg-muted px-2 py-0.5 text-[10px] font-mono text-foreground">{blastRadiusKey.algorithm}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${crsBgCls(computeCRS(blastRadiusKey).crs)}`}>CRS {computeCRS(blastRadiusKey).crs}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="overflow-hidden rounded-lg border border-border">
+              <table className="w-full text-[10px]">
+                <thead className="border-b border-border bg-muted/30">
+                  <tr>
+                    {['Host', 'File Path', 'Associated User', 'Impact'].map(label => <th key={label} className="px-3 py-2 text-left font-medium text-muted-foreground">{label}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {(((blastRadiusKey as SSHWorkspaceAsset).filePaths) || []).map(path => {
+                    const [ip, filePath] = path.split('~~');
+                    const user = ((blastRadiusKey as SSHWorkspaceAsset).associatedUsers || []).find(item => item.ip === ip);
+                    return (
+                      <tr key={path} className="border-t border-border">
+                        <td className="px-3 py-2 text-foreground">{ip}</td>
+                        <td className="px-3 py-2 font-mono text-muted-foreground">{filePath}</td>
+                        <td className="px-3 py-2 text-muted-foreground">{user ? `${user.ip}~~${user.username}` : '—'}</td>
+                        <td className="px-3 py-2 text-amber">Access interrupted until re-provisioned</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="text-[10px] text-muted-foreground">{((blastRadiusKey as SSHWorkspaceAsset).filePaths?.length || 0)} hosts affected · {((blastRadiusKey as SSHWorkspaceAsset).associatedUsers?.length || 0)} users lose access · estimated downtime: seconds (automated re-provision)</div>
+
+            <div className="rounded-lg border border-teal/20 bg-teal/5 p-3 text-[10px] text-foreground">✦ Recommendation: Schedule this rotation during a maintenance window and ensure all {((blastRadiusKey as SSHWorkspaceAsset).filePaths?.length || 0)} hosts are reachable before proceeding. A work order will track re-provisioning on each host.</div>
+
+            <div className="flex gap-2 pt-2">
+              <button onClick={() => setBlastRadiusKey(null)} className="flex-1 rounded-lg border border-border py-2 text-xs text-muted-foreground hover:bg-muted/30">Cancel</button>
+              <button onClick={() => { const activeKey = blastRadiusKey as SSHWorkspaceAsset; toast.success(`Rotating ${activeKey.name} across ${activeKey.filePaths?.length} hosts — work order ${workOrderId()} created. Track progress in Work Order Status.`); setBlastRadiusKey(null); setSelectedRows(new Set()); }} className="flex-1 rounded-lg bg-teal py-2 text-xs font-semibold text-primary-foreground hover:bg-teal-light">Proceed with Rotation</button>
+            </div>
+          </div>
+        </Modal>
+      ) : null}
 
       {confirmAction ? (
         <Modal open={!!confirmAction} onClose={() => setConfirmAction(null)} title={`Confirm: ${confirmAction.action}`}>
