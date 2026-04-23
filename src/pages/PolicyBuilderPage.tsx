@@ -283,8 +283,7 @@ export default function PolicyBuilderPage() {
 
     setAiLoading(true);
 
-    try {
-      const systemPrompt = `You are a policy configuration assistant 
+    const systemPrompt = `You are a policy configuration assistant 
 for AVX Trust Platform, a cryptographic identity governance platform.
 
 The user will describe a policy in plain English. You must extract 
@@ -386,6 +385,7 @@ FOR "Device Management Policy" add:
 
 Return ONLY the JSON object. No other text.`;
 
+    try {
       const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
@@ -398,91 +398,90 @@ Return ONLY the JSON object. No other text.`;
           model: 'claude-sonnet-4-20250514',
           max_tokens: 1000,
           system: systemPrompt,
-          messages: [{ role: 'user', content: formDescription }],
-        }),
-      });
-
+          messages: [{ role: 'user', content: formDescription }]
+        })
+      })
       if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`API error ${response.status}: ${errText}`);
+        const errText = await response.text()
+        throw new Error(`API error ${response.status}: ${errText}`)
       }
 
-      const data = await response.json();
-
+      const data = await response.json()
+      
+      // Extract text from response
       const rawText = data?.content
         ?.filter((b: any) => b.type === 'text')
         ?.map((b: any) => b.text)
-        ?.join('') || '';
-
+        ?.join('') || ''
       if (!rawText) {
-        throw new Error('Empty response from API');
+        throw new Error('Empty response from API')
       }
 
-      const start = rawText.indexOf('{');
-      const end = rawText.lastIndexOf('}');
-
+      // Extract JSON — find first { and last }
+      const start = rawText.indexOf('{')
+      const end = rawText.lastIndexOf('}')
+      
       if (start === -1 || end === -1 || end <= start) {
-        throw new Error(`No JSON found in response: ${rawText.slice(0, 200)}`);
+        throw new Error(`No JSON found in response: ${rawText.slice(0, 200)}`)
       }
 
-      const jsonStr = rawText.slice(start, end + 1);
-      const result = JSON.parse(jsonStr);
-
-      if (result.name) setFormName(result.name);
-      if (result.description) setFormDescription(result.description);
-      if (result.tag) setFormTag(result.tag);
-      if (result.environment) setFormEnvironment(result.environment);
-      if (result.severity) setFormSeverity(result.severity);
-      if (result.action) setFormAction(result.action);
-      if (result.requireApproval !== undefined)
-        setFormRequireApproval(result.requireApproval);
-      if (result.notifyOnFail !== undefined)
-        setFormNotifyOnFail(result.notifyOnFail);
-      if (result.notifyOnComplete !== undefined)
-        setFormNotifyOnComplete(result.notifyOnComplete);
-      if (result.notifyVia) setFormNotifyVia(result.notifyVia);
-      if (result.itsm !== undefined) setFormITSM(result.itsm);
-
-      if (result.certType) setFormCertType(result.certType);
-      if (result.certAction) setFormCertAction(result.certAction);
-      if (result.ca) setFormCA(result.ca);
-      if (result.maxValidity) setFormMaxValidity(result.maxValidity);
-      if (result.minKeyType) setFormMinKeyType(result.minKeyType);
-      if (result.autoRenew !== undefined) setFormAutoRenew(result.autoRenew);
-      if (result.renewBefore) setFormRenewBefore(result.renewBefore);
-
-      if (result.allowedAlgorithms)
-        setFormAllowedAlgorithms(result.allowedAlgorithms);
-      if (result.maxKeyAge) setFormMaxKeyAge(result.maxKeyAge);
-      if (result.autoRotate !== undefined)
-        setFormAutoRotate(result.autoRotate);
-      if (result.rotationPeriod)
-        setFormRotationPeriod(result.rotationPeriod);
-      if (result.targetAlgorithm)
-        setFormTargetAlgorithm(result.targetAlgorithm);
-
-      if (result.secretType) setFormSecretType(result.secretType);
-      if (result.secretMaxAge) setFormSecretMaxAge(result.secretMaxAge);
-      if (result.secretVault) setFormSecretVault(result.secretVault);
-      if (result.secretAutoRotate !== undefined)
-        setFormSecretAutoRotate(result.secretAutoRotate);
-
-      if (result.agentMaxTTL) setFormAgentMaxTTL(result.agentMaxTTL);
-      if (result.enforceJIT !== undefined)
-        setFormEnforceJIT(result.enforceJIT);
-      if (result.enforceRightSize !== undefined)
-        setFormEnforceRightSize(result.enforceRightSize);
-
-      if (result.deviceAction) setFormDeviceAction(result.deviceAction);
-      if (result.deviceVendor) setFormDeviceVendor(result.deviceVendor);
-      if (result.deviceApproval)
-        setFormDeviceApproval(result.deviceApproval);
-
-      if (result.k8sIssuer) setFormK8sIssuer(result.k8sIssuer);
-      if (result.k8sNamespace !== undefined)
-        setFormK8sNamespace(result.k8sNamespace);
-
-      toast.success('Policy generated — review and adjust if needed');
+      const jsonStr = rawText.slice(start, end + 1)
+      const result = JSON.parse(jsonStr)
+      // Apply all common fields
+      if (result.name) setFormName(result.name)
+      if (result.description) setFormDescription(result.description)
+      if (result.tag) setFormTag(result.tag)
+      if (result.environment) setFormEnvironment(result.environment)
+      if (result.severity) setFormSeverity(result.severity)
+      if (result.action) setFormAction(result.action)
+      if (result.requireApproval !== undefined) 
+        setFormRequireApproval(result.requireApproval)
+      if (result.notifyOnFail !== undefined) 
+        setFormNotifyOnFail(result.notifyOnFail)
+      if (result.notifyOnComplete !== undefined) 
+        setFormNotifyOnComplete(result.notifyOnComplete)
+      if (result.notifyVia) setFormNotifyVia(result.notifyVia)
+      if (result.itsm !== undefined) setFormITSM(result.itsm)
+      // Certificate fields
+      if (result.certType) setFormCertType(result.certType)
+      if (result.certAction) setFormCertAction(result.certAction)
+      if (result.ca) setFormCA(result.ca)
+      if (result.maxValidity) setFormMaxValidity(result.maxValidity)
+      if (result.minKeyType) setFormMinKeyType(result.minKeyType)
+      if (result.autoRenew !== undefined) setFormAutoRenew(result.autoRenew)
+      if (result.renewBefore) setFormRenewBefore(result.renewBefore)
+      // SSH Key fields
+      if (result.allowedAlgorithms) 
+        setFormAllowedAlgorithms(result.allowedAlgorithms)
+      if (result.maxKeyAge) setFormMaxKeyAge(result.maxKeyAge)
+      if (result.autoRotate !== undefined) 
+        setFormAutoRotate(result.autoRotate)
+      if (result.rotationPeriod) 
+        setFormRotationPeriod(result.rotationPeriod)
+      if (result.targetAlgorithm) 
+        setFormTargetAlgorithm(result.targetAlgorithm)
+      // Secrets fields
+      if (result.secretType) setFormSecretType(result.secretType)
+      if (result.secretMaxAge) setFormSecretMaxAge(result.secretMaxAge)
+      if (result.secretVault) setFormSecretVault(result.secretVault)
+      if (result.secretAutoRotate !== undefined) 
+        setFormSecretAutoRotate(result.secretAutoRotate)
+      // AI Agent fields
+      if (result.agentMaxTTL) setFormAgentMaxTTL(result.agentMaxTTL)
+      if (result.enforceJIT !== undefined) 
+        setFormEnforceJIT(result.enforceJIT)
+      if (result.enforceRightSize !== undefined) 
+        setFormEnforceRightSize(result.enforceRightSize)
+      // Device fields
+      if (result.deviceAction) setFormDeviceAction(result.deviceAction)
+      if (result.deviceVendor) setFormDeviceVendor(result.deviceVendor)
+      if (result.deviceApproval) 
+        setFormDeviceApproval(result.deviceApproval)
+      // Kubernetes fields
+      if (result.k8sIssuer) setFormK8sIssuer(result.k8sIssuer)
+      if (result.k8sNamespace !== undefined) 
+        setFormK8sNamespace(result.k8sNamespace)
+      toast.success('Policy generated — review and adjust if needed')
     } catch (err) {
       console.error('AI draft error:', err);
       const msg = err instanceof Error ? err.message : String(err);
