@@ -45,6 +45,8 @@ interface CustomPolicy {
   groupIds?: string[];
 }
 
+type PolicyType = 'ssh-key' | 'certificates' | 'secrets' | 'ai-agents' | '';
+
 
 const mockViolations = [
   { id: 'v-001', policyName: 'Weak Algorithm Detection', objectName: '*.payments.acmecorp.com', objectType: 'TLS Certificate', severity: 'Critical' as const, environment: 'Production', group: 'RSA-2048 Production Certs', detectedAt: '2026-04-14 09:12', status: 'Open' },
@@ -431,34 +433,6 @@ export default function PolicyBuilderPage() {
   };
 
   const openViolationCount = mockViolations.filter(v => v.status === 'Open').length;
-
-  const relevantTemplates = useMemo(() => {
-    if (!policyType) return POLICY_TEMPLATES;
-    return POLICY_TEMPLATES.filter(template => template.type === policyType);
-  }, [policyType]);
-
-  const selectedTypeMeta = getPolicyTypeMeta(policyType);
-
-  const stepDescriptions: Record<1 | 2 | 3 | 4, string> = {
-    1: "Select what you're protecting",
-    2: 'Name the policy and define its scope',
-    3: 'Set the rules this policy enforces',
-    4: 'Define what happens when a rule is broken',
-  };
-
-  const renderTypeIcon = (type: PolicyType, className = 'w-3.5 h-3.5 text-muted-foreground') => {
-    const meta = getPolicyTypeMeta(type);
-    if (!meta) return <Shield className={className} />;
-    const Icon = meta.icon;
-    return <Icon className={className} />;
-  };
-
-  const closePanel = () => {
-    setPanelOpen(false);
-    resetPanelState();
-  };
-
-  const estimatedAssets = getScopeEstimate();
 
   return (
     <div className="space-y-4">
