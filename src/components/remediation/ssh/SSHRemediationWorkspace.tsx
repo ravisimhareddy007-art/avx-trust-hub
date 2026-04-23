@@ -755,6 +755,7 @@ export default function SSHRemediationWorkspace() {
   const [sortCol, setSortCol] = useState<SortCol>('crs');
   const [sortDir] = useState<'asc' | 'desc'>('desc');
   const [confirmAction, setConfirmAction] = useState<{ key: SSHWorkspaceAsset; action: string } | null>(null);
+  const [blastRadiusKey, setBlastRadiusKey] = useState<CryptoAsset | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [assessedKeys, setAssessedKeys] = useState<Record<string, string>>({});
 
@@ -802,6 +803,29 @@ export default function SSHRemediationWorkspace() {
     setSelectedKey(key);
     setPanelOpen(true);
     setOpenMenuId(null);
+  };
+
+  const hasBlastRadius = (key: SSHWorkspaceAsset) => key.sshRiskStatus?.includes('Shared') || (key.filePaths?.length || 0) > 1;
+
+  const handleSingleRotate = (key: SSHWorkspaceAsset) => {
+    if (hasBlastRadius(key)) {
+      setBlastRadiusKey(key);
+      setOpenMenuId(null);
+      return;
+    }
+    toast.success(`Rotate initiated — work order ${workOrderId()} created`);
+    setOpenMenuId(null);
+  };
+
+  const handleBulkRotate = () => {
+    const selectedKeys = workspaceSSHKeys.filter(key => selectedRows.has(key.id));
+    const riskyKey = selectedKeys.find(hasBlastRadius);
+    if (riskyKey) {
+      setBlastRadiusKey(riskyKey);
+      return;
+    }
+    toast.success(`Rotate ${selectedRows.size} selected — work orders created`);
+    setSelectedRows(new Set());
   };
 
   return (
