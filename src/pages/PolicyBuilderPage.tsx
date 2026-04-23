@@ -12,8 +12,6 @@ import {
   ChevronDown,
   ChevronUp,
   Shield,
-  AlertTriangle,
-  CheckSquare,
   Key,
   Lock,
   Bot,
@@ -47,22 +45,6 @@ interface CustomPolicy {
 
 type PolicyType = 'ssh-key' | 'certificates' | 'secrets' | 'ai-agents' | '';
 
-
-const mockViolations = [
-  { id: 'v-001', policyName: 'Weak Algorithm Detection', objectName: '*.payments.acmecorp.com', objectType: 'TLS Certificate', severity: 'Critical' as const, environment: 'Production', group: 'RSA-2048 Production Certs', detectedAt: '2026-04-14 09:12', status: 'Open' },
-  { id: 'v-002', policyName: 'Certificate Expiry Alert', objectName: 'vault.internal.acmecorp.com', objectType: 'TLS Certificate', severity: 'Critical' as const, environment: 'Production', group: 'Expiring < 30 Days', detectedAt: '2026-04-14 08:45', status: 'Open' },
-  { id: 'v-003', policyName: 'Weak Algorithm Detection', objectName: 'prod-db-01-authorized-key', objectType: 'SSH Key', severity: 'High' as const, environment: 'Production', group: 'RSA-2048 Production Certs', detectedAt: '2026-04-13 22:00', status: 'Open' },
-  { id: 'v-004', policyName: 'Orphaned SSH Key', objectName: 'gitlab-deploy-key', objectType: 'SSH Key', severity: 'High' as const, environment: 'Production', group: 'Orphaned & Unowned Keys', detectedAt: '2026-04-13 18:30', status: 'Open' },
-  { id: 'v-005', policyName: 'Certificate Expiry Alert', objectName: 'mail.acmecorp.com', objectType: 'TLS Certificate', severity: 'High' as const, environment: 'Production', group: 'Expiring < 30 Days', detectedAt: '2026-04-13 14:20', status: 'Open' },
-  { id: 'v-006', policyName: 'PCI-DSS Cardholder Zone', objectName: 'k8s-node-ssh-cert', objectType: 'SSH Certificate', severity: 'Critical' as const, environment: 'Production', group: 'Payments Team Assets', detectedAt: '2026-04-13 11:05', status: 'Acknowledged' },
-  { id: 'v-007', policyName: 'Weak Algorithm Detection', objectName: 'auth-gateway.acmecorp.com', objectType: 'TLS Certificate', severity: 'High' as const, environment: 'Production', group: 'RSA-2048 Production Certs', detectedAt: '2026-04-12 16:42', status: 'Open' },
-  { id: 'v-008', policyName: 'DORA Compliance', objectName: 'staging-api.acmecorp.com', objectType: 'TLS Certificate', severity: 'Medium' as const, environment: 'Staging', group: '', detectedAt: '2026-04-12 10:00', status: 'Open' },
-  { id: 'v-009', policyName: 'Orphaned SSH Key', objectName: 'bastion-host-key-legacy', objectType: 'SSH Key', severity: 'High' as const, environment: 'Production', group: 'Orphaned & Unowned Keys', detectedAt: '2026-04-11 22:15', status: 'Open' },
-  { id: 'v-010', policyName: 'Certificate Expiry Alert', objectName: 'cdn-edge-cert-03', objectType: 'TLS Certificate', severity: 'Medium' as const, environment: 'Production', group: 'Expiring < 30 Days', detectedAt: '2026-04-11 15:30', status: 'Remediated' },
-  { id: 'v-011', policyName: 'Weak Algorithm Detection', objectName: 'legacy-erp-cert', objectType: 'TLS Certificate', severity: 'Critical' as const, environment: 'Production', group: 'RSA-2048 Production Certs', detectedAt: '2026-04-10 09:00', status: 'Open' },
-  { id: 'v-012', policyName: 'AI Agent Over-Privilege', objectName: 'data-pipeline-agent', objectType: 'AI Agent Token', severity: 'High' as const, environment: 'Production', group: 'Over-Privileged AI Agents', detectedAt: '2026-04-10 08:15', status: 'Open' },
-];
-
 const getPolicyTypeMeta = (type: PolicyType) => {
   switch (type) {
     case 'ssh-key':
@@ -91,7 +73,7 @@ const getPolicyTypeBadgeFromAsset = (assetType?: string) => getPolicyTypeMeta(ge
 
 export default function PolicyBuilderPage() {
   const { setCurrentPage, setFilters } = useNav();
-  const [tab, setTab] = useState<'outofbox' | 'custom' | 'violations' | 'compliance'>('outofbox');
+  const [tab, setTab] = useState<'outofbox' | 'custom' | 'compliance'>('outofbox');
   const [policyStates, setPolicyStates] = useState<Record<string, boolean>>(Object.fromEntries(policyRules.map(p => [p.id, p.enabled])));
   const [configModal, setConfigModal] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -154,12 +136,6 @@ export default function PolicyBuilderPage() {
   const [sshFlagOrphaned, setSshFlagOrphaned] = useState(true);
   const [formRequireHITL, setFormRequireHITL] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
-
-  const [violationSearch, setViolationSearch] = useState('');
-  const [violationSeverity, setViolationSeverity] = useState('');
-  const [violationStatus, setViolationStatus] = useState('');
-  const [selectedViolations, setSelectedViolations] = useState<string[]>([]);
-  const [bulkConfirm, setBulkConfirm] = useState(false);
 
   const resetCreateForm = () => {
     setFormPolicyType('Managed Certificate Policy');
@@ -588,23 +564,6 @@ Return ONLY the JSON object. No other text.`;
     p.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const filteredViolations = mockViolations.filter(v => {
-    if (violationSearch && !v.objectName.toLowerCase().includes(violationSearch.toLowerCase()) && !v.policyName.toLowerCase().includes(violationSearch.toLowerCase())) return false;
-    if (violationSeverity && v.severity !== violationSeverity) return false;
-    if (violationStatus && v.status !== violationStatus) return false;
-    return true;
-  });
-
-  const toggleViolationSelection = (id: string) => {
-    setSelectedViolations(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-  };
-  const toggleAllViolations = () => {
-    if (selectedViolations.length === filteredViolations.length) setSelectedViolations([]);
-    else setSelectedViolations(filteredViolations.map(v => v.id));
-  };
-
-  const openViolationCount = mockViolations.filter(v => v.status === 'Open').length;
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -615,14 +574,10 @@ Return ONLY the JSON object. No other text.`;
         {[
           { id: 'outofbox' as const, label: 'Out-of-Box Policies' },
           { id: 'custom' as const, label: 'Custom Policies' },
-          { id: 'violations' as const, label: `Violations`, count: openViolationCount },
           { id: 'compliance' as const, label: 'Compliance Frameworks' },
         ].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} className={`px-4 py-2 text-xs font-medium border-b-2 transition-colors flex items-center gap-1.5 ${tab === t.id ? 'border-teal text-teal' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
             {t.label}
-            {'count' in t && t.count! > 0 && (
-              <span className={`min-w-[18px] px-1.5 py-0.5 rounded-full text-[9px] font-bold ${tab === t.id ? 'bg-coral/10 text-coral' : 'bg-coral/10 text-coral'}`}>{t.count}</span>
-            )}
           </button>
         ))}
       </div>
@@ -1237,119 +1192,6 @@ Return ONLY the JSON object. No other text.`;
                 <button onClick={closeCreateModal} className="px-4 py-2 text-xs rounded-lg hover:bg-muted">Cancel</button>
                 <button onClick={() => handleSave(true)} className="px-4 py-2 text-xs rounded-lg border border-border hover:bg-muted">Save as Draft</button>
                 <button onClick={() => handleSave(false)} className="px-4 py-2 text-xs rounded-lg bg-teal text-primary-foreground hover:bg-teal-light">Save & Activate</button>
-              </div>
-            </div>
-          </Modal>
-        </div>
-      )}
-
-      {tab === 'violations' && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <input type="text" value={violationSearch} onChange={e => setViolationSearch(e.target.value)} placeholder="Search violations..." className="w-full pl-9 pr-4 py-2 bg-card border border-border rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-teal" />
-            </div>
-            <select value={violationSeverity} onChange={e => setViolationSeverity(e.target.value)} className="px-2 py-2 bg-card border border-border rounded-lg text-xs">
-              <option value="">All Severity</option>
-              {['Critical', 'High', 'Medium', 'Low'].map(s => <option key={s}>{s}</option>)}
-            </select>
-            <select value={violationStatus} onChange={e => setViolationStatus(e.target.value)} className="px-2 py-2 bg-card border border-border rounded-lg text-xs">
-              <option value="">All Status</option>
-              {['Open', 'Acknowledged', 'Remediated'].map(s => <option key={s}>{s}</option>)}
-            </select>
-            {selectedViolations.length > 0 && (
-              <button onClick={() => setBulkConfirm(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-teal text-primary-foreground text-xs hover:bg-teal-light">
-                <CheckSquare className="w-3.5 h-3.5" /> Bulk Remediate ({selectedViolations.length})
-              </button>
-            )}
-            <span className="text-[10px] text-muted-foreground ml-auto">{filteredViolations.length} violations</span>
-          </div>
-
-          <div className="grid grid-cols-4 gap-3">
-            {[
-              { label: 'Open', count: mockViolations.filter(v => v.status === 'Open').length, color: 'text-coral' },
-              { label: 'Critical', count: mockViolations.filter(v => v.severity === 'Critical').length, color: 'text-coral' },
-              { label: 'Acknowledged', count: mockViolations.filter(v => v.status === 'Acknowledged').length, color: 'text-amber' },
-              { label: 'Remediated', count: mockViolations.filter(v => v.status === 'Remediated').length, color: 'text-teal' },
-            ].map(s => (
-              <div key={s.label} className="bg-card rounded-lg border border-border p-3 text-center">
-                <p className={`text-lg font-bold ${s.color}`}>{s.count}</p>
-                <p className="text-[10px] text-muted-foreground">{s.label}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="bg-card rounded-lg border border-border overflow-hidden">
-            <table className="w-full text-xs">
-              <thead className="bg-muted/50">
-                <tr className="border-b border-border">
-                  <th className="py-2.5 px-3 w-8"><input type="checkbox" checked={selectedViolations.length === filteredViolations.length && filteredViolations.length > 0} onChange={toggleAllViolations} className="rounded" /></th>
-                  <th className="text-left py-2.5 px-3 font-medium text-muted-foreground">Policy</th>
-                  <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Object</th>
-                  <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Type</th>
-                  <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Severity</th>
-                  <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Env</th>
-                  <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Group</th>
-                  <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Detected</th>
-                  <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Status</th>
-                  <th className="text-left py-2.5 px-2 font-medium text-muted-foreground">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredViolations.map(v => (
-                  <tr key={v.id} className="border-b border-border hover:bg-muted/30">
-                    <td className="py-2.5 px-3"><input type="checkbox" checked={selectedViolations.includes(v.id)} onChange={() => toggleViolationSelection(v.id)} className="rounded" /></td>
-                    <td className="py-2.5 px-3 font-medium">{v.policyName}</td>
-                    <td className="py-2.5 px-2 text-foreground">{v.objectName}</td>
-                    <td className="py-2.5 px-2 text-muted-foreground text-[10px]">{v.objectType}</td>
-                    <td className="py-2.5 px-2"><SeverityBadge severity={v.severity} /></td>
-                    <td className="py-2.5 px-2"><span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{v.environment}</span></td>
-                    <td className="py-2.5 px-2 text-[10px] text-muted-foreground">{v.group || '—'}</td>
-                    <td className="py-2.5 px-2 text-[10px] text-muted-foreground">{v.detectedAt}</td>
-                    <td className="py-2.5 px-2">
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${v.status === 'Open' ? 'bg-coral/10 text-coral' : v.status === 'Acknowledged' ? 'bg-amber/10 text-amber' : 'bg-teal/10 text-teal'}`}>{v.status}</span>
-                    </td>
-                    <td className="py-2.5 px-2">
-                      <div className="flex gap-1">
-                        {v.status === 'Open' && (
-                          <>
-                            <button onClick={() => toast.success(`Remediation started for ${v.objectName}`)} className="text-[10px] px-2 py-1 rounded bg-teal/10 text-teal hover:bg-teal/20">Fix</button>
-                            <button onClick={() => toast.info(`Acknowledged: ${v.objectName}`)} className="text-[10px] px-2 py-1 rounded bg-muted text-muted-foreground hover:bg-muted/80">Ack</button>
-                          </>
-                        )}
-                        <button onClick={() => { setFilters({ violation: v.objectName }); setCurrentPage('inventory'); }} className="text-[10px] px-2 py-1 rounded bg-muted text-muted-foreground hover:bg-muted/80">View</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <Modal open={bulkConfirm} onClose={() => setBulkConfirm(false)} title="Confirm Bulk Remediation">
-            <div className="space-y-4">
-              <div className="bg-amber/5 border border-amber/20 rounded-lg p-3 flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber flex-shrink-0 mt-0.5" />
-                <div className="text-xs text-muted-foreground">
-                  You are about to initiate remediation for <span className="font-bold text-foreground">{selectedViolations.length}</span> violations. This will create tickets and trigger automated workflows where available.
-                </div>
-              </div>
-              <div className="max-h-32 overflow-y-auto space-y-1">
-                {selectedViolations.map(id => {
-                  const v = mockViolations.find(x => x.id === id);
-                  return v ? (
-                    <div key={id} className="flex items-center gap-2 text-[10px] py-1">
-                      <SeverityBadge severity={v.severity} />
-                      <span className="text-foreground">{v.objectName}</span>
-                      <span className="text-muted-foreground">— {v.policyName}</span>
-                    </div>
-                  ) : null;
-                })}
-              </div>
-              <div className="flex justify-end gap-2">
-                <button onClick={() => setBulkConfirm(false)} className="px-4 py-2 text-xs rounded-lg border border-border hover:bg-muted">Cancel</button>
-                <button onClick={() => { setBulkConfirm(false); setSelectedViolations([]); toast.success(`Remediation initiated for ${selectedViolations.length} violations`); }} className="px-4 py-2 text-xs rounded-lg bg-teal text-primary-foreground hover:bg-teal-light">Confirm & Remediate</button>
               </div>
             </div>
           </Modal>
