@@ -24,6 +24,7 @@ interface ViolationBase extends AssetViolation {
   assetId: string;
   assetName: string;
   environment: string;
+  description?: string;
   framework: string;
   status: GovernanceStatus;
   ageDays: number;
