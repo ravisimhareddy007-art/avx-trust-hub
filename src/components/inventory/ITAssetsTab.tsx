@@ -119,7 +119,7 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
   // Manual assets first so they're immediately visible after add.
   const allAssets = useMemo(() => [...manualITAssets, ...mockITAssets], [manualITAssets]);
 
-  // Compute ARS / BI / RPS once per asset for sorting + display.
+  // Compute Asset Risk Score / BI / RPS once per asset for sorting.
   const enriched = useMemo(() => allAssets.map(a => {
     const ars = arsFor(a).ars;
     const bi = biMap[a.id] ?? 'Moderate';
@@ -209,7 +209,7 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
             else if (v === '40-70') setRiskRange([40, 70]);
             else setRiskRange([0, 39]);
           }} className="px-2 py-1.5 bg-muted border border-border rounded text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal">
-            <option value="0-100">All ARS</option>
+            <option value="0-100">All Asset Risk Score</option>
             <option value="71-100">Critical (&gt;70)</option>
             <option value="40-70">Moderate (40-70)</option>
             <option value="0-39">Low (&lt;40)</option>
@@ -217,7 +217,7 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
           {(envFilter || typeFilter || teamFilter || biFilter || riskRange[0] !== 0 || riskRange[1] !== 100) && (
             <button onClick={() => { setEnvFilter(''); setTypeFilter(''); setTeamFilter(''); setBiFilter(''); setRiskRange([0, 100]); }} className="text-[10px] text-coral hover:underline">Clear</button>
           )}
-          <span className="text-[10px] text-muted-foreground">{filtered.length} assets · sorted by {sortKey.toUpperCase()}</span>
+          <span className="text-[10px] text-muted-foreground">{filtered.length} assets · sorted by {sortKey === 'rps' ? 'priority' : sortKey === 'ars' ? 'asset risk score' : sortKey === 'bi' ? 'business impact' : 'name'}</span>
         </div>
 
         {/* Table */}
@@ -236,7 +236,7 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                   <th className="text-center py-2 px-2 font-medium text-muted-foreground">Identities</th>
                   <th className="text-center py-2 px-2 font-medium text-muted-foreground">
                     <button onClick={() => setSortKey('ars')} className={`inline-flex items-center gap-1 hover:text-foreground ${sortKey==='ars'?'text-foreground':''}`}>
-                      ARS <ArrowUpDown className="w-2.5 h-2.5" />
+                      Asset Risk Score <ArrowUpDown className="w-2.5 h-2.5" />
                     </button>
                   </th>
                   <th className="text-left py-2 px-2 font-medium text-muted-foreground">
@@ -244,17 +244,12 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                       Business Impact <ArrowUpDown className="w-2.5 h-2.5" />
                     </button>
                   </th>
-                  <th className="text-center py-2 px-2 font-medium text-muted-foreground">
-                    <button onClick={() => setSortKey('rps')} className={`inline-flex items-center gap-1 hover:text-foreground ${sortKey==='rps'?'text-foreground':''}`} title="Remediation Priority Score = ARS × Business Impact">
-                      RPS <ArrowUpDown className="w-2.5 h-2.5" />
-                    </button>
-                  </th>
                   <th className="text-left py-2 px-2 font-medium text-muted-foreground">Owner</th>
                   <th className="text-center py-2 px-2 font-medium text-muted-foreground" title="Active policy violations on this asset">Violations</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(({ asset, ars, bi, rps }) => (
+                {filtered.map(({ asset, ars, bi }) => (
                   <tr key={asset.id} onClick={() => openAssetDetail(asset)}
                     className="border-b border-border hover:bg-secondary/30 cursor-pointer transition-colors">
                     <td className="py-2 px-3">
@@ -272,7 +267,7 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                     <td className="py-2 px-2"><EnvBadge env={asset.environment} /></td>
                     <td className="py-2 px-2 text-center text-foreground font-medium">{asset.cryptoObjectIds.length}</td>
                     <td className="py-2 px-2 text-center" onClick={e => { e.stopPropagation(); setRiskDrawerAsset(asset); }}>
-                      <ArsBadge score={ars} />
+                      <ArsBadge score={ars} label="" />
                     </td>
                     <td className="py-2 px-2">
                       <BusinessImpactEditor
@@ -280,9 +275,6 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                         onChange={v => setBI(asset.id, v)}
                         onOpenJustification={() => setRiskDrawerAsset(asset)}
                       />
-                    </td>
-                    <td className="py-2 px-2 text-center">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tabular-nums bg-secondary text-foreground" title="Remediation Priority Score">{rps}</span>
                     </td>
                     <td className="py-2 px-2 text-muted-foreground">{asset.ownerTeam}</td>
                     <td className="py-2 px-2 text-center" onClick={e => e.stopPropagation()}>
