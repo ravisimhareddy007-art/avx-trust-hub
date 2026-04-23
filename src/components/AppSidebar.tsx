@@ -123,7 +123,7 @@ export default function AppSidebar() {
             <Lock className="w-4 h-4 text-primary-foreground" />
           </div>
           <div className="flex flex-col">
-            <span className="text-primary-foreground font-bold text-sm leading-tight">AVX <span className="text-sidebar-foreground font-light">Trust</span></span>
+            <span className="text-primary-foreground font-bold text-sm leading-tight">Trust</span>
             <span className="text-[9px] text-muted-foreground leading-tight tracking-wide">CONTROL PLANE</span>
           </div>
         </div>

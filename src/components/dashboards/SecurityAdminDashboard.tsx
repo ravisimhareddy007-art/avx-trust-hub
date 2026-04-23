@@ -115,11 +115,11 @@ export default function SecurityAdminDashboard() {
                   ))}
                 </div>
               )}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-                <div className="lg:col-span-5 min-h-[680px]">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:items-start">
+                <div className="lg:col-span-5 min-h-[560px]">
                   <EnterpriseRiskScore />
                 </div>
-                <div className="lg:col-span-7 min-h-[680px]">
+                <div className="lg:col-span-7 min-h-[560px]">
                   <CriticalActionFeed />
                 </div>
               </div>
