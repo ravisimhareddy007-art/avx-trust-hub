@@ -7,7 +7,6 @@ import { toast } from 'sonner';
 import {
   AlertTriangle,
   ArrowRightLeft,
-  ArrowRight,
   Atom,
   CheckCircle2,
   ChevronDown,
@@ -40,7 +39,7 @@ const ALL_SSH = [...SSH_KEYS, ...SSH_CERTS];
 type SSHRisk = 'Shared' | 'Weak' | 'Rogue' | 'Misplaced' | 'Suspicious';
 type KeyStatus = 'Managed' | 'Monitored';
 type ComplianceStatus = 'Compliant' | 'Non-Compliant';
-type WTab = 'remediation' | 'provisioning' | 'certificates' | 'migration';
+type WTab = 'remediation' | 'certificates' | 'migration';
 type SortCol = 'crs' | 'name' | 'age' | 'algorithm';
 
 type AssociatedUser = { ip: string; username: string };
@@ -699,7 +698,7 @@ function ProvisionKeyWizard({ open, onClose }: { open: boolean; onClose: () => v
 }
 
 export default function SSHRemediationWorkspace() {
-  const { setCurrentPage, setFilters } = useNav();
+  const { setCurrentPage } = useNav();
   const [wsTab, setWsTab] = useState<WTab>('remediation');
   const [selectedKey, setSelectedKey] = useState<SSHWorkspaceAsset | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -807,7 +806,6 @@ export default function SSHRemediationWorkspace() {
       <div className="flex flex-shrink-0 border-b border-border bg-card px-6">
         {[
           { id: 'remediation', label: 'Key Remediation' },
-          { id: 'provisioning', label: 'Provisioning' },
           { id: 'certificates', label: 'SSH Certificates', badge: 'Next Release', badgeCls: 'text-amber' },
           { id: 'migration', label: 'Key → Cert Migration', badge: 'Roadmap', badgeCls: 'text-purple' },
         ].map(tab => (
@@ -1119,87 +1117,6 @@ export default function SSHRemediationWorkspace() {
                 </div>
               </section>
             </div>
-          </div>
-        ) : null}
-
-        {wsTab === 'provisioning' ? (
-          <div className="h-full overflow-y-auto p-6">
-            <div className="text-lg font-semibold text-foreground">Provision SSH Keys</div>
-            <div className="mt-1 text-sm text-muted-foreground">Deploy SSH keys to target hosts. Keys are automatically backed up and tracked through work orders.</div>
-
-            <div className="mt-4 grid grid-cols-2 gap-6">
-              <div className="rounded-lg border border-border bg-card p-5">
-                <div className="text-sm font-semibold text-foreground">Provision New Key</div>
-                <div className="mb-4 mt-1 text-[10px] text-muted-foreground">Generate a new SSH key and deploy it to one or more target hosts.</div>
-                <div className="space-y-4 text-xs">
-                  <div>
-                    <div className="mb-2 font-medium text-foreground">Key Type</div>
-                    <div className="flex gap-3 text-muted-foreground"><label className="flex items-center gap-2"><input type="radio" checked readOnly /> User Key</label><label className="flex items-center gap-2"><input type="radio" readOnly /> Host Key</label></div>
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-muted-foreground">Algorithm</label>
-                    <select className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-foreground"><option>Ed25519 (Recommended)</option><option>RSA-4096</option><option>ECDSA-256</option><option>RSA-2048 (Legacy)</option></select>
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-muted-foreground">Key Compliance Group</label>
-                    <select className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-foreground"><option>Default_Key_Group</option><option>CI_CD_Key_Group</option><option>Infra_Key_Group</option><option>Security_Key_Group</option><option>Payments_Key_Group</option></select>
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-muted-foreground">Comment</label>
-                    <input placeholder="Enter key purpose, e.g. 'Jenkins deploy key for prod'" className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-foreground" />
-                  </div>
-                  <button onClick={() => setProvisionOpen(true)} className="flex w-full items-center justify-center gap-1 rounded-lg bg-teal px-4 py-2 text-xs font-medium text-primary-foreground hover:bg-teal-light">Open Provision Wizard <ArrowRight className="h-3.5 w-3.5" /></button>
-                </div>
-              </div>
-
-              <div className="rounded-lg border border-border bg-card p-5">
-                <div className="text-sm font-semibold text-foreground">Key Inventory Summary</div>
-                <div className="mt-3 grid grid-cols-2 gap-3">
-                  {[
-                    ['Total SSH Keys', workspaceSSHKeys.length, 'text-foreground'],
-                    ['Total SSH Certs', workspaceSSHCerts.length, 'text-foreground'],
-                    ['Managed', workspaceSSHKeys.filter(k => k.keyStatus === 'Managed').length, 'text-teal'],
-                    ['Monitored', workspaceSSHKeys.filter(k => k.keyStatus === 'Monitored').length, 'text-amber'],
-                    ['Compliant', workspaceSSHKeys.filter(k => k.complianceStatus === 'Compliant').length, 'text-teal'],
-                    ['Non-Compliant', workspaceSSHKeys.filter(k => k.complianceStatus === 'Non-Compliant').length, 'text-coral'],
-                  ].map(([label, value, cls]) => (
-                    <div key={String(label)} className="rounded-lg border border-border p-3">
-                      <div className="text-[10px] text-muted-foreground">{label}</div>
-                      <div className={`text-lg font-bold ${cls}`}>{value}</div>
-                    </div>
-                  ))}
-                </div>
-                <button onClick={() => { setFilters({ type: 'SSH Key' }); setCurrentPage('inventory'); }} className="mt-4 text-[10px] text-teal hover:underline">View full inventory →</button>
-              </div>
-            </div>
-
-            <div className="mb-3 mt-6 text-sm font-semibold text-foreground">Recent Work Orders</div>
-            <div className="overflow-hidden rounded-lg border border-border bg-card">
-              <table className="w-full text-xs">
-                <thead className="border-b border-border bg-muted/30 text-muted-foreground">
-                  <tr>
-                    {['Work Order', 'Action', 'Key', 'Hosts', 'Status', 'Created'].map(label => <th key={label} className="px-3 py-2 text-left font-medium">{label}</th>)}
-                  </tr>
-                </thead>
-                <tbody>
-                  {[
-                    ['WO-SSH-1042', 'Rotate', 'jenkins-deploy-key', '1', 'Completed', '2026-04-20'],
-                    ['WO-SSH-1041', 'Provision', 'bastion-host-key', '1', 'Completed', '2026-04-18'],
-                    ['WO-SSH-1038', 'Delete from Endpoints', 'gitlab-deploy-key', '2', 'In Progress', '2026-04-16'],
-                  ].map(row => (
-                    <tr key={row[0]} className="border-t border-border">
-                      <td className="px-3 py-2 text-foreground">{row[0]}</td>
-                      <td className="px-3 py-2 text-muted-foreground">{row[1]}</td>
-                      <td className="px-3 py-2 text-foreground">{row[2]}</td>
-                      <td className="px-3 py-2 text-muted-foreground">{row[3]}</td>
-                      <td className={`px-3 py-2 ${row[4] === 'Completed' ? 'text-teal' : row[4] === 'In Progress' ? 'text-amber' : 'text-coral'}`}>{row[4]}</td>
-                      <td className="px-3 py-2 text-muted-foreground">{row[5]}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <button onClick={() => setCurrentPage('work-order-status')} className="mt-3 text-[10px] text-teal hover:underline">View all →</button>
           </div>
         ) : null}
 
