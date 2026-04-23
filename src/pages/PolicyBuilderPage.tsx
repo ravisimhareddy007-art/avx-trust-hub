@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { useNav } from '@/context/NavigationContext';
 import { policyRules, customPolicies as initialCustomPolicies } from '@/data/mockData';
 import { mockGroups } from '@/data/inventoryMockData';
@@ -45,226 +45,6 @@ interface CustomPolicy {
   groupIds?: string[];
 }
 
-type PolicyType = 'ssh-key' | 'certificates' | 'secrets' | 'ai-agents' | '';
-
-type CertSubType = 'tls' | 'code-signing' | 'ssh-cert' | 'kubernetes' | 'smine' | 'client-auth';
-
-const CERT_SUBTYPES: { id: CertSubType; label: string; desc: string; nextRelease?: boolean }[] = [
-  { id: 'tls', label: 'TLS / SSL', desc: 'HTTPS, mTLS, API gateways, load balancers' },
-  { id: 'code-signing', label: 'Code-Signing', desc: 'Software packages, scripts, containers' },
-  { id: 'ssh-cert', label: 'SSH Certificates', desc: 'CA-signed SSH access with short TTL', nextRelease: true },
-  { id: 'kubernetes', label: 'Kubernetes Workload', desc: 'Pod identity, service mesh, cert-manager' },
-  { id: 'smine', label: 'S/MIME', desc: 'Email identity and signing' },
-  { id: 'client-auth', label: 'Client Auth', desc: 'mTLS client-side certificates' },
-];
-
-const CA_OPTIONS = [
-  'AppViewX CA',
-  'DigiCert',
-  'GlobalSign',
-  'Entrust',
-  "Let's Encrypt",
-  'Microsoft CA',
-  'Sectigo',
-  'Internal MSCA',
-  'HashiCorp Vault PKI',
-];
-
-const SECRET_TYPES = [
-  'API Keys',
-  'OAuth Tokens',
-  'Database Credentials',
-  'Service Account Keys',
-  'HashiCorp Vault Secrets',
-  'AWS Secrets Manager',
-  'Azure Key Vault Secrets',
-];
-
-const VAULT_OPTIONS = [
-  'HashiCorp Vault',
-  'AWS Secrets Manager',
-  'Azure Key Vault',
-  'CyberArk Conjur',
-  'GCP Secret Manager',
-];
-
-const POLICY_TEMPLATES = [
-  {
-    id: 'pci-ssh',
-    label: 'PCI-DSS SSH Baseline',
-    desc: 'Ed25519 only · 90-day rotation · auto-rotate · block weak algorithms',
-    type: 'ssh-key' as PolicyType,
-    badge: 'PCI-DSS',
-    badgeColor: 'coral',
-    prefill: {
-      allowedAlgorithms: ['Ed25519', 'RSA-4096'],
-      maxKeyAge: 90,
-      autoRotate: true,
-      rotationPeriod: 90,
-      targetAlgorithm: 'Ed25519',
-      violationActions: ['Alert only', 'Block issuance'],
-      formSeverity: 'Critical',
-    },
-  },
-  {
-    id: 'nist-ssh',
-    label: 'NIST 800-57 SSH Keys',
-    desc: 'RSA-4096 minimum · annual rotation · flag orphaned keys',
-    type: 'ssh-key' as PolicyType,
-    badge: 'NIST',
-    badgeColor: 'purple',
-    prefill: {
-      allowedAlgorithms: ['Ed25519', 'RSA-4096'],
-      maxKeyAge: 365,
-      autoRotate: false,
-      violationActions: ['Alert only', 'Escalate to owner'],
-      formSeverity: 'High',
-    },
-  },
-  {
-    id: 'zero-trust-tls',
-    label: 'Zero-Trust TLS',
-    desc: '90-day max validity · auto-renew at 30d · block self-signed',
-    type: 'certificates' as PolicyType,
-    badge: 'Zero-Trust',
-    badgeColor: 'teal',
-    prefill: {
-      certSubTypes: ['tls' as CertSubType],
-      certAction: 'renew',
-      maxValidity: 90,
-      autoRotate: true,
-      rotateBeforeExpiry: 30,
-      violationActions: ['Alert only', 'Auto-remediate'],
-      formSeverity: 'High',
-    },
-  },
-  {
-    id: 'dora-cert',
-    label: 'DORA Operational Resilience',
-    desc: '90-day expiry alerts · ITSM change request · block self-signed',
-    type: 'certificates' as PolicyType,
-    badge: 'DORA',
-    badgeColor: 'amber',
-    prefill: {
-      certSubTypes: ['tls' as CertSubType],
-      certAction: 'alert',
-      maxValidity: 365,
-      violationActions: ['Alert only', 'Create ticket'],
-      itsm: true,
-      itsmPriority: '2-High',
-      formSeverity: 'High',
-    },
-  },
-  {
-    id: 'secret-rotation',
-    label: 'Secret Rotation Baseline',
-    desc: '90-day max age · auto-rotate · vault-only storage required',
-    type: 'secrets' as PolicyType,
-    badge: 'Baseline',
-    badgeColor: 'purple',
-    prefill: {
-      secretTypes: ['API Keys', 'OAuth Tokens'],
-      secretMaxAge: 90,
-      secretAutoRotate: true,
-      secretRotationPeriod: 90,
-      approvedVaults: ['HashiCorp Vault'],
-      violationActions: ['Alert only', 'Auto-remediate'],
-      formSeverity: 'High',
-    },
-  },
-  {
-    id: 'agent-jit',
-    label: 'AI Agent JIT Credentials',
-    desc: '24h max TTL · JIT required · block static long-lived tokens',
-    type: 'ai-agents' as PolicyType,
-    badge: 'Zero-Trust',
-    badgeColor: 'teal',
-    prefill: {
-      agentMaxTTL: 1,
-      agentTTLUnit: 'days',
-      enforceJIT: true,
-      allowedAlgorithms: ['HMAC-SHA256', 'Ed25519'],
-      violationActions: ['Alert only', 'Block issuance'],
-      formSeverity: 'Critical',
-    },
-  },
-];
-
-function buildPolicyPreview(p: {
-  policyType: PolicyType;
-  formName: string;
-  certSubTypes: CertSubType[];
-  certAction: string;
-  caSelected: string;
-  maxValidity: number;
-  allowedAlgorithms: string[];
-  maxKeyAge: number;
-  autoRotate: boolean;
-  rotationPeriod: number;
-  rotateBeforeExpiry: number;
-  targetAlgorithm: string;
-  secretTypes: string[];
-  secretMaxAge: number;
-  secretAutoRotate: boolean;
-  secretRotationPeriod: number;
-  approvedVaults: string[];
-  agentMaxTTL: number;
-  agentTTLUnit: string;
-  enforceJIT: boolean;
-  violationActions: string[];
-  formSeverity: string;
-  scopeMode: string;
-  scopeEnvironments: string[];
-  requireApproval: boolean;
-  approvalType: string;
-  itsm: boolean;
-  notifyOnFail: boolean;
-}): string {
-  if (!p.policyType) return 'Select a policy type to see a preview.';
-
-  const lines: string[] = [];
-
-  const scope = p.scopeMode === 'environment' && p.scopeEnvironments.length
-    ? `${p.scopeEnvironments.join(', ')} environment`
-    : 'all environments';
-
-  if (p.policyType === 'ssh-key') {
-    lines.push(`Governs SSH keys in ${scope}.`);
-    if (p.allowedAlgorithms.length) lines.push(`✓ Allowed algorithms: ${p.allowedAlgorithms.join(', ')}.`);
-    lines.push(`✓ Maximum key age: ${p.maxKeyAge} days.`);
-    if (p.autoRotate) lines.push(`✓ Auto-rotates to ${p.targetAlgorithm} every ${p.rotationPeriod} days.`);
-    else lines.push(`ℹ Rotation is manual — no auto-rotate.`);
-  } else if (p.policyType === 'certificates') {
-    const subtypes = p.certSubTypes.length
-      ? p.certSubTypes.map(s => CERT_SUBTYPES.find(x => x.id === s)?.label || s).join(', ')
-      : 'all certificate types';
-    lines.push(`Governs ${subtypes} certificates in ${scope}.`);
-    if (p.certAction !== 'alert') lines.push(`✓ Action: ${p.certAction} via ${p.caSelected || 'selected CA'}.`);
-    lines.push(`✓ Maximum validity: ${p.maxValidity} days.`);
-    if (p.autoRotate) lines.push(`✓ Auto-renews ${p.rotateBeforeExpiry} days before expiry.`);
-    if (p.allowedAlgorithms.length) lines.push(`✓ Minimum key strength: ${p.allowedAlgorithms.join(', ')}.`);
-  } else if (p.policyType === 'secrets') {
-    const types = p.secretTypes.length ? p.secretTypes.join(', ') : 'all secret types';
-    lines.push(`Governs ${types} in ${scope}.`);
-    lines.push(`✓ Maximum age: ${p.secretMaxAge} days.`);
-    if (p.secretAutoRotate) lines.push(`✓ Auto-rotates every ${p.secretRotationPeriod} days.`);
-    if (p.approvedVaults.length) lines.push(`✓ Approved storage: ${p.approvedVaults.join(', ')}.`);
-  } else if (p.policyType === 'ai-agents') {
-    lines.push(`Governs AI agent tokens in ${scope}.`);
-    lines.push(`✓ Max TTL: ${p.agentMaxTTL} ${p.agentTTLUnit}.`);
-    if (p.enforceJIT) lines.push(`✓ JIT issuance required — no static credentials.`);
-    if (p.allowedAlgorithms.length) lines.push(`✓ Allowed algorithms: ${p.allowedAlgorithms.join(', ')}.`);
-  }
-
-  lines.push('');
-  lines.push(`On violation → ${p.violationActions.join(' + ')}.`);
-  lines.push(`Severity: ${p.formSeverity}.`);
-  if (p.requireApproval) lines.push(`Approval required from: ${p.approvalType}.`);
-  if (p.itsm) lines.push('Creates a ServiceNow change request.');
-  if (p.notifyOnFail) lines.push('Notifies on failure.');
-
-  return lines.join('\n');
-}
 
 const mockViolations = [
   { id: 'v-001', policyName: 'Weak Algorithm Detection', objectName: '*.payments.acmecorp.com', objectType: 'TLS Certificate', severity: 'Critical' as const, environment: 'Production', group: 'RSA-2048 Production Certs', detectedAt: '2026-04-14 09:12', status: 'Open' },
@@ -280,13 +60,6 @@ const mockViolations = [
   { id: 'v-011', policyName: 'Weak Algorithm Detection', objectName: 'legacy-erp-cert', objectType: 'TLS Certificate', severity: 'Critical' as const, environment: 'Production', group: 'RSA-2048 Production Certs', detectedAt: '2026-04-10 09:00', status: 'Open' },
   { id: 'v-012', policyName: 'AI Agent Over-Privilege', objectName: 'data-pipeline-agent', objectType: 'AI Agent Token', severity: 'High' as const, environment: 'Production', group: 'Over-Privileged AI Agents', detectedAt: '2026-04-10 08:15', status: 'Open' },
 ];
-
-const badgeColorClasses: Record<string, string> = {
-  coral: 'bg-coral/10 text-coral',
-  amber: 'bg-amber/10 text-amber',
-  teal: 'bg-teal/10 text-teal',
-  purple: 'bg-purple/10 text-purple',
-};
 
 const getPolicyTypeMeta = (type: PolicyType) => {
   switch (type) {
@@ -313,8 +86,6 @@ const getPolicyTypeFromAssetType = (assetType?: string): PolicyType => {
 };
 
 const getPolicyTypeBadgeFromAsset = (assetType?: string) => getPolicyTypeMeta(getPolicyTypeFromAssetType(assetType));
-
-const getScopeEstimate = () => mockGroups.reduce((sum, group) => sum + group.objectCount, 0);
 
 export default function PolicyBuilderPage() {
   const { setCurrentPage, setFilters } = useNav();
