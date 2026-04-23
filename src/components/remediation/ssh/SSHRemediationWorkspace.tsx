@@ -263,7 +263,7 @@ function tabBtn(active: boolean) {
   return `px-4 py-3 text-xs font-medium border-b-2 transition-colors ${active ? 'border-teal text-teal' : 'border-transparent text-muted-foreground hover:text-foreground'}`;
 }
 
-function SSHKpiStrip({ counts, onFilter }: { counts: Record<SSHRisk, number>; onFilter: (risk: SSHRisk) => void }) {
+function SSHKpiStrip({ counts, activeFilter, onFilter }: { counts: Record<SSHRisk, number>; activeFilter: string; onFilter: (risk: SSHRisk) => void }) {
   const tiles: { risk: SSHRisk; label: string; value: number; subtitle: string; border: string; valueCls: string; info?: string }[] = [
     { risk: 'Shared', label: 'SHARED KEYS', value: counts.Shared, subtitle: 'Same key on multiple hosts', border: 'border-l-amber', valueCls: 'text-amber' },
     { risk: 'Weak', label: 'WEAK KEYS', value: counts.Weak, subtitle: 'Deprecated algorithm or short key length', border: 'border-l-coral', valueCls: 'text-coral' },
@@ -273,17 +273,17 @@ function SSHKpiStrip({ counts, onFilter }: { counts: Record<SSHRisk, number>; on
   ];
 
   return (
-    <div className="flex gap-3">
+    <div className="grid grid-cols-5 gap-3">
       {tiles.map(tile => (
         <button
           key={tile.risk}
           onClick={() => onFilter(tile.risk)}
-          className={`flex-1 rounded-lg border border-border border-l-4 bg-card p-3 text-left transition-all hover:shadow-md ${tile.border}`}
+          className={`rounded-lg border border-border border-l-4 p-3 text-left transition-all hover:shadow-md ${tile.border} ${activeFilter === tile.risk ? `${tile.risk === 'Weak' || tile.risk === 'Rogue' ? 'ring-2 ring-coral/40' : 'ring-2 ring-amber/40'} ring-offset-1` : 'bg-card'}`}
         >
           <div className="flex items-start justify-between gap-2">
             <div>
               <div className={`text-2xl font-bold ${tile.valueCls}`}>{tile.value}</div>
-              <div className="text-[10px] text-muted-foreground">{tile.label}</div>
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{tile.label}</div>
             </div>
             {tile.info ? (
               <span title={tile.info} className="mt-1 inline-flex h-4 w-4 items-center justify-center rounded-full border border-border text-muted-foreground">
