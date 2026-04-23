@@ -152,7 +152,7 @@ export default function ErsWhyDrawer({ open, onClose }: Props) {
               <h3 className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
                 Business-critical assets driving ERS
               </h3>
-              <span className="text-[10px] text-muted-foreground">Ranked by RPS</span>
+                <span className="text-[10px] text-muted-foreground">Ranked by priority</span>
             </div>
             <div className="space-y-1">
               {ers.topAssets
@@ -172,9 +172,9 @@ export default function ErsWhyDrawer({ open, onClose }: Props) {
                       className="text-[10.5px] font-bold tabular-nums"
                       style={{ color: severityHsl(a.ars >= 80 ? 'Critical' : a.ars >= 60 ? 'High' : a.ars >= 30 ? 'Medium' : 'Low') }}
                     >
-                      ARS {a.ars}
+                      {a.ars}
                     </span>
-                    <span className="text-[10px] text-muted-foreground tabular-nums">RPS {a.rps}</span>
+                    <span className="text-[10px] text-muted-foreground tabular-nums">Priority {a.rps}</span>
                     <ArrowRight className="w-3 h-3 text-teal" />
                   </button>
                 ))}
