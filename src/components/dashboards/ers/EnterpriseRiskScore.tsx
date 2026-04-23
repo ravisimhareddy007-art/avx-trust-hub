@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TrendingDown, TrendingUp, Sparkles, ArrowRight, AlertTriangle, Info } from 'lucide-react';
+import { TrendingDown, TrendingUp, Sparkles, ArrowRight, AlertTriangle } from 'lucide-react';
 import { useRisk } from '@/context/RiskContext';
 import { useNav } from '@/context/NavigationContext';
 import { severityHsl } from '@/lib/risk/types';
@@ -126,17 +126,6 @@ export default function EnterpriseRiskScore() {
         <span>Why is ERS {ers.ers}? · See ranked drivers, assets & workflows</span>
         <ArrowRight className="w-3.5 h-3.5" />
       </button>
-
-      {/* Methodology footnote */}
-      <div className="mt-auto pt-3 border-t border-border/50">
-        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-          <Info className="w-3 h-3" />
-          <span>
-            ERS = criticality-weighted average of asset risk score across {ers.topAssets.length}+ assets.
-            {' '}Floor rule: ≥85% of highest Critical-prod ARS.
-          </span>
-        </div>
-      </div>
 
       <ErsWhyDrawer open={whyOpen} onClose={() => setWhyOpen(false)} />
     </div>
