@@ -41,7 +41,6 @@ type SSHRisk = 'Shared' | 'Weak' | 'Rogue' | 'Misplaced' | 'Suspicious';
 type KeyStatus = 'Managed' | 'Monitored';
 type ComplianceStatus = 'Compliant' | 'Non-Compliant';
 type WTab = 'remediation' | 'provisioning' | 'certificates' | 'migration';
-type DetailTab = 'details' | 'map';
 type SortCol = 'crs' | 'name' | 'age' | 'algorithm';
 
 type AssociatedUser = { ip: string; username: string };
@@ -307,7 +306,6 @@ function SSHKpiStrip({ counts, activeFilter, onFilter }: { counts: Record<SSHRis
 }
 
 function SSHKeyDetailPanel({ asset, onClose, onAction }: { asset: SSHWorkspaceAsset; onClose: () => void; onAction: (action: string, key: SSHWorkspaceAsset) => void }) {
-  const [tab, setTab] = useState<DetailTab>('details');
   const crs = computeCRS(asset).crs;
   const risks = asset.sshRiskStatus || [];
   const hostEndpoints = (asset.sshEndpoints || []).filter(endpoint => endpoint.role === 'host');
@@ -340,15 +338,10 @@ function SSHKeyDetailPanel({ asset, onClose, onAction }: { asset: SSHWorkspaceAs
               <X className="h-4 w-4" />
             </button>
           </div>
-          <div className="mt-3 flex items-center gap-4 border-t border-border pt-3">
-            <button className={tabBtn(tab === 'details')} onClick={() => setTab('details')}>Key Details</button>
-            <button className={tabBtn(tab === 'map')} onClick={() => setTab('map')}>Access Map</button>
-          </div>
         </div>
 
         <div className="min-h-0 flex-1 overflow-hidden">
-          {tab === 'details' ? (
-            <div className="grid h-full grid-cols-[260px_1fr] overflow-hidden">
+          <div className="grid h-full grid-cols-[260px_1fr] overflow-hidden">
               <div className="space-y-4 overflow-y-auto border-r border-border p-4">
                 <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-[10px]">
                   {[
@@ -518,52 +511,6 @@ function SSHKeyDetailPanel({ asset, onClose, onAction }: { asset: SSHWorkspaceAs
                 </section>
               </div>
             </div>
-          ) : (
-            <div className="space-y-3 overflow-y-auto p-4">
-              <div>
-                <div className="text-xs font-semibold text-foreground">Access Map</div>
-                <div className="text-[10px] text-muted-foreground">Which users have access to which hosts via this key</div>
-              </div>
-              <svg viewBox="0 0 600 320" className="w-full rounded-lg border border-border bg-secondary/20">
-                <circle cx="300" cy="160" r="28" fill={severityFill(crs)} stroke={severityStroke(crs)} strokeWidth="2" />
-                <text x="300" y="166" textAnchor="middle" fontSize="18">🔑</text>
-                <text x="300" y="205" textAnchor="middle" fontSize="10" fill="hsl(var(--foreground))">{asset.name.slice(0, 24)}</text>
-                <text x="300" y="219" textAnchor="middle" fontSize="9" fill={severityStroke(crs)}>CRS {crs}</text>
-
-                {(asset.associatedUsers || []).slice(0, 4).map((user, index) => {
-                  const y = 70 + index * 60;
-                  return (
-                    <g key={`${user.ip}-${user.username}`}>
-                      <line x1="104" y1={y} x2="272" y2="160" stroke="hsl(var(--amber))" strokeWidth="1.5" />
-                      <circle cx="86" cy={y} r="18" fill="hsl(var(--amber) / 0.15)" stroke="hsl(var(--amber))" strokeWidth="1.5" />
-                      <text x="86" y={y + 4} textAnchor="middle" fontSize="12">👤</text>
-                      <text x="86" y={y + 28} textAnchor="middle" fontSize="8" fill="hsl(var(--foreground))">{user.username.slice(0, 12)}</text>
-                    </g>
-                  );
-                })}
-
-                {hostEndpoints.slice(0, 4).map((endpoint, index) => {
-                  const y = 70 + index * 60;
-                  const danger = risks.includes('Rogue') || risks.includes('Suspicious');
-                  return (
-                    <g key={`${endpoint.ip}-${endpoint.port}`}>
-                      <line x1="328" y1="160" x2="496" y2={y} stroke={asset.complianceStatus === 'Non-Compliant' ? 'hsl(var(--coral))' : 'hsl(var(--teal))'} strokeWidth="1.5" strokeDasharray={asset.complianceStatus === 'Non-Compliant' ? '5 5' : undefined} />
-                      <circle cx="514" cy={y} r="18" fill="hsl(var(--teal) / 0.15)" stroke={danger ? 'hsl(var(--coral))' : 'hsl(var(--teal))'} strokeWidth="1.5" />
-                      <text x="514" y={y + 4} textAnchor="middle" fontSize="12">🖥</text>
-                      {danger ? <text x="534" y={y - 10} fontSize="10" fill="hsl(var(--coral))">⚠</text> : null}
-                      <text x="514" y={y + 28} textAnchor="middle" fontSize="8" fill="hsl(var(--foreground))">{endpoint.host.slice(0, 14)}</text>
-                    </g>
-                  );
-                })}
-              </svg>
-              <div className="flex flex-wrap items-center gap-4 text-[10px] text-muted-foreground">
-                <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber" />User</span>
-                <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: severityStroke(crs) }} />Key</span>
-                <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-teal" />Host</span>
-                <span className="inline-flex items-center gap-1"><span className="h-px w-4 border-t border-dashed border-coral" />Non-compliant connection</span>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
@@ -771,13 +718,22 @@ export default function SSHRemediationWorkspace() {
   const workspaceSSHCerts = useMemo(() => (SSH_CERTS as SSHWorkspaceAsset[]).map(normalizeSSHAsset), []);
   const workspaceAllSSH = useMemo(() => [...workspaceSSHKeys, ...workspaceSSHCerts], [workspaceSSHCerts, workspaceSSHKeys]);
 
+  const uniqueSSH = useMemo(() => {
+    const seen = new Set<string>();
+    return workspaceAllSSH.filter(k => {
+      if (seen.has(k.id)) return false;
+      seen.add(k.id);
+      return true;
+    });
+  }, [workspaceAllSSH]);
+
   const counts = useMemo(() => ({
-    Shared: workspaceAllSSH.filter(k => k.sshRiskStatus?.includes('Shared')).length,
-    Weak: workspaceAllSSH.filter(k => k.sshRiskStatus?.includes('Weak')).length,
-    Rogue: workspaceAllSSH.filter(k => k.sshRiskStatus?.includes('Rogue')).length,
-    Misplaced: workspaceAllSSH.filter(k => k.sshRiskStatus?.includes('Misplaced')).length,
-    Suspicious: workspaceAllSSH.filter(k => k.sshRiskStatus?.includes('Suspicious')).length,
-  }), [workspaceAllSSH]);
+    Shared: uniqueSSH.filter(k => k.sshRiskStatus?.includes('Shared')).length,
+    Weak: uniqueSSH.filter(k => k.sshRiskStatus?.includes('Weak')).length,
+    Rogue: uniqueSSH.filter(k => k.sshRiskStatus?.includes('Rogue')).length,
+    Misplaced: uniqueSSH.filter(k => k.sshRiskStatus?.includes('Misplaced')).length,
+    Suspicious: uniqueSSH.filter(k => k.sshRiskStatus?.includes('Suspicious')).length,
+  }), [uniqueSSH]);
 
   const isRotationOverdue = (k: SSHWorkspaceAsset) => {
     if (!k.rotationFrequency || k.rotationFrequency === 'Never') return false;
@@ -787,10 +743,16 @@ export default function SSHRemediationWorkspace() {
   };
 
   const displayKeys = useMemo(() => {
+    const seen = new Set<string>();
     return workspaceAllSSH
       .filter(k => {
+        if (seen.has(k.id)) return false;
+        seen.add(k.id);
+        return true;
+      })
+      .filter(k => {
         if (!activeFilter) return true;
-        return k.sshRiskStatus?.includes(activeFilter as SSHRisk) || (activeFilter === 'Overdue' && isRotationOverdue(k));
+        return k.sshRiskStatus?.includes(activeFilter as SSHRisk);
       })
       .filter(k => !search || k.name.toLowerCase().includes(search.toLowerCase()) || (k.algorithm || '').toLowerCase().includes(search.toLowerCase()) || (k.keyComplianceGroup || '').toLowerCase().includes(search.toLowerCase()))
       .map(k => ({ ...k, crs: computeCRS(k).crs }))
@@ -925,7 +887,7 @@ export default function SSHRemediationWorkspace() {
                 <table className="w-full border-collapse text-xs">
                   <thead className="sticky top-0 z-10 border-b border-border bg-muted/40">
                     <tr>
-                      <th className="w-10 px-3 py-2.5 text-left">
+                      <th className="w-10 px-3 py-2.5 text-left" onClick={e => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           className="h-4 w-4"
@@ -933,7 +895,9 @@ export default function SSHRemediationWorkspace() {
                             if (node) node.indeterminate = selectedRows.size > 0 && !displayKeys.every(key => selectedRows.has(key.id));
                           }}
                           checked={displayKeys.length > 0 && displayKeys.every(key => selectedRows.has(key.id))}
-                          onChange={() => {
+                          onClick={e => e.stopPropagation()}
+                          onChange={e => {
+                            e.stopPropagation();
                             if (displayKeys.length > 0 && displayKeys.every(key => selectedRows.has(key.id))) setSelectedRows(new Set());
                             else setSelectedRows(new Set(displayKeys.map(key => key.id)));
                           }}
@@ -987,7 +951,7 @@ export default function SSHRemediationWorkspace() {
                       const inventoryDisabled = key.keyStatus === 'Managed';
                       return (
                         <tr key={key.id} onClick={() => openDetails(key)} className={`cursor-pointer border-b border-border transition-colors last:border-0 hover:bg-muted/20 ${isSelected ? 'bg-teal/5' : ''}`}>
-                          <td className="w-10 px-3 py-2.5"><input type="checkbox" className="h-4 w-4" checked={isSelected} onClick={e => e.stopPropagation()} onChange={() => toggleSelected(key.id)} /></td>
+                          <td className="w-10 px-3 py-2.5" onClick={e => e.stopPropagation()}><input type="checkbox" className="h-4 w-4" checked={isSelected} onClick={e => e.stopPropagation()} onChange={e => { e.stopPropagation(); toggleSelected(key.id); }} /></td>
                           <td className="px-3 py-2.5"><div className="flex flex-col gap-0.5"><div className="flex items-center gap-1.5"><Key className="h-3 w-3 text-muted-foreground" /><span className="max-w-[160px] truncate text-[11px] font-medium text-foreground" title={key.name}>{key.name}</span></div>{isRotationOverdue(key) ? <span className="text-[9px] font-medium text-coral">Rotation overdue</span> : null}</div></td>
                           <td className="px-3 py-2.5"><span className="text-[10px] text-muted-foreground">{key.type === 'SSH Certificate' ? 'SSH Cert' : 'SSH Key'}</span></td>
                           <td className="px-3 py-2.5"><span className={`font-mono text-[10px] ${algorithmCls}`}>{key.algorithm}</span></td>
@@ -1000,21 +964,21 @@ export default function SSHRemediationWorkspace() {
                           <td className="px-3 py-2.5 text-center"><span className={`rounded px-2 py-0.5 text-[10px] font-semibold ${crsBgCls(key.crs || 0)}`}>{key.crs}</span></td>
                           <td className="relative px-3 py-2.5 text-center" onClick={e => e.stopPropagation()}>
                             <div className="relative">
-                              <button onClick={() => setOpenMenuId(prev => (prev === key.id ? null : key.id))} className="rounded p-1.5 text-muted-foreground hover:bg-muted/50 hover:text-foreground"><MoreVertical className="h-3.5 w-3.5" /></button>
+                              <button onClick={e => { e.stopPropagation(); setOpenMenuId(prev => (prev === key.id ? null : key.id)); }} className="rounded p-1.5 text-muted-foreground hover:bg-muted/50 hover:text-foreground"><MoreVertical className="h-3.5 w-3.5" /></button>
                               {openMenuId === key.id ? (
                                 <>
-                                  <button className="fixed inset-0 z-20" onClick={() => setOpenMenuId(null)} aria-label="Close actions" />
-                                  <div className="absolute right-0 top-8 z-30 w-52 overflow-hidden rounded-lg border border-border bg-card py-1 shadow-xl">
-                                    <div title={key.sshRiskStatus?.includes('Rogue') ? 'Add to inventory before rotating' : key.rotationFrequency === 'Never' ? 'No rotation policy — define one in Policy Builder first' : undefined}><button disabled={rotateDisabled} onClick={() => { setOpenMenuId(null); if (rotateDisabled) return; if (hasBlastRadius(key)) setBlastRadiusKey(key); else toast.success(`Rotating ${key.name} — ${workOrderId()} created`); }} className={`flex w-full items-center justify-between px-3 py-2 text-xs ${rotateDisabled ? 'pointer-events-none cursor-not-allowed opacity-40' : 'hover:bg-muted/30'}`}><span className="flex items-center gap-2"><RotateCw className="h-3.5 w-3.5" />Rotate</span></button></div>
-                                    <div title={revokeDisabled ? 'No endpoints to revoke from' : undefined}><button disabled={revokeDisabled} onClick={() => { setOpenMenuId(null); if (!revokeDisabled) setConfirmAction({ key, action: 'Revoke' }); }} className={`flex w-full items-center justify-between px-3 py-2 text-xs text-coral ${revokeDisabled ? 'pointer-events-none cursor-not-allowed opacity-40' : 'hover:bg-muted/30'}`}><span className="flex items-center gap-2"><XCircle className="h-3.5 w-3.5" />Revoke</span></button></div>
-                                    <button onClick={() => { setOpenMenuId(null); toast.success(`Downloading ${key.name} (Public Key, OpenSSH format)`); }} className="flex w-full items-center justify-between px-3 py-2 text-xs hover:bg-muted/30"><span className="flex items-center gap-2"><Download className="h-3.5 w-3.5" />Download</span></button>
-                                    <button onClick={() => { setOpenMenuId(null); toast.success(`Opening modify dialog for ${key.name}`); }} className="flex w-full items-center justify-between px-3 py-2 text-xs hover:bg-muted/30"><span className="flex items-center gap-2"><Pencil className="h-3.5 w-3.5" />Modify</span></button>
-                                    <button onClick={() => { setOpenMenuId(null); const next = key.keyStatus === 'Managed' ? 'Monitored' : 'Managed'; toast.success(`${key.name} status changed to ${next}`); }} className="flex w-full items-center justify-between px-3 py-2 text-xs hover:bg-muted/30"><span className="flex items-center gap-2"><ArrowRightLeft className="h-3.5 w-3.5" />Change Status</span><span className="text-[10px] text-muted-foreground">{key.keyStatus || 'Monitored'}</span></button>
-                                    <div title={inventoryDisabled ? 'Already in managed inventory' : undefined}><button disabled={inventoryDisabled} onClick={() => { setOpenMenuId(null); if (!inventoryDisabled) toast.success(`${key.name} added to Default_Key_Group — status: Managed`); }} className={`flex w-full items-center justify-between px-3 py-2 text-xs ${inventoryDisabled ? 'pointer-events-none cursor-not-allowed opacity-40' : 'hover:bg-muted/30'}`}><span className="flex items-center gap-2"><Plus className="h-3.5 w-3.5" />Add to Inventory</span></button></div>
+                                  <div className="fixed inset-0 z-20" onClick={e => { e.stopPropagation(); setOpenMenuId(null); }} />
+                                  <div className="absolute right-8 top-0 z-30 w-52 overflow-hidden rounded-lg border border-border bg-card py-1 shadow-xl">
+                                    <div title={key.sshRiskStatus?.includes('Rogue') ? 'Add to inventory before rotating' : key.rotationFrequency === 'Never' ? 'No rotation policy — define one in Policy Builder first' : undefined}><button disabled={rotateDisabled} onClick={e => { e.stopPropagation(); setOpenMenuId(null); if (rotateDisabled) return; if (hasBlastRadius(key)) setBlastRadiusKey(key); else toast.success(`Rotating ${key.name} — ${workOrderId()} created`); }} className={`flex w-full items-center justify-between px-3 py-2 text-xs ${rotateDisabled ? 'pointer-events-none cursor-not-allowed opacity-40' : 'hover:bg-muted/30'}`}><span className="flex items-center gap-2"><RotateCw className="h-3.5 w-3.5" />Rotate</span></button></div>
+                                    <div title={revokeDisabled ? 'No endpoints to revoke from' : undefined}><button disabled={revokeDisabled} onClick={e => { e.stopPropagation(); setOpenMenuId(null); if (!revokeDisabled) setConfirmAction({ key, action: 'Revoke' }); }} className={`flex w-full items-center justify-between px-3 py-2 text-xs text-coral ${revokeDisabled ? 'pointer-events-none cursor-not-allowed opacity-40' : 'hover:bg-muted/30'}`}><span className="flex items-center gap-2"><XCircle className="h-3.5 w-3.5" />Revoke</span></button></div>
+                                    <button onClick={e => { e.stopPropagation(); setOpenMenuId(null); toast.success(`Downloading ${key.name} (Public Key, OpenSSH format)`); }} className="flex w-full items-center justify-between px-3 py-2 text-xs hover:bg-muted/30"><span className="flex items-center gap-2"><Download className="h-3.5 w-3.5" />Download</span></button>
+                                    <button onClick={e => { e.stopPropagation(); setOpenMenuId(null); toast.success(`Opening modify dialog for ${key.name}`); }} className="flex w-full items-center justify-between px-3 py-2 text-xs hover:bg-muted/30"><span className="flex items-center gap-2"><Pencil className="h-3.5 w-3.5" />Modify</span></button>
+                                    <button onClick={e => { e.stopPropagation(); setOpenMenuId(null); const next = key.keyStatus === 'Managed' ? 'Monitored' : 'Managed'; toast.success(`${key.name} status changed to ${next}`); }} className="flex w-full items-center justify-between px-3 py-2 text-xs hover:bg-muted/30"><span className="flex items-center gap-2"><ArrowRightLeft className="h-3.5 w-3.5" />Change Status</span><span className="text-[10px] text-muted-foreground">{key.keyStatus || 'Monitored'}</span></button>
+                                    <div title={inventoryDisabled ? 'Already in managed inventory' : undefined}><button disabled={inventoryDisabled} onClick={e => { e.stopPropagation(); setOpenMenuId(null); if (!inventoryDisabled) toast.success(`${key.name} added to Default_Key_Group — status: Managed`); }} className={`flex w-full items-center justify-between px-3 py-2 text-xs ${inventoryDisabled ? 'pointer-events-none cursor-not-allowed opacity-40' : 'hover:bg-muted/30'}`}><span className="flex items-center gap-2"><Plus className="h-3.5 w-3.5" />Add to Inventory</span></button></div>
                                     <hr className="my-1 border-border" />
-                                    <div title={rollbackDisabled ? 'Never rotated — no backup available' : undefined}><button disabled={rollbackDisabled} onClick={() => { setOpenMenuId(null); if (!rollbackDisabled) toast.success(`Rolling back ${key.name} to previous version`); }} className={`flex w-full items-center justify-between px-3 py-2 text-xs ${rollbackDisabled ? 'pointer-events-none cursor-not-allowed opacity-40' : 'hover:bg-muted/30'}`}><span className="flex items-center gap-2"><Undo2 className="h-3.5 w-3.5" />Rollback</span></button></div>
-                                    <div title={revokeDisabled ? 'No endpoints found' : undefined}><button disabled={revokeDisabled} onClick={() => { setOpenMenuId(null); if (!revokeDisabled) setConfirmAction({ key, action: 'Delete from Endpoints' }); }} className={`flex w-full items-center justify-between px-3 py-2 text-xs text-coral ${revokeDisabled ? 'pointer-events-none cursor-not-allowed opacity-40' : 'hover:bg-muted/30'}`}><span className="flex items-center gap-2"><Trash2 className="h-3.5 w-3.5" />Delete from Endpoints</span></button></div>
-                                    <button onClick={() => { setOpenMenuId(null); setConfirmAction({ key, action: 'Delete from Inventory' }); }} className="flex w-full items-center justify-between px-3 py-2 text-xs hover:bg-muted/30"><span className="flex items-center gap-2"><Trash className="h-3.5 w-3.5" />Delete from Inventory</span></button>
+                                    <div title={rollbackDisabled ? 'Never rotated — no backup available' : undefined}><button disabled={rollbackDisabled} onClick={e => { e.stopPropagation(); setOpenMenuId(null); if (!rollbackDisabled) toast.success(`Rolling back ${key.name} to previous version`); }} className={`flex w-full items-center justify-between px-3 py-2 text-xs ${rollbackDisabled ? 'pointer-events-none cursor-not-allowed opacity-40' : 'hover:bg-muted/30'}`}><span className="flex items-center gap-2"><Undo2 className="h-3.5 w-3.5" />Rollback</span></button></div>
+                                    <div title={revokeDisabled ? 'No endpoints found' : undefined}><button disabled={revokeDisabled} onClick={e => { e.stopPropagation(); setOpenMenuId(null); if (!revokeDisabled) setConfirmAction({ key, action: 'Delete from Endpoints' }); }} className={`flex w-full items-center justify-between px-3 py-2 text-xs text-coral ${revokeDisabled ? 'pointer-events-none cursor-not-allowed opacity-40' : 'hover:bg-muted/30'}`}><span className="flex items-center gap-2"><Trash2 className="h-3.5 w-3.5" />Delete from Endpoints</span></button></div>
+                                    <button onClick={e => { e.stopPropagation(); setOpenMenuId(null); setConfirmAction({ key, action: 'Delete from Inventory' }); }} className="flex w-full items-center justify-between px-3 py-2 text-xs hover:bg-muted/30"><span className="flex items-center gap-2"><Trash className="h-3.5 w-3.5" />Delete from Inventory</span></button>
                                   </div>
                                 </>
                               ) : null}
