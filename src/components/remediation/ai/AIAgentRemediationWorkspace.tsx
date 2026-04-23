@@ -760,6 +760,7 @@ function EosGuardianFloat({
 function AgentSidePanel({ agent, onClose }: { agent: CryptoAsset; onClose: () => void }) {
   const { setCurrentPage, setFilters } = useNav();
   const [showCrsPanel, setShowCrsPanel] = useState(false);
+  const [rightTab, setRightTab] = useState<'graph' | 'credentials'>('graph');
   const score = computeCRS(agent).crs;
   const itAsset = mockITAssets.find(asset => asset.cryptoObjectIds.includes(agent.id));
   const arsScore = itAsset ? arsFor(itAsset).ars : null;
@@ -769,6 +770,7 @@ function AgentSidePanel({ agent, onClose }: { agent: CryptoAsset; onClose: () =>
 
   useEffect(() => {
     setShowCrsPanel(false);
+    setRightTab('graph');
   }, [agent.id]);
 
   return (
@@ -872,48 +874,68 @@ function AgentSidePanel({ agent, onClose }: { agent: CryptoAsset; onClose: () =>
             </div>
           </div>
 
-          <div className="scrollbar-thin overflow-y-auto p-4">
-            <h3 className="text-xs font-semibold text-foreground">Access Graph</h3>
-            <p className="mb-3 text-[10px] text-muted-foreground">Visual audit trail — press Play to replay activity on the graph</p>
-            <WorkspaceAccessGraphTimeline agent={agent} compact />
+          <div className="flex min-h-0 flex-col overflow-hidden">
+            <div className="flex border-b border-border">
+              {[
+                { id: 'graph', label: 'Access Graph' },
+                { id: 'credentials', label: 'Credentials & Services' },
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setRightTab(tab.id as 'graph' | 'credentials')}
+                  className={`border-b-2 px-4 py-3 text-sm font-medium transition-colors ${rightTab === tab.id ? 'border-teal text-teal' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
 
-            <div className="mt-4 border-t border-border pt-4">
-              <h3 className="text-xs font-semibold text-foreground">Agent Credentials</h3>
-              <p className="text-[9px] text-muted-foreground">Cryptographic objects — CRS applies</p>
-              <div className="mt-2 space-y-2">
-                {credentials.map(credential => (
-                  <div key={credential.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2">
-                    <div className="min-w-0 flex items-center gap-2">
-                      <span className="text-sm">🔐</span>
-                      <div className="min-w-0">
-                        <p className="truncate text-[10px] text-foreground">{credential.name}</p>
-                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                          <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[9px] text-foreground">{credential.algorithm}</span>
-                          <span className="text-[9px] text-muted-foreground">{credential.type}</span>
+            {rightTab === 'graph' ? (
+              <div className="min-h-0 flex-1 overflow-hidden">
+                <SidePanelAccessGraphTab agent={agent} />
+              </div>
+            ) : (
+              <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto p-4 space-y-4">
+                <div>
+                  <h3 className="text-xs font-semibold text-foreground">Agent Credentials</h3>
+                  <p className="text-[9px] text-muted-foreground">Cryptographic objects — CRS applies</p>
+                  <div className="mt-2 space-y-2">
+                    {credentials.map(credential => (
+                      <div key={credential.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2">
+                        <div className="min-w-0 flex items-center gap-2">
+                          <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+                          <div className="min-w-0">
+                            <p className="truncate text-[10px] text-foreground">{credential.name}</p>
+                            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                              <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[9px] text-foreground">{credential.algorithm}</span>
+                              <span className="text-[9px] text-muted-foreground">{credential.type}</span>
+                            </div>
+                          </div>
                         </div>
+                        <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-medium ${crsBgCls(credential.crs)}`}>CRS {credential.crs}</span>
                       </div>
-                    </div>
-                    <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-medium ${crsBgCls(credential.crs)}`}>CRS {credential.crs}</span>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
+                </div>
 
-            <div className="mt-3">
-              <h3 className="text-xs font-semibold text-foreground">Connected Services ({services.length})</h3>
-              <div className="mt-2 space-y-1.5">
-                {services.map(service => {
-                  const sensitive = SENSITIVE_SERVICES.some(term => service.includes(term));
-                  return (
-                    <div key={service} className="flex items-center gap-2 text-[10px]">
-                      <span className={`h-2 w-2 rounded-full ${sensitive ? 'bg-coral' : 'bg-primary'}`} />
-                      <span className="text-foreground">{service}</span>
-                      {sensitive && <span className="text-coral">⚠</span>}
-                    </div>
-                  );
-                })}
+                <div>
+                  <h3 className="text-xs font-semibold text-foreground">Connected Services ({services.length})</h3>
+                  <div className="mt-2 space-y-1.5">
+                    {services.map(service => {
+                      const sensitive = SENSITIVE_SERVICES.some(term => service.includes(term));
+                      return (
+                        <div key={service} className="flex items-center gap-2 text-[10px]">
+                          <span className={`h-2 w-2 rounded-full ${sensitive ? 'bg-coral' : 'bg-primary'}`} />
+                          <span className="text-foreground">{service}</span>
+                          {sensitive && <span className="text-coral">⚠</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
