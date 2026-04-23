@@ -12,6 +12,7 @@ import {
   ChevronUp,
   CheckCircle2,
   Minus,
+  MoreVertical,
   Search,
   Send,
   Server,
@@ -363,6 +364,32 @@ function CsrExplanationPanel({ asset }: { asset: CryptoAsset }) {
   );
 }
 
+function WorkspaceAccessGraphTimeline({ agent, compact = false }: { agent: CryptoAsset; compact?: boolean }) {
+  return (
+    <div
+      className="workspace-access-graph"
+      style={{
+        ['--ws-graph-idle-opacity' as string]: 1,
+      }}
+    >
+      <style>{`
+        .workspace-access-graph svg g[opacity="0.6"] {
+          opacity: var(--ws-graph-idle-opacity) !important;
+        }
+
+        .workspace-access-graph svg rect[x="112"][width="256"][height="72"] {
+          display: none;
+        }
+
+        .workspace-access-graph svg rect[x="112"][width="256"][height="72"] ~ text {
+          display: none;
+        }
+      `}</style>
+      <AccessGraphTimeline agent={agent} events={getAgentTimelineEvents(agent)} compact={compact} />
+    </div>
+  );
+}
+
 function EosGuardianFloat({
   wsTab,
   selectedAgent,
@@ -703,46 +730,12 @@ function AgentSidePanel({ agent, onClose }: { agent: CryptoAsset; onClose: () =>
                 </div>
               ))}
             </div>
-
-            <div className="space-y-2">
-              <h3 className="text-xs font-semibold text-foreground">Quick Actions</h3>
-              {[
-                'Rotate Token',
-                'Revoke Access',
-                'Right-size Permissions',
-                'Place behind MCP Gateway',
-                'Create Ticket',
-                'View in Violations',
-              ].map(action => (
-                <button
-                  key={action}
-                  type="button"
-                  onClick={() => {
-                    if (action === 'Create Ticket') {
-                      const ticketId = `TKT-${Math.floor(1000 + Math.random() * 9000)}`;
-                      toast.success(`Ticket ${ticketId} created`);
-                      return;
-                    }
-                    if (action === 'View in Violations') {
-                      setFilters({ type: 'AI Agent Token' });
-                      setCurrentPage('violations');
-                      return;
-                    }
-                    toast.success(`${action} initiated for ${agent.name}`);
-                  }}
-                  className={`flex w-full items-center justify-between rounded-lg border border-border px-3 py-2 text-[10px] ${action === 'Revoke Access' ? 'text-coral' : 'text-foreground'} hover:bg-muted/30`}
-                >
-                  <span>{action}</span>
-                  <span className="text-muted-foreground">→</span>
-                </button>
-              ))}
-            </div>
           </div>
 
           <div className="scrollbar-thin overflow-y-auto p-4">
             <h3 className="text-xs font-semibold text-foreground">Access Graph</h3>
             <p className="mb-3 text-[10px] text-muted-foreground">Visual audit trail — press Play to replay activity on the graph</p>
-            <AccessGraphTimeline agent={agent} events={getAgentTimelineEvents(agent)} compact />
+            <WorkspaceAccessGraphTimeline agent={agent} compact />
 
             <div className="mt-4 border-t border-border pt-4">
               <h3 className="text-xs font-semibold text-foreground">Agent Credentials</h3>
