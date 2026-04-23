@@ -110,7 +110,7 @@ export default function EnterpriseRiskScore() {
               >
                 <span className="text-[11px] font-mono text-foreground truncate">{a.name}</span>
                 <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded border ${BI_COLOR[a.bi]}`}>{a.bi}</span>
-                <span className="text-[10.5px] font-bold tabular-nums" style={{ color: arsHsl }}>ARS {a.ars}</span>
+                <span className="text-[10.5px] font-bold tabular-nums" style={{ color: arsHsl }}>{a.ars}</span>
                 <ArrowRight className="w-2.5 h-2.5 text-teal" />
               </button>
             );
@@ -132,7 +132,7 @@ export default function EnterpriseRiskScore() {
         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
           <Info className="w-3 h-3" />
           <span>
-            ERS = criticality-weighted average of asset risk (ARS) across {ers.topAssets.length}+ assets.
+            ERS = criticality-weighted average of asset risk score across {ers.topAssets.length}+ assets.
             {' '}Floor rule: ≥85% of highest Critical-prod ARS.
           </span>
         </div>
