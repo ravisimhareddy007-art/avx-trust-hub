@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import CLMRemediationWorkspace from '@/components/remediation/clm/CLMRemediationWorkspace';
 import AIAgentRemediationWorkspace from '@/components/remediation/ai/AIAgentRemediationWorkspace';
+import SSHRemediationWorkspace from '@/components/remediation/ssh/SSHRemediationWorkspace';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -612,7 +613,7 @@ export default function RemediationPage() {
     <div className="flex-1 overflow-auto">
       {currentPage === 'remediation-objects' && <ModuleRemediationView moduleId="all" filters={filters} />}
       {currentPage === 'remediation-clm' && <CLMRemediationWorkspace activeTab={clmView} onTabChange={setClmView} />}
-      {currentPage === 'remediation-ssh' && <ModuleRemediationView moduleId="ssh" filters={filters} />}
+      {currentPage === 'remediation-ssh' && <SSHRemediationWorkspace />}
       {currentPage === 'remediation-ai' && <AIAgentRemediationWorkspace />}
       {currentPage === 'remediation-secrets' && <ModuleRemediationView moduleId="secrets" filters={filters} />}
     </div>

@@ -298,7 +298,7 @@ function SSHKpiStrip({ counts, onFilter }: { counts: Record<SSHRisk, number>; on
   );
 }
 
-function SSHKeyDetailPanel({ key: asset, onClose, onAction }: { key: SSHWorkspaceAsset; onClose: () => void; onAction: (action: string, key: SSHWorkspaceAsset) => void }) {
+function SSHKeyDetailPanel({ asset, onClose, onAction }: { asset: SSHWorkspaceAsset; onClose: () => void; onAction: (action: string, key: SSHWorkspaceAsset) => void }) {
   const [tab, setTab] = useState<DetailTab>('details');
   const crs = computeCRS(asset).crs;
   const risks = asset.sshRiskStatus || [];
@@ -1235,8 +1235,8 @@ export default function SSHRemediationWorkspace() {
       {panelOpen && selectedKey ? (
         <SSHKeyDetailPanel
           key={selectedKey.id}
+          asset={selectedKey}
           onClose={() => { setPanelOpen(false); setSelectedKey(null); }}
-          key={selectedKey}
           onAction={(action, key) => {
             if (action === 'Revoke' || action === 'Delete from Endpoints' || action === 'Delete from Inventory') {
               setConfirmAction({ key, action });
