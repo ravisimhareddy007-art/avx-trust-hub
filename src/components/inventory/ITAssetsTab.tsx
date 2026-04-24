@@ -8,7 +8,7 @@ import { useNav } from '@/context/NavigationContext';
 import { arsFor } from '@/lib/risk/ars';
 import { computeRPS } from '@/lib/risk/rps';
 import { StatusBadge, EnvBadge, DaysToExpiry, SeverityBadge } from '@/components/shared/UIComponents';
-import { Search, Server, Database, Globe, Shield, ShieldOff, ChevronDown, ChevronRight, MoreVertical, X, Ticket, RefreshCw, XCircle, RotateCcw, User, Plus, FileEdit, ArrowUpDown, AlertTriangle } from 'lucide-react';
+import { Search, Server, Database, Globe, Shield, ShieldOff, ChevronDown, ChevronRight, MoreVertical, X, Ticket, RefreshCw, XCircle, RotateCcw, User, Plus, FileEdit, ArrowUpDown, AlertTriangle, Maximize2 } from 'lucide-react';
 import { toast } from 'sonner';
 import BlastRadiusTopology from './BlastRadiusTopology';
 import BusinessImpactEditor from '@/components/risk/BusinessImpactEditor';
