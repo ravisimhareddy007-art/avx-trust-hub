@@ -9,6 +9,7 @@ import { Search, ChevronDown, ChevronRight, MoreVertical, X, Shield, ShieldOff, 
 import { toast } from 'sonner';
 import DeployToDeviceModal from '@/components/integrations/DeployToDeviceModal';
 import AgentDetailPanel from '@/components/inventory/AgentDetailPanel';
+import CryptoObjectRiskDrawer from '@/components/risk/CryptoObjectRiskDrawer';
 
 interface Props {
   onCreateTicket: (ctx: any) => void;
