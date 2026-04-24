@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNav } from '@/context/NavigationContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { toast } from 'sonner';
-import { Download, Sparkles, Bot, ArrowRight } from 'lucide-react';
+import { Download, Upload, Sparkles, Bot, ArrowRight } from 'lucide-react';
 
 const stages = ['Discover', 'Assess', 'Plan', 'Migrate', 'Monitor'];
 const algoBreakdown = [
