@@ -8,7 +8,18 @@ import { useNav } from '@/context/NavigationContext';
 import { arsFor } from '@/lib/risk/ars';
 import { computeRPS } from '@/lib/risk/rps';
 import { StatusBadge, EnvBadge, DaysToExpiry, SeverityBadge } from '@/components/shared/UIComponents';
-import { Search, Server, Database, Globe, Shield, ShieldOff, ChevronDown, ChevronRight, MoreVertical, X, Ticket, RefreshCw, XCircle, RotateCcw, User, Plus, FileEdit, ArrowUpDown, AlertTriangle, Maximize2 } from 'lucide-react';
+import { Search, Server, Database, Globe, Shield, ShieldOff, ChevronDown, ChevronRight, MoreVertical, X, Ticket, RefreshCw, XCircle, RotateCcw, User, Plus, FileEdit, ArrowUpDown, AlertTriangle, Maximize2, FileBadge, KeyRound, Lock, Bot } from 'lucide-react';
+
+// Object type → icon + short label, for compact rendering in tables/lists
+function objectTypeMeta(type: string): { Icon: React.ComponentType<{ className?: string }>; label: string; color: string } {
+  if (type === 'TLS Certificate' || type === 'Code-Signing Certificate' || type === 'K8s Workload Cert' || type === 'SSH Certificate') {
+    return { Icon: FileBadge, label: type === 'TLS Certificate' ? 'TLS Cert' : type === 'Code-Signing Certificate' ? 'CS Cert' : type === 'K8s Workload Cert' ? 'K8s Cert' : 'SSH Cert', color: 'text-blue-400' };
+  }
+  if (type === 'SSH Key') return { Icon: KeyRound, label: 'SSH Key', color: 'text-teal' };
+  if (type === 'AI Agent Token') return { Icon: Bot, label: 'AI Agent', color: 'text-purple-light' };
+  if (type === 'Encryption Key' || type === 'API Key / Secret') return { Icon: Lock, label: type === 'Encryption Key' ? 'Enc Key' : 'Secret', color: 'text-amber' };
+  return { Icon: Lock, label: type, color: 'text-muted-foreground' };
+}
 import { toast } from 'sonner';
 import BlastRadiusTopology from './BlastRadiusTopology';
 import BusinessImpactEditor from '@/components/risk/BusinessImpactEditor';
