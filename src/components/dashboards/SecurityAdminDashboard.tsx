@@ -75,6 +75,165 @@ export default function SecurityAdminDashboard() {
           </div>
         </div>
 
+        {/* Getting Started strip */}
+        {showStrip && (
+          <div className="mb-4 rounded-xl border border-border bg-card/50 p-4 flex-shrink-0">
+            {/* Strip header */}
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <span className="text-xs font-semibold text-foreground">Getting Started</span>
+                <span className="text-[11px] text-muted-foreground ml-2">
+                  — complete these steps to unlock full platform value
+                </span>
+              </div>
+              <button
+                onClick={dismissAll}
+                className="text-[10px] text-muted-foreground hover:text-foreground"
+              >
+                Dismiss all
+              </button>
+            </div>
+
+            {/* 3 tiles */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {/* Tile 1 — Integrations */}
+              {!dismissed.includes('integrations') && (
+                <div className="relative rounded-lg border border-border bg-background p-3.5 flex flex-col">
+                  <button
+                    onClick={() => dismiss('integrations')}
+                    className="absolute top-2.5 right-2.5 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <span className="w-4 h-4 rounded-full bg-teal/15 text-teal text-[9px] font-bold flex items-center justify-center">1</span>
+                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Step 1</span>
+                  </div>
+                  <div className="flex items-start gap-2.5 mb-3 flex-1">
+                    <div className="w-8 h-8 rounded-lg bg-teal/10 flex items-center justify-center flex-shrink-0">
+                      <Plug className="w-4 h-4 text-teal" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-foreground mb-1">
+                        Connect your environment
+                      </div>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        Connect your CAs, vaults, cloud accounts, and ITSM tools so the platform can find and govern your cryptographic assets.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 mt-auto">
+                    <button
+                      onClick={() => setCurrentPage('core-services')}
+                      className="flex items-center gap-1 text-[10px] font-medium text-white bg-teal px-3 py-1.5 rounded-lg hover:bg-teal/90 transition-colors"
+                    >
+                      Go to Integrations
+                      <ChevronRight className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={() => setHelpPanel('integrations')}
+                      className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
+                    >
+                      <BookOpen className="w-3 h-3" />
+                      How it works
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Tile 2 — Discovery */}
+              {!dismissed.includes('discovery') && (
+                <div className="relative rounded-lg border border-border bg-background p-3.5 flex flex-col">
+                  <button
+                    onClick={() => dismiss('discovery')}
+                    className="absolute top-2.5 right-2.5 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <span className="w-4 h-4 rounded-full bg-teal/15 text-teal text-[9px] font-bold flex items-center justify-center">2</span>
+                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Step 2</span>
+                  </div>
+                  <div className="flex items-start gap-2.5 mb-3 flex-1">
+                    <div className="w-8 h-8 rounded-lg bg-teal/10 flex items-center justify-center flex-shrink-0">
+                      <ScanSearch className="w-4 h-4 text-teal" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-foreground mb-1">
+                        Run your first discovery scan
+                      </div>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        Scan your network, SSH hosts, vaults, and cloud accounts to build a complete inventory of every cryptographic asset you own.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 mt-auto">
+                    <button
+                      onClick={() => setCurrentPage('discovery')}
+                      className="flex items-center gap-1 text-[10px] font-medium text-white bg-teal px-3 py-1.5 rounded-lg hover:bg-teal/90 transition-colors"
+                    >
+                      Start Discovery
+                      <ChevronRight className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={() => setHelpPanel('discovery')}
+                      className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
+                    >
+                      <BookOpen className="w-3 h-3" />
+                      How it works
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Tile 3 — Policy */}
+              {!dismissed.includes('policy') && (
+                <div className="relative rounded-lg border border-border bg-background p-3.5 flex flex-col">
+                  <button
+                    onClick={() => dismiss('policy')}
+                    className="absolute top-2.5 right-2.5 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <span className="w-4 h-4 rounded-full bg-teal/15 text-teal text-[9px] font-bold flex items-center justify-center">3</span>
+                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Step 3</span>
+                  </div>
+                  <div className="flex items-start gap-2.5 mb-3 flex-1">
+                    <div className="w-8 h-8 rounded-lg bg-teal/10 flex items-center justify-center flex-shrink-0">
+                      <Shield className="w-4 h-4 text-teal" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-foreground mb-1">
+                        Set your first policy
+                      </div>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        Define what good looks like — rotation schedules, algorithm standards, expiry thresholds. Describe it in plain English and AI fills the rest.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 mt-auto">
+                    <button
+                      onClick={() => setCurrentPage('policy-builder')}
+                      className="flex items-center gap-1 text-[10px] font-medium text-white bg-teal px-3 py-1.5 rounded-lg hover:bg-teal/90 transition-colors"
+                    >
+                      Create a Policy
+                      <ChevronRight className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={() => setHelpPanel('policy')}
+                      className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
+                    >
+                      <BookOpen className="w-3 h-3" />
+                      How it works
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Tab bar */}
         <div className="flex items-center border-b border-border flex-shrink-0">
           {TABS.map(t => (
