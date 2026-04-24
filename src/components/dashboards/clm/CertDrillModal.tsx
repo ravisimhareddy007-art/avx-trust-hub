@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Clock,
   Download,
+  Upload,
   Layers,
   MessageSquare,
   MoreVertical,
