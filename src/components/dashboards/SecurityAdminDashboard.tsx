@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RefreshCw, LayoutDashboard, Wrench, Zap, AlertTriangle, X, CheckCircle2, Plug, ScanSearch, Shield, ChevronRight, BookOpen } from 'lucide-react';
 import { useNotifications } from '@/context/NotificationContext';
 import { useNav } from '@/context/NavigationContext';
@@ -30,23 +30,17 @@ export default function SecurityAdminDashboard() {
   const escalations = notifications.filter(n => n.toPersona === 'security-admin');
   const unreadEscalations = escalations.filter(n => !n.read);
 
-  // Onboarding strip state — persists in localStorage
-  const [dismissed, setDismissed] = useState<string[]>(() => {
-    try {
-      return JSON.parse(localStorage.getItem('avx-onboarding-dismissed') || '[]');
-    } catch { return []; }
-  });
+  // Onboarding strip — dismissals are session-only so prototype always shows
+  // Steps 1/2/3 on refresh. Clear any legacy persisted state too.
+  useEffect(() => { try { localStorage.removeItem('avx-onboarding-dismissed'); } catch {} }, []);
+  const [dismissed, setDismissed] = useState<string[]>([]);
 
   const dismiss = (id: string) => {
-    const next = [...dismissed, id];
-    setDismissed(next);
-    localStorage.setItem('avx-onboarding-dismissed', JSON.stringify(next));
+    setDismissed(prev => [...prev, id]);
   };
 
   const dismissAll = () => {
-    const all = ['integrations', 'discovery', 'policy'];
-    setDismissed(all);
-    localStorage.setItem('avx-onboarding-dismissed', JSON.stringify(all));
+    setDismissed(['integrations', 'discovery', 'policy']);
   };
 
   const showStrip = !['integrations', 'discovery', 'policy'].every(id => dismissed.includes(id));
