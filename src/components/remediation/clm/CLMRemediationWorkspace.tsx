@@ -806,13 +806,11 @@ export default function CLMRemediationWorkspace(_: Props) {
   };
 
   const launchIssueNewCertificate = () => {
-    onTabChange('actions');
     setEnrollOpen(true);
   };
 
   const launchPushToDevice = (row?: ClmIssueRow) => {
     if (row) setPushSeedRow(row);
-    onTabChange('actions');
     setPushOpen(true);
   };
 
