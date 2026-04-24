@@ -62,10 +62,51 @@ const personaOptions: { value: Persona; label: string }[] = [
 export default function AppSidebar() {
   const { persona, setPersona } = usePersona();
   const { currentPage, setCurrentPage, setFilters } = useNav();
+
+  const navItems: NavItem[] = [
+    { id: 'dashboard', label: 'DASHBOARD', icon: LayoutDashboard, page: 'dashboards' },
+    { id: 'discovery', label: 'DISCOVERY', icon: Search, page: 'discovery' },
+    { id: 'inventory', label: 'INVENTORY', icon: Package, page: 'inventory' },
+    {
+      id: 'policy-builder',
+      label: 'POLICIES',
+      icon: ScrollText,
+      page: 'policy-builder',
+      children: persona === 'compliance-officer' ? [
+        { id: 'violations', label: 'Violations', page: 'violations' },
+      ] : undefined,
+    },
+    {
+      id: 'remediation',
+      label: 'REMEDIATION',
+      icon: Wrench,
+      page: 'remediation-clm',
+      children: [
+        { id: 'remediation-clm', label: 'Certificates (CLM)', page: 'remediation-clm', count: 40 },
+        { id: 'remediation-ssh', label: 'SSH Keys & Certs', page: 'remediation-ssh', count: 7 },
+        { id: 'remediation-ai', label: 'AI Agent Tokens', page: 'remediation-ai', count: 7 },
+        { id: 'remediation-secrets', label: 'API Keys & Secrets', page: 'remediation-secrets', count: 3, icon: Lock },
+      ],
+    },
+    { id: 'tickets', label: 'TICKETS', icon: Ticket, page: 'tickets' },
+    {
+      id: 'integrations',
+      label: 'INTEGRATIONS',
+      icon: Link2,
+      page: 'integrations-sources',
+      children: [
+        { id: 'integrations-sources', label: 'Sources', page: 'integrations-sources' },
+        { id: 'integrations-managed', label: 'Managed Systems', page: 'integrations-targets' },
+      ],
+    },
+    { id: 'core-services', label: 'PLATFORM CORE', icon: Cog, page: 'core-services' },
+  ];
+
   const [expandedGroups, setExpandedGroups] = useState<string[]>([
     'inventory-section',
     'integrations',
     ...(remediationPages.includes(currentPage) ? ['remediation'] : []),
+    ...(policyPages.includes(currentPage) ? ['policy-builder'] : []),
   ]);
   const [personaOpen, setPersonaOpen] = useState(false);
 
