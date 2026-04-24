@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RefreshCw, LayoutDashboard, Wrench, Zap, AlertTriangle, X, CheckCircle2, Plug, ScanSearch, Shield, ChevronRight, BookOpen } from 'lucide-react';
 import { useNotifications } from '@/context/NotificationContext';
 import { useNav } from '@/context/NavigationContext';
