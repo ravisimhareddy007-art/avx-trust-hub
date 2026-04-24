@@ -242,13 +242,35 @@ const actionBadgeClass = (action: PolicyActionType) => {
 };
 
 const deriveCRS = (row: ClmIssueRow) => {
-  let score = 92;
-  if (row.asset.daysToExpiry <= 7) score -= 18;
-  if (row.asset.status === 'Expired') score -= 22;
-  if (row.asset.algorithm.includes('1024')) score -= 20;
-  if (row.asset.policyViolations > 0) score -= row.asset.policyViolations * 3;
-  if (row.asset.pqcRisk === 'Critical') score -= 10;
-  return Math.max(35, score);
+  // Per-row jitter (0–9) so two rows in the same severity band don't show identical scores.
+  const jitter = Array.from(row.asset.id).reduce((s, c) => s + c.charCodeAt(0), 0) % 10;
+
+  let score = 20; // healthy baseline
+  if (row.asset.status === 'Expired' || row.asset.daysToExpiry < 0) score += 60;
+  else if (row.asset.daysToExpiry === 0) score += 58;
+  else if (row.asset.daysToExpiry <= 2) score += 55;
+  else if (row.asset.daysToExpiry <= 7) score += 45;
+  else if (row.asset.daysToExpiry <= 30) score += 25;
+
+  if (row.asset.algorithm.includes('1024')) score += 18;
+  else if (row.asset.algorithm.includes('SHA-1')) score += 18;
+  else if (row.asset.algorithm.includes('2048')) score += 6;
+
+  if (row.asset.pqcRisk === 'Critical') score += 6;
+  if (row.asset.policyViolations > 0) score += Math.min(8, row.asset.policyViolations * 3);
+  if (/unassigned|unknown|none|n\/a/i.test(row.owner)) score += 5;
+
+  // Severity-aware floors so the CRS column matches the Severity badge a CISO sees.
+  if (row.severity === 'Critical') score = Math.max(80, score);
+  else if (row.severity === 'High')  score = Math.max(60, score);
+
+  // Apply jitter, then clamp.
+  score += jitter - 4; // -4..+5
+  if (row.severity === 'Critical') score = Math.min(95, Math.max(80, score));
+  else if (row.severity === 'High') score = Math.min(78, Math.max(60, score));
+  else score = Math.min(58, Math.max(20, score));
+
+  return Math.round(score);
 };
 
 const getSans = (asset: ClmIssueRow['asset']) => {
