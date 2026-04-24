@@ -67,14 +67,14 @@ export default function TicketManagementPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold flex items-center gap-2"><Ticket className="w-5 h-5 text-teal" /> Ticket Management</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">Bi-directional ticket tracking across ServiceNow, Jira, and PagerDuty</p>
+          <h1 className="text-xl font-semibold flex items-center gap-2"><Ticket className="w-5 h-5 text-teal" /> Ticket Management</h1>
+          <p className="text-[11px] text-muted-foreground mt-0.5">Bi-directional ticket tracking across ServiceNow, Jira, and PagerDuty</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => toast.info('Syncing with external systems...')} className="flex items-center gap-1 px-3 py-1.5 text-xs border border-border rounded-lg hover:bg-secondary">
+          <button onClick={() => toast.info('Syncing with external systems...')} className="flex items-center gap-1 px-3 py-1.5 text-[11px] border border-border rounded-lg hover:bg-secondary">
             <RefreshCw className="w-3.5 h-3.5" /> Sync Now
           </button>
-          <button onClick={() => toast.info('Create ticket form...')} className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-teal text-primary-foreground rounded-lg hover:bg-teal-light">
+          <button onClick={() => toast.info('Create ticket form...')} className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-medium bg-teal text-primary-foreground rounded-lg hover:bg-teal-light">
             <Plus className="w-3.5 h-3.5" /> New Ticket
           </button>
         </div>
@@ -92,7 +92,7 @@ export default function TicketManagementPage() {
           <button key={s.label} onClick={() => setStatusFilter(statusFilter === s.label ? 'all' : s.label)}
             className={`bg-card rounded-lg border p-3 text-center hover:bg-secondary/30 transition-colors ${statusFilter === s.label ? 'border-teal' : 'border-border'}`}>
             <p className={`text-2xl font-bold ${s.color}`}>{s.count}</p>
-            <p className="text-[10px] text-muted-foreground">{s.label}</p>
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{s.label}</p>
           </button>
         ))}
       </div>
@@ -102,9 +102,9 @@ export default function TicketManagementPage() {
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
           <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search tickets..."
-            className="w-full pl-7 pr-3 py-1.5 bg-muted border border-border rounded text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal" />
+            className="w-full pl-7 pr-3 py-1.5 bg-muted border border-border rounded text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal" />
         </div>
-        <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="px-3 py-1.5 bg-muted border border-border rounded text-xs text-foreground">
+        <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="px-3 py-1.5 bg-muted border border-border rounded text-[11px] text-foreground">
           <option value="all">All Types</option>
           <option>License Request</option><option>Remediation</option><option>Provisioning</option>
           <option>Incident</option><option>Change Request</option>
@@ -113,35 +113,35 @@ export default function TicketManagementPage() {
 
       {/* Table */}
       <div className="bg-card rounded-lg border border-border overflow-hidden">
-        <table className="w-full text-xs">
+        <table className="w-full text-[11px]">
           <thead className="bg-secondary/50">
             <tr className="border-b border-border">
               {['Ticket ID', 'Summary', 'Type', 'Priority', 'Status', 'Module', 'Assignee', 'External', 'Assets', 'Updated'].map(h => (
-                <th key={h} className="text-left py-2.5 px-3 font-medium text-muted-foreground">{h}</th>
+                <th key={h} className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wide text-muted-foreground font-medium">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {filtered.map(ticket => (
               <tr key={ticket.id} className="border-b border-border hover:bg-secondary/30 cursor-pointer" onClick={() => setSelectedTicket(ticket)}>
-                <td className="py-2 px-3 font-mono text-[10px] text-teal">{ticket.id}</td>
-                <td className="py-2 px-3 font-medium text-foreground max-w-[250px] truncate">{ticket.summary}</td>
-                <td className="py-2 px-3 text-muted-foreground">{ticket.type}</td>
-                <td className="py-2 px-3"><SeverityBadge severity={ticket.priority} /></td>
-                <td className="py-2 px-3">
+                <td className="py-2.5 px-3 font-mono text-[10px] text-teal">{ticket.id}</td>
+                <td className="py-2.5 px-3 font-medium text-foreground max-w-[250px] truncate">{ticket.summary}</td>
+                <td className="py-2.5 px-3 text-muted-foreground">{ticket.type}</td>
+                <td className="py-2.5 px-3"><SeverityBadge severity={ticket.priority} /></td>
+                <td className="py-2.5 px-3">
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${statusColors[ticket.status]}`}>{ticket.status}</span>
                 </td>
-                <td className="py-2 px-3 text-muted-foreground">{ticket.module}</td>
-                <td className="py-2 px-3 text-muted-foreground">{ticket.assignee}</td>
-                <td className="py-2 px-3">
+                <td className="py-2.5 px-3 text-muted-foreground">{ticket.module}</td>
+                <td className="py-2.5 px-3 text-muted-foreground">{ticket.assignee}</td>
+                <td className="py-2.5 px-3">
                   {ticket.externalId ? (
-                    <span className="inline-flex items-center gap-1 text-[10px] text-teal">
+                    <span className="inline-flex items-center gap-1 text-[11px] text-teal">
                       <ExternalLink className="w-3 h-3" /> {ticket.externalSystem} #{ticket.externalId}
                     </span>
                   ) : <span className="text-muted-foreground">—</span>}
                 </td>
-                <td className="py-2 px-3 text-muted-foreground">{ticket.linkedAssets}</td>
-                <td className="py-2 px-3 text-muted-foreground">{ticket.updated}</td>
+                <td className="py-2.5 px-3 text-muted-foreground">{ticket.linkedAssets}</td>
+                <td className="py-2.5 px-3 text-muted-foreground">{ticket.updated}</td>
               </tr>
             ))}
           </tbody>
@@ -153,29 +153,29 @@ export default function TicketManagementPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80">
           <div className="bg-card border border-border rounded-lg shadow-xl max-w-lg w-full mx-4 p-6 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold">{selectedTicket.id} — {selectedTicket.summary}</h3>
+              <h3 className="text-sm font-semibold">{selectedTicket.id} — {selectedTicket.summary}</h3>
               <button onClick={() => setSelectedTicket(null)} className="text-muted-foreground hover:text-foreground text-lg">×</button>
             </div>
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div><p className="text-muted-foreground">Type</p><p className="font-medium">{selectedTicket.type}</p></div>
-              <div><p className="text-muted-foreground">Priority</p><SeverityBadge severity={selectedTicket.priority} /></div>
-              <div><p className="text-muted-foreground">Status</p><span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${statusColors[selectedTicket.status]}`}>{selectedTicket.status}</span></div>
-              <div><p className="text-muted-foreground">Assignee</p><p className="font-medium">{selectedTicket.assignee}</p></div>
-              <div><p className="text-muted-foreground">Reporter</p><p className="font-medium">{selectedTicket.reporter}</p></div>
-              <div><p className="text-muted-foreground">Module</p><p className="font-medium">{selectedTicket.module}</p></div>
-              <div><p className="text-muted-foreground">Created</p><p className="font-medium">{selectedTicket.created}</p></div>
-              <div><p className="text-muted-foreground">Updated</p><p className="font-medium">{selectedTicket.updated}</p></div>
+            <div className="grid grid-cols-2 gap-3 text-[11px]">
+              <div><p className="text-[10px] text-muted-foreground">Type</p><p className="font-medium">{selectedTicket.type}</p></div>
+              <div><p className="text-[10px] text-muted-foreground">Priority</p><SeverityBadge severity={selectedTicket.priority} /></div>
+              <div><p className="text-[10px] text-muted-foreground">Status</p><span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${statusColors[selectedTicket.status]}`}>{selectedTicket.status}</span></div>
+              <div><p className="text-[10px] text-muted-foreground">Assignee</p><p className="font-medium">{selectedTicket.assignee}</p></div>
+              <div><p className="text-[10px] text-muted-foreground">Reporter</p><p className="font-medium">{selectedTicket.reporter}</p></div>
+              <div><p className="text-[10px] text-muted-foreground">Module</p><p className="font-medium">{selectedTicket.module}</p></div>
+              <div><p className="text-[10px] text-muted-foreground">Created</p><p className="font-medium">{selectedTicket.created}</p></div>
+              <div><p className="text-[10px] text-muted-foreground">Updated</p><p className="font-medium">{selectedTicket.updated}</p></div>
             </div>
             {selectedTicket.externalId && (
-              <div className="bg-secondary/30 rounded-lg p-3 text-xs">
+              <div className="bg-secondary/30 rounded-lg p-3 text-[11px]">
                 <p className="font-medium mb-1 flex items-center gap-1"><ExternalLink className="w-3 h-3 text-teal" /> External Link</p>
                 <p className="text-muted-foreground">{selectedTicket.externalSystem} — <span className="text-teal font-mono">{selectedTicket.externalId}</span></p>
                 <p className="text-[10px] text-muted-foreground mt-1">Bi-directional sync active. Status changes propagate automatically.</p>
               </div>
             )}
             <div className="flex gap-2">
-              <button onClick={() => { toast.success('Status updated'); setSelectedTicket(null); }} className="px-3 py-1.5 text-xs bg-teal text-primary-foreground rounded-lg hover:bg-teal-light">Update Status</button>
-              <button onClick={() => toast.info('Adding comment...')} className="flex items-center gap-1 px-3 py-1.5 text-xs border border-border rounded-lg hover:bg-secondary">
+              <button onClick={() => { toast.success('Status updated'); setSelectedTicket(null); }} className="px-3 py-1.5 text-[11px] bg-teal text-primary-foreground rounded-lg hover:bg-teal-light">Update Status</button>
+              <button onClick={() => toast.info('Adding comment...')} className="flex items-center gap-1 px-3 py-1.5 text-[11px] border border-border rounded-lg hover:bg-secondary">
                 <MessageSquare className="w-3 h-3" /> Add Comment
               </button>
             </div>
