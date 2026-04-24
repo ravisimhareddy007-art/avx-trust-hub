@@ -13,6 +13,7 @@ import {
   Bell,
   GitBranch,
   Server,
+  CheckCircle2,
 } from 'lucide-react';
 
 const INTEGRATIONS: {
@@ -377,6 +378,7 @@ export default function IntegrationsPage() {
       i.description.toLowerCase().includes(search.toLowerCase()),
   );
 
+  const ecosystemItems = filtered.filter(i => !connections[i.id]);
   const connectedItems = filtered.filter(i => connections[i.id]);
   const totalConnected = INTEGRATIONS.filter(i => connections[i.id]).length;
 
@@ -436,6 +438,9 @@ export default function IntegrationsPage() {
           }`}
         >
           Ecosystem
+          <span className="bg-muted text-muted-foreground text-[9px] px-1.5 py-0.5 rounded-full ml-2">
+            {ecosystemItems.length} available
+          </span>
         </button>
         <button
           onClick={() => setItab('connected')}
@@ -455,12 +460,21 @@ export default function IntegrationsPage() {
       {/* Ecosystem Tab */}
       {itab === 'ecosystem' && (
         <div className="overflow-y-auto flex-1 space-y-8">
-          {CATEGORIES.map(cat => {
-            const items = filtered.filter(i => i.category === cat);
-            if (items.length === 0) return null;
-            return (
-              <div key={cat}>
-                {renderCategoryHeader(cat, items)}
+          {ecosystemItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-64 gap-2">
+              <CheckCircle2 className="text-teal w-8 h-8" />
+              <div className="text-sm text-foreground">All integrations connected</div>
+              <div className="text-xs text-muted-foreground text-center max-w-sm">
+                Your environment is fully integrated. Manage connections in the Connected tab.
+              </div>
+            </div>
+          ) : (
+            CATEGORIES.map(cat => {
+              const items = ecosystemItems.filter(i => i.category === cat);
+              if (items.length === 0) return null;
+              return (
+                <div key={cat}>
+                  {renderCategoryHeader(cat, items)}
                 <div className="grid grid-cols-4 gap-3">
                   {items.map(i => {
                     const isConnected = connections[i.id];
@@ -509,7 +523,8 @@ export default function IntegrationsPage() {
                 </div>
               </div>
             );
-          })}
+          })
+          )}
         </div>
       )}
 
