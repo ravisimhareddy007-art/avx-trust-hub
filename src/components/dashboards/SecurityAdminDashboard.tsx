@@ -31,7 +31,8 @@ export default function SecurityAdminDashboard() {
   const unreadEscalations = escalations.filter(n => !n.read);
 
   // Onboarding strip — dismissals are session-only so prototype always shows
-  // Steps 1/2/3 on refresh.
+  // Steps 1/2/3 on refresh. Clear any legacy persisted state too.
+  useEffect(() => { try { localStorage.removeItem('avx-onboarding-dismissed'); } catch {} }, []);
   const [dismissed, setDismissed] = useState<string[]>([]);
 
   const dismiss = (id: string) => {
