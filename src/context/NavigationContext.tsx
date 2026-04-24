@@ -20,6 +20,8 @@ export const remediationPages: Page[] = [
   'work-order-status',
 ];
 
+export const policyPages: Page[] = ['policy-builder', 'violations'];
+
 interface NavigationContextType {
   currentPage: Page;
   setCurrentPage: (page: Page) => void;
