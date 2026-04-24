@@ -452,7 +452,7 @@ export default function SecurityAdminDashboard() {
                 onClick={() => {
                   const target = helpPanel;
                   setHelpPanel(null);
-                  if (target === 'integrations') setCurrentPage('core-services');
+                  if (target === 'integrations') setCurrentPage('integrations-sources');
                   if (target === 'discovery') setCurrentPage('discovery');
                   if (target === 'policy') setCurrentPage('policy-builder');
                 }}
