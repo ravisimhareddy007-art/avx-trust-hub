@@ -563,6 +563,8 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                   );
                 })()}
               </div>
+
+              {/* Column 3 — Blast Radius */}
               <div className="border-l border-border p-4 overflow-y-auto scrollbar-thin">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-xs font-semibold text-foreground">Blast Radius</p>
