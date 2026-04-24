@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { usePersona, Persona } from '@/context/PersonaContext';
 import { remediationPages, policyPages, useNav } from '@/context/NavigationContext';
 import {
-  LayoutDashboard, Search, Package, Shield, AlertTriangle,
+  LayoutDashboard, Search, Package,
   ChevronDown, ChevronRight, Users,
   Link2, Lock, ScrollText, Cog, Wrench, Ticket
 } from 'lucide-react';
