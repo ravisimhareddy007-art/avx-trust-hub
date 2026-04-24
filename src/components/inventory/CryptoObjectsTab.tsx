@@ -467,7 +467,13 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                     <>
                       <div className="flex flex-col items-center gap-1.5">
                         <RiskGauge score={aggregate} size={100} />
-                        <ExplainScore score={aggregate} risk={risk} weights={weights} asset={detailAsset} />
+                        <button
+                          onClick={() => setRiskDrawerObject(detailAsset)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-border text-[10px] text-muted-foreground hover:text-foreground hover:border-teal/40 transition-colors"
+                        >
+                          <Info className="w-3 h-3 text-teal" />
+                          Why this score?
+                        </button>
                       </div>
                       <div className="space-y-3">
                         <RiskBar label="Algorithm vulnerability" score={risk.algScore} driver={risk.algScore > 60 ? `${detailAsset.algorithm} is quantum-vulnerable` : 'Algorithm meets minimum standards'} />
