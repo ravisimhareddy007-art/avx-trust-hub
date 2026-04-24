@@ -124,7 +124,7 @@ export default function SecurityAdminDashboard() {
                   </div>
                   <div className="flex items-center gap-2 mt-auto">
                     <button
-                      onClick={() => setCurrentPage('core-services')}
+                      onClick={() => setCurrentPage('integrations-sources')}
                       className="flex items-center gap-1 text-[10px] font-medium text-white bg-teal px-3 py-1.5 rounded-lg hover:bg-teal/90 transition-colors"
                     >
                       Go to Integrations
