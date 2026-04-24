@@ -13,6 +13,7 @@ import {
   Bell,
   GitBranch,
   Server,
+  CheckCircle2,
 } from 'lucide-react';
 
 const INTEGRATIONS: {
