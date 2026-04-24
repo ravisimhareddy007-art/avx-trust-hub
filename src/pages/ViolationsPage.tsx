@@ -357,6 +357,23 @@ export default function ViolationsPage() {
 
   const activeStatus = activeViolation ? getStatus(activeViolation) : null;
 
+  if (persona !== 'compliance-officer') {
+    return (
+      <div className="h-full flex items-center justify-center p-8">
+        <div className="max-w-md text-center border border-border rounded-xl p-8 bg-card">
+          <Shield className="w-10 h-10 text-amber mx-auto mb-3" />
+          <h2 className="text-sm font-semibold text-foreground mb-2">
+            Access Restricted
+          </h2>
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            The Violations module is only available to Compliance Officers.
+            Switch persona from the sidebar to access this view.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full flex flex-col relative">
       <div className="px-5 pt-4 pb-3">
