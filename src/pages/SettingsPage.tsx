@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { users, auditLog } from '@/data/mockData';
 import { StatusBadge } from '@/components/shared/UIComponents';
 import { toast } from 'sonner';
-import { Plus, Download, Search } from 'lucide-react';
+import { Plus, Download, Upload, Search } from 'lucide-react';
 
 export default function SettingsPage({ initialTab = 'users' }: { initialTab?: 'users' | 'licenses' | 'audit' }) {
   const [tab, setTab] = useState<'users' | 'licenses' | 'audit'>(initialTab);
