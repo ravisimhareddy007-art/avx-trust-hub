@@ -833,7 +833,21 @@ export default function PolicyBuilderPage() {
                     value={formDescription}
                     onChange={e => setFormDescription(e.target.value)}
                     rows={2}
-                    placeholder="Describe what you want this policy to do — e.g. rotate all production SSH keys every 90 days and block RSA-1024"
+                    placeholder={
+                      formPolicyType === 'SSH Key Policy'
+                        ? 'e.g. rotate all production SSH keys every 90 days and block RSA-1024 algorithms'
+                      : formPolicyType === 'Managed Certificate Policy'
+                        ? 'e.g. auto-renew production TLS certs 30 days before expiry via DigiCert, block self-signed'
+                      : formPolicyType === 'Secrets & API Keys Policy'
+                        ? 'e.g. flag any API key older than 60 days and require rotation via HashiCorp Vault'
+                      : formPolicyType === 'AI Agent Token Policy'
+                        ? 'e.g. enforce 24-hour TTL for all AI agent tokens and require JIT issuance in production'
+                      : formPolicyType === 'Device Management Policy'
+                        ? 'e.g. auto-onboard all new Linux servers and notify the infra team on completion'
+                      : formPolicyType === 'Kubernetes Certificate Policy'
+                        ? 'e.g. issue short-lived certs for all pods in payments namespace via Vault PKI'
+                      : 'Select a policy type above, then describe what you want in plain English'
+                    }
                     className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground"
                   />
                 </div>
