@@ -855,11 +855,11 @@ export default function CLMRemediationWorkspace(_: Props) {
                 )}
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
-                <button type="button" onClick={() => { onTabChange('actions'); setEnrollOpen(true); }}
+                <button type="button" onClick={() => setEnrollOpen(true)}
                   className="inline-flex items-center gap-1 rounded-md border border-teal/40 bg-teal/10 px-2.5 py-1 text-[11px] font-medium text-teal hover:bg-teal/20">
                   <FilePlus className="h-3 w-3" /> Enroll Certificate
                 </button>
-                <button type="button" onClick={() => { onTabChange('actions'); setCsrOpen(true); }}
+                <button type="button" onClick={() => setCsrOpen(true)}
                   className="rounded-md border border-border px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground hover:border-foreground/40">
                   Generate CSR
                 </button>
@@ -867,7 +867,7 @@ export default function CLMRemediationWorkspace(_: Props) {
                   className="rounded-md border border-border px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground hover:border-foreground/40">
                   Push to Device
                 </button>
-                <button type="button" onClick={() => { onTabChange('actions'); setSslDrawerOpen(true); }}
+                <button type="button" onClick={() => setSslDrawerOpen(true)}
                   className="rounded-md border border-border px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground hover:border-foreground/40">
                   SSL Check
                 </button>
