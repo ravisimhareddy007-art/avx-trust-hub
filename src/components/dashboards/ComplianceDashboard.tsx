@@ -4,7 +4,7 @@ import {
   ResponsiveContainer, Legend, AreaChart, Area,
 } from 'recharts';
 import {
-  AlertTriangle, CheckCircle2, Clock, Download, FileText,
+  AlertTriangle, CheckCircle2, Clock, Download, Upload, FileText,
   LayoutDashboard, RefreshCw, Search, ShieldAlert,
   Ticket, X, ChevronRight, CalendarDays, TrendingDown, Package,
   BookOpen, Zap, Send, BarChart2, Circle, ClipboardCheck,
