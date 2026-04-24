@@ -377,6 +377,7 @@ export default function IntegrationsPage() {
       i.description.toLowerCase().includes(search.toLowerCase()),
   );
 
+  const ecosystemItems = filtered.filter(i => !connections[i.id]);
   const connectedItems = filtered.filter(i => connections[i.id]);
   const totalConnected = INTEGRATIONS.filter(i => connections[i.id]).length;
 
