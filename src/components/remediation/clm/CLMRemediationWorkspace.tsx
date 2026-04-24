@@ -827,27 +827,9 @@ export default function CLMRemediationWorkspace(_: Props) {
         </div>
       </div>
 
-      <div className="flex items-center border-b border-border px-6">
-        {([
-          { id: 'issues', label: 'Issues' },
-          { id: 'deployments', label: 'Deployments' },
-          { id: 'actions', label: 'Certificate Actions' },
-        ] as const).map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => onTabChange(tab.id)}
-            className={`relative whitespace-nowrap px-4 py-3 text-sm font-medium transition-colors ${activeTab === tab.id ? '-mb-px border-b-2 border-teal text-teal' : 'text-muted-foreground hover:text-foreground'}`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
       <div className="flex-1 overflow-auto">
-        {activeTab === 'issues' && (
-          <div>
-            {/* Top action strip + inline bulk bar */}
+        <div>
+          {/* Top action strip + inline bulk bar */}
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-3">
               <div className="flex items-center gap-2">
                 {selectedIds.size > 0 && (
