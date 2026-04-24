@@ -4,7 +4,7 @@ import {
   Shield, Key, Users, UserCheck, Fingerprint,
   Lock, Server, HardDrive,
   FileText, Bell, AlertTriangle, Settings, Activity,
-  Plus, Download, Search, ToggleLeft, Eye, EyeOff, RefreshCw, CheckCircle, XCircle,
+  Plus, Download, Upload, Search, ToggleLeft, Eye, EyeOff, RefreshCw, CheckCircle, XCircle,
   Monitor, Database, Cpu, BarChart3, Building2, Wrench, Heart,
   CloudCog, Archive, Globe, Plug, Box, Layers
 } from 'lucide-react';
