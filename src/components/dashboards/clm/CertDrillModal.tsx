@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Clock,
   Download,
+  Upload,
   Layers,
   MessageSquare,
   MoreVertical,
@@ -828,7 +829,7 @@ export default function CertDrillModal({ open, onClose, title, certs }: CertDril
         {actionsOpen && ReactDOM.createPortal(
           <div ref={dropdownRef} style={{ position: 'fixed', top: dropdownPos.top, right: dropdownPos.right, zIndex: 99999, minWidth: '220px' }} className="rounded-lg border border-border bg-card py-1 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div>
-              <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('export'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Download className="h-3.5 w-3.5" />Export Certificates</button>
+              <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('export'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Upload className="h-3.5 w-3.5" />Export Certificates</button>
               <button type="button" onClick={(e) => { e.stopPropagation(); setActionModal('download'); setActionsOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-secondary/40"><Download className="h-3.5 w-3.5" />Download Certificates</button>
             </div>
             <div className="my-1 h-px bg-border" />

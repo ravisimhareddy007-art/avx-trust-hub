@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { users, auditLog } from '@/data/mockData';
 import { StatusBadge } from '@/components/shared/UIComponents';
 import { toast } from 'sonner';
-import { Plus, Download, Search } from 'lucide-react';
+import { Plus, Upload, Search } from 'lucide-react';
 
 export default function SettingsPage({ initialTab = 'users' }: { initialTab?: 'users' | 'licenses' | 'audit' }) {
   const [tab, setTab] = useState<'users' | 'licenses' | 'audit'>(initialTab);
@@ -85,7 +85,7 @@ export default function SettingsPage({ initialTab = 'users' }: { initialTab?: 'u
         <div className="space-y-4">
           <div className="flex justify-end gap-2">
             <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><input type="text" placeholder="Search audit log..." className="pl-9 pr-4 py-2 bg-card border border-border rounded-lg text-xs w-64 focus:outline-none focus:ring-1 focus:ring-teal" /></div>
-            <button onClick={() => toast.success('Audit log exported')} className="flex items-center gap-1 px-3 py-2 rounded-lg bg-muted text-xs hover:bg-muted/80"><Download className="w-3 h-3" /> Export CSV</button>
+            <button onClick={() => toast.success('Audit log exported')} className="flex items-center gap-1 px-3 py-2 rounded-lg bg-muted text-xs hover:bg-muted/80"><Upload className="w-3 h-3" /> Export CSV</button>
           </div>
           <div className="bg-card rounded-lg border border-border overflow-hidden">
             <table className="w-full text-xs">

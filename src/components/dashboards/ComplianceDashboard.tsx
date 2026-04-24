@@ -4,7 +4,7 @@ import {
   ResponsiveContainer, Legend, AreaChart, Area,
 } from 'recharts';
 import {
-  AlertTriangle, CheckCircle2, Clock, Download, FileText,
+  AlertTriangle, CheckCircle2, Clock, Download, Upload, FileText,
   LayoutDashboard, RefreshCw, Search, ShieldAlert,
   Ticket, X, ChevronRight, CalendarDays, TrendingDown, Package,
   BookOpen, Zap, Send, BarChart2, Circle, ClipboardCheck,
@@ -517,7 +517,7 @@ function AuditChecklistModal({ framework, onClose }: { framework: string | null;
             })}
             <div className="flex gap-2 pt-2">
               <button onClick={() => { toast.success('Progress saved'); onClose(); }} className="flex-1 py-2 bg-teal/10 text-teal text-xs font-medium rounded-lg hover:bg-teal/20">Save Progress</button>
-              <button onClick={() => toast.success('Checklist exported to PDF')} className="flex items-center gap-1.5 px-3 py-2 border border-border text-xs rounded-lg hover:bg-muted/30"><Download className="w-3.5 h-3.5" /> Export</button>
+              <button onClick={() => toast.success('Checklist exported to PDF')} className="flex items-center gap-1.5 px-3 py-2 border border-border text-xs rounded-lg hover:bg-muted/30"><Upload className="w-3.5 h-3.5" /> Export</button>
             </div>
           </div>}
     </Modal>
