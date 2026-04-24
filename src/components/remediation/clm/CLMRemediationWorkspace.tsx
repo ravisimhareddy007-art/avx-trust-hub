@@ -696,7 +696,7 @@ function ToggleRow({ label, checked, onChange }: { label: string; checked: boole
 
 export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Props) {
   const [issueSearch, setIssueSearch] = useState('');
-  const [quickFilterSelection, setQuickFilterSelection] = useState<Set<IssueQuickFilter>>(new Set());
+  const [denseFilter, setDenseFilter] = useState<DenseFilter>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [detailRow, setDetailRow] = useState<ClmIssueRow | null>(null);
   const [actionRow, setActionRow] = useState<ClmIssueRow | null>(null);
@@ -712,20 +712,37 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
   const [sslDrawerOpen, setSslDrawerOpen] = useState(false);
   const [pushSeedRow, setPushSeedRow] = useState<ClmIssueRow | null>(null);
 
+  const matchesDenseFilter = (row: ClmIssueRow, filter: DenseFilter) => {
+    if (filter === 'all') return true;
+    if (filter === 'expired')
+      return row.asset.status === 'Expired' || row.asset.daysToExpiry <= 0;
+    if (filter === 'critical') return row.severity === 'Critical';
+    if (filter === 'weak') return isWeakAlgo(row);
+    if (filter === 'unassigned') return isUnassigned(row);
+    return true;
+  };
+
+  const filterCounts = useMemo(() => {
+    const total = clmIssues.length;
+    return {
+      all: total,
+      expired: clmIssues.filter((r) => matchesDenseFilter(r, 'expired')).length,
+      critical: clmIssues.filter((r) => matchesDenseFilter(r, 'critical')).length,
+      weak: clmIssues.filter((r) => matchesDenseFilter(r, 'weak')).length,
+      unassigned: clmIssues.filter((r) => matchesDenseFilter(r, 'unassigned')).length,
+    };
+  }, []);
+
   const filteredIssues = useMemo(() => {
     return [...clmIssues]
       .filter((row) => {
-      const query = issueSearch.toLowerCase();
-      const matchesSearch = !query || [row.asset.name, row.issueText, row.recommended, row.owner].some((value) => value.toLowerCase().includes(query));
-      if (!matchesSearch) return false;
-      if (quickFilterSelection.has('expiringSoon')) {
-        const urgencyDays = getUrgencyDays(row);
-        if (urgencyDays === null || urgencyDays >= 7) return false;
-      }
-      if (quickFilterSelection.has('production') && row.environment !== 'Production') return false;
-      if (quickFilterSelection.has('highSeverity') && !['Critical', 'High'].includes(row.severity)) return false;
-      if (quickFilterSelection.has('unassigned') && !/unassigned|unknown|none/i.test(row.owner)) return false;
-      return true;
+        const query = issueSearch.toLowerCase();
+        const matchesSearch =
+          !query ||
+          [row.asset.name, row.issueText, row.recommended, row.owner, row.asset.caIssuer, row.asset.algorithm]
+            .some((value) => value.toLowerCase().includes(query));
+        if (!matchesSearch) return false;
+        return matchesDenseFilter(row, denseFilter);
       })
       .sort((a, b) => {
         const aDays = getUrgencyDays(a);
@@ -735,19 +752,8 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
         if (bDays !== null) return 1;
         return a.asset.daysToExpiry - b.asset.daysToExpiry;
       });
-  }, [issueSearch, quickFilterSelection]);
+  }, [issueSearch, denseFilter]);
 
-  const summaryCounts = useMemo(() => {
-    const critical = filteredIssues.filter((row) => {
-      const days = getUrgencyDays(row);
-      return days !== null && days <= 3;
-    }).length;
-    const warning = filteredIssues.filter((row) => {
-      const days = getUrgencyDays(row);
-      return days !== null && days >= 4 && days <= 7;
-    }).length;
-    return { critical, warning, total: filteredIssues.length };
-  }, [filteredIssues]);
 
   const queueRows = useMemo(() => {
     return policyRequests.filter((row) => {
