@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { usePersona, Persona } from '@/context/PersonaContext';
-import { remediationPages, useNav } from '@/context/NavigationContext';
+import { remediationPages, policyPages, useNav } from '@/context/NavigationContext';
 import {
   LayoutDashboard, Search, Package, Shield, AlertTriangle,
   ChevronDown, ChevronRight, Users,
