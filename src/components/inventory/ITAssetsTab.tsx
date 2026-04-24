@@ -508,9 +508,61 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                     </React.Fragment>
                   ))}
                 </div>
-              </div>
 
-              {/* Column 3 — Blast Radius */}
+                {/* Operational Violations + Quantum Risk + AI narrative — moved from Column 1 */}
+                {(() => {
+                  const violations = getAssetViolations(selectedAsset);
+                  const classic = violations.filter(v => v.violationType === 'classic');
+                  const pqc = violations.filter(v => v.violationType === 'pqc');
+                  return (
+                    <>
+                      {classic.length > 0 && (
+                        <div className="border-t border-border pt-4 mt-4 space-y-1.5">
+                          <p className="text-[10px] font-semibold text-coral flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3" /> Operational Violations ({classic.length})
+                          </p>
+                          {classic.slice(0, 4).map((v, i) => (
+                            <div key={`c-${i}`} className="flex items-center gap-2 text-[10px] py-1 border-b border-border/50 last:border-0">
+                              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                                v.severity === 'Critical' ? 'bg-coral' :
+                                v.severity === 'High' ? 'bg-amber' : 'bg-purple'
+                              }`} />
+                              <span className="text-foreground truncate flex-1">{v.type}</span>
+                              <button onClick={() => setViolationsAsset(selectedAsset)} className="text-teal hover:underline flex-shrink-0">Fix</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {pqc.length > 0 && (
+                        <div className="border-t border-border pt-4 mt-4 space-y-1.5">
+                          <p className="text-[10px] font-semibold text-purple-light flex items-center gap-1">
+                            <Shield className="w-3 h-3" /> Quantum Risk ({pqc.length})
+                            <span className="ml-auto text-[8.5px] font-semibold px-1 py-0.5 rounded bg-purple/15 text-purple-light">NIST 2030</span>
+                          </p>
+                          {pqc.slice(0, 4).map((v, i) => (
+                            <div key={`p-${i}`} className="text-[10px] py-1 border-b border-border/50 last:border-0">
+                              <div className="flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'hsl(280 65% 55%)' }} />
+                                <span className="text-foreground font-mono flex-1 truncate">{v.algorithm}</span>
+                                <button onClick={() => setViolationsAsset(selectedAsset)} className="text-purple-light hover:underline flex-shrink-0">QTH</button>
+                              </div>
+                              <p className="text-[9px] text-muted-foreground ml-3.5 mt-0.5">
+                                Expires {v.expiryYear} · {(v.yearsPastDeadline ?? 0) > 0 ? `+${v.yearsPastDeadline}y past` : 'at'} NIST deadline
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <div className="border-t border-border pt-4 mt-4">
+                        <div className="bg-teal/5 border border-teal/20 rounded-lg p-3">
+                          <p className="text-[10px] font-semibold text-teal mb-1">✦ Infinity AI</p>
+                          <p className="text-[10px] text-muted-foreground leading-relaxed">{getAssetAINarrative(selectedAsset)}</p>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
               <div className="border-l border-border p-4 overflow-y-auto scrollbar-thin">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-xs font-semibold text-foreground">Blast Radius</p>
