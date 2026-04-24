@@ -122,6 +122,7 @@ function StatusPill({ status }: { status: GovernanceStatus }) {
 }
 
 export default function ViolationsPage() {
+  const { persona } = usePersona();
   const [tab, setTab] = useState<Tab>('operational');
   const [search, setSearch] = useState('');
   const [sevFilter, setSevFilter] = useState('');
