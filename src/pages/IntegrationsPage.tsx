@@ -438,6 +438,9 @@ export default function IntegrationsPage() {
           }`}
         >
           Ecosystem
+          <span className="bg-muted text-muted-foreground text-[9px] px-1.5 py-0.5 rounded-full ml-2">
+            {ecosystemItems.length} available
+          </span>
         </button>
         <button
           onClick={() => setItab('connected')}
