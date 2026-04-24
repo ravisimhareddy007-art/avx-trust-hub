@@ -422,7 +422,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
             </div>
 
             {/* Three column layout — matching Infrastructure design */}
-            <div className="grid grid-cols-[280px_1fr_300px] gap-0 h-[calc(100vh-48px)]">
+            <div className="grid grid-cols-[280px_1fr] gap-0 h-[calc(100vh-48px)]">
               {/* Column 1 — Identity Summary + Risk */}
               <div className="border-r border-border p-4 space-y-4 overflow-y-auto scrollbar-thin">
                 {/* Key attributes */}
