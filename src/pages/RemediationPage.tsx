@@ -4,7 +4,7 @@ import { mockAssets, CryptoAsset } from '@/data/mockData';
 import { StatusBadge, SeverityBadge, Modal } from '@/components/shared/UIComponents';
 import { toast } from 'sonner';
 import {
-  RefreshCw, RotateCcw, XCircle, Shield, Search, Download, Upload, CheckCircle2,
+  RefreshCw, RotateCcw, XCircle, Shield, Search, Upload, CheckCircle2,
   Clock, AlertTriangle, MoreVertical, Eye, Key, Lock, FileCode, Bot, Server,
   ArrowRight, User, Workflow, CheckCircle, Plus, Ticket, LockKeyhole,
   Terminal, Code, Database, Cpu, Sparkles, AlertCircle, Send
