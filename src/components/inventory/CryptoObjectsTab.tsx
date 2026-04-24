@@ -606,23 +606,6 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                 })()}
               </div>
 
-              {/* Column 3 — Event History */}
-              <div className="border-l border-border p-4 overflow-y-auto scrollbar-thin space-y-4">
-                <p className="text-xs font-semibold text-foreground">Event History</p>
-                <div className="space-y-0">
-                  {[
-                    { event: 'Discovered', time: detailAsset.issueDate, actor: detailAsset.discoverySource },
-                    { event: 'Owner assigned', time: '2026-03-15', actor: detailAsset.owner },
-                    { event: 'Policy evaluated', time: '2026-04-10', actor: 'Policy Engine' },
-                    { event: 'PQC risk assessed', time: '2026-04-01', actor: 'Quantum Engine' },
-                  ].map((e, i) => (
-                    <div key={i} className="flex gap-2 text-[10px]">
-                      <div className="flex flex-col items-center"><div className="w-1.5 h-1.5 rounded-full bg-teal mt-1.5" />{i < 3 && <div className="w-px flex-1 bg-border mt-0.5" />}</div>
-                      <div className="pb-3"><p className="text-foreground">{e.event}</p><p className="text-muted-foreground">{e.time} · {e.actor}</p></div>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
           </div>
         </div>
