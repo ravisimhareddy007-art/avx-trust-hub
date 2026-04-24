@@ -368,7 +368,16 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                 </div>
 
                 {/* Risk gauge */}
-                <div className="flex justify-center"><RiskGauge score={selectedAsset.riskScore} size={100} /></div>
+                <div className="flex flex-col items-center gap-2">
+                  <RiskGauge score={selectedAsset.riskScore} size={100} />
+                  <button
+                    onClick={() => setRiskDrawerAsset(selectedAsset)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-border text-[10px] text-muted-foreground hover:text-foreground hover:border-teal/40 transition-colors"
+                  >
+                    <AlertTriangle className="w-3 h-3 text-teal" />
+                    Why this score?
+                  </button>
+                </div>
 
                 {/* Credential severity distribution */}
                 {(() => {
