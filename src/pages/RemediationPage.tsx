@@ -599,20 +599,11 @@ function ModuleRemediationView({
 
 export default function RemediationPage() {
   const { currentPage, filters } = useNav();
-  const [clmView, setClmView] = useState<'issues' | 'deployments' | 'actions'>('issues');
-
-  useEffect(() => {
-    if (filters.module === 'clm') {
-      if (filters.view === 'deployments' || filters.view === 'actions' || filters.view === 'issues') {
-        setClmView(filters.view as 'issues' | 'deployments' | 'actions');
-      }
-    }
-  }, [filters.module, filters.view]);
 
   return (
     <div className="flex-1 overflow-auto">
       {currentPage === 'remediation-objects' && <ModuleRemediationView moduleId="all" filters={filters} />}
-      {currentPage === 'remediation-clm' && <CLMRemediationWorkspace activeTab={clmView} onTabChange={setClmView} />}
+      {currentPage === 'remediation-clm' && <CLMRemediationWorkspace />}
       {currentPage === 'remediation-ssh' && <SSHRemediationWorkspace />}
       {currentPage === 'remediation-ai' && <AIAgentRemediationWorkspace />}
       {currentPage === 'remediation-secrets' && <ModuleRemediationView moduleId="secrets" filters={filters} />}
