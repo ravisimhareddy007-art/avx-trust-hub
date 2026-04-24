@@ -326,7 +326,14 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                 </>
               )}
               <span className="text-xs font-medium text-foreground truncate">{selectedAsset.name}</span>
-              <button onClick={goBack} className="ml-auto p-1 hover:bg-secondary rounded"><X className="w-4 h-4 text-muted-foreground" /></button>
+              <button
+                onClick={() => setBlastModalOpen(true)}
+                className="ml-auto flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-[10px] text-muted-foreground hover:text-foreground hover:border-teal/30 transition-colors mr-2"
+              >
+                <Maximize2 className="w-3 h-3" />
+                Blast Radius
+              </button>
+              <button onClick={goBack} className="p-1 hover:bg-secondary rounded"><X className="w-4 h-4 text-muted-foreground" /></button>
             </div>
 
             {/* Three column layout */}
