@@ -533,7 +533,7 @@ function ModuleRemediationView({
           </button>
         )}
         <button onClick={() => toast.success('Exporting...')} className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground ml-auto">
-          <Download className="w-3.5 h-3.5" /> Export
+          <Upload className="w-3.5 h-3.5" /> Export
         </button>
       </div>
 
