@@ -853,7 +853,7 @@ function EosGuardianFloat({
         style={{ left: pos.x, top: pos.y, position: 'fixed' }}
       >
         <Zap className="h-3.5 w-3.5 text-teal" />
-        <span className="text-xs font-medium text-foreground">Eos Guardian</span>
+        <span className="text-xs font-medium text-foreground">Trust Guardian</span>
         <span className={`ml-auto h-2 w-2 rounded-full ${urgencyDotCls}`} />
       </button>
     );
@@ -872,7 +872,7 @@ function EosGuardianFloat({
         }}
       >
         <Zap className="h-4 w-4 text-teal" />
-        <span className="text-xs font-semibold text-foreground">Eos Guardian</span>
+        <span className="text-xs font-semibold text-foreground">Trust Guardian</span>
         <span className="rounded-full bg-teal/10 px-1.5 py-0.5 text-[9px] text-teal">AI</span>
         <span className="ml-auto max-w-[108px] truncate text-[9px] text-muted-foreground">{contextLabel}</span>
         <button
@@ -920,7 +920,7 @@ function EosGuardianFloat({
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && send()}
           className="flex-1 rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal"
-          placeholder="Ask Eos Guardian..."
+          placeholder="Ask Trust Guardian..."
         />
         <button type="button" onClick={() => send()} className="rounded-lg bg-teal p-1.5 text-primary-foreground">
           <Send className="h-3.5 w-3.5" />
