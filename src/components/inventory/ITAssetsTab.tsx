@@ -406,11 +406,13 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                         <div className="space-y-1.5">
                           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Top risk drivers</p>
                           <div className="space-y-1">
-                            {br.topObjects.slice(0, 3).map(o => (
+                            {br.topObjects.slice(0, 3).map(o => {
+                              const obj = mockAssets.find(a => a.id === o.id);
+                              const meta = obj ? objectTypeMeta(obj.type) : { Icon: Lock, label: '—', color: 'text-muted-foreground' };
+                              return (
                               <button
                                 key={o.id}
                                 onClick={() => {
-                                  const obj = mockAssets.find(a => a.id === o.id);
                                   if (obj) setRiskDrawerObject(obj);
                                 }}
                                 className="w-full grid grid-cols-[28px_1fr] gap-2 items-start text-left rounded px-1.5 py-1.5 hover:bg-secondary/40 transition-colors"
@@ -419,11 +421,16 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                                   {o.crs}
                                 </span>
                                 <span className="min-w-0">
-                                  <span className="block text-[10px] font-medium text-foreground truncate">{o.name}</span>
+                                  <span className="flex items-center gap-1 min-w-0">
+                                    <meta.Icon className={`w-3 h-3 flex-shrink-0 ${meta.color}`} />
+                                    <span className={`text-[9px] uppercase tracking-wide ${meta.color} flex-shrink-0`}>{meta.label}</span>
+                                    <span className="block text-[10px] font-medium text-foreground truncate">{o.name}</span>
+                                  </span>
                                   <span className="block text-[9px] text-muted-foreground truncate">{o.reason}</span>
                                 </span>
                               </button>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
                       )}
