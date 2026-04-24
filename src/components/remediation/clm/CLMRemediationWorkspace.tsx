@@ -40,10 +40,7 @@ import PushToDeviceModal from './actions/PushToDeviceModal';
 import { clmCertificates, clmIssues, policyRequestsSeed, sslCheckMock } from './mockData';
 import { ClmIssueAction, ClmIssueRow, ClmTab, PolicyActionType, PolicyRequestRow } from './types';
 
-interface Props {
-  activeTab: ClmTab;
-  onTabChange: (tab: ClmTab) => void;
-}
+interface Props {}
 
 type EnvironmentFilter = 'All' | 'Production' | 'Staging' | 'Development';
 type QueueFilter = 'All' | 'Pending' | 'In Progress' | 'Completed' | 'Failed';
@@ -694,7 +691,7 @@ function ToggleRow({ label, checked, onChange }: { label: string; checked: boole
   );
 }
 
-export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Props) {
+export default function CLMRemediationWorkspace(_: Props) {
   const [issueSearch, setIssueSearch] = useState('');
   const [denseFilter, setDenseFilter] = useState<DenseFilter>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -809,13 +806,11 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
   };
 
   const launchIssueNewCertificate = () => {
-    onTabChange('actions');
     setEnrollOpen(true);
   };
 
   const launchPushToDevice = (row?: ClmIssueRow) => {
     if (row) setPushSeedRow(row);
-    onTabChange('actions');
     setPushOpen(true);
   };
 
@@ -832,27 +827,9 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
         </div>
       </div>
 
-      <div className="flex items-center border-b border-border px-6">
-        {([
-          { id: 'issues', label: 'Issues' },
-          { id: 'deployments', label: 'Deployments' },
-          { id: 'actions', label: 'Certificate Actions' },
-        ] as const).map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => onTabChange(tab.id)}
-            className={`relative whitespace-nowrap px-4 py-3 text-sm font-medium transition-colors ${activeTab === tab.id ? '-mb-px border-b-2 border-teal text-teal' : 'text-muted-foreground hover:text-foreground'}`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
       <div className="flex-1 overflow-auto">
-        {activeTab === 'issues' && (
-          <div>
-            {/* Top action strip + inline bulk bar */}
+        <div>
+          {/* Top action strip + inline bulk bar */}
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-3">
               <div className="flex items-center gap-2">
                 {selectedIds.size > 0 && (
@@ -878,11 +855,11 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
                 )}
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
-                <button type="button" onClick={() => { onTabChange('actions'); setEnrollOpen(true); }}
+                <button type="button" onClick={() => setEnrollOpen(true)}
                   className="inline-flex items-center gap-1 rounded-md border border-teal/40 bg-teal/10 px-2.5 py-1 text-[11px] font-medium text-teal hover:bg-teal/20">
                   <FilePlus className="h-3 w-3" /> Enroll Certificate
                 </button>
-                <button type="button" onClick={() => { onTabChange('actions'); setCsrOpen(true); }}
+                <button type="button" onClick={() => setCsrOpen(true)}
                   className="rounded-md border border-border px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground hover:border-foreground/40">
                   Generate CSR
                 </button>
@@ -890,7 +867,7 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
                   className="rounded-md border border-border px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground hover:border-foreground/40">
                   Push to Device
                 </button>
-                <button type="button" onClick={() => { onTabChange('actions'); setSslDrawerOpen(true); }}
+                <button type="button" onClick={() => setSslDrawerOpen(true)}
                   className="rounded-md border border-border px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground hover:border-foreground/40">
                   SSL Check
                 </button>
@@ -1078,115 +1055,7 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
                 {filterCounts.weak > 0 && `, ${filterCounts.weak} weak algo`}
               </span>
             </div>
-          </div>
-        )}
-
-        {activeTab === 'deployments' && <CertDeploymentsView />}
-
-        {activeTab === 'actions' && (
-          <div className="grid items-start gap-4 p-4 xl:grid-cols-[22rem_minmax(0,1fr)]">
-            <div className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-2">
-                {proactiveCards.map((card) => {
-                  const Icon = card.icon;
-                  const openCard = () => {
-                    if (card.id === 'enroll') setEnrollOpen(true);
-                    if (card.id === 'push') launchPushToDevice();
-                    if (card.id === 'csr') setCsrOpen(true);
-                    if (card.id === 'ssl') setSslDrawerOpen(true);
-                  };
-                  return (
-                    <Card key={card.id} className="border-border bg-card shadow-none">
-                      <CardHeader className="space-y-2 p-4 pb-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-teal/10 text-teal">
-                          <Icon className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <CardTitle className="text-base font-semibold leading-tight text-foreground">{card.title}</CardTitle>
-                          <CardDescription className="mt-1 min-h-[2.75rem] text-sm leading-6 text-muted-foreground">{card.description}</CardDescription>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="p-4 pt-0">
-                        <button type="button" onClick={openCard} className="inline-flex items-center gap-2 rounded-md bg-teal px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-teal-light">
-                          {card.cta}
-                          <ArrowRight className="h-3.5 w-3.5" />
-                        </button>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-
-              <div className="rounded-lg border border-border border-l-4 border-l-teal bg-card p-4">
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg bg-teal/10 text-teal">
-                    <Info className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Issue-driven actions</p>
-                    <p className="mt-1 text-sm text-muted-foreground">Renew, Regenerate, Reissue, Revoke, CA Switch, and Revocation Check are available directly on each certificate row in the Issues tab.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-lg border border-border bg-card">
-              <div className="flex flex-col gap-3 border-b border-border p-4 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                  <h2 className="text-base font-semibold text-foreground">Policy Requests</h2>
-                </div>
-                <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-                  <div className="relative w-full lg:w-64">
-                    <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input value={queueSearch} onChange={(event) => setQueueSearch(event.target.value)} placeholder="Search policy requests" className="pl-8" />
-                  </div>
-                  <select value={queueFilter} onChange={(event) => setQueueFilter(event.target.value as QueueFilter)} className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground">
-                    {queueStatuses.map((status) => (
-                      <option key={status} value={status}>{status}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[760px] text-sm">
-                  <thead className="border-b border-border bg-background/40 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
-                    <tr>
-                      <th className="px-4 py-3">Request ID</th>
-                      <th className="px-4 py-3">Action</th>
-                      <th className="px-4 py-3">Certificate / Target</th>
-                      <th className="px-4 py-3">Requested By</th>
-                      <th className="px-4 py-3">Created</th>
-                      <th className="px-4 py-3">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {queueRows.map((row) => (
-                      <tr key={row.id} className="border-b border-border last:border-b-0 hover:bg-background/30">
-                        <td className="px-4 py-3 align-top">
-                          <button type="button" onClick={() => setLogRequest(row)} className="inline-flex items-center gap-1 font-mono text-xs text-foreground hover:text-teal hover:underline">
-                            {row.id}
-                            <ExternalLink className="h-3.5 w-3.5" />
-                          </button>
-                        </td>
-                        <td className="px-4 py-3 align-top"><span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${actionBadgeClass(row.action)}`}>{row.action}</span></td>
-                        <td className="px-4 py-3 align-top text-sm text-foreground">{row.certificateTarget}</td>
-                        <td className="px-4 py-3 align-top text-sm text-muted-foreground">{row.requestedBy}</td>
-                        <td className="px-4 py-3 align-top text-sm text-muted-foreground">{row.created}</td>
-                        <td className="px-4 py-3 align-top">
-                          <span className={`inline-flex items-center gap-2 rounded-full px-2 py-0.5 text-[11px] font-medium ${requestStatusClass(row.status)}`}>
-                            {row.status === 'In Progress' && <span className="h-2 w-2 animate-pulse rounded-full bg-teal" />}
-                            {row.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {queueRows.length === 0 && <div className="px-4 py-10 text-center text-sm text-muted-foreground">No policy requests match the current filter.</div>}
-            </div>
-          </div>
-        )}
+        </div>
 
         <DetailDrawer row={detailRow} open={!!detailRow} onClose={() => setDetailRow(null)} onRunAction={handleAction} />
         <ExecutionLogDrawer request={logRequest} open={!!logRequest} onClose={() => setLogRequest(null)} />
