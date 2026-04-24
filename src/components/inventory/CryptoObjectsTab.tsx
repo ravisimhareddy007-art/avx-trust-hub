@@ -154,6 +154,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   const [typeFilter, setTypeFilter] = useState('All');
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [detailAsset, setDetailAsset] = useState<CryptoAsset | null>(null);
+  const [riskDrawerObject, setRiskDrawerObject] = useState<CryptoAsset | null>(null);
   const [deployFromCert, setDeployFromCert] = useState<CryptoAsset | null>(null);
   const [algFilter, setAlgFilter] = useState('');
   const [envFilter, setEnvFilter] = useState('');
