@@ -121,6 +121,56 @@ const urgencyBadgeClass = (days: number) => {
   return 'bg-muted text-muted-foreground';
 };
 
+// ── Issues table v2 helpers ──
+type DenseFilter = 'all' | 'expired' | 'critical' | 'weak' | 'unassigned';
+
+const expiryCellClass = (row: ClmIssueRow) => {
+  if (row.asset.status === 'Expired' || row.asset.daysToExpiry < 0) return 'text-coral';
+  if (row.asset.daysToExpiry === 0) return 'text-coral';
+  if (row.asset.daysToExpiry <= 7) return 'text-amber';
+  if (row.asset.daysToExpiry <= 30) return 'text-amber';
+  return 'text-teal';
+};
+
+const expiryCellLabel = (row: ClmIssueRow) => {
+  if (row.asset.status === 'Expired' || row.asset.daysToExpiry < 0) return 'Expired';
+  if (row.asset.daysToExpiry === 0) return 'Today';
+  return `${row.asset.daysToExpiry}d`;
+};
+
+const isWeakAlgo = (row: ClmIssueRow) =>
+  /SHA-1|MD5|1024/i.test(`${row.asset.algorithm} ${row.asset.keyLength}`);
+
+const isStrongAlgo = (row: ClmIssueRow) =>
+  /ECC|ECDSA|Ed25519|ML-DSA|ML-KEM|4096/i.test(`${row.asset.algorithm} ${row.asset.keyLength}`);
+
+const algoChipClass = (row: ClmIssueRow) => {
+  if (isWeakAlgo(row)) return 'bg-amber/10 text-amber border border-amber/20';
+  if (isStrongAlgo(row)) return 'bg-teal/10 text-teal border border-teal/20';
+  return 'bg-muted text-foreground border border-border';
+};
+
+const keySizeClass = (row: ClmIssueRow) => {
+  if (/1024/.test(row.asset.keyLength)) return 'text-amber';
+  if (/4096|384|521/.test(row.asset.keyLength)) return 'text-teal';
+  return 'text-muted-foreground';
+};
+
+const crsBarFill = (score: number) => {
+  if (score >= 80) return 'bg-coral';
+  if (score >= 60) return 'bg-amber';
+  return 'bg-teal';
+};
+
+const crsTextClass = (score: number) => {
+  if (score >= 80) return 'text-coral';
+  if (score >= 60) return 'text-amber';
+  return 'text-teal';
+};
+
+const isUnassigned = (row: ClmIssueRow) =>
+  /unassigned|unknown|none|n\/a/i.test(row.owner);
+
 const getRecommendationMeta = (row: ClmIssueRow) => {
   const recommended = row.recommended;
 
@@ -646,7 +696,7 @@ function ToggleRow({ label, checked, onChange }: { label: string; checked: boole
 
 export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Props) {
   const [issueSearch, setIssueSearch] = useState('');
-  const [quickFilterSelection, setQuickFilterSelection] = useState<Set<IssueQuickFilter>>(new Set());
+  const [denseFilter, setDenseFilter] = useState<DenseFilter>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [detailRow, setDetailRow] = useState<ClmIssueRow | null>(null);
   const [actionRow, setActionRow] = useState<ClmIssueRow | null>(null);
@@ -662,20 +712,37 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
   const [sslDrawerOpen, setSslDrawerOpen] = useState(false);
   const [pushSeedRow, setPushSeedRow] = useState<ClmIssueRow | null>(null);
 
+  const matchesDenseFilter = (row: ClmIssueRow, filter: DenseFilter) => {
+    if (filter === 'all') return true;
+    if (filter === 'expired')
+      return row.asset.status === 'Expired' || row.asset.daysToExpiry <= 0;
+    if (filter === 'critical') return row.severity === 'Critical';
+    if (filter === 'weak') return isWeakAlgo(row);
+    if (filter === 'unassigned') return isUnassigned(row);
+    return true;
+  };
+
+  const filterCounts = useMemo(() => {
+    const total = clmIssues.length;
+    return {
+      all: total,
+      expired: clmIssues.filter((r) => matchesDenseFilter(r, 'expired')).length,
+      critical: clmIssues.filter((r) => matchesDenseFilter(r, 'critical')).length,
+      weak: clmIssues.filter((r) => matchesDenseFilter(r, 'weak')).length,
+      unassigned: clmIssues.filter((r) => matchesDenseFilter(r, 'unassigned')).length,
+    };
+  }, []);
+
   const filteredIssues = useMemo(() => {
     return [...clmIssues]
       .filter((row) => {
-      const query = issueSearch.toLowerCase();
-      const matchesSearch = !query || [row.asset.name, row.issueText, row.recommended, row.owner].some((value) => value.toLowerCase().includes(query));
-      if (!matchesSearch) return false;
-      if (quickFilterSelection.has('expiringSoon')) {
-        const urgencyDays = getUrgencyDays(row);
-        if (urgencyDays === null || urgencyDays >= 7) return false;
-      }
-      if (quickFilterSelection.has('production') && row.environment !== 'Production') return false;
-      if (quickFilterSelection.has('highSeverity') && !['Critical', 'High'].includes(row.severity)) return false;
-      if (quickFilterSelection.has('unassigned') && !/unassigned|unknown|none/i.test(row.owner)) return false;
-      return true;
+        const query = issueSearch.toLowerCase();
+        const matchesSearch =
+          !query ||
+          [row.asset.name, row.issueText, row.recommended, row.owner, row.asset.caIssuer, row.asset.algorithm]
+            .some((value) => value.toLowerCase().includes(query));
+        if (!matchesSearch) return false;
+        return matchesDenseFilter(row, denseFilter);
       })
       .sort((a, b) => {
         const aDays = getUrgencyDays(a);
@@ -685,19 +752,8 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
         if (bDays !== null) return 1;
         return a.asset.daysToExpiry - b.asset.daysToExpiry;
       });
-  }, [issueSearch, quickFilterSelection]);
+  }, [issueSearch, denseFilter]);
 
-  const summaryCounts = useMemo(() => {
-    const critical = filteredIssues.filter((row) => {
-      const days = getUrgencyDays(row);
-      return days !== null && days <= 3;
-    }).length;
-    const warning = filteredIssues.filter((row) => {
-      const days = getUrgencyDays(row);
-      return days !== null && days >= 4 && days <= 7;
-    }).length;
-    return { critical, warning, total: filteredIssues.length };
-  }, [filteredIssues]);
 
   const queueRows = useMemo(() => {
     return policyRequests.filter((row) => {
@@ -739,15 +795,6 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
     toast.success(`${actionType} queued for ${actionRow.asset.name}`);
     setActionType(null);
     setActionRow(null);
-  };
-
-  const toggleQuickFilter = (filterId: IssueQuickFilter) => {
-    setQuickFilterSelection((current) => {
-      const next = new Set(current);
-      if (next.has(filterId)) next.delete(filterId);
-      else next.add(filterId);
-      return next;
-    });
   };
 
   const handleBulkAction = (label: 'Renew' | 'Revoke & Reissue' | 'Export' | 'Assign Owner') => {
@@ -805,98 +852,231 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
       <div className="flex-1 overflow-auto">
         {activeTab === 'issues' && (
           <div>
-            <div className="flex items-center justify-between border-b border-border px-6 py-3">
-              <div className="flex w-80 items-center gap-2 rounded-md bg-muted px-3 py-2">
-                <Search className="h-[14px] w-[14px] shrink-0 text-muted-foreground" />
-                <input
-                  type="text"
-                  value={issueSearch}
-                  onChange={(event) => setIssueSearch(event.target.value)}
-                  placeholder="Search certificates or issues..."
-                  className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
-                />
+            {/* Top action strip + inline bulk bar */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-3">
+              <div className="flex items-center gap-2">
+                {selectedIds.size > 0 && (
+                  <div className="flex items-center gap-2 rounded-md border border-teal/30 bg-teal/5 px-2.5 py-1">
+                    <span className="text-[11px] text-teal">{selectedIds.size} selected</span>
+                    <button type="button" onClick={() => handleBulkAction('Renew')}
+                      className="rounded border border-teal/30 px-2 py-0.5 text-[10px] text-teal hover:bg-teal/10">
+                      Reissue
+                    </button>
+                    <button type="button" onClick={() => handleBulkAction('Renew')}
+                      className="rounded border border-border px-2 py-0.5 text-[10px] text-muted-foreground hover:text-foreground hover:border-foreground/40">
+                      Regenerate
+                    </button>
+                    <button type="button" onClick={() => launchPushToDevice()}
+                      className="rounded border border-border px-2 py-0.5 text-[10px] text-muted-foreground hover:text-foreground hover:border-foreground/40">
+                      Push to Device
+                    </button>
+                    <button type="button" onClick={() => handleBulkAction('Revoke & Reissue')}
+                      className="rounded border border-coral/30 px-2 py-0.5 text-[10px] text-coral hover:bg-coral/10">
+                      Revoke
+                    </button>
+                  </div>
+                )}
               </div>
-              <button type="button" onClick={() => toast.success('Issue export generated.')} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
-                <Download className="h-[14px] w-[14px]" />
-                Export
-              </button>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button type="button" onClick={() => { onTabChange('actions'); setEnrollOpen(true); }}
+                  className="inline-flex items-center gap-1 rounded-md border border-teal/40 bg-teal/10 px-2.5 py-1 text-[11px] font-medium text-teal hover:bg-teal/20">
+                  <FilePlus className="h-3 w-3" /> Enroll Certificate
+                </button>
+                <button type="button" onClick={() => { onTabChange('actions'); setCsrOpen(true); }}
+                  className="rounded-md border border-border px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground hover:border-foreground/40">
+                  Generate CSR
+                </button>
+                <button type="button" onClick={() => launchPushToDevice()}
+                  className="rounded-md border border-border px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground hover:border-foreground/40">
+                  Push to Device
+                </button>
+                <button type="button" onClick={() => { onTabChange('actions'); setSslDrawerOpen(true); }}
+                  className="rounded-md border border-border px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground hover:border-foreground/40">
+                  SSL Check
+                </button>
+                <button type="button" onClick={() => toast.success('Issue export generated.')}
+                  className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground hover:border-foreground/40">
+                  <Download className="h-3 w-3" /> Export
+                </button>
+              </div>
             </div>
 
-            <div className="overflow-hidden">
-              <BulkActionBar selectedCount={selectedIds.size} onAction={handleBulkAction} />
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[1120px] text-sm">
-                  <thead className="border-b border-border bg-background/40 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
-                    <tr>
-                      <th className="px-3 py-3">
-                        <input type="checkbox" checked={allVisibleSelected} onChange={handleSelectAll} className="rounded border-border bg-background" />
-                      </th>
-                      <th className="px-3 py-3">Severity</th>
-                      <th className="px-3 py-3">Asset</th>
-                      <th className="px-3 py-3">
-                        <button type="button" className="inline-flex items-center gap-1 text-[11px] uppercase tracking-wide text-muted-foreground">
-                          Issue
-                          <ChevronDown className="h-3.5 w-3.5" />
-                        </button>
-                      </th>
-                      <th className="px-3 py-3">Owner</th>
-                      <th className="px-3 py-3">Env</th>
-                      <th className="px-3 py-3">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredIssues.map((row) => {
-                      const PrimaryIcon = actionMeta[row.primaryAction].icon;
-                      const urgencyDays = getUrgencyDays(row);
-                      const recommendation = getRecommendationMeta(row);
-                      return (
-                        <tr key={row.id} className="cursor-pointer border-b border-border last:border-b-0" onClick={() => setDetailRow(row)}>
-                          <td className="px-3 py-2 align-top">
-                            <input type="checkbox" checked={selectedIds.has(row.id)} onChange={() => handleSelectRow(row.id)} onClick={(event) => event.stopPropagation()} className="rounded border-border bg-background" />
-                          </td>
-                          <td className="px-3 py-2 align-top">
-                            <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${severityBadgeClass(row.severity)}`}>{row.severity}</span>
-                          </td>
-                          <td className="px-3 py-2 align-top">
-                            <button type="button" onClick={(event) => { event.stopPropagation(); setDetailRow(row); }} className="font-mono text-sm font-normal text-foreground hover:text-teal hover:underline">
-                              {row.asset.name}
-                            </button>
-                          </td>
-                          <td className="px-3 py-2 align-top text-sm text-foreground">
-                            <div className="flex items-center gap-2">
-                              <span>{row.issueText}</span>
-                              {urgencyDays !== null && <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${urgencyBadgeClass(urgencyDays)}`}>{urgencyDays}d</span>}
-                            </div>
-                          </td>
-                          <td className="px-3 py-2 align-top text-sm text-muted-foreground">{row.owner}</td>
-                          <td className="px-3 py-2 align-top">
-                            <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${environmentBadgeClass(row.environment)}`}>{row.environment}</span>
-                          </td>
-                          <td className="px-3 py-2 align-top">
-                            <div className="flex items-center gap-2">
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <button type="button" onClick={(event) => { event.stopPropagation(); handleAction(recommendation.action, row); }} className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium ${recommendation.className}`}>
-                                      <PrimaryIcon className="h-3.5 w-3.5" />
-                                      {recommendation.label}
-                                    </button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>{recommendation.tooltip}</TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                              <div onClick={(event) => event.stopPropagation()}>
-                                <OverflowMenu row={row} onAction={handleAction} onPush={launchPushToDevice} />
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+            {/* Toolbar: search + filter pills */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-2.5">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex w-64 items-center gap-2 rounded-md border border-border bg-background/60 px-2.5 py-1.5 focus-within:border-teal/50">
+                  <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <input
+                    type="text"
+                    value={issueSearch}
+                    onChange={(event) => setIssueSearch(event.target.value)}
+                    placeholder="Search assets, CA, algorithm..."
+                    className="w-full bg-transparent text-[11px] text-foreground outline-none placeholder:text-muted-foreground"
+                  />
+                </div>
+                <div className="flex items-center gap-1">
+                  {([
+                    { id: 'all', label: 'All', count: filterCounts.all },
+                    { id: 'expired', label: 'Expired', count: filterCounts.expired },
+                    { id: 'critical', label: 'Critical', count: filterCounts.critical },
+                    { id: 'weak', label: 'Weak Algo', count: filterCounts.weak },
+                    { id: 'unassigned', label: 'Unassigned', count: filterCounts.unassigned },
+                  ] as Array<{ id: DenseFilter; label: string; count: number }>).map((pill) => {
+                    const active = denseFilter === pill.id;
+                    return (
+                      <button
+                        key={pill.id}
+                        type="button"
+                        onClick={() => setDenseFilter(pill.id)}
+                        className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[10px] transition-colors ${active
+                          ? 'border-teal/30 bg-teal/10 text-teal'
+                          : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+                      >
+                        {pill.label}
+                        <span className={`rounded-full px-1.5 py-0.5 text-[9px] ${active ? 'bg-teal/20 text-teal' : 'bg-muted text-muted-foreground'}`}>
+                          {pill.count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              {filteredIssues.length === 0 && <div className="px-4 py-10 text-center text-sm text-muted-foreground">No issues match the current filters.</div>}
+            </div>
+
+            {/* Dense table */}
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[1100px] text-[11px]">
+                <thead className="border-b border-border text-left text-[9px] uppercase tracking-wide text-muted-foreground">
+                  <tr>
+                    <th className="px-4 py-2.5 w-8">
+                      <input
+                        type="checkbox"
+                        checked={allVisibleSelected}
+                        onChange={handleSelectAll}
+                        className="h-3 w-3 cursor-pointer accent-teal"
+                      />
+                    </th>
+                    <th className="px-2 py-2.5">Asset</th>
+                    <th className="px-2 py-2.5">Expiry</th>
+                    <th className="px-2 py-2.5">Algorithm</th>
+                    <th className="px-2 py-2.5">Key Size</th>
+                    <th className="px-2 py-2.5">Issuer / CA</th>
+                    <th className="px-2 py-2.5">Issue</th>
+                    <th className="px-2 py-2.5">CRS</th>
+                    <th className="px-2 py-2.5">Env</th>
+                    <th className="px-2 py-2.5">Severity</th>
+                    <th className="px-4 py-2.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredIssues.map((row) => {
+                    const PrimaryIcon = actionMeta[row.primaryAction].icon;
+                    const recommendation = getRecommendationMeta(row);
+                    const crs = deriveCRS(row);
+                    const isExpired = row.asset.status === 'Expired' || row.asset.daysToExpiry < 0;
+                    const caType = /Internal|MSCA|Citadel|SSH CA|Vault|HSM/i.test(row.asset.caIssuer)
+                      ? 'Private CA'
+                      : 'Public CA';
+                    const isRenew = recommendation.action === 'Renew';
+                    return (
+                      <tr
+                        key={row.id}
+                        className={`cursor-pointer border-b border-border/40 hover:bg-muted/30 ${selectedIds.has(row.id) ? 'bg-teal/5' : ''}`}
+                        onClick={() => setDetailRow(row)}
+                      >
+                        <td className="px-4 py-2 align-middle" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(row.id)}
+                            onChange={() => handleSelectRow(row.id)}
+                            className="h-3 w-3 cursor-pointer accent-teal"
+                          />
+                        </td>
+                        <td className="px-2 py-2 align-middle">
+                          <span className="font-mono text-[11px] text-foreground">{row.asset.name}</span>
+                        </td>
+                        <td className="px-2 py-2 align-middle">
+                          <span className={`text-[11px] font-semibold ${expiryCellClass(row)}`}>
+                            {expiryCellLabel(row)}
+                          </span>
+                        </td>
+                        <td className="px-2 py-2 align-middle">
+                          <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-mono ${algoChipClass(row)}`}>
+                            {row.asset.algorithm}
+                          </span>
+                        </td>
+                        <td className="px-2 py-2 align-middle">
+                          <span className={`text-[10px] ${keySizeClass(row)}`}>{row.asset.keyLength}</span>
+                        </td>
+                        <td className="px-2 py-2 align-middle">
+                          <div className="max-w-[140px]">
+                            <div className="truncate text-[10.5px] text-muted-foreground" title={row.asset.caIssuer}>
+                              {row.asset.caIssuer}
+                            </div>
+                            <div className="text-[9px] text-muted-foreground/60">{caType}</div>
+                          </div>
+                        </td>
+                        <td className="px-2 py-2 align-middle">
+                          <span className="block max-w-[180px] truncate text-[10px] text-muted-foreground" title={row.issueText}>
+                            {row.issueText}
+                          </span>
+                        </td>
+                        <td className="px-2 py-2 align-middle">
+                          <div className="flex items-center gap-1.5">
+                            <span className={`text-[11px] font-semibold ${crsTextClass(crs)}`}>{crs}</span>
+                            <span className="inline-block h-[3px] w-9 overflow-hidden rounded-full bg-muted">
+                              <span
+                                className={`block h-full rounded-full ${crsBarFill(crs)}`}
+                                style={{ width: `${crs}%` }}
+                              />
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-2 py-2 align-middle">
+                          <span className={`inline-block rounded px-1.5 py-0.5 text-[9px] font-medium ${environmentBadgeClass(row.environment)}`}>
+                            {row.environment === 'Production' ? 'Prod' : row.environment === 'Staging' ? 'Stage' : 'Dev'}
+                          </span>
+                        </td>
+                        <td className="px-2 py-2 align-middle">
+                          <span className={`inline-block rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${severityBadgeClass(row.severity)}`}>
+                            {row.severity}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 align-middle text-right" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleAction(recommendation.action, row)}
+                              className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-medium transition-colors ${isRenew || isExpired
+                                ? 'border-teal/40 bg-teal/10 text-teal hover:bg-teal/20'
+                                : 'border-amber/40 bg-amber/10 text-amber hover:bg-amber/20'}`}
+                              title={recommendation.tooltip}
+                            >
+                              <PrimaryIcon className="h-3 w-3" />
+                              {recommendation.label}
+                            </button>
+                            <OverflowMenu row={row} onAction={handleAction} onPush={launchPushToDevice} />
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {filteredIssues.length === 0 && (
+                <div className="px-4 py-10 text-center text-[12px] text-muted-foreground">
+                  No certificates match your filter.
+                </div>
+              )}
+            </div>
+
+            {/* Footer summary */}
+            <div className="flex items-center justify-between border-t border-border px-6 py-2">
+              <span className="text-[10px] text-muted-foreground">
+                Showing {filteredIssues.length} of {clmIssues.length} issues
+                {filterCounts.expired > 0 && ` — ${filterCounts.expired} expired`}
+                {filterCounts.weak > 0 && `, ${filterCounts.weak} weak algo`}
+              </span>
             </div>
           </div>
         )}
