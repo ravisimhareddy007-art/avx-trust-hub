@@ -99,7 +99,7 @@ export default function QuantumPosturePage() {
               <div className="bg-teal/10 rounded-lg p-3 text-center"><p className="font-semibold text-teal">Monitor / Low Impact</p><p className="text-[10px] text-muted-foreground mt-1">Internal tools (6,700 assets)</p></div>
             </div>
           </div>
-          <button onClick={() => toast.success('Risk assessment exported as PDF')} className="flex items-center gap-1 px-3 py-2 rounded-lg bg-muted text-xs hover:bg-muted/80"><Download className="w-3 h-3" /> Export Risk Assessment</button>
+          <button onClick={() => toast.success('Risk assessment exported as PDF')} className="flex items-center gap-1 px-3 py-2 rounded-lg bg-muted text-xs hover:bg-muted/80"><Upload className="w-3 h-3" /> Export Risk Assessment</button>
         </div>
       )}
 
