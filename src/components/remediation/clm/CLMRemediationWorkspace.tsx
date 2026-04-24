@@ -873,7 +873,7 @@ export default function CLMRemediationWorkspace(_: Props) {
                 </button>
                 <button type="button" onClick={() => toast.success('Issue export generated.')}
                   className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground hover:border-foreground/40">
-                  <Download className="h-3 w-3" /> Export
+                  <Upload className="h-3 w-3" /> Export
                 </button>
               </div>
             </div>
