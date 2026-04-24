@@ -675,6 +675,11 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
         onClose={() => setDeployFromCert(null)}
         cert={deployFromCert}
       />
+
+      <CryptoObjectRiskDrawer
+        object={riskDrawerObject}
+        onClose={() => setRiskDrawerObject(null)}
+      />
     </div>
   );
 }
