@@ -121,6 +121,56 @@ const urgencyBadgeClass = (days: number) => {
   return 'bg-muted text-muted-foreground';
 };
 
+// ── Issues table v2 helpers ──
+type DenseFilter = 'all' | 'expired' | 'critical' | 'weak' | 'unassigned';
+
+const expiryCellClass = (row: ClmIssueRow) => {
+  if (row.asset.status === 'Expired' || row.asset.daysToExpiry < 0) return 'text-coral';
+  if (row.asset.daysToExpiry === 0) return 'text-coral';
+  if (row.asset.daysToExpiry <= 7) return 'text-amber';
+  if (row.asset.daysToExpiry <= 30) return 'text-amber';
+  return 'text-teal';
+};
+
+const expiryCellLabel = (row: ClmIssueRow) => {
+  if (row.asset.status === 'Expired' || row.asset.daysToExpiry < 0) return 'Expired';
+  if (row.asset.daysToExpiry === 0) return 'Today';
+  return `${row.asset.daysToExpiry}d`;
+};
+
+const isWeakAlgo = (row: ClmIssueRow) =>
+  /SHA-1|MD5|1024/i.test(`${row.asset.algorithm} ${row.asset.keyLength}`);
+
+const isStrongAlgo = (row: ClmIssueRow) =>
+  /ECC|ECDSA|Ed25519|ML-DSA|ML-KEM|4096/i.test(`${row.asset.algorithm} ${row.asset.keyLength}`);
+
+const algoChipClass = (row: ClmIssueRow) => {
+  if (isWeakAlgo(row)) return 'bg-amber/10 text-amber border border-amber/20';
+  if (isStrongAlgo(row)) return 'bg-teal/10 text-teal border border-teal/20';
+  return 'bg-muted text-foreground border border-border';
+};
+
+const keySizeClass = (row: ClmIssueRow) => {
+  if (/1024/.test(row.asset.keyLength)) return 'text-amber';
+  if (/4096|384|521/.test(row.asset.keyLength)) return 'text-teal';
+  return 'text-muted-foreground';
+};
+
+const crsBarFill = (score: number) => {
+  if (score >= 80) return 'bg-coral';
+  if (score >= 60) return 'bg-amber';
+  return 'bg-teal';
+};
+
+const crsTextClass = (score: number) => {
+  if (score >= 80) return 'text-coral';
+  if (score >= 60) return 'text-amber';
+  return 'text-teal';
+};
+
+const isUnassigned = (row: ClmIssueRow) =>
+  /unassigned|unknown|none|n\/a/i.test(row.owner);
+
 const getRecommendationMeta = (row: ClmIssueRow) => {
   const recommended = row.recommended;
 
