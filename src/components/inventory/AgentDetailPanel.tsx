@@ -286,7 +286,7 @@ export default function AgentDetailPanel({ agent, onClose, onCreateTicket, licen
             </div>
 
             <div className="rounded-lg border border-teal/20 bg-teal/5 p-3">
-              <p className="text-[10px] font-semibold text-teal">✦ Eos Guardian</p>
+              <p className="text-[10px] font-semibold text-teal">✦ Trust Guardian</p>
               <p className="mt-1 text-[10px] leading-relaxed text-foreground">{narrative}</p>
             </div>
           </div>
@@ -485,7 +485,7 @@ export default function AgentDetailPanel({ agent, onClose, onCreateTicket, licen
 
             <div className="rounded-lg border border-teal/20 bg-gradient-to-br from-teal/10 to-purple/10 p-3">
               <p className="text-[10px] font-semibold text-foreground">Full Eos Experience</p>
-              <p className="mt-1 text-[10px] text-muted-foreground">Runtime policy enforcement, MCP Gateway, HITL approval, and Eos Guardian AI.</p>
+              <p className="mt-1 text-[10px] text-muted-foreground">Runtime policy enforcement, MCP Gateway, HITL approval, and Trust Guardian AI.</p>
               <button
                 onClick={() => licensed ? setCurrentPage('remediation-ai') : toast.info('AI Agents license request noted')}
                 className="mt-3 rounded-md border border-teal/20 bg-teal/10 px-3 py-1.5 text-[10px] font-medium text-teal hover:bg-teal/20"
