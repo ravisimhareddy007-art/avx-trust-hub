@@ -797,15 +797,6 @@ export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Prop
     setActionRow(null);
   };
 
-  const toggleQuickFilter = (filterId: IssueQuickFilter) => {
-    setQuickFilterSelection((current) => {
-      const next = new Set(current);
-      if (next.has(filterId)) next.delete(filterId);
-      else next.add(filterId);
-      return next;
-    });
-  };
-
   const handleBulkAction = (label: 'Renew' | 'Revoke & Reissue' | 'Export' | 'Assign Owner') => {
     if (label === 'Assign Owner') {
       toast.success(`Owner assignment queued for ${selectedRows.length} certificates.`);
