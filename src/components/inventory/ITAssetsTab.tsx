@@ -460,16 +460,21 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                 </div>
                 <div className="space-y-0">
                   {/* Header */}
-                  <div className="grid grid-cols-[24px_1fr_80px_60px_55px_50px_36px_36px_28px] gap-1 text-[10px] font-medium text-muted-foreground py-1.5 border-b border-border px-1">
-                    <span></span><span>Common Name</span><span>Type</span><span>Algorithm</span><span>Expiry</span><span>Days</span><span>Policy</span><span>Viol.</span><span></span>
+                  <div className="grid grid-cols-[24px_92px_1fr_60px_55px_50px_36px_36px_28px] gap-1 text-[10px] font-medium text-muted-foreground py-1.5 border-b border-border px-1">
+                    <span></span><span>Type</span><span>Common Name</span><span>Algorithm</span><span>Expiry</span><span>Days</span><span>Policy</span><span>Viol.</span><span></span>
                   </div>
-                  {getIdentities(selectedAsset).map(co => (
+                  {getIdentities(selectedAsset).map(co => {
+                    const meta = objectTypeMeta(co.type);
+                    return (
                     <React.Fragment key={co.id}>
-                      <div className="grid grid-cols-[24px_1fr_80px_60px_55px_50px_36px_36px_28px] gap-1 items-center text-[10px] py-2 border-b border-border/50 hover:bg-secondary/30 px-1 cursor-pointer"
+                      <div className="grid grid-cols-[24px_92px_1fr_60px_55px_50px_36px_36px_28px] gap-1 items-center text-[10px] py-2 border-b border-border/50 hover:bg-secondary/30 px-1 cursor-pointer"
                         onClick={() => setExpandedRow(expandedRow === co.id ? null : co.id)}>
                         <span className="text-muted-foreground">{expandedRow === co.id ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}</span>
+                        <span className="flex items-center gap-1 min-w-0">
+                          <meta.Icon className={`w-3 h-3 flex-shrink-0 ${meta.color}`} />
+                          <span className={`text-[9px] uppercase tracking-wide truncate ${meta.color}`}>{meta.label}</span>
+                        </span>
                         <span className="font-medium text-foreground truncate">{co.name}</span>
-                        <span className="text-muted-foreground truncate">{co.type.replace('Certificate', 'Cert')}</span>
                         <span className="text-muted-foreground">{co.algorithm}</span>
                         <span className="text-muted-foreground">{co.expiryDate === 'N/A' ? '—' : co.expiryDate.slice(5)}</span>
                         <DaysToExpiry days={co.daysToExpiry} />
