@@ -529,7 +529,8 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                         </div>
                       )}
                     </React.Fragment>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* Operational Violations + Quantum Risk + AI narrative — moved from Column 1 */}
