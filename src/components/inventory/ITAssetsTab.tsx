@@ -326,7 +326,14 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                 </>
               )}
               <span className="text-xs font-medium text-foreground truncate">{selectedAsset.name}</span>
-              <button onClick={goBack} className="ml-auto p-1 hover:bg-secondary rounded"><X className="w-4 h-4 text-muted-foreground" /></button>
+              <button
+                onClick={() => setBlastModalOpen(true)}
+                className="ml-auto flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-[10px] text-muted-foreground hover:text-foreground hover:border-teal/30 transition-colors mr-2"
+              >
+                <Maximize2 className="w-3 h-3" />
+                Blast Radius
+              </button>
+              <button onClick={goBack} className="p-1 hover:bg-secondary rounded"><X className="w-4 h-4 text-muted-foreground" /></button>
             </div>
 
             {/* Three column layout */}
@@ -352,68 +359,75 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                 {/* Risk gauge */}
                 <div className="flex justify-center"><RiskGauge score={selectedAsset.riskScore} size={100} /></div>
 
-                {/* Risk bars */}
+                {/* Credential severity distribution */}
                 {(() => {
-                  const drivers = getAssetRiskDrivers(selectedAsset);
+                  const br = arsFor(selectedAsset);
+                  const critCount = br.critCount;
+                  const highCount = br.highCount;
+                  const totalCount = br.count;
+                  const maxCRS = br.max;
+
                   return (
                     <div className="space-y-3">
-                      <RiskBar label="Crypto Health" score={drivers.cryptoHealth.score} driver={drivers.cryptoHealth.driver} />
-                      <RiskBar label="Expiry Exposure" score={drivers.expiryExposure.score} driver={drivers.expiryExposure.driver} />
-                      <RiskBar label="Policy Coverage" score={drivers.policyCoverage.score} driver={drivers.policyCoverage.driver} />
-                      <RiskBar label="Blast Radius" score={drivers.blastRadius.score} driver={drivers.blastRadius.driver} />
-                    </div>
-                  );
-                })()}
-
-                {/* AI narrative */}
-                <div className="bg-teal/5 border border-teal/20 rounded-lg p-3">
-                  <p className="text-[10px] font-semibold text-teal mb-1">✦ Infinity AI</p>
-                  <p className="text-[10px] text-muted-foreground leading-relaxed">{getAssetAINarrative(selectedAsset)}</p>
-                </div>
-
-                {/* Violations — split into Operational + Quantum Risk */}
-                {(() => {
-                  const violations = getAssetViolations(selectedAsset);
-                  const classic = violations.filter(v => v.violationType === 'classic');
-                  const pqc = violations.filter(v => v.violationType === 'pqc');
-                  if (violations.length === 0) return null;
-                  return (
-                    <div className="space-y-3">
-                      {classic.length > 0 && (
-                        <div className="space-y-1.5">
-                          <p className="text-[10px] font-semibold text-coral flex items-center gap-1">
-                            <AlertTriangle className="w-3 h-3" /> Operational Violations ({classic.length})
-                          </p>
-                          {classic.slice(0, 4).map((v, i) => (
-                            <div key={`c-${i}`} className="flex items-center gap-2 text-[10px] py-1 border-b border-border/50 last:border-0">
-                              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                                v.severity === 'Critical' ? 'bg-coral' :
-                                v.severity === 'High' ? 'bg-amber' : 'bg-purple'
-                              }`} />
-                              <span className="text-foreground truncate flex-1">{v.type}</span>
-                              <button onClick={() => setViolationsAsset(selectedAsset)} className="text-teal hover:underline flex-shrink-0">Fix</button>
+                      {/* Credential severity distribution */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Credential severity</span>
+                          <span className="text-[10px] text-muted-foreground">Worst: CRS {maxCRS}</span>
+                        </div>
+                        <div className="grid grid-cols-4 gap-1.5">
+                          {[
+                            { label: 'Crit', value: critCount, color: 'bg-coral/20 text-coral' },
+                            { label: 'High', value: highCount, color: 'bg-amber/20 text-amber' },
+                            { label: 'Total', value: totalCount, color: 'bg-muted text-foreground' },
+                            { label: 'Avg', value: totalCount > 0 ? Math.round(br.p75) : 0, color: 'bg-muted text-muted-foreground' },
+                          ].map(s => (
+                            <div key={s.label} className={`rounded-md px-1.5 py-1.5 text-center ${s.color}`}>
+                              <div className="text-sm font-bold tabular-nums leading-tight">{s.value}</div>
+                              <div className="text-[9px] uppercase tracking-wide opacity-80">{s.label}</div>
                             </div>
                           ))}
                         </div>
+                      </div>
+
+                      {/* Top 3 CRS objects — compact */}
+                      {br.topObjects.length > 0 && (
+                        <div className="space-y-1.5">
+                          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Top risk drivers</p>
+                          <div className="space-y-1">
+                            {br.topObjects.slice(0, 3).map(o => (
+                              <button
+                                key={o.id}
+                                onClick={() => {
+                                  const obj = mockAssets.find(a => a.id === o.id);
+                                  if (obj) setRiskDrawerObject(obj);
+                                }}
+                                className="w-full grid grid-cols-[28px_1fr] gap-2 items-start text-left rounded px-1.5 py-1.5 hover:bg-secondary/40 transition-colors"
+                              >
+                                <span className={`text-[11px] font-bold tabular-nums ${o.crs >= 80 ? 'text-coral' : o.crs >= 60 ? 'text-amber' : o.crs >= 30 ? 'text-blue-400' : 'text-teal'}`}>
+                                  {o.crs}
+                                </span>
+                                <span className="min-w-0">
+                                  <span className="block text-[10px] font-medium text-foreground truncate">{o.name}</span>
+                                  <span className="block text-[9px] text-muted-foreground truncate">{o.reason}</span>
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       )}
-                      {pqc.length > 0 && (
-                        <div className="space-y-1.5 pt-2 border-t border-border/50">
-                          <p className="text-[10px] font-semibold text-purple-light flex items-center gap-1">
-                            <Shield className="w-3 h-3" /> Quantum Risk ({pqc.length})
-                            <span className="ml-auto text-[8.5px] font-semibold px-1 py-0.5 rounded bg-purple/15 text-purple-light">NIST 2030</span>
-                          </p>
-                          {pqc.slice(0, 4).map((v, i) => (
-                            <div key={`p-${i}`} className="text-[10px] py-1 border-b border-border/50 last:border-0">
-                              <div className="flex items-center gap-2">
-                                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'hsl(280 65% 55%)' }} />
-                                <span className="text-foreground font-mono flex-1 truncate">{v.algorithm}</span>
-                                <button onClick={() => setViolationsAsset(selectedAsset)} className="text-purple-light hover:underline flex-shrink-0">QTH</button>
-                              </div>
-                              <p className="text-[9px] text-muted-foreground ml-3.5 mt-0.5">
-                                Expires {v.expiryYear} · {(v.yearsPastDeadline ?? 0) > 0 ? `+${v.yearsPastDeadline}y past` : 'at'} NIST deadline
-                              </p>
-                            </div>
-                          ))}
+
+                      {/* Operational vs Quantum split */}
+                      {(br.operationalCount > 0 || br.quantumCount > 0) && (
+                        <div className="grid grid-cols-2 gap-1.5 pt-1">
+                          <div className="rounded-md border border-border px-2 py-1.5">
+                            <div className="text-sm font-bold tabular-nums text-foreground leading-tight">{br.operationalCount}</div>
+                            <div className="text-[9px] text-muted-foreground uppercase tracking-wide">Operational</div>
+                          </div>
+                          <div className="rounded-md border border-border px-2 py-1.5">
+                            <div className="text-sm font-bold tabular-nums text-purple-light leading-tight">{br.quantumCount}</div>
+                            <div className="text-[9px] text-muted-foreground uppercase tracking-wide">Quantum risk</div>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -494,6 +508,60 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                     </React.Fragment>
                   ))}
                 </div>
+
+                {/* Operational Violations + Quantum Risk + AI narrative — moved from Column 1 */}
+                {(() => {
+                  const violations = getAssetViolations(selectedAsset);
+                  const classic = violations.filter(v => v.violationType === 'classic');
+                  const pqc = violations.filter(v => v.violationType === 'pqc');
+                  return (
+                    <>
+                      {classic.length > 0 && (
+                        <div className="border-t border-border pt-4 mt-4 space-y-1.5">
+                          <p className="text-[10px] font-semibold text-coral flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3" /> Operational Violations ({classic.length})
+                          </p>
+                          {classic.slice(0, 4).map((v, i) => (
+                            <div key={`c-${i}`} className="flex items-center gap-2 text-[10px] py-1 border-b border-border/50 last:border-0">
+                              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                                v.severity === 'Critical' ? 'bg-coral' :
+                                v.severity === 'High' ? 'bg-amber' : 'bg-purple'
+                              }`} />
+                              <span className="text-foreground truncate flex-1">{v.type}</span>
+                              <button onClick={() => setViolationsAsset(selectedAsset)} className="text-teal hover:underline flex-shrink-0">Fix</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {pqc.length > 0 && (
+                        <div className="border-t border-border pt-4 mt-4 space-y-1.5">
+                          <p className="text-[10px] font-semibold text-purple-light flex items-center gap-1">
+                            <Shield className="w-3 h-3" /> Quantum Risk ({pqc.length})
+                            <span className="ml-auto text-[8.5px] font-semibold px-1 py-0.5 rounded bg-purple/15 text-purple-light">NIST 2030</span>
+                          </p>
+                          {pqc.slice(0, 4).map((v, i) => (
+                            <div key={`p-${i}`} className="text-[10px] py-1 border-b border-border/50 last:border-0">
+                              <div className="flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'hsl(280 65% 55%)' }} />
+                                <span className="text-foreground font-mono flex-1 truncate">{v.algorithm}</span>
+                                <button onClick={() => setViolationsAsset(selectedAsset)} className="text-purple-light hover:underline flex-shrink-0">QTH</button>
+                              </div>
+                              <p className="text-[9px] text-muted-foreground ml-3.5 mt-0.5">
+                                Expires {v.expiryYear} · {(v.yearsPastDeadline ?? 0) > 0 ? `+${v.yearsPastDeadline}y past` : 'at'} NIST deadline
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <div className="border-t border-border pt-4 mt-4">
+                        <div className="bg-teal/5 border border-teal/20 rounded-lg p-3">
+                          <p className="text-[10px] font-semibold text-teal mb-1">✦ Infinity AI</p>
+                          <p className="text-[10px] text-muted-foreground leading-relaxed">{getAssetAINarrative(selectedAsset)}</p>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
 
               {/* Column 3 — Blast Radius */}
