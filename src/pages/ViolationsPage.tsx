@@ -15,6 +15,7 @@ import {
 import { toast } from 'sonner';
 import { mockITAssets, getAssetViolations, type AssetViolation } from '@/data/inventoryMockData';
 import { mockAssets } from '@/data/mockData';
+import { usePersona } from '@/context/PersonaContext';
 
 type Tab = 'operational' | 'quantum';
 type GovernanceStatus = 'Open' | 'In Remediation' | 'Closed';
