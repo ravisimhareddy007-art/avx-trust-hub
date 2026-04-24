@@ -275,221 +275,290 @@ export default function PolicyBuilderPage() {
     ssh: { name: '', assetType: 'SSH Key', condition: 'No rotation in', value: '60 days', severity: 'High', envs: ['All'], actions: ['Alert only', 'Auto-remediate'], groups: ['grp-003'], type: 'ssh-key' },
   };
 
-  const handleAIDraft = async () => {
+  const handleAIDraft = () => {
     if (!formDescription || formDescription.trim().length < 10) {
-      toast.error('Enter a description so AI can fill the policy');
-      return;
+      toast.error('Enter a description first')
+      return
     }
-
-    setAiLoading(true);
-
-    const systemPrompt = `You are a policy configuration assistant 
-for AVX Trust Platform, a cryptographic identity governance platform.
-
-The user will describe a policy in plain English. You must extract 
-structured configuration from their description and return ONLY a 
-valid JSON object — no markdown, no explanation, no backticks.
-
-The user has selected policy type: "${formPolicyType}"
-
-Return a JSON object with ONLY the fields relevant to that policy 
-type. Use these exact field names and allowed values:
-
-ALWAYS include:
-
-- name: string (short descriptive policy name, max 60 chars)
-
-- description: string (1-2 sentence plain English summary)
-
-- tag: one of ["Default","PCI-DSS","DORA","NIS2","HIPAA","NIST","Zero-Trust","Internal"]
-
-- environment: one of ["All","Production","Staging","Development"]
-
-- severity: one of ["Low","Medium","High","Critical"]
-
-- action: one of ["Alert only","Block action","Auto-remediate","Create ticket","Escalate to owner"]
-
-- requireApproval: boolean
-
-- notifyOnFail: boolean
-
-- notifyOnComplete: boolean
-
-- notifyVia: one of ["Email","Slack"]
-
-- itsm: boolean
-
-FOR "Managed Certificate Policy" add:
-
-- certType: one of ["TLS / SSL","Code-Signing","S/MIME","Client Auth"]
-
-- certAction: one of ["Alert Only","Enroll","Auto-Renew","Re-Enroll"]
-
-- ca: one of ["Any","AppViewX CA","DigiCert","GlobalSign","Entrust","Let's Encrypt","Microsoft CA","Sectigo","HashiCorp Vault PKI"]
-
-- maxValidity: one of ["30 days","60 days","90 days","180 days","365 days","2 years","3 years","No limit"]
-
-- minKeyType: one of ["RSA-2048","RSA-4096","ECDSA-256","Ed25519"]
-
-- autoRenew: boolean
-
-- renewBefore: one of ["7 days","14 days","30 days","45 days","60 days"]
-
-FOR "SSH Key Policy" add:
-
-- allowedAlgorithms: string (comma-separated, e.g. "Ed25519, RSA-4096")
-
-- maxKeyAge: one of ["30 days","60 days","90 days","180 days","365 days","No limit"]
-
-- autoRotate: boolean
-
-- rotationPeriod: one of ["30 days","60 days","90 days","180 days","365 days"]
-
-- targetAlgorithm: one of ["Ed25519","RSA-4096","ECDSA-256"]
-
-FOR "Secrets & API Keys Policy" add:
-
-- secretType: one of ["All","API Keys","OAuth Tokens","Database Credentials","Service Account Keys","Vault Secrets"]
-
-- secretMaxAge: one of ["30 days","60 days","90 days","180 days","365 days"]
-
-- secretVault: one of ["Any","HashiCorp Vault","AWS Secrets Manager","Azure Key Vault","CyberArk Conjur","GCP Secret Manager"]
-
-- secretAutoRotate: boolean
-
-FOR "AI Agent Token Policy" add:
-
-- agentMaxTTL: one of ["1 hour","6 hours","24 hours","7 days","30 days","90 days","No limit"]
-
-- enforceJIT: boolean
-
-- enforceRightSize: boolean
-
-FOR "Kubernetes Certificate Policy" add:
-
-- k8sIssuer: one of ["cert-manager","Vault PKI","SPIFFE/SPIRE","ACME","AWS PCA","Custom"]
-
-- k8sNamespace: string (namespace pattern or empty string)
-
-- maxValidity: one of ["1 hour","6 hours","24 hours","7 days","30 days","90 days","365 days"]
-
-- minKeyType: one of ["RSA-2048","RSA-4096","ECDSA-256","Ed25519"]
-
-FOR "Device Management Policy" add:
-
-- deviceAction: one of ["Onboard Device","Re-Onboard","Update Config"]
-
-- deviceVendor: one of ["Linux Server","Microsoft Server","IIS","Apache","Nginx","F5 (ADC)","MS SQL","Tomcat","Custom"]
-
-- deviceApproval: one of ["Auto-approve","Require approval","Auto-approve with notification"]
-
-Return ONLY the JSON object. No other text.`;
-
-    try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': import.meta.env.VITE_ANTHROPIC_API_KEY || '',
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          system: systemPrompt,
-          messages: [{ role: 'user', content: formDescription }]
-        })
-      })
-      if (!response.ok) {
-        const errText = await response.text()
-        throw new Error(`API error ${response.status}: ${errText}`)
+    setAiLoading(true)
+    setTimeout(() => {
+      const d = formDescription.toLowerCase()
+      // ── SSH Key Policy ──
+      if (formPolicyType === 'SSH Key Policy') {
+        // Name
+        if (!formName) {
+          if (d.includes('pci')) setFormName('PCI-DSS SSH Key Rotation — Production')
+          else if (d.includes('nist')) setFormName('NIST 800-57 SSH Key Policy')
+          else setFormName('SSH Key Rotation Policy — ' + (d.includes('produc') ? 'Production' : 'All Environments'))
+        }
+        // Algorithms
+        if (d.includes('ed25519') && d.includes('rsa-4096'))
+          setFormAllowedAlgorithms('Ed25519, RSA-4096')
+        else if (d.includes('ed25519'))
+          setFormAllowedAlgorithms('Ed25519')
+        else if (d.includes('rsa-4096') || d.includes('rsa 4096'))
+          setFormAllowedAlgorithms('RSA-4096, Ed25519')
+        else
+          setFormAllowedAlgorithms('Ed25519, RSA-4096')
+        // Max key age
+        const ageMatch = d.match(/(\d+)\s*day/)
+        if (ageMatch) {
+          const n = parseInt(ageMatch[1])
+          if (n <= 30) setFormMaxKeyAge('30 days')
+          else if (n <= 60) setFormMaxKeyAge('60 days')
+          else if (n <= 90) setFormMaxKeyAge('90 days')
+          else if (n <= 180) setFormMaxKeyAge('180 days')
+          else setFormMaxKeyAge('365 days')
+        } else {
+          setFormMaxKeyAge('90 days')
+        }
+        // Auto rotate
+        if (d.includes('auto') || d.includes('rotat') || d.includes('renew')) {
+          setFormAutoRotate(true)
+          const rMatch = d.match(/(\d+)\s*day/)
+          if (rMatch) {
+            const n = parseInt(rMatch[1])
+            if (n <= 30) setFormRotationPeriod('30 days')
+            else if (n <= 60) setFormRotationPeriod('60 days')
+            else if (n <= 90) setFormRotationPeriod('90 days')
+            else setFormRotationPeriod('180 days')
+          } else {
+            setFormRotationPeriod('90 days')
+          }
+          setFormTargetAlgorithm(
+            d.includes('ed25519') ? 'Ed25519' : 'RSA-4096'
+          )
+        }
+        // Action
+        if (d.includes('block') || d.includes('prevent') || d.includes('rsa-1024') || d.includes('rsa 1024'))
+          setFormAction('Block action')
+        else if (d.includes('auto-remediat') || d.includes('auto remediat') || d.includes('auto rotat'))
+          setFormAction('Auto-remediate')
+        else
+          setFormAction('Alert only')
+        // Severity
+        if (d.includes('pci') || d.includes('critical') || d.includes('rsa-1024'))
+          setFormSeverity('Critical')
+        else if (d.includes('high') || d.includes('produc'))
+          setFormSeverity('High')
+        else
+          setFormSeverity('High')
+        // Environment
+        if (d.includes('produc')) setFormEnvironment('Production')
+        else if (d.includes('staging')) setFormEnvironment('Staging')
+        else setFormEnvironment('All')
+        // Tag
+        if (d.includes('pci')) setFormTag('PCI-DSS')
+        else if (d.includes('nist')) setFormTag('NIST')
+        else if (d.includes('dora')) setFormTag('DORA')
+        else if (d.includes('zero')) setFormTag('Zero-Trust')
+        else setFormTag('Default')
+        // Notifications
+        if (d.includes('notif') || d.includes('alert') || d.includes('slack'))
+          setFormNotifyOnFail(true)
+        if (d.includes('slack')) setFormNotifyVia('Slack')
+        // ITSM
+        if (d.includes('servicenow') || d.includes('ticket') || d.includes('itsm'))
+          setFormITSM(true)
       }
-
-      const data = await response.json()
-      
-      // Extract text from response
-      const rawText = data?.content
-        ?.filter((b: any) => b.type === 'text')
-        ?.map((b: any) => b.text)
-        ?.join('') || ''
-      if (!rawText) {
-        throw new Error('Empty response from API')
+      // ── Managed Certificate Policy ──
+      else if (formPolicyType === 'Managed Certificate Policy') {
+        if (!formName) {
+          if (d.includes('pci')) setFormName('PCI-DSS Certificate Policy — Production')
+          else if (d.includes('dora')) setFormName('DORA Operational Resilience — Certs')
+          else if (d.includes('zero') || d.includes('short')) setFormName('Zero-Trust TLS Policy')
+          else setFormName('Certificate Lifecycle Policy — ' + (d.includes('produc') ? 'Production' : 'All'))
+        }
+        // Cert action
+        if (d.includes('auto-renew') || d.includes('auto renew') || d.includes('renew'))
+          setFormCertAction('Auto-Renew')
+        else if (d.includes('enroll') || d.includes('issue'))
+          setFormCertAction('Enroll')
+        else
+          setFormCertAction('Alert Only')
+        // CA
+        if (d.includes('digicert')) setFormCA('DigiCert')
+        else if (d.includes('entrust')) setFormCA('Entrust')
+        else if (d.includes('vault') || d.includes('hashicorp')) setFormCA('HashiCorp Vault PKI')
+        else if (d.includes('letsencrypt') || d.includes('let\'s encrypt')) setFormCA("Let's Encrypt")
+        else if (d.includes('globalsign')) setFormCA('GlobalSign')
+        else setFormCA('Any')
+        // Max validity
+        const validMatch = d.match(/(\d+)\s*day/)
+        if (validMatch) {
+          const n = parseInt(validMatch[1])
+          if (n <= 30) setFormMaxValidity('30 days')
+          else if (n <= 60) setFormMaxValidity('60 days')
+          else if (n <= 90) setFormMaxValidity('90 days')
+          else if (n <= 180) setFormMaxValidity('180 days')
+          else setFormMaxValidity('365 days')
+        } else if (d.includes('1 year') || d.includes('one year')) {
+          setFormMaxValidity('365 days')
+        } else {
+          setFormMaxValidity('90 days')
+        }
+        // Auto renew
+        if (d.includes('auto') || d.includes('renew')) {
+          setFormAutoRenew(true)
+          if (d.includes('30 day') || d.includes('30d')) setFormRenewBefore('30 days')
+          else if (d.includes('14 day')) setFormRenewBefore('14 days')
+          else if (d.includes('60 day')) setFormRenewBefore('60 days')
+          else setFormRenewBefore('30 days')
+        }
+        // Min key strength
+        if (d.includes('rsa-4096') || d.includes('rsa 4096')) setFormMinKeyType('RSA-4096')
+        else if (d.includes('ed25519')) setFormMinKeyType('Ed25519')
+        else if (d.includes('ecdsa')) setFormMinKeyType('ECDSA-256')
+        else setFormMinKeyType('RSA-2048')
+        // Action
+        if (d.includes('block') || d.includes('self-sign') || d.includes('prevent'))
+          setFormAction('Block action')
+        else if (d.includes('auto-remediat') || d.includes('auto renew'))
+          setFormAction('Auto-remediate')
+        else if (d.includes('ticket'))
+          setFormAction('Create ticket')
+        else
+          setFormAction('Alert only')
+        // Severity + environment + tag
+        if (d.includes('pci') || d.includes('critical')) setFormSeverity('Critical')
+        else setFormSeverity('High')
+        if (d.includes('produc')) setFormEnvironment('Production')
+        if (d.includes('pci')) setFormTag('PCI-DSS')
+        else if (d.includes('dora')) { setFormTag('DORA'); setFormITSM(true) }
+        else if (d.includes('nist')) setFormTag('NIST')
+        else if (d.includes('zero') || d.includes('short')) setFormTag('Zero-Trust')
+        // ITSM
+        if (d.includes('servicenow') || d.includes('ticket') || d.includes('itsm') || d.includes('dora'))
+          setFormITSM(true)
       }
-
-      // Extract JSON — find first { and last }
-      const start = rawText.indexOf('{')
-      const end = rawText.lastIndexOf('}')
-      
-      if (start === -1 || end === -1 || end <= start) {
-        throw new Error(`No JSON found in response: ${rawText.slice(0, 200)}`)
+      // ── Secrets & API Keys Policy ──
+      else if (formPolicyType === 'Secrets & API Keys Policy') {
+        if (!formName)
+          setFormName('Secret Rotation Policy — ' + (d.includes('produc') ? 'Production' : 'All'))
+        // Secret type
+        if (d.includes('api key') || d.includes('api-key')) setFormSecretType('API Keys')
+        else if (d.includes('oauth')) setFormSecretType('OAuth Tokens')
+        else if (d.includes('database') || d.includes('db cred')) setFormSecretType('Database Credentials')
+        else if (d.includes('service account')) setFormSecretType('Service Account Keys')
+        else setFormSecretType('All')
+        // Max age
+        const secretAge = d.match(/(\d+)\s*day/)
+        if (secretAge) {
+          const n = parseInt(secretAge[1])
+          if (n <= 30) setFormSecretMaxAge('30 days')
+          else if (n <= 60) setFormSecretMaxAge('60 days')
+          else if (n <= 90) setFormSecretMaxAge('90 days')
+          else setFormSecretMaxAge('180 days')
+        } else setFormSecretMaxAge('90 days')
+        // Vault
+        if (d.includes('hashicorp') || d.includes('vault')) setFormSecretVault('HashiCorp Vault')
+        else if (d.includes('aws')) setFormSecretVault('AWS Secrets Manager')
+        else if (d.includes('azure')) setFormSecretVault('Azure Key Vault')
+        else setFormSecretVault('Any')
+        // Auto rotate
+        if (d.includes('auto') || d.includes('rotat')) setFormSecretAutoRotate(true)
+        // Action + severity
+        if (d.includes('block')) setFormAction('Block action')
+        else if (d.includes('auto')) setFormAction('Auto-remediate')
+        else setFormAction('Alert only')
+        if (d.includes('critical')) setFormSeverity('Critical')
+        else setFormSeverity('High')
+        if (d.includes('produc')) setFormEnvironment('Production')
       }
-
-      const jsonStr = rawText.slice(start, end + 1)
-      const result = JSON.parse(jsonStr)
-      // Apply all common fields
-      if (result.name) setFormName(result.name)
-      if (result.description) setFormDescription(result.description)
-      if (result.tag) setFormTag(result.tag)
-      if (result.environment) setFormEnvironment(result.environment)
-      if (result.severity) setFormSeverity(result.severity)
-      if (result.action) setFormAction(result.action)
-      if (result.requireApproval !== undefined) 
-        setFormRequireApproval(result.requireApproval)
-      if (result.notifyOnFail !== undefined) 
-        setFormNotifyOnFail(result.notifyOnFail)
-      if (result.notifyOnComplete !== undefined) 
-        setFormNotifyOnComplete(result.notifyOnComplete)
-      if (result.notifyVia) setFormNotifyVia(result.notifyVia)
-      if (result.itsm !== undefined) setFormITSM(result.itsm)
-      // Certificate fields
-      if (result.certType) setFormCertType(result.certType)
-      if (result.certAction) setFormCertAction(result.certAction)
-      if (result.ca) setFormCA(result.ca)
-      if (result.maxValidity) setFormMaxValidity(result.maxValidity)
-      if (result.minKeyType) setFormMinKeyType(result.minKeyType)
-      if (result.autoRenew !== undefined) setFormAutoRenew(result.autoRenew)
-      if (result.renewBefore) setFormRenewBefore(result.renewBefore)
-      // SSH Key fields
-      if (result.allowedAlgorithms) 
-        setFormAllowedAlgorithms(result.allowedAlgorithms)
-      if (result.maxKeyAge) setFormMaxKeyAge(result.maxKeyAge)
-      if (result.autoRotate !== undefined) 
-        setFormAutoRotate(result.autoRotate)
-      if (result.rotationPeriod) 
-        setFormRotationPeriod(result.rotationPeriod)
-      if (result.targetAlgorithm) 
-        setFormTargetAlgorithm(result.targetAlgorithm)
-      // Secrets fields
-      if (result.secretType) setFormSecretType(result.secretType)
-      if (result.secretMaxAge) setFormSecretMaxAge(result.secretMaxAge)
-      if (result.secretVault) setFormSecretVault(result.secretVault)
-      if (result.secretAutoRotate !== undefined) 
-        setFormSecretAutoRotate(result.secretAutoRotate)
-      // AI Agent fields
-      if (result.agentMaxTTL) setFormAgentMaxTTL(result.agentMaxTTL)
-      if (result.enforceJIT !== undefined) 
-        setFormEnforceJIT(result.enforceJIT)
-      if (result.enforceRightSize !== undefined) 
-        setFormEnforceRightSize(result.enforceRightSize)
-      // Device fields
-      if (result.deviceAction) setFormDeviceAction(result.deviceAction)
-      if (result.deviceVendor) setFormDeviceVendor(result.deviceVendor)
-      if (result.deviceApproval) 
-        setFormDeviceApproval(result.deviceApproval)
-      // Kubernetes fields
-      if (result.k8sIssuer) setFormK8sIssuer(result.k8sIssuer)
-      if (result.k8sNamespace !== undefined) 
-        setFormK8sNamespace(result.k8sNamespace)
-      toast.success('Policy generated — review and adjust if needed')
-    } catch (err) {
-      console.error('AI draft error:', err);
-      const msg = err instanceof Error ? err.message : String(err);
-      toast.error(`Policy generation failed: ${msg}`);
-    } finally {
-      setAiLoading(false);
-    }
-  };
+      // ── AI Agent Token Policy ──
+      else if (formPolicyType === 'AI Agent Token Policy') {
+        if (!formName)
+          setFormName('AI Agent Token Policy — ' + (d.includes('produc') ? 'Production' : 'All'))
+        // TTL
+        if (d.includes('1 hour') || d.includes('1h')) setFormAgentMaxTTL('1 hour')
+        else if (d.includes('6 hour') || d.includes('6h')) setFormAgentMaxTTL('6 hours')
+        else if (d.includes('24') || d.includes('24h') || d.includes('24 hour')) setFormAgentMaxTTL('24 hours')
+        else if (d.includes('7 day')) setFormAgentMaxTTL('7 days')
+        else if (d.includes('30 day')) setFormAgentMaxTTL('30 days')
+        else setFormAgentMaxTTL('24 hours')
+        // JIT
+        if (d.includes('jit') || d.includes('just-in-time') || d.includes('dynamic') || d.includes('short-lived'))
+          setFormEnforceJIT(true)
+        // Right-size
+        if (d.includes('least') || d.includes('privilege') || d.includes('right-siz') || d.includes('over-priv'))
+          setFormEnforceRightSize(true)
+        // Action + severity
+        if (d.includes('block') || d.includes('static') || d.includes('prevent'))
+          setFormAction('Block action')
+        else setFormAction('Alert only')
+        if (d.includes('critical') || d.includes('jit')) setFormSeverity('Critical')
+        else setFormSeverity('High')
+        if (d.includes('produc')) setFormEnvironment('Production')
+        if (d.includes('zero')) setFormTag('Zero-Trust')
+      }
+      // ── Device Management Policy ──
+      else if (formPolicyType === 'Device Management Policy') {
+        if (!formName)
+          setFormName('Device Onboarding Policy — ' + (d.includes('linux') ? 'Linux' : 'All Vendors'))
+        if (d.includes('linux')) setFormDeviceVendor('Linux Server')
+        else if (d.includes('windows') || d.includes('microsoft')) setFormDeviceVendor('Microsoft Server')
+        else if (d.includes('nginx')) setFormDeviceVendor('Nginx')
+        else if (d.includes('apache')) setFormDeviceVendor('Apache')
+        else if (d.includes('f5')) setFormDeviceVendor('F5 (ADC)')
+        else setFormDeviceVendor('Linux Server')
+        if (d.includes('re-onboard') || d.includes('re onboard')) setFormDeviceAction('Re-Onboard')
+        else if (d.includes('update') || d.includes('config')) setFormDeviceAction('Update Config')
+        else setFormDeviceAction('Onboard Device')
+        if (d.includes('auto') || d.includes('no approval')) {
+          if (d.includes('notif')) setFormDeviceApproval('Auto-approve with notification')
+          else setFormDeviceApproval('Auto-approve')
+        } else if (d.includes('approv')) {
+          setFormDeviceApproval('Require approval')
+        } else {
+          setFormDeviceApproval('Auto-approve with notification')
+        }
+        if (d.includes('notif')) setFormNotifyOnComplete(true)
+        if (d.includes('slack')) setFormNotifyVia('Slack')
+        if (d.includes('servicenow') || d.includes('ticket')) setFormITSM(true)
+        setFormSeverity('Medium')
+      }
+      // ── Kubernetes Certificate Policy ──
+      else if (formPolicyType === 'Kubernetes Certificate Policy') {
+        if (!formName)
+          setFormName('Kubernetes Certificate Policy — ' + (d.includes('payment') ? 'Payments Namespace' : 'All Clusters'))
+        if (d.includes('vault')) setFormK8sIssuer('Vault PKI')
+        else if (d.includes('spiffe') || d.includes('spire')) setFormK8sIssuer('SPIFFE/SPIRE')
+        else if (d.includes('acme')) setFormK8sIssuer('ACME')
+        else setFormK8sIssuer('cert-manager')
+        const nsMatch = d.match(/namespace[s]?\s+([a-z0-9_\-*]+)/i)
+        if (nsMatch) setFormK8sNamespace(nsMatch[1])
+        else if (d.includes('payment')) setFormK8sNamespace('payments-*')
+        else if (d.includes('produc')) setFormK8sNamespace('production-*')
+        else setFormK8sNamespace('')
+        const k8sAge = d.match(/(\d+)\s*(hour|day)/)
+        if (k8sAge) {
+          const n = parseInt(k8sAge[1])
+          const unit = k8sAge[2]
+          if (unit === 'hour') {
+            if (n <= 1) setFormMaxValidity('1 hour')
+            else if (n <= 6) setFormMaxValidity('6 hours')
+            else setFormMaxValidity('24 hours')
+          } else {
+            if (n <= 7) setFormMaxValidity('7 days')
+            else if (n <= 30) setFormMaxValidity('30 days')
+            else setFormMaxValidity('90 days')
+          }
+        } else {
+          setFormMaxValidity('24 hours')
+        }
+        setFormMinKeyType('ECDSA-256')
+        setFormSeverity('High')
+        if (d.includes('produc')) setFormEnvironment('Production')
+      }
+      // ── Common across all types ──
+      if (d.includes('approv')) setFormRequireApproval(true)
+      if (d.includes('slack')) { setFormNotifyVia('Slack'); setFormNotifyOnFail(true) }
+      if (d.includes('email') && !d.includes('s/mime')) { setFormNotifyVia('Email'); setFormNotifyOnFail(true) }
+      if (d.includes('servicenow') || d.includes('snow')) setFormITSM(true)
+      setAiLoading(false)
+      toast.success('Policy generated from your description — review and save')
+    }, 700)
+  }
 
   const handleSave = (draft: boolean) => {
     if (!formName.trim()) {
@@ -764,7 +833,21 @@ Return ONLY the JSON object. No other text.`;
                     value={formDescription}
                     onChange={e => setFormDescription(e.target.value)}
                     rows={2}
-                    placeholder="Describe what you want this policy to do — e.g. rotate all production SSH keys every 90 days and block RSA-1024"
+                    placeholder={
+                      formPolicyType === 'SSH Key Policy'
+                        ? 'e.g. rotate all production SSH keys every 90 days and block RSA-1024 algorithms'
+                      : formPolicyType === 'Managed Certificate Policy'
+                        ? 'e.g. auto-renew production TLS certs 30 days before expiry via DigiCert, block self-signed'
+                      : formPolicyType === 'Secrets & API Keys Policy'
+                        ? 'e.g. flag any API key older than 60 days and require rotation via HashiCorp Vault'
+                      : formPolicyType === 'AI Agent Token Policy'
+                        ? 'e.g. enforce 24-hour TTL for all AI agent tokens and require JIT issuance in production'
+                      : formPolicyType === 'Device Management Policy'
+                        ? 'e.g. auto-onboard all new Linux servers and notify the infra team on completion'
+                      : formPolicyType === 'Kubernetes Certificate Policy'
+                        ? 'e.g. issue short-lived certs for all pods in payments namespace via Vault PKI'
+                      : 'Select a policy type above, then describe what you want in plain English'
+                    }
                     className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground"
                   />
                 </div>
