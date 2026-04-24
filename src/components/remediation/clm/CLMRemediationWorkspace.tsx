@@ -40,10 +40,7 @@ import PushToDeviceModal from './actions/PushToDeviceModal';
 import { clmCertificates, clmIssues, policyRequestsSeed, sslCheckMock } from './mockData';
 import { ClmIssueAction, ClmIssueRow, ClmTab, PolicyActionType, PolicyRequestRow } from './types';
 
-interface Props {
-  activeTab: ClmTab;
-  onTabChange: (tab: ClmTab) => void;
-}
+interface Props {}
 
 type EnvironmentFilter = 'All' | 'Production' | 'Staging' | 'Development';
 type QueueFilter = 'All' | 'Pending' | 'In Progress' | 'Completed' | 'Failed';
@@ -694,7 +691,7 @@ function ToggleRow({ label, checked, onChange }: { label: string; checked: boole
   );
 }
 
-export default function CLMRemediationWorkspace({ activeTab, onTabChange }: Props) {
+export default function CLMRemediationWorkspace(_: Props) {
   const [issueSearch, setIssueSearch] = useState('');
   const [denseFilter, setDenseFilter] = useState<DenseFilter>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
