@@ -8,7 +8,7 @@ import { useNav } from '@/context/NavigationContext';
 import { arsFor } from '@/lib/risk/ars';
 import { computeRPS } from '@/lib/risk/rps';
 import { StatusBadge, EnvBadge, DaysToExpiry, SeverityBadge } from '@/components/shared/UIComponents';
-import { Search, Server, Database, Globe, Shield, ShieldOff, ChevronDown, ChevronRight, MoreVertical, X, Ticket, RefreshCw, XCircle, RotateCcw, User, Plus, FileEdit, ArrowUpDown, AlertTriangle } from 'lucide-react';
+import { Search, Server, Database, Globe, Shield, ShieldOff, ChevronDown, ChevronRight, MoreVertical, X, Ticket, RefreshCw, XCircle, RotateCcw, User, Plus, FileEdit, ArrowUpDown, AlertTriangle, Maximize2 } from 'lucide-react';
 import { toast } from 'sonner';
 import BlastRadiusTopology from './BlastRadiusTopology';
 import BusinessImpactEditor from '@/components/risk/BusinessImpactEditor';
@@ -97,6 +97,7 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
   const [violationsAsset, setViolationsAsset] = useState<ITAsset | null>(null);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [assetStack, setAssetStack] = useState<ITAsset[]>([]);
+  const [blastModalOpen, setBlastModalOpen] = useState(false);
   const { manualITAssets } = useInventoryRegistry();
   const { setSelectedEntity } = useAgent();
   const { biMap, setBI } = useRisk();
@@ -497,20 +498,39 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
 
               {/* Column 3 — Blast Radius */}
               <div className="border-l border-border p-4 overflow-y-auto scrollbar-thin">
-                <p className="text-xs font-semibold text-foreground mb-3">Blast Radius</p>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-semibold text-foreground">Blast Radius</p>
+                  <button
+                    onClick={() => setBlastModalOpen(true)}
+                    className="flex items-center gap-1 text-[10px] text-teal hover:text-teal/80 font-medium"
+                  >
+                    <Maximize2 className="w-3 h-3" />
+                    Expand
+                  </button>
+                </div>
                 {(() => {
                   const br = getBlastRadius(selectedAsset.id, mockAssets);
                   return (
-                    <BlastRadiusTopology
-                      nodes={br.nodes}
-                      summary={br.summary}
-                      onNodeClick={node => {
-                        if (node.type === 'asset' && node.ring >= 2) {
-                          const target = mockITAssets.find(a => a.id === node.id);
-                          if (target) openAssetDetail(target);
-                        }
-                      }}
-                    />
+                    <div className="space-y-3">
+                      <BlastRadiusTopology
+                        nodes={br.nodes}
+                        summary={br.summary}
+                        compact={true}
+                        onNodeClick={node => {
+                          if (node.type === 'asset' && node.ring >= 2) {
+                            const target = mockITAssets.find(a => a.id === node.id);
+                            if (target) openAssetDetail(target);
+                          }
+                        }}
+                      />
+                      <button
+                        onClick={() => setBlastModalOpen(true)}
+                        className="w-full border border-border rounded-lg py-2 text-[10px] text-muted-foreground hover:text-foreground hover:border-teal/30 transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        <Maximize2 className="w-3 h-3" />
+                        View full blast radius
+                      </button>
+                    </div>
                   );
                 })()}
               </div>
@@ -536,6 +556,115 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
         asset={violationsAsset}
         onClose={() => setViolationsAsset(null)}
       />
+
+      {/* Blast Radius Full-Screen Modal */}
+      {blastModalOpen && selectedAsset && (() => {
+        const br = getBlastRadius(selectedAsset.id, mockAssets);
+        return (
+          <>
+            <div
+              className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+              onClick={() => setBlastModalOpen(false)}
+            />
+            <div className="fixed inset-8 z-50 bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-border flex-shrink-0">
+                <div>
+                  <h2 className="text-sm font-semibold">
+                    Blast Radius — {selectedAsset.name}
+                  </h2>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    Impact analysis if this asset or its cryptographic identities fail
+                  </p>
+                </div>
+                <button
+                  onClick={() => setBlastModalOpen(false)}
+                  className="p-1.5 rounded-lg hover:bg-muted/50"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Body — graph left, details right */}
+              <div className="flex flex-1 overflow-hidden">
+                {/* Graph */}
+                <div className="flex-1 p-6 flex flex-col items-center justify-center overflow-auto">
+                  <BlastRadiusTopology
+                    nodes={br.nodes}
+                    summary={br.summary}
+                    compact={false}
+                    onNodeClick={node => {
+                      if (node.type === 'asset' && node.ring >= 2) {
+                        const target = mockITAssets.find(a => a.id === node.id);
+                        if (target) {
+                          setBlastModalOpen(false);
+                          openAssetDetail(target);
+                        }
+                      }
+                    }}
+                  />
+                </div>
+
+                {/* Right panel */}
+                <div className="w-72 border-l border-border p-5 overflow-y-auto flex-shrink-0 space-y-5">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground mb-3">
+                      Impact Summary
+                    </p>
+                    <div className="space-y-2">
+                      {[
+                        { label: 'Direct dependencies', value: br.summary.directDeps, desc: 'Assets directly depending on this one', color: 'text-coral' },
+                        { label: 'Sibling assets', value: br.summary.siblingAssets, desc: 'Assets sharing crypto objects', color: 'text-amber' },
+                        { label: 'Cascade impact', value: br.summary.cascadeAssets, desc: 'Assets affected downstream', color: 'text-purple-400' },
+                      ].map(stat => (
+                        <div key={stat.label} className="border border-border rounded-lg px-3 py-2.5 flex items-center gap-3">
+                          <span className={`text-xl font-bold flex-shrink-0 ${stat.color}`}>{stat.value}</span>
+                          <div>
+                            <div className="text-[11px] font-medium">{stat.label}</div>
+                            <div className="text-[9px] text-muted-foreground">{stat.desc}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="bg-coral/5 border border-coral/20 rounded-lg p-3">
+                    <p className="text-[10px] text-coral/90 leading-relaxed italic">
+                      {br.summary.sentence}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground mb-2">
+                      Legend
+                    </p>
+                    <div className="space-y-2">
+                      {[
+                        { color: 'bg-teal', label: 'Healthy', desc: 'No active violations' },
+                        { color: 'bg-amber', label: 'Warning', desc: 'Expiring within 30 days' },
+                        { color: 'bg-coral', label: 'Critical', desc: 'Expired or high-risk violations' },
+                        { color: 'bg-purple-400 opacity-60', label: 'Cascade', desc: 'Downstream dependency impact' },
+                      ].map(l => (
+                        <div key={l.label} className="flex items-start gap-2">
+                          <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 mt-0.5 ${l.color}`} />
+                          <div>
+                            <span className="text-[10px] font-medium">{l.label}</span>
+                            <span className="text-[9px] text-muted-foreground ml-1.5">{l.desc}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <p className="text-[9px] text-muted-foreground italic border-t border-border pt-3">
+                    Click any node in the graph to drill into that asset's detail panel.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </>
+        );
+      })()}
     </div>
   );
 }
