@@ -97,6 +97,7 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
   const [violationsAsset, setViolationsAsset] = useState<ITAsset | null>(null);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [assetStack, setAssetStack] = useState<ITAsset[]>([]);
+  const [blastModalOpen, setBlastModalOpen] = useState(false);
   const { manualITAssets } = useInventoryRegistry();
   const { setSelectedEntity } = useAgent();
   const { biMap, setBI } = useRisk();
@@ -497,20 +498,39 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
 
               {/* Column 3 — Blast Radius */}
               <div className="border-l border-border p-4 overflow-y-auto scrollbar-thin">
-                <p className="text-xs font-semibold text-foreground mb-3">Blast Radius</p>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-semibold text-foreground">Blast Radius</p>
+                  <button
+                    onClick={() => setBlastModalOpen(true)}
+                    className="flex items-center gap-1 text-[10px] text-teal hover:text-teal/80 font-medium"
+                  >
+                    <Maximize2 className="w-3 h-3" />
+                    Expand
+                  </button>
+                </div>
                 {(() => {
                   const br = getBlastRadius(selectedAsset.id, mockAssets);
                   return (
-                    <BlastRadiusTopology
-                      nodes={br.nodes}
-                      summary={br.summary}
-                      onNodeClick={node => {
-                        if (node.type === 'asset' && node.ring >= 2) {
-                          const target = mockITAssets.find(a => a.id === node.id);
-                          if (target) openAssetDetail(target);
-                        }
-                      }}
-                    />
+                    <div className="space-y-3">
+                      <BlastRadiusTopology
+                        nodes={br.nodes}
+                        summary={br.summary}
+                        compact={true}
+                        onNodeClick={node => {
+                          if (node.type === 'asset' && node.ring >= 2) {
+                            const target = mockITAssets.find(a => a.id === node.id);
+                            if (target) openAssetDetail(target);
+                          }
+                        }}
+                      />
+                      <button
+                        onClick={() => setBlastModalOpen(true)}
+                        className="w-full border border-border rounded-lg py-2 text-[10px] text-muted-foreground hover:text-foreground hover:border-teal/30 transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        <Maximize2 className="w-3 h-3" />
+                        View full blast radius
+                      </button>
+                    </div>
                   );
                 })()}
               </div>
