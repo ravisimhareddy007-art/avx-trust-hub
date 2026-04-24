@@ -460,12 +460,21 @@ export default function IntegrationsPage() {
       {/* Ecosystem Tab */}
       {itab === 'ecosystem' && (
         <div className="overflow-y-auto flex-1 space-y-8">
-          {CATEGORIES.map(cat => {
-            const items = filtered.filter(i => i.category === cat);
-            if (items.length === 0) return null;
-            return (
-              <div key={cat}>
-                {renderCategoryHeader(cat, items)}
+          {ecosystemItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-64 gap-2">
+              <CheckCircle2 className="text-teal w-8 h-8" />
+              <div className="text-sm text-foreground">All integrations connected</div>
+              <div className="text-xs text-muted-foreground text-center max-w-sm">
+                Your environment is fully integrated. Manage connections in the Connected tab.
+              </div>
+            </div>
+          ) : (
+            CATEGORIES.map(cat => {
+              const items = ecosystemItems.filter(i => i.category === cat);
+              if (items.length === 0) return null;
+              return (
+                <div key={cat}>
+                  {renderCategoryHeader(cat, items)}
                 <div className="grid grid-cols-4 gap-3">
                   {items.map(i => {
                     const isConnected = connections[i.id];
