@@ -403,7 +403,7 @@ function TelemetryPanel() {
           </div>
           <div className="flex gap-2">
             <button onClick={() => toast.info('Configuring retention policy')} className="text-[10px] px-3 py-1.5 rounded bg-muted hover:bg-muted/80">Configure Retention</button>
-            <button onClick={() => toast.success('Exporting audit log archive')} className="text-[10px] px-3 py-1.5 rounded bg-muted hover:bg-muted/80 flex items-center gap-1"><Download className="w-3 h-3" /> Export Archive</button>
+            <button onClick={() => toast.success('Exporting audit log archive')} className="text-[10px] px-3 py-1.5 rounded bg-muted hover:bg-muted/80 flex items-center gap-1"><Upload className="w-3 h-3" /> Export Archive</button>
           </div>
         </div>
       </div>
