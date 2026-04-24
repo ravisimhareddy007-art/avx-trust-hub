@@ -26,8 +26,32 @@ const TABS: { id: DashTab; label: string; icon: React.ElementType }[] = [
 export default function SecurityAdminDashboard() {
   const [tab, setTab] = useState<DashTab>('posture');
   const { notifications, markRead, markAllRead } = useNotifications();
+  const { setCurrentPage } = useNav();
   const escalations = notifications.filter(n => n.toPersona === 'security-admin');
   const unreadEscalations = escalations.filter(n => !n.read);
+
+  // Onboarding strip state — persists in localStorage
+  const [dismissed, setDismissed] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('avx-onboarding-dismissed') || '[]');
+    } catch { return []; }
+  });
+
+  const dismiss = (id: string) => {
+    const next = [...dismissed, id];
+    setDismissed(next);
+    localStorage.setItem('avx-onboarding-dismissed', JSON.stringify(next));
+  };
+
+  const dismissAll = () => {
+    const all = ['integrations', 'discovery', 'policy'];
+    setDismissed(all);
+    localStorage.setItem('avx-onboarding-dismissed', JSON.stringify(all));
+  };
+
+  const showStrip = !['integrations', 'discovery', 'policy'].every(id => dismissed.includes(id));
+
+  const [helpPanel, setHelpPanel] = useState<'integrations' | 'discovery' | 'policy' | null>(null);
 
   return (
     <DashboardProvider>
