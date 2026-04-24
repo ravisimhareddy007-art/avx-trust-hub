@@ -606,19 +606,9 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                 })()}
               </div>
 
-              {/* Column 3 — Event History + Quick Actions */}
+              {/* Column 3 — Event History */}
               <div className="border-l border-border p-4 overflow-y-auto scrollbar-thin space-y-4">
-                <p className="text-xs font-semibold text-foreground">Quick Actions</p>
-                <div className="space-y-1">
-                  {['Renew', 'Revoke', 'Rotate', 'Assign Owner', 'Add to Group', 'Create Ticket'].map(a => (
-                    <button key={a} onClick={() => {
-                      if (a === 'Create Ticket') onCreateTicket({ objectName: detailAsset.name, objectType: detailAsset.type, algorithm: detailAsset.algorithm, status: detailAsset.status, daysToExpiry: detailAsset.daysToExpiry, environment: detailAsset.environment });
-                      else toast.success(`${a} initiated for ${detailAsset.name}`);
-                    }} className={`w-full text-left px-3 py-2 rounded text-[10px] transition-colors border border-border hover:bg-secondary ${a === 'Revoke' ? 'text-coral' : 'text-foreground'}`}>{a}</button>
-                  ))}
-                </div>
-
-                <p className="text-xs font-semibold text-foreground mt-4">Event History</p>
+                <p className="text-xs font-semibold text-foreground">Event History</p>
                 <div className="space-y-0">
                   {[
                     { event: 'Discovered', time: detailAsset.issueDate, actor: detailAsset.discoverySource },
