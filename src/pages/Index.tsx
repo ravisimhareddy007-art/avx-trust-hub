@@ -7,6 +7,7 @@ import { RiskProvider } from '@/context/RiskContext';
 import { AgentProvider } from '@/context/AgentContext';
 import { CertificateWorkflowProvider } from '@/context/CertificateWorkflowContext';
 import { NotificationProvider } from '@/context/NotificationContext';
+import { OnboardingProvider } from '@/context/OnboardingContext';
 import AppSidebar from '@/components/AppSidebar';
 import TopBar from '@/components/TopBar';
 import InfinityAIDrawer from '@/components/InfinityAIDrawer';
@@ -99,17 +100,19 @@ export default function Index() {
     <NotificationProvider>
       <PersonaProvider>
         <NavigationProvider>
-          <IntegrationsProvider>
-            <InventoryRegistryProvider>
-              <RiskProvider>
-                <CertificateWorkflowProvider>
-                  <AgentBoundary>
-                    <AppShell />
-                  </AgentBoundary>
-                </CertificateWorkflowProvider>
-              </RiskProvider>
-            </InventoryRegistryProvider>
-          </IntegrationsProvider>
+          <OnboardingProvider>
+            <IntegrationsProvider>
+              <InventoryRegistryProvider>
+                <RiskProvider>
+                  <CertificateWorkflowProvider>
+                    <AgentBoundary>
+                      <AppShell />
+                    </AgentBoundary>
+                  </CertificateWorkflowProvider>
+                </RiskProvider>
+              </InventoryRegistryProvider>
+            </IntegrationsProvider>
+          </OnboardingProvider>
         </NavigationProvider>
       </PersonaProvider>
     </NotificationProvider>
