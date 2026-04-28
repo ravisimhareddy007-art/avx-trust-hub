@@ -283,7 +283,6 @@ export const connectors = {
     { name: 'Thawte', status: 'disconnected', lastSync: 'Never', assets: 0 },
     { name: 'Trustwave', status: 'disconnected', lastSync: 'Never', assets: 0 },
     { name: 'QuoVadis', status: 'disconnected', lastSync: 'Never', assets: 0 },
-    { name: 'Internal CA', status: 'connected', lastSync: '10 min ago', assets: 95000 },
   ],
   cloud: [
     { name: 'AWS', status: 'connected', lastSync: '10 min ago', assets: 420000 },

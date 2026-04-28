@@ -31,7 +31,7 @@ export default function WorkOrderStatus() {
         fields: [
           ['Certificate UUID', operation.certificateId],
           ['Common Name', operation.commonName],
-          ['Certificate Authority', certificate?.caIssuer || 'Internal CA'],
+          ['Certificate Authority', certificate?.caIssuer || 'DigiCert'],
           ['CA Account', 'Account-01'],
           ['Certificate Type', operation.details.certificateType],
           ['Policy Level Approval', operation.workflow.approve ? 'true' : 'false'],
@@ -47,7 +47,7 @@ export default function WorkOrderStatus() {
         fields: [
           ['Certificate UUID', operation.certificateId],
           ['Common Name', operation.commonName],
-          ['Certificate Authority', certificate?.caIssuer || 'Internal CA'],
+          ['Certificate Authority', certificate?.caIssuer || 'DigiCert'],
           ['CA Account', 'Account-01'],
           ['Certificate Type', operation.details.certificateType],
           ['Policy Level Approval', operation.workflow.approve ? 'true' : 'false'],
