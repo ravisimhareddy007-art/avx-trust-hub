@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { toast } from 'sonner';
+import { useConnections } from '@/context/ConnectionsContext';
 import {
   Search,
   Eye,
@@ -360,9 +361,13 @@ export default function IntegrationsPage() {
   const [configItem, setConfigItem] = useState<typeof INTEGRATIONS[0] | null>(null);
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
+  const { connections: savedConnections, saveConnection } = useConnections();
   const [connections, setConnections] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(INTEGRATIONS.map(i => [i.id, i.connected])),
   );
+  // Treat HashiCorp as connected if any saved hashicorp connection exists
+  const hasSavedHashicorp = savedConnections.some(c => c.vaultType === 'HashiCorp Vault');
+  const effectiveConnections = { ...connections, hashicorp: connections.hashicorp || hasSavedHashicorp };
 
   const filtered = INTEGRATIONS.filter(
     i =>
@@ -372,9 +377,9 @@ export default function IntegrationsPage() {
       i.description.toLowerCase().includes(search.toLowerCase()),
   );
 
-  const ecosystemItems = filtered.filter(i => !connections[i.id]);
-  const connectedItems = filtered.filter(i => connections[i.id]);
-  const totalConnected = INTEGRATIONS.filter(i => connections[i.id]).length;
+  const ecosystemItems = filtered.filter(i => !effectiveConnections[i.id]);
+  const connectedItems = filtered.filter(i => effectiveConnections[i.id]);
+  const totalConnected = INTEGRATIONS.filter(i => effectiveConnections[i.id]).length;
 
   const openConfig = (item: typeof INTEGRATIONS[0]) => {
     setConfigItem(item);
@@ -384,7 +389,7 @@ export default function IntegrationsPage() {
 
   const renderCategoryHeader = (cat: string, items: typeof INTEGRATIONS) => {
     const Icon = CATEGORY_ICONS[cat];
-    const connectedCount = items.filter(i => connections[i.id]).length;
+    const connectedCount = items.filter(i => effectiveConnections[i.id]).length;
     return (
       <div className="flex items-center gap-2 mb-3">
         {Icon && <Icon className="w-4 h-4 text-muted-foreground" />}
@@ -471,7 +476,7 @@ export default function IntegrationsPage() {
                   {renderCategoryHeader(cat, items)}
                 <div className="grid grid-cols-4 gap-3">
                   {items.map(i => {
-                    const isConnected = connections[i.id];
+                    const isConnected = effectiveConnections[i.id];
                     return (
                       <div
                         key={i.id}
@@ -598,16 +603,26 @@ export default function IntegrationsPage() {
       {/* Configure Modal */}
       {configItem && configItem.id === 'hashicorp' && (
         <HashiCorpVaultModal
-          isConnected={connections[configItem.id]}
+          isConnected={effectiveConnections[configItem.id]}
           onClose={() => setConfigItem(null)}
           onDisconnect={() => {
             setConnections(p => ({ ...p, [configItem.id]: false }));
             toast.success(`${configItem.name} disconnected`);
             setConfigItem(null);
           }}
-          onSave={() => {
+          onSaveConnection={(data) => {
+            saveConnection({
+              name: data.connectionName,
+              vaultType: 'HashiCorp Vault',
+              vaultUrl: data.vaultUrl,
+              authMethod: data.authMethod,
+              namespace: data.namespace,
+              tlsConfig: data.tlsConfig,
+              status: 'connected',
+              credentials: data.credentials,
+            });
             setConnections(p => ({ ...p, [configItem.id]: true }));
-            toast.success(`${configItem.name} connected successfully`);
+            toast.success('Connection saved. Available in Discovery and Policies.');
             setConfigItem(null);
             setItab('connected');
           }}
@@ -639,7 +654,7 @@ export default function IntegrationsPage() {
               <p className="text-[11px] text-muted-foreground mb-2">{configItem.description}</p>
 
               <div className="flex items-center gap-2 py-2 border-b border-border">
-                {connections[configItem.id] ? (
+                {effectiveConnections[configItem.id] ? (
                   <>
                     <span className="w-1.5 h-1.5 rounded-full bg-teal" />
                     <span className="text-[11px] text-teal">Currently connected</span>
@@ -688,7 +703,7 @@ export default function IntegrationsPage() {
             </div>
 
             <div className="px-5 py-4 border-t border-border flex gap-2 justify-end flex-shrink-0">
-              {connections[configItem.id] && (
+              {effectiveConnections[configItem.id] && (
                 <button
                   onClick={() => {
                     setConnections(p => ({ ...p, [configItem.id]: false }));
@@ -706,7 +721,7 @@ export default function IntegrationsPage() {
               >
                 Cancel
               </button>
-              {connections[configItem.id] ? (
+              {effectiveConnections[configItem.id] ? (
                 <button
                   onClick={() => {
                     toast.success(`${configItem.name} configuration saved`);
@@ -747,14 +762,21 @@ interface HashiCorpVaultModalProps {
   isConnected: boolean;
   onClose: () => void;
   onDisconnect: () => void;
-  onSave: () => void;
+  onSaveConnection: (data: {
+    connectionName: string;
+    vaultUrl: string;
+    authMethod: string;
+    namespace?: string;
+    tlsConfig?: Record<string, unknown>;
+    credentials?: Record<string, unknown>;
+  }) => void;
 }
 
 function HashiCorpVaultModal({
   isConnected,
   onClose,
   onDisconnect,
-  onSave,
+  onSaveConnection,
 }: HashiCorpVaultModalProps) {
   const [connectionName, setConnectionName] = useState('');
   const [vaultUrl, setVaultUrl] = useState('');
@@ -1158,7 +1180,14 @@ function HashiCorpVaultModal({
             {testStatus === 'testing' ? 'Testing...' : 'Test connection'}
           </button>
           <button
-            onClick={onSave}
+            onClick={() => onSaveConnection({
+              connectionName: connectionName.trim(),
+              vaultUrl: vaultUrl.trim(),
+              authMethod,
+              namespace: namespace.trim() || undefined,
+              tlsConfig: { useCustomCa, skipTls, caBundle: caBundle?.name },
+              credentials: { authMethod, hasToken: !!token, hasSecretId: !!secretId },
+            })}
             disabled={testStatus !== 'success'}
             className="bg-teal text-white text-[11px] px-3 py-1.5 rounded-lg hover:bg-teal/90 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
