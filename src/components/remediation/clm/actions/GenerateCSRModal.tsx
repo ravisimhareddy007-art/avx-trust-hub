@@ -288,7 +288,7 @@ export default function GenerateCSRModal({ open, onClose, onSubmit }: { open: bo
       subject: commonName,
       targetCA: group,
       stages: [
-        { label: 'Enrollment Request', timestamp: 'just now', status: 'done', details: [{ label: 'CSR Selection', value: csrSelection === 'platform' ? 'the platform' : 'HSM' }, { label: 'Group', value: group }] },
+        { label: 'Enrollment Request', timestamp: 'just now', status: 'done', details: [{ label: 'CSR Selection', value: csrSelection === 'platform' ? 'Platform' : 'HSM' }, { label: 'Group', value: group }] },
         { label: 'Request Creation', timestamp: 'just now', status: 'done', details: [{ label: 'SAN Type', value: sanType }, { label: 'SAN Count', value: String(sanValues.length) }] },
         { label: 'CA Submission', timestamp: 'just now', status: 'done', details: [{ label: 'Hash Function', value: hashFunction }, { label: 'Key Type', value: keyType }] },
         { label: 'Certificate Issued', timestamp: 'just now', status: 'done', details: [{ label: 'Result', value: 'CSR generated and added to group' }] },
@@ -326,7 +326,7 @@ export default function GenerateCSRModal({ open, onClose, onSubmit }: { open: bo
                   <RadioGroup value={csrSelection} onValueChange={(value) => setCsrSelection(value as CsrSelection)} className="flex gap-6">
                     <div className="flex items-center gap-2">
                       <RadioGroupItem value="platform" id="csr-selection-platform" />
-                      <Label htmlFor="csr-selection-platform">the platform</Label>
+                      <Label htmlFor="csr-selection-platform">Platform</Label>
                     </div>
                     <div className="flex items-center gap-2">
                       <RadioGroupItem value="hsm" id="csr-selection-hsm" />
@@ -474,7 +474,7 @@ export default function GenerateCSRModal({ open, onClose, onSubmit }: { open: bo
               </div>
             </Section>
 
-            <Section title="Attachments" note="Documents uploaded here are stored in the platform only and will not be submitted to the CA.">
+            <Section title="Attachments" note="Documents uploaded here are stored in the platform's inventory only and will not be submitted to the CA.">
               <div className="space-y-4">
                 {filteredAttachments.map((attachment, index) => (
                   <div key={attachment.id} className="grid gap-4 rounded-lg border border-border bg-background/30 p-4 md:grid-cols-2">
