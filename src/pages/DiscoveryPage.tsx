@@ -172,13 +172,50 @@ export default function DiscoveryPage() {
 // ============================================================================
 // TAB 1 — PROFILES
 // ============================================================================
-function ProfilesTab({ onEdit, onNew }: { onEdit: (p: Profile) => void; onNew: () => void }) {
+function ProfilesTab({ onEdit, onNew }: { onEdit: (p: DiscoveryProfile) => void; onNew: () => void }) {
   const [search, setSearch] = useState('');
-  const filtered = mockProfiles.filter(p =>
+  const { profiles } = useProfiles();
+  const { runs, latestRunForProfile, addRun, updateRun } = useRuns();
+
+  const filtered = profiles.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
     p.category.toLowerCase().includes(search.toLowerCase()) ||
-    p.types.some(t => t.toLowerCase().includes(search.toLowerCase())),
+    p.includes.some(t => t.toLowerCase().includes(search.toLowerCase())),
   );
+
+  const runProfileNow = (p: DiscoveryProfile) => {
+    const run = addRun({
+      profileId: p.id,
+      profileName: p.name,
+      connectionId: p.connectionId,
+      connectionName: p.connectionName,
+      vaultType: p.vaultType,
+      category: p.category,
+      includes: p.includes,
+      triggeredBy: 'manual',
+    });
+    toast.success(`"${p.name}" started on-demand`, { description: 'View progress in Discovery Runs' });
+    setTimeout(() => {
+      const items = 50 + Math.floor(Math.random() * 451);
+      updateRun(run.id, { status: 'completed', completedAt: Date.now(), itemsDiscovered: items });
+    }, 2000);
+  };
+
+  if (profiles.length === 0) {
+    return (
+      <div className="bg-card rounded-lg border border-border p-10 text-center space-y-3">
+        <Calendar className="w-8 h-8 text-muted-foreground mx-auto" />
+        <h3 className="text-sm font-semibold text-foreground">No discovery profiles yet</h3>
+        <p className="text-xs text-muted-foreground max-w-md mx-auto">
+          Profiles save scan configurations so you can re-run them on a schedule. Create one from New Scan with "Save as profile" checked.
+        </p>
+        <button onClick={onNew}
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-teal text-primary-foreground text-xs font-medium hover:bg-teal-light">
+          <Plus className="w-3.5 h-3.5" /> Go to New Scan
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
@@ -191,7 +228,7 @@ function ProfilesTab({ onEdit, onNew }: { onEdit: (p: Profile) => void; onNew: (
             className="w-full pl-8 pr-3 py-2 bg-muted border border-border rounded text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal"
           />
         </div>
-        <span className="text-[11px] text-muted-foreground">{filtered.length} of {mockProfiles.length} profiles</span>
+        <span className="text-[11px] text-muted-foreground">{filtered.length} of {profiles.length} profiles</span>
       </div>
 
       <div className="bg-card rounded-lg border border-border overflow-hidden">
@@ -211,47 +248,58 @@ function ProfilesTab({ onEdit, onNew }: { onEdit: (p: Profile) => void; onNew: (
               </tr>
             </thead>
             <tbody>
-              {filtered.map(p => (
-                <tr key={p.id} className="border-t border-border hover:bg-secondary/20">
-                  <td className="px-3 py-2 font-semibold text-foreground whitespace-nowrap">{p.name}</td>
-                  <td className="px-3 py-2">
-                    <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground whitespace-nowrap">{p.category}</span>
-                  </td>
-                  <td className="px-3 py-2">
-                    <div className="flex flex-wrap gap-1">
-                      {p.types.map(t => (
-                        <span key={t} className="text-[9.5px] px-1.5 py-0.5 rounded bg-teal/10 text-teal border border-teal/20 whitespace-nowrap">{t}</span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
-                    <span className="inline-flex items-center gap-1"><Calendar className="w-2.5 h-2.5" /> {p.schedule}</span>
-                  </td>
-                  <td className="px-3 py-2 text-right text-foreground tabular-nums font-medium">{p.discovered.toLocaleString()}</td>
-                  <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{p.lastRun}</td>
-                  <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{p.nextRun}</td>
-                  <td className="px-3 py-2"><StatusBadge status={p.status} /></td>
-                  <td className="px-3 py-2">
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => toast.success(`"${p.name}" started on-demand`, { description: 'View progress in Discovery Runs' })}
-                        className="flex items-center gap-1 text-[10.5px] font-semibold px-2 py-1 rounded bg-teal text-primary-foreground hover:bg-teal-light"
-                      >
-                        <Play className="w-2.5 h-2.5" /> Run
-                      </button>
-                      <button onClick={() => onEdit(p)}
-                        className="flex items-center gap-1 text-[10.5px] font-medium px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-secondary">
-                        <Edit className="w-2.5 h-2.5" /> Edit
-                      </button>
-                      <button
-                        onClick={() => toast.success(`Cloned "${p.name}"`)}
-                        className="flex items-center gap-1 text-[10.5px] font-medium px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-secondary">
-                        <Copy className="w-2.5 h-2.5" /> Clone
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {filtered.map(p => {
+                const latest = latestRunForProfile(p.id);
+                const visibleIncludes = p.includes.slice(0, 2);
+                const moreCount = p.includes.length - visibleIncludes.length;
+                const statusLabel = p.status.charAt(0).toUpperCase() + p.status.slice(1);
+                return (
+                  <tr key={p.id} className="border-t border-border hover:bg-secondary/20">
+                    <td className="px-3 py-2 font-semibold text-foreground whitespace-nowrap">{p.name}</td>
+                    <td className="px-3 py-2">
+                      <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground whitespace-nowrap">{p.category}</span>
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex flex-wrap gap-1">
+                        {visibleIncludes.map(t => (
+                          <span key={t} className="text-[9.5px] px-1.5 py-0.5 rounded bg-teal/10 text-teal border border-teal/20 whitespace-nowrap">{t}</span>
+                        ))}
+                        {moreCount > 0 && (
+                          <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground whitespace-nowrap">+{moreCount} more</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1"><Calendar className="w-2.5 h-2.5" /> {formatSchedule(p.schedule)}</span>
+                    </td>
+                    <td className="px-3 py-2 text-right text-foreground tabular-nums font-medium">
+                      {latest?.itemsDiscovered != null && latest.status === 'completed' ? latest.itemsDiscovered.toLocaleString() : '—'}
+                    </td>
+                    <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{formatRelative(latest?.startedAt ?? p.lastRunAt)}</td>
+                    <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{formatRelativeFuture(p.nextRunAt)}</td>
+                    <td className="px-3 py-2"><StatusBadge status={statusLabel} /></td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => runProfileNow(p)}
+                          className="flex items-center gap-1 text-[10.5px] font-semibold px-2 py-1 rounded bg-teal text-primary-foreground hover:bg-teal-light"
+                        >
+                          <Play className="w-2.5 h-2.5" /> Run
+                        </button>
+                        <button onClick={() => onEdit(p)}
+                          className="flex items-center gap-1 text-[10.5px] font-medium px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-secondary">
+                          <Edit className="w-2.5 h-2.5" /> Edit
+                        </button>
+                        <button
+                          onClick={() => toast.success(`Cloned "${p.name}"`)}
+                          className="flex items-center gap-1 text-[10.5px] font-medium px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-secondary">
+                          <Copy className="w-2.5 h-2.5" /> Clone
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
               {filtered.length === 0 && (
                 <tr><td colSpan={9} className="px-3 py-8 text-center text-muted-foreground">No profiles match your search.</td></tr>
               )}
