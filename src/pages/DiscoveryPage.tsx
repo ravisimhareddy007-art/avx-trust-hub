@@ -1041,13 +1041,14 @@ function IaCConfig() {
   );
 }
 
-function VaultConfig() {
+function VaultConfig({
+  vaultType, setVaultType,
+  vaultAccountId, setVaultAccountId,
+  authMethod, setAuthMethod,
+  secretTypes, setSecretTypes,
+}: VaultProps) {
   const { setCurrentPage } = useNav();
   const { connections: savedConnections, byVaultType } = useConnections();
-  const [vaultType, setVaultType] = useState('HashiCorp Vault');
-  const [vaultAccountId, setVaultAccountId] = useState('');
-  const [authMethod, setAuthMethod] = useState('AppRole');
-  const [secretTypes, setSecretTypes] = useState<string[]>(['Certificates', 'API Keys', 'Encryption Keys']);
   const [testing, setTesting] = useState(false);
 
   const filteredConnections = useMemo(
