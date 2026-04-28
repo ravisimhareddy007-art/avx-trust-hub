@@ -378,9 +378,9 @@ export default function IntegrationsPage() {
       i.description.toLowerCase().includes(search.toLowerCase()),
   );
 
-  const ecosystemItems = filtered.filter(i => !connections[i.id]);
-  const connectedItems = filtered.filter(i => connections[i.id]);
-  const totalConnected = INTEGRATIONS.filter(i => connections[i.id]).length;
+  const ecosystemItems = filtered.filter(i => !effectiveConnections[i.id]);
+  const connectedItems = filtered.filter(i => effectiveConnections[i.id]);
+  const totalConnected = INTEGRATIONS.filter(i => effectiveConnections[i.id]).length;
 
   const openConfig = (item: typeof INTEGRATIONS[0]) => {
     setConfigItem(item);
@@ -390,7 +390,7 @@ export default function IntegrationsPage() {
 
   const renderCategoryHeader = (cat: string, items: typeof INTEGRATIONS) => {
     const Icon = CATEGORY_ICONS[cat];
-    const connectedCount = items.filter(i => connections[i.id]).length;
+    const connectedCount = items.filter(i => effectiveConnections[i.id]).length;
     return (
       <div className="flex items-center gap-2 mb-3">
         {Icon && <Icon className="w-4 h-4 text-muted-foreground" />}
@@ -477,7 +477,7 @@ export default function IntegrationsPage() {
                   {renderCategoryHeader(cat, items)}
                 <div className="grid grid-cols-4 gap-3">
                   {items.map(i => {
-                    const isConnected = connections[i.id];
+                    const isConnected = effectiveConnections[i.id];
                     return (
                       <div
                         key={i.id}
@@ -604,7 +604,7 @@ export default function IntegrationsPage() {
       {/* Configure Modal */}
       {configItem && configItem.id === 'hashicorp' && (
         <HashiCorpVaultModal
-          isConnected={connections[configItem.id]}
+          isConnected={effectiveConnections[configItem.id]}
           onClose={() => setConfigItem(null)}
           onDisconnect={() => {
             setConnections(p => ({ ...p, [configItem.id]: false }));
@@ -645,7 +645,7 @@ export default function IntegrationsPage() {
               <p className="text-[11px] text-muted-foreground mb-2">{configItem.description}</p>
 
               <div className="flex items-center gap-2 py-2 border-b border-border">
-                {connections[configItem.id] ? (
+                {effectiveConnections[configItem.id] ? (
                   <>
                     <span className="w-1.5 h-1.5 rounded-full bg-teal" />
                     <span className="text-[11px] text-teal">Currently connected</span>
@@ -694,7 +694,7 @@ export default function IntegrationsPage() {
             </div>
 
             <div className="px-5 py-4 border-t border-border flex gap-2 justify-end flex-shrink-0">
-              {connections[configItem.id] && (
+              {effectiveConnections[configItem.id] && (
                 <button
                   onClick={() => {
                     setConnections(p => ({ ...p, [configItem.id]: false }));
@@ -712,7 +712,7 @@ export default function IntegrationsPage() {
               >
                 Cancel
               </button>
-              {connections[configItem.id] ? (
+              {effectiveConnections[configItem.id] ? (
                 <button
                   onClick={() => {
                     toast.success(`${configItem.name} configuration saved`);
