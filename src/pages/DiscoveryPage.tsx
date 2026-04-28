@@ -319,39 +319,164 @@ function ProfilesTab({ onEdit, onNew }: { onEdit: (p: DiscoveryProfile) => void;
 // ============================================================================
 // TAB 2 — NEW SCAN (two-column scan-type selector + per-type config panel)
 // ============================================================================
-function NewScanTab({ existing, onSaved }: { existing: Profile | null; onSaved: () => void }) {
-  const [activeCategory, setActiveCategory] = useState<string>(scanCategories[0].category);
-  const [selectedType, setSelectedType] = useState<ScanType>(scanCategories[0].types[0]);
+function NewScanTab({ existing, onSaved, goToTab }: { existing: DiscoveryProfile | null; onSaved: () => void; goToTab: (t: 'profiles' | 'new' | 'runs') => void }) {
+  const initialCategory = existing
+    ? scanCategories.find(c => c.category === existing.category) ?? scanCategories[0]
+    : scanCategories[0];
+  const [activeCategory, setActiveCategory] = useState<string>(initialCategory.category);
+  const [selectedType, setSelectedType] = useState<ScanType>(initialCategory.types[0]);
   const [discoveryName, setDiscoveryName] = useState(existing?.name ?? '');
-  const [description, setDescription] = useState('');
+  const [description, setDescription] = useState(existing?.description ?? '');
   const [saveAsProfile, setSaveAsProfile] = useState(false);
-  const [profileName, setProfileName] = useState('');
-  const [runType, setRunType] = useState<'on-demand' | 'schedule'>('on-demand');
-  const [scheduleFreq, setScheduleFreq] = useState('Daily');
-  const [scheduleTime, setScheduleTime] = useState('02:00');
-  const [scheduleDay, setScheduleDay] = useState('Sunday');
+  const [profileName, setProfileName] = useState(existing?.name ?? '');
+  const [runType, setRunType] = useState<'on-demand' | 'schedule'>(existing?.schedule ? 'schedule' : 'on-demand');
+  const [scheduleFreq, setScheduleFreq] = useState(existing?.schedule?.freq ?? 'Daily');
+  const [scheduleTime, setScheduleTime] = useState(existing?.schedule?.time ?? '02:00');
+  const [scheduleDay, setScheduleDay] = useState(existing?.schedule?.day ?? 'Sunday');
+
+  // Lifted vault state — used when category is "Secrets & Key Stores"
+  const { byVaultType } = useConnections();
+  const [vaultType, setVaultType] = useState(existing?.vaultType || 'HashiCorp Vault');
+  const [vaultAccountId, setVaultAccountId] = useState(existing?.connectionId ?? '');
+  const [authMethod, setAuthMethod] = useState('AppRole');
+  const [secretTypes, setSecretTypes] = useState<string[]>(existing?.includes ?? ['Certificates', 'API Keys', 'Encryption Keys']);
+
+  const { addProfile, updateProfile } = useProfiles();
+  const { addRun, updateRun } = useRuns();
 
   const currentCategory = scanCategories.find(c => c.category === activeCategory)!;
-
   const isEditing = existing != null;
+  const isVaultScan = selectedType.config === 'vault';
+
+  const resetForm = () => {
+    setDiscoveryName(''); setDescription('');
+    setSaveAsProfile(false); setProfileName('');
+    setRunType('on-demand');
+    setVaultAccountId('');
+    setSecretTypes(['Certificates', 'API Keys', 'Encryption Keys']);
+  };
+
+  const buildScheduleObj = () =>
+    runType === 'schedule'
+      ? { freq: scheduleFreq, time: scheduleTime, ...(scheduleFreq === 'Weekly' ? { day: scheduleDay } : {}) }
+      : null;
 
   const handleStart = () => {
     if (!discoveryName.trim()) { toast.error('Discovery name is required'); return; }
     if (saveAsProfile && !profileName.trim()) { toast.error('Profile name is required'); return; }
-    toast.success(`Discovery "${discoveryName}" started`, { description: `${selectedType.value} ${runType === 'schedule' ? `· ${scheduleFreq} ${scheduleTime}` : ''}` });
+
+    // Resolve connection details (vault scan uses selected connection; others use a synthetic placeholder)
+    let connectionId = '';
+    let connectionName = '';
+    let resolvedVaultType = '';
+    let includes: string[] = selectedType.discovers;
+
+    if (isVaultScan) {
+      const conn = byVaultType(vaultType).find(c => c.id === vaultAccountId);
+      if (!conn) { toast.error('Please select a vault account before starting.'); return; }
+      connectionId = conn.id;
+      connectionName = conn.name;
+      resolvedVaultType = conn.vaultType;
+      includes = secretTypes;
+    } else {
+      connectionId = `inline_${selectedType.config}`;
+      connectionName = selectedType.value;
+      resolvedVaultType = selectedType.value;
+    }
+
+    const schedule = buildScheduleObj();
+    let profileId: string | null = null;
+    let savedProfileName: string | null = null;
+
+    if (saveAsProfile) {
+      const prof = addProfile({
+        name: profileName.trim(),
+        description,
+        connectionId,
+        connectionName,
+        vaultType: resolvedVaultType,
+        category: activeCategory,
+        includes,
+        scanScope: { scanType: selectedType.value, authMethod },
+        schedule,
+        nextRunAt: computeNextRun(schedule),
+      });
+      profileId = prof.id;
+      savedProfileName = prof.name;
+    }
+
+    const run = addRun({
+      profileId,
+      profileName: savedProfileName,
+      connectionId,
+      connectionName,
+      vaultType: resolvedVaultType,
+      category: activeCategory,
+      includes,
+      triggeredBy: 'manual',
+    });
+
+    setTimeout(() => {
+      const items = 50 + Math.floor(Math.random() * 451);
+      updateRun(run.id, { status: 'completed', completedAt: Date.now(), itemsDiscovered: items });
+    }, 2000);
+
+    toast.success('Discovery started. View progress in Discovery Runs.', {
+      action: { label: 'View Runs', onClick: () => goToTab('runs') },
+    });
+    resetForm();
     onSaved();
   };
 
   const handleSaveOnly = () => {
     if (!profileName.trim()) { toast.error('Profile name is required'); return; }
+    let connectionId = '';
+    let connectionName = '';
+    let resolvedVaultType = '';
+    let includes: string[] = selectedType.discovers;
+
+    if (isVaultScan) {
+      const conn = byVaultType(vaultType).find(c => c.id === vaultAccountId);
+      if (!conn) { toast.error('Please select a vault account before saving.'); return; }
+      connectionId = conn.id;
+      connectionName = conn.name;
+      resolvedVaultType = conn.vaultType;
+      includes = secretTypes;
+    } else {
+      connectionId = `inline_${selectedType.config}`;
+      connectionName = selectedType.value;
+      resolvedVaultType = selectedType.value;
+    }
+    const schedule = buildScheduleObj();
+    addProfile({
+      name: profileName.trim(),
+      description,
+      connectionId, connectionName,
+      vaultType: resolvedVaultType,
+      category: activeCategory,
+      includes,
+      scanScope: { scanType: selectedType.value, authMethod },
+      schedule,
+      nextRunAt: computeNextRun(schedule),
+    });
     toast.success(`Profile "${profileName}" saved`);
-    onSaved();
+    resetForm();
+    goToTab('profiles');
   };
 
   const handleUpdate = () => {
+    if (!existing) return;
     if (!discoveryName.trim()) { toast.error('Profile name is required'); return; }
+    const schedule = buildScheduleObj();
+    updateProfile(existing.id, {
+      name: discoveryName.trim(),
+      description,
+      schedule,
+      nextRunAt: computeNextRun(schedule),
+      includes: isVaultScan ? secretTypes : existing.includes,
+    });
     toast.success(`Profile "${discoveryName}" updated`, { description: 'Changes saved successfully' });
-    onSaved();
+    goToTab('profiles');
   };
 
   return (
