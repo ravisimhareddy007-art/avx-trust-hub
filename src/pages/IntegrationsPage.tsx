@@ -596,7 +596,24 @@ export default function IntegrationsPage() {
       )}
 
       {/* Configure Modal */}
-      {configItem && (
+      {configItem && configItem.id === 'hashicorp' && (
+        <HashiCorpVaultModal
+          isConnected={connections[configItem.id]}
+          onClose={() => setConfigItem(null)}
+          onDisconnect={() => {
+            setConnections(p => ({ ...p, [configItem.id]: false }));
+            toast.success(`${configItem.name} disconnected`);
+            setConfigItem(null);
+          }}
+          onSave={() => {
+            setConnections(p => ({ ...p, [configItem.id]: true }));
+            toast.success(`${configItem.name} connected successfully`);
+            setConfigItem(null);
+            setItab('connected');
+          }}
+        />
+      )}
+      {configItem && configItem.id !== 'hashicorp' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
           <div
             className="fixed inset-0 bg-black/50 backdrop-blur-sm"
