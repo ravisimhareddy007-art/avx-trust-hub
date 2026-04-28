@@ -35,7 +35,7 @@ const modules: ModuleDef[] = [
   { id: 'k8s', label: 'K8s / Service Mesh', icon: Cpu, types: ['K8s Workload Cert'], licensed: true, provisionLabel: 'Issue Workload Cert' },
   { id: 'encryption', label: 'Encryption Keys', icon: LockKeyhole, types: ['Encryption Key'], licensed: false, provisionLabel: 'Create Encryption Key' },
   { id: 'ai-agents', label: 'AI Agent Tokens', icon: Bot, types: ['AI Agent Token'], licensed: true, provisionLabel: 'Provision Agent Token' },
-  { id: 'secrets', label: 'API Keys & Secrets', icon: Key, types: ['API Key / Secret'], licensed: false, provisionLabel: 'Add Secret' },
+  { id: 'secrets', label: 'Secrets', icon: Key, types: ['API Key / Secret'], licensed: false, provisionLabel: 'Add Secret' },
 ];
 
 const issueFilters: { id: FilterId; label: string }[] = [
