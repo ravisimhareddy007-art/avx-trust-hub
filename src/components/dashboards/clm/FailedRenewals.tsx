@@ -15,7 +15,6 @@ interface FailedRow {
 const rows: FailedRow[] = [
   { cert: 'payments-api.acmecorp.com', ca: 'DigiCert', reason: 'Auth token expired', asset: 'payments-api-prod', failedAt: '2h ago', severity: 'Critical' },
   { cert: '*.internal.acmecorp.com', ca: 'MSCA Enterprise', reason: 'CA quota exceeded', asset: 'internal-lb-01', failedAt: '3h ago', severity: 'High' },
-  { cert: 'vault.internal.acmecorp.com', ca: 'AppViewX PKIaaS', reason: 'DNS validation failed', asset: 'vault-server', failedAt: '4h ago', severity: 'High' },
   { cert: 'mail.acmecorp.com', ca: 'Entrust', reason: 'CSR format invalid', asset: 'mail-server', failedAt: '5h ago', severity: 'Medium' },
   { cert: 'cdn-edge-03.acmecorp.com', ca: "Let's Encrypt", reason: 'Rate limit hit', asset: 'cdn-cluster', failedAt: '6h ago', severity: 'Medium' },
   { cert: 'k8s-ingress.prod', ca: 'MSCA Enterprise', reason: 'Template not found', asset: 'eks-prod-cluster', failedAt: '8h ago', severity: 'High' },
@@ -23,7 +22,7 @@ const rows: FailedRow[] = [
   { cert: 'api-gw-prod.acmecorp.com', ca: 'Sectigo', reason: 'Policy violation: key length < 2048', asset: 'prod-gateway-01', failedAt: '12h ago', severity: 'Critical' },
 ];
 
-const CA_OPTIONS = ['DigiCert', 'Entrust', "Let's Encrypt", 'MSCA Enterprise', 'AppViewX PKIaaS'] as const;
+const CA_OPTIONS = ['DigiCert', 'Entrust', "Let's Encrypt", 'MSCA Enterprise'] as const;
 const SCHEDULE_OPTIONS = ['Immediately', 'Next maintenance window'] as const;
 const REVOKE_REASONS = [
   'Affiliation Changed',

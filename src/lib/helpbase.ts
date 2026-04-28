@@ -1,4 +1,4 @@
-// AVX Trust Hub -- Complete Help Knowledge Base
+// Trust Hub -- Complete Help Knowledge Base
 // Used by HelpDrawer component. Each article maps to a screen or feature.
 
 export interface HelpArticle {
@@ -39,14 +39,14 @@ export const HELP_ARTICLES: HelpArticle[] = [
 
   {
     id: 'gs-overview',
-    title: 'What is AVX Trust Hub?',
+    title: 'What is Trust Hub?',
     category: 'Getting Started',
-    summary: 'AVX Trust Hub is a cryptographic identity governance platform that discovers, scores, and remediates risk across SSH keys, TLS certificates, machine secrets, and AI agent credentials.',
+    summary: 'Trust Hub is a cryptographic identity governance platform that discovers, scores, and remediates risk across SSH keys, TLS certificates, machine secrets, and AI agent credentials.',
     tags: ['overview', 'intro', 'what is'],
     sections: [
       {
         heading: 'Platform purpose',
-        body: 'AVX Trust Hub gives security teams complete visibility and control over every cryptographic object in the enterprise -- SSH keys, TLS/SSL certificates, code-signing certificates, encryption keys, machine secrets, API keys, and AI agent tokens.\n\nMost security tools scan for software vulnerabilities (CVEs). AVX Trust Hub scores cryptographic object risk: whether an algorithm is too weak, whether a credential has been rotated, whether a key has an owner, and whether long-lived data is protected by algorithms that will be broken by quantum computers.',
+        body: 'Trust Hub gives security teams complete visibility and control over every cryptographic object in the enterprise -- SSH keys, TLS/SSL certificates, code-signing certificates, encryption keys, machine secrets, API keys, and AI agent tokens.\n\nMost security tools scan for software vulnerabilities (CVEs). Trust Hub scores cryptographic object risk: whether an algorithm is too weak, whether a credential has been rotated, whether a key has an owner, and whether long-lived data is protected by algorithms that will be broken by quantum computers.',
       },
       {
         heading: 'Three-level risk architecture',
@@ -157,7 +157,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       },
       {
         heading: 'Deduplication',
-        body: 'The same certificate or key may be found via multiple discovery vectors (network scan AND CA API). AVX Trust Hub deduplicates by certificate fingerprint (SHA-256 of the certificate) for TLS objects and by key fingerprint for SSH keys. The canonical record shows all discovery vectors as metadata.',
+        body: 'The same certificate or key may be found via multiple discovery vectors (network scan AND CA API). Trust Hub deduplicates by certificate fingerprint (SHA-256 of the certificate) for TLS objects and by key fingerprint for SSH keys. The canonical record shows all discovery vectors as metadata.',
       },
     ],
     regulatoryRefs: ['NIST SP 800-53 Rev 5 CM-8 (Information System Component Inventory)', 'CIS Controls v8 Control 1 (Inventory of Enterprise Assets)'],
@@ -493,12 +493,12 @@ export const HELP_ARTICLES: HelpArticle[] = [
     id: 'int-overview',
     title: 'Integrations overview',
     category: 'Integrations',
-    summary: 'Integrations connect the AVX Trust Hub to certificate authorities, cloud platforms, secret managers, HSMs, and IT service management tools.',
+    summary: 'Integrations connect the Trust Hub to certificate authorities, cloud platforms, secret managers, HSMs, and IT service management tools.',
     tags: ['integrations', 'connectors', 'ca', 'cloud', 'vault', 'itsm'],
     sections: [
       {
         heading: 'Two integration types',
-        body: 'Sources: systems that AVX Trust Hub reads from to discover and monitor cryptographic objects. Examples: AWS KMS, Azure Key Vault, DigiCert, HashiCorp Vault.\n\nTargets: systems that AVX Trust Hub writes to during remediation workflows. Examples: Jira (ticket creation), ServiceNow (incident management), PagerDuty (alerting).',
+        body: 'Sources: systems that Trust Hub reads from to discover and monitor cryptographic objects. Examples: AWS KMS, Azure Key Vault, DigiCert, HashiCorp Vault.\n\nTargets: systems that Trust Hub writes to during remediation workflows. Examples: Jira (ticket creation), ServiceNow (incident management), PagerDuty (alerting).',
       },
       {
         heading: 'Source integrations',

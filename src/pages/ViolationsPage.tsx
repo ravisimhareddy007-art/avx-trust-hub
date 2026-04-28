@@ -227,7 +227,7 @@ export default function ViolationsPage() {
         severity: 'Critical',
         objectId: 'ai-004',
         objectName: 'customer-support-bot',
-        description: 'MCP API Credential shared with Github_Copilot-AVXLM186, AVXLM187, AVXLM188. Weakens accountability and makes rotation harder if exposed.',
+        description: 'MCP API Credential shared with Github_Copilot-AGENT186, AGENT187, AGENT188. Weakens accountability and makes rotation harder if exposed.',
         violationId: 'OP-AI4-03',
         assetId: 'ai-004',
         assetName: 'aws-lambda',

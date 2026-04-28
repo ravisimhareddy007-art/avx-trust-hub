@@ -18,14 +18,14 @@ import { PolicyRequestRow } from '../types';
 const sectionIds = ['general', 'ca-details', 'csr', 'attachments', 'attributes', 'generic', 'vendor'] as const;
 const groupOptions = ['Default', 'Private_CA_Certificates', 'Public_CA_Certificates', 'Certificate-Gateway'] as const;
 const certificateAuthorities = [
-  'AppViewX Native CA', 'DigiCert', 'DigiCert One', 'Sectigo', 'Microsoft Enterprise', "Let's Encrypt", 'GlobalSign',
+  'DigiCert', 'DigiCert One', 'Sectigo', 'Microsoft Enterprise', "Let's Encrypt", 'GlobalSign',
   'GlobalSign MSSL', 'GlobalSign Atlas', 'Google CA', 'Amazon Private CA', 'Entrust', 'GoDaddy', 'SwissSign', 'HydrantID',
   'HashiCorp Vault', 'Nexus', 'EJBCA', 'IDnomic', 'Futurex', 'CSC Global', 'Custom CA', 'XCA Test Issuer',
 ] as const;
 const caAccounts = ['Account-01', 'Account-02', 'Account-03'] as const;
 const certificateTypes = ['DV', 'OV', 'EV', 'Standard'] as const;
 const certificateProfiles = ['Standard SSL', 'Wildcard SSL', 'Multi-Domain SSL'] as const;
-const csrGenerationOptions = ['appviewx', 'upload', 'hsm', 'endpoint'] as const;
+const csrGenerationOptions = ['platform', 'upload', 'hsm', 'endpoint'] as const;
 const categoryOptions = ['ADC', 'Cloud', 'Server', 'WAF', 'Firewall'] as const;
 const sanTypes = ['DNS', 'IP Address', 'Email', 'URI'] as const;
 const validityUnits = ['Days', 'Months', 'Years'] as const;
@@ -176,7 +176,7 @@ export default function EnrollCertificateWizard({ open, onClose, onSubmit }: { o
   const [approvalGroupName, setApprovalGroupName] = useState('Group-Ops');
   const [connectorName, setConnectorName] = useState('payments-api-enrollment');
   const [description, setDescription] = useState('');
-  const [csrGeneration, setCsrGeneration] = useState<(typeof csrGenerationOptions)[number]>('appviewx');
+  const [csrGeneration, setCsrGeneration] = useState<(typeof csrGenerationOptions)[number]>('platform');
   const [uploadedCsrName, setUploadedCsrName] = useState('');
   const [uploadedCsrText, setUploadedCsrText] = useState('');
   const [deviceType, setDeviceType] = useState('HSM Devices');
@@ -412,8 +412,7 @@ export default function EnrollCertificateWizard({ open, onClose, onSubmit }: { o
                   <AnimatedBlock show={supportsCertificateProfile}><div className="grid gap-4 pt-3 md:grid-cols-2"><SelectField label="Certificate Profile" value={certificateProfile} onChange={setCertificateProfile} options={certificateProfiles} /></div></AnimatedBlock>
                   <AnimatedBlock show={isIdnomicRa}><div className="grid gap-4 pt-3 md:grid-cols-2"><SelectField label="RA Workflow" value={raWorkflow} onChange={setRaWorkflow} options={['RA-Workflow-01', 'RA-Workflow-02']} /></div></AnimatedBlock>
                   <AnimatedBlock show={ca === 'Google CA'}><div className="grid gap-4 pt-3 md:grid-cols-2"><SelectField label="Issuer Location" value={issuerLocation} onChange={setIssuerLocation} options={['us-central1', 'us-east1', 'europe-west1']} /></div></AnimatedBlock>
-                  <AnimatedBlock show={ca === 'Google CA' || ca === 'AppViewX Native CA'}><div className="grid gap-4 pt-3 md:grid-cols-2"><SelectField label="Issuer Name" value={issuerName} onChange={setIssuerName} options={['issuer-prod', 'issuer-staging']} /></div></AnimatedBlock>
-                  <AnimatedBlock show={ca === 'AppViewX Native CA'}><div className="grid gap-4 pt-3 md:grid-cols-2"><TextField label="Template Name" value={templateName} onChange={(event) => setTemplateName(event.target.value)} /></div></AnimatedBlock>
+                  <AnimatedBlock show={ca === 'Google CA'}><div className="grid gap-4 pt-3 md:grid-cols-2"><SelectField label="Issuer Name" value={issuerName} onChange={setIssuerName} options={['issuer-prod', 'issuer-staging']} /></div></AnimatedBlock>
                   <AnimatedBlock show={ca === 'Futurex'}>
                     <div className="grid gap-4 pt-3 md:grid-cols-2">
                       <SelectField label="Issuance Policy" value={issuancePolicy} onChange={setIssuancePolicy} options={['Policy-Standard', 'Policy-Extended']} />
@@ -434,7 +433,7 @@ export default function EnrollCertificateWizard({ open, onClose, onSubmit }: { o
                       <FieldShell label="CSR Generation" required note="Not applicable for Amazon CA">
                         <RadioGroup value={csrGeneration} onValueChange={(value) => setCsrGeneration(value as (typeof csrGenerationOptions)[number])} className="grid gap-3">
                           {[
-                            { value: 'appviewx', label: 'AppViewX', description: 'Private key and CSR created in AppViewX', disabled: false },
+                            { value: 'platform', label: 'Platform', description: 'Private key and CSR created in the platform', disabled: false },
                             { value: 'upload', label: 'Upload CSR', description: 'Upload an existing CSR file', disabled: false },
                             { value: 'hsm', label: 'HSM', description: 'Generate on HSM device', disabled: !showHsmOption },
                             { value: 'endpoint', label: 'End Point', description: 'Generate on endpoint device', disabled: !showEndpointOption },
@@ -584,7 +583,7 @@ export default function EnrollCertificateWizard({ open, onClose, onSubmit }: { o
                   Certificate Attributes
                 </AccordionTrigger>
                 <AccordionContent className="space-y-4 px-4 pt-4">
-                  <div className="rounded-md border border-teal/20 bg-teal/5 px-3 py-2 text-[11px] text-muted-foreground">These values are stored in AppViewX inventory and can be used for filtering. They are not part of the certificate itself.</div>
+                  <div className="rounded-md border border-teal/20 bg-teal/5 px-3 py-2 text-[11px] text-muted-foreground">These values are stored in the platform's inventory and can be used for filtering. They are not part of the certificate itself.</div>
                   {attributes.map((row) => (
                     <div key={row.id} className="grid gap-4 md:grid-cols-2">
                       <TextField label="Attribute Key" value={row.key} onChange={(event) => updateAttribute(row.id, 'key', event.target.value)} />

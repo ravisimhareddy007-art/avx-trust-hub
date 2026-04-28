@@ -423,8 +423,8 @@ function AddConnectorModal({
 
             <Section title="Push Details">
               <FieldShell label="Script Location" required>
-                <RadioGroup value={values.scriptLocation} onValueChange={(value) => setField('scriptLocation', value as 'appviewx' | 'device')} className="flex gap-6">
-                  <div className="flex items-center gap-2"><RadioGroupItem value="appviewx" id="script-appviewx" /><Label htmlFor="script-appviewx">In AppViewX</Label></div>
+                <RadioGroup value={values.scriptLocation} onValueChange={(value) => setField('scriptLocation', value as 'platform' | 'device')} className="flex gap-6">
+                  <div className="flex items-center gap-2"><RadioGroupItem value="platform" id="script-platform" /><Label htmlFor="script-platform">In Platform</Label></div>
                   <div className="flex items-center gap-2"><RadioGroupItem value="device" id="script-device" /><Label htmlFor="script-device">In Device</Label></div>
                 </RadioGroup>
               </FieldShell>
@@ -470,8 +470,8 @@ function CertificateDetailsModal({
   if (!open) return null;
 
   const rows = [
-    ['Common name', title], ['Serial number', '7F:46:98:1A:11:09:AE'], ['Valid from (GMT)', '10/10/2022'], ['Valid to (GMT)', '10/05/2042'], ['Issuer', 'AppViewX CA'], ['Version', '3'], ['Signature alg', 'SHA256withRSA'], ['Sig hash alg', 'SHA256'], ['Public key alg', 'RSA 2048'], ['ECDSA Curve', 'Not applicable'],
-    ['Thumbprint algorithm', 'SHA-1'], ['Thumbprint', '2C:96:81:AF:09:44'], ['Authority key id', 'Not applicable'], ['Certificate authority', 'AppViewX'], ['Subject country', 'US'], ['Subject locality', 'Seattle'], ['Subject organization', 'AppViewX Inc'], ['Subject org unit', 'Not applicable'], ['Subject state', 'Washington'], ['Issuer country', 'US'],
+    ['Common name', title], ['Serial number', '7F:46:98:1A:11:09:AE'], ['Valid from (GMT)', '10/10/2022'], ['Valid to (GMT)', '10/05/2042'], ['Issuer', 'DigiCert'], ['Version', '3'], ['Signature alg', 'SHA256withRSA'], ['Sig hash alg', 'SHA256'], ['Public key alg', 'RSA 2048'], ['ECDSA Curve', 'Not applicable'],
+    ['Thumbprint algorithm', 'SHA-1'], ['Thumbprint', '2C:96:81:AF:09:44'], ['Authority key id', 'Not applicable'], ['Certificate authority', 'DigiCert'], ['Subject country', 'US'], ['Subject locality', 'Seattle'], ['Subject organization', 'Acme Inc'], ['Subject org unit', 'Not applicable'], ['Subject state', 'Washington'], ['Issuer country', 'US'],
   ];
 
   return (
@@ -534,7 +534,7 @@ export default function CertHolisticView() {
   const chainCards = useMemo(() => {
     const cn = certificate?.commonName || 'server.acme.com';
     return [
-      { label: 'CA', title: certificate?.caIssuer || 'AppViewX CA', group: 'Certificate-Gateway', validFrom: '10/10/2022', validTo: '10/05/2042', border: 'border-l-teal' },
+      { label: 'CA', title: certificate?.caIssuer || 'DigiCert', group: 'Certificate-Gateway', validFrom: '10/10/2022', validTo: '10/05/2042', border: 'border-l-teal' },
       { label: 'Chain', title: `${certificate?.caIssuer || 'Intermediate'} Intermediate`, group: 'Private_CA_Certificates', validFrom: '10/10/2022', validTo: '10/05/2032', border: 'border-l-info' },
       { label: selectedCertType, title: cn, group: 'Default', validFrom: certificate?.issueDate || '2026-02-01', validTo: certificate?.expiryDate || '2026-08-01', border: certificateState.border },
     ];
@@ -640,7 +640,7 @@ export default function CertHolisticView() {
 
           {showConnectorRow && (
             <div className="flex flex-wrap items-center justify-center gap-4">
-              <div className="rounded-lg border border-border bg-background/70 px-4 py-3 text-sm font-semibold text-foreground">AppViewX</div>
+              <div className="rounded-lg border border-border bg-background/70 px-4 py-3 text-sm font-semibold text-foreground">Platform</div>
               <span className="text-muted-foreground">↔</span>
               {primaryConnector ? (
                 <div className="relative rounded-lg border border-dashed border-border bg-background/70 px-4 py-3 min-w-[220px]">

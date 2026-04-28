@@ -227,7 +227,7 @@ function getRecommendedAlgorithm(algorithm: string) {
 function getFindingItems(key: SSHWorkspaceAsset) {
   const findings: { severity: 'Critical' | 'High' | 'Medium'; text: string }[] = [];
   const risks = key.sshRiskStatus || [];
-  if (risks.includes('Rogue')) findings.push({ severity: 'Critical', text: 'Unauthorized key — not provisioned through AppViewX' });
+  if (risks.includes('Rogue')) findings.push({ severity: 'Critical', text: 'Unauthorized key — not provisioned through the platform' });
   if (risks.includes('Weak')) findings.push({ severity: 'High', text: `Weak algorithm (${key.algorithm}) — upgrade required` });
   if (risks.includes('Shared')) findings.push({ severity: 'High', text: `Shared key — same key used on ${key.filePaths?.length || 0} hosts` });
   if (risks.includes('Misplaced')) findings.push({ severity: 'Medium', text: 'Key found in unexpected file path' });
@@ -273,7 +273,7 @@ function SSHKpiStrip({ counts, activeFilter, onFilter }: { counts: Record<SSHRis
   const tiles: { risk: SSHRisk; label: string; value: number; subtitle: string; border: string; valueCls: string; info?: string }[] = [
     { risk: 'Shared', label: 'SHARED KEYS', value: counts.Shared, subtitle: 'Same key on multiple hosts', border: 'border-l-amber', valueCls: 'text-amber' },
     { risk: 'Weak', label: 'WEAK KEYS', value: counts.Weak, subtitle: 'Deprecated algorithm or short key length', border: 'border-l-coral', valueCls: 'text-coral' },
-    { risk: 'Rogue', label: 'ROGUE KEYS', value: counts.Rogue, subtitle: 'Found on host — not in approved inventory', border: 'border-l-coral', valueCls: 'text-coral', info: 'Rogue keys were discovered on hosts but were not provisioned through AppViewX. They represent unauthorized access.' },
+    { risk: 'Rogue', label: 'ROGUE KEYS', value: counts.Rogue, subtitle: 'Found on host — not in approved inventory', border: 'border-l-coral', valueCls: 'text-coral', info: 'Rogue keys were discovered on hosts but were not provisioned through the platform. They represent unauthorized access.' },
     { risk: 'Misplaced', label: 'MISPLACED KEYS', value: counts.Misplaced, subtitle: 'Found in wrong path or wrong host', border: 'border-l-amber', valueCls: 'text-amber' },
     { risk: 'Suspicious', label: 'SUSPICIOUS KEYS', value: counts.Suspicious, subtitle: 'Anomalous pattern or unexpected access', border: 'border-l-amber', valueCls: 'text-amber' },
   ];
