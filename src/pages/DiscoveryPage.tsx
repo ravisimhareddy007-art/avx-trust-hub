@@ -1,9 +1,13 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { discoveryRuns } from '@/data/mockData';
 import { StatusBadge, Modal } from '@/components/shared/UIComponents';
 import { useNav } from '@/context/NavigationContext';
 import { useIntegrations } from '@/context/IntegrationsContext';
-import { useConnections, formatRelativeTime } from '@/context/ConnectionsContext';
+import { useConnections, formatRelativeTime, SavedConnection } from '@/context/ConnectionsContext';
+import {
+  useProfiles, useRuns, formatRelative, formatRelativeFuture,
+  formatDuration, formatSchedule, computeNextRun, DiscoveryProfile,
+} from '@/context/DiscoveryContext';
 import { toast } from 'sonner';
 import {
   Search, RefreshCw, Info, Plus, Play, Upload, Database,
@@ -126,7 +130,7 @@ const mockProfiles: Profile[] = [
 // ============================================================================
 export default function DiscoveryPage() {
   const [tab, setTab] = useState<'profiles' | 'new' | 'runs'>('profiles');
-  const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
+  const [editingProfile, setEditingProfile] = useState<DiscoveryProfile | null>(null);
 
   return (
     <div className="space-y-4">
@@ -159,7 +163,7 @@ export default function DiscoveryPage() {
       </div>
 
       {tab === 'profiles' && <ProfilesTab onEdit={(p) => { setEditingProfile(p); setTab('new'); }} onNew={() => { setEditingProfile(null); setTab('new'); }} />}
-      {tab === 'new' && <NewScanTab existing={editingProfile} onSaved={() => setTab('runs')} />}
+      {tab === 'new' && <NewScanTab existing={editingProfile} onSaved={() => setTab('runs')} goToTab={setTab} />}
       {tab === 'runs' && <RunsTab />}
     </div>
   );
@@ -168,13 +172,50 @@ export default function DiscoveryPage() {
 // ============================================================================
 // TAB 1 — PROFILES
 // ============================================================================
-function ProfilesTab({ onEdit, onNew }: { onEdit: (p: Profile) => void; onNew: () => void }) {
+function ProfilesTab({ onEdit, onNew }: { onEdit: (p: DiscoveryProfile) => void; onNew: () => void }) {
   const [search, setSearch] = useState('');
-  const filtered = mockProfiles.filter(p =>
+  const { profiles } = useProfiles();
+  const { runs, latestRunForProfile, addRun, updateRun } = useRuns();
+
+  const filtered = profiles.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
     p.category.toLowerCase().includes(search.toLowerCase()) ||
-    p.types.some(t => t.toLowerCase().includes(search.toLowerCase())),
+    p.includes.some(t => t.toLowerCase().includes(search.toLowerCase())),
   );
+
+  const runProfileNow = (p: DiscoveryProfile) => {
+    const run = addRun({
+      profileId: p.id,
+      profileName: p.name,
+      connectionId: p.connectionId,
+      connectionName: p.connectionName,
+      vaultType: p.vaultType,
+      category: p.category,
+      includes: p.includes,
+      triggeredBy: 'manual',
+    });
+    toast.success(`"${p.name}" started on-demand`, { description: 'View progress in Discovery Runs' });
+    setTimeout(() => {
+      const items = 50 + Math.floor(Math.random() * 451);
+      updateRun(run.id, { status: 'completed', completedAt: Date.now(), itemsDiscovered: items });
+    }, 2000);
+  };
+
+  if (profiles.length === 0) {
+    return (
+      <div className="bg-card rounded-lg border border-border p-10 text-center space-y-3">
+        <Calendar className="w-8 h-8 text-muted-foreground mx-auto" />
+        <h3 className="text-sm font-semibold text-foreground">No discovery profiles yet</h3>
+        <p className="text-xs text-muted-foreground max-w-md mx-auto">
+          Profiles save scan configurations so you can re-run them on a schedule. Create one from New Scan with "Save as profile" checked.
+        </p>
+        <button onClick={onNew}
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-teal text-primary-foreground text-xs font-medium hover:bg-teal-light">
+          <Plus className="w-3.5 h-3.5" /> Go to New Scan
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
@@ -187,7 +228,7 @@ function ProfilesTab({ onEdit, onNew }: { onEdit: (p: Profile) => void; onNew: (
             className="w-full pl-8 pr-3 py-2 bg-muted border border-border rounded text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal"
           />
         </div>
-        <span className="text-[11px] text-muted-foreground">{filtered.length} of {mockProfiles.length} profiles</span>
+        <span className="text-[11px] text-muted-foreground">{filtered.length} of {profiles.length} profiles</span>
       </div>
 
       <div className="bg-card rounded-lg border border-border overflow-hidden">
@@ -207,47 +248,58 @@ function ProfilesTab({ onEdit, onNew }: { onEdit: (p: Profile) => void; onNew: (
               </tr>
             </thead>
             <tbody>
-              {filtered.map(p => (
-                <tr key={p.id} className="border-t border-border hover:bg-secondary/20">
-                  <td className="px-3 py-2 font-semibold text-foreground whitespace-nowrap">{p.name}</td>
-                  <td className="px-3 py-2">
-                    <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground whitespace-nowrap">{p.category}</span>
-                  </td>
-                  <td className="px-3 py-2">
-                    <div className="flex flex-wrap gap-1">
-                      {p.types.map(t => (
-                        <span key={t} className="text-[9.5px] px-1.5 py-0.5 rounded bg-teal/10 text-teal border border-teal/20 whitespace-nowrap">{t}</span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
-                    <span className="inline-flex items-center gap-1"><Calendar className="w-2.5 h-2.5" /> {p.schedule}</span>
-                  </td>
-                  <td className="px-3 py-2 text-right text-foreground tabular-nums font-medium">{p.discovered.toLocaleString()}</td>
-                  <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{p.lastRun}</td>
-                  <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{p.nextRun}</td>
-                  <td className="px-3 py-2"><StatusBadge status={p.status} /></td>
-                  <td className="px-3 py-2">
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => toast.success(`"${p.name}" started on-demand`, { description: 'View progress in Discovery Runs' })}
-                        className="flex items-center gap-1 text-[10.5px] font-semibold px-2 py-1 rounded bg-teal text-primary-foreground hover:bg-teal-light"
-                      >
-                        <Play className="w-2.5 h-2.5" /> Run
-                      </button>
-                      <button onClick={() => onEdit(p)}
-                        className="flex items-center gap-1 text-[10.5px] font-medium px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-secondary">
-                        <Edit className="w-2.5 h-2.5" /> Edit
-                      </button>
-                      <button
-                        onClick={() => toast.success(`Cloned "${p.name}"`)}
-                        className="flex items-center gap-1 text-[10.5px] font-medium px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-secondary">
-                        <Copy className="w-2.5 h-2.5" /> Clone
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {filtered.map(p => {
+                const latest = latestRunForProfile(p.id);
+                const visibleIncludes = p.includes.slice(0, 2);
+                const moreCount = p.includes.length - visibleIncludes.length;
+                const statusLabel = p.status.charAt(0).toUpperCase() + p.status.slice(1);
+                return (
+                  <tr key={p.id} className="border-t border-border hover:bg-secondary/20">
+                    <td className="px-3 py-2 font-semibold text-foreground whitespace-nowrap">{p.name}</td>
+                    <td className="px-3 py-2">
+                      <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground whitespace-nowrap">{p.category}</span>
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex flex-wrap gap-1">
+                        {visibleIncludes.map(t => (
+                          <span key={t} className="text-[9.5px] px-1.5 py-0.5 rounded bg-teal/10 text-teal border border-teal/20 whitespace-nowrap">{t}</span>
+                        ))}
+                        {moreCount > 0 && (
+                          <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground whitespace-nowrap">+{moreCount} more</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1"><Calendar className="w-2.5 h-2.5" /> {formatSchedule(p.schedule)}</span>
+                    </td>
+                    <td className="px-3 py-2 text-right text-foreground tabular-nums font-medium">
+                      {latest?.itemsDiscovered != null && latest.status === 'completed' ? latest.itemsDiscovered.toLocaleString() : '—'}
+                    </td>
+                    <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{formatRelative(latest?.startedAt ?? p.lastRunAt)}</td>
+                    <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{formatRelativeFuture(p.nextRunAt)}</td>
+                    <td className="px-3 py-2"><StatusBadge status={statusLabel} /></td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => runProfileNow(p)}
+                          className="flex items-center gap-1 text-[10.5px] font-semibold px-2 py-1 rounded bg-teal text-primary-foreground hover:bg-teal-light"
+                        >
+                          <Play className="w-2.5 h-2.5" /> Run
+                        </button>
+                        <button onClick={() => onEdit(p)}
+                          className="flex items-center gap-1 text-[10.5px] font-medium px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-secondary">
+                          <Edit className="w-2.5 h-2.5" /> Edit
+                        </button>
+                        <button
+                          onClick={() => toast.success(`Cloned "${p.name}"`)}
+                          className="flex items-center gap-1 text-[10.5px] font-medium px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-secondary">
+                          <Copy className="w-2.5 h-2.5" /> Clone
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
               {filtered.length === 0 && (
                 <tr><td colSpan={9} className="px-3 py-8 text-center text-muted-foreground">No profiles match your search.</td></tr>
               )}
@@ -267,39 +319,164 @@ function ProfilesTab({ onEdit, onNew }: { onEdit: (p: Profile) => void; onNew: (
 // ============================================================================
 // TAB 2 — NEW SCAN (two-column scan-type selector + per-type config panel)
 // ============================================================================
-function NewScanTab({ existing, onSaved }: { existing: Profile | null; onSaved: () => void }) {
-  const [activeCategory, setActiveCategory] = useState<string>(scanCategories[0].category);
-  const [selectedType, setSelectedType] = useState<ScanType>(scanCategories[0].types[0]);
+function NewScanTab({ existing, onSaved, goToTab }: { existing: DiscoveryProfile | null; onSaved: () => void; goToTab: (t: 'profiles' | 'new' | 'runs') => void }) {
+  const initialCategory = existing
+    ? scanCategories.find(c => c.category === existing.category) ?? scanCategories[0]
+    : scanCategories[0];
+  const [activeCategory, setActiveCategory] = useState<string>(initialCategory.category);
+  const [selectedType, setSelectedType] = useState<ScanType>(initialCategory.types[0]);
   const [discoveryName, setDiscoveryName] = useState(existing?.name ?? '');
-  const [description, setDescription] = useState('');
+  const [description, setDescription] = useState(existing?.description ?? '');
   const [saveAsProfile, setSaveAsProfile] = useState(false);
-  const [profileName, setProfileName] = useState('');
-  const [runType, setRunType] = useState<'on-demand' | 'schedule'>('on-demand');
-  const [scheduleFreq, setScheduleFreq] = useState('Daily');
-  const [scheduleTime, setScheduleTime] = useState('02:00');
-  const [scheduleDay, setScheduleDay] = useState('Sunday');
+  const [profileName, setProfileName] = useState(existing?.name ?? '');
+  const [runType, setRunType] = useState<'on-demand' | 'schedule'>(existing?.schedule ? 'schedule' : 'on-demand');
+  const [scheduleFreq, setScheduleFreq] = useState(existing?.schedule?.freq ?? 'Daily');
+  const [scheduleTime, setScheduleTime] = useState(existing?.schedule?.time ?? '02:00');
+  const [scheduleDay, setScheduleDay] = useState(existing?.schedule?.day ?? 'Sunday');
+
+  // Lifted vault state — used when category is "Secrets & Key Stores"
+  const { byVaultType } = useConnections();
+  const [vaultType, setVaultType] = useState(existing?.vaultType || 'HashiCorp Vault');
+  const [vaultAccountId, setVaultAccountId] = useState(existing?.connectionId ?? '');
+  const [authMethod, setAuthMethod] = useState('AppRole');
+  const [secretTypes, setSecretTypes] = useState<string[]>(existing?.includes ?? ['Certificates', 'API Keys', 'Encryption Keys']);
+
+  const { addProfile, updateProfile } = useProfiles();
+  const { addRun, updateRun } = useRuns();
 
   const currentCategory = scanCategories.find(c => c.category === activeCategory)!;
-
   const isEditing = existing != null;
+  const isVaultScan = selectedType.config === 'vault';
+
+  const resetForm = () => {
+    setDiscoveryName(''); setDescription('');
+    setSaveAsProfile(false); setProfileName('');
+    setRunType('on-demand');
+    setVaultAccountId('');
+    setSecretTypes(['Certificates', 'API Keys', 'Encryption Keys']);
+  };
+
+  const buildScheduleObj = () =>
+    runType === 'schedule'
+      ? { freq: scheduleFreq, time: scheduleTime, ...(scheduleFreq === 'Weekly' ? { day: scheduleDay } : {}) }
+      : null;
 
   const handleStart = () => {
     if (!discoveryName.trim()) { toast.error('Discovery name is required'); return; }
     if (saveAsProfile && !profileName.trim()) { toast.error('Profile name is required'); return; }
-    toast.success(`Discovery "${discoveryName}" started`, { description: `${selectedType.value} ${runType === 'schedule' ? `· ${scheduleFreq} ${scheduleTime}` : ''}` });
+
+    // Resolve connection details (vault scan uses selected connection; others use a synthetic placeholder)
+    let connectionId = '';
+    let connectionName = '';
+    let resolvedVaultType = '';
+    let includes: string[] = selectedType.discovers;
+
+    if (isVaultScan) {
+      const conn = byVaultType(vaultType).find(c => c.id === vaultAccountId);
+      if (!conn) { toast.error('Please select a vault account before starting.'); return; }
+      connectionId = conn.id;
+      connectionName = conn.name;
+      resolvedVaultType = conn.vaultType;
+      includes = secretTypes;
+    } else {
+      connectionId = `inline_${selectedType.config}`;
+      connectionName = selectedType.value;
+      resolvedVaultType = selectedType.value;
+    }
+
+    const schedule = buildScheduleObj();
+    let profileId: string | null = null;
+    let savedProfileName: string | null = null;
+
+    if (saveAsProfile) {
+      const prof = addProfile({
+        name: profileName.trim(),
+        description,
+        connectionId,
+        connectionName,
+        vaultType: resolvedVaultType,
+        category: activeCategory,
+        includes,
+        scanScope: { scanType: selectedType.value, authMethod },
+        schedule,
+        nextRunAt: computeNextRun(schedule),
+      });
+      profileId = prof.id;
+      savedProfileName = prof.name;
+    }
+
+    const run = addRun({
+      profileId,
+      profileName: savedProfileName,
+      connectionId,
+      connectionName,
+      vaultType: resolvedVaultType,
+      category: activeCategory,
+      includes,
+      triggeredBy: 'manual',
+    });
+
+    setTimeout(() => {
+      const items = 50 + Math.floor(Math.random() * 451);
+      updateRun(run.id, { status: 'completed', completedAt: Date.now(), itemsDiscovered: items });
+    }, 2000);
+
+    toast.success('Discovery started. View progress in Discovery Runs.', {
+      action: { label: 'View Runs', onClick: () => goToTab('runs') },
+    });
+    resetForm();
     onSaved();
   };
 
   const handleSaveOnly = () => {
     if (!profileName.trim()) { toast.error('Profile name is required'); return; }
+    let connectionId = '';
+    let connectionName = '';
+    let resolvedVaultType = '';
+    let includes: string[] = selectedType.discovers;
+
+    if (isVaultScan) {
+      const conn = byVaultType(vaultType).find(c => c.id === vaultAccountId);
+      if (!conn) { toast.error('Please select a vault account before saving.'); return; }
+      connectionId = conn.id;
+      connectionName = conn.name;
+      resolvedVaultType = conn.vaultType;
+      includes = secretTypes;
+    } else {
+      connectionId = `inline_${selectedType.config}`;
+      connectionName = selectedType.value;
+      resolvedVaultType = selectedType.value;
+    }
+    const schedule = buildScheduleObj();
+    addProfile({
+      name: profileName.trim(),
+      description,
+      connectionId, connectionName,
+      vaultType: resolvedVaultType,
+      category: activeCategory,
+      includes,
+      scanScope: { scanType: selectedType.value, authMethod },
+      schedule,
+      nextRunAt: computeNextRun(schedule),
+    });
     toast.success(`Profile "${profileName}" saved`);
-    onSaved();
+    resetForm();
+    goToTab('profiles');
   };
 
   const handleUpdate = () => {
+    if (!existing) return;
     if (!discoveryName.trim()) { toast.error('Profile name is required'); return; }
+    const schedule = buildScheduleObj();
+    updateProfile(existing.id, {
+      name: discoveryName.trim(),
+      description,
+      schedule,
+      nextRunAt: computeNextRun(schedule),
+      includes: isVaultScan ? secretTypes : existing.includes,
+    });
     toast.success(`Profile "${discoveryName}" updated`, { description: 'Changes saved successfully' });
-    onSaved();
+    goToTab('profiles');
   };
 
   return (
@@ -377,7 +554,16 @@ function NewScanTab({ existing, onSaved }: { existing: Profile | null; onSaved: 
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-semibold text-teal">{selectedType.value} configuration</h2>
         </div>
-        <ConfigPanel configKey={selectedType.config} scanType={selectedType.value} />
+        <ConfigPanel
+          configKey={selectedType.config}
+          scanType={selectedType.value}
+          vaultProps={{
+            vaultType, setVaultType,
+            vaultAccountId, setVaultAccountId,
+            authMethod, setAuthMethod,
+            secretTypes, setSecretTypes,
+          }}
+        />
       </div>
 
       {/* Common fields */}
@@ -472,7 +658,14 @@ function NewScanTab({ existing, onSaved }: { existing: Profile | null; onSaved: 
 // ============================================================================
 // CONFIG PANELS — one per scan type config key
 // ============================================================================
-function ConfigPanel({ configKey, scanType }: { configKey: ConfigKey; scanType: string }) {
+interface VaultProps {
+  vaultType: string; setVaultType: (v: string) => void;
+  vaultAccountId: string; setVaultAccountId: (v: string) => void;
+  authMethod: string; setAuthMethod: (v: string) => void;
+  secretTypes: string[]; setSecretTypes: (v: string[]) => void;
+}
+
+function ConfigPanel({ configKey, scanType, vaultProps }: { configKey: ConfigKey; scanType: string; vaultProps?: VaultProps }) {
   switch (configKey) {
     case 'network':    return <NetworkConfig scanType={scanType} />;
     case 'ca':         return <CAConfig />;
@@ -485,7 +678,7 @@ function ConfigPanel({ configKey, scanType }: { configKey: ConfigKey; scanType: 
     case 'endpoint':   return <EndpointConfig />;
     case 'sourcecode': return <SourceCodeConfig />;
     case 'iac':        return <IaCConfig />;
-    case 'vault':      return <VaultConfig />;
+    case 'vault':      return <VaultConfig {...(vaultProps as VaultProps)} />;
     case 'hsm':        return <HSMConfig />;
     case 'iam':        return <IAMConfig />;
     case 'aiagent':    return <AIAgentConfig />;
@@ -848,13 +1041,14 @@ function IaCConfig() {
   );
 }
 
-function VaultConfig() {
+function VaultConfig({
+  vaultType, setVaultType,
+  vaultAccountId, setVaultAccountId,
+  authMethod, setAuthMethod,
+  secretTypes, setSecretTypes,
+}: VaultProps) {
   const { setCurrentPage } = useNav();
   const { connections: savedConnections, byVaultType } = useConnections();
-  const [vaultType, setVaultType] = useState('HashiCorp Vault');
-  const [vaultAccountId, setVaultAccountId] = useState('');
-  const [authMethod, setAuthMethod] = useState('AppRole');
-  const [secretTypes, setSecretTypes] = useState<string[]>(['Certificates', 'API Keys', 'Encryption Keys']);
   const [testing, setTesting] = useState(false);
 
   const filteredConnections = useMemo(
@@ -1182,19 +1376,43 @@ function CBOMConfig() {
 // TAB 3 — RUNS
 // ============================================================================
 function RunsTab() {
-  const [runDetailId, setRunDetailId] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [dateFilter, setDateFilter] = useState('30d');
-  const [categoryFilter, setCategoryFilter] = useState('All');
+  const { runs } = useRuns();
+  const [statusFilter, setStatusFilter] = useState<'All' | 'in-progress' | 'completed' | 'failed'>('All');
+  const [categoryFilter, setCategoryFilter] = useState('All categories');
+  const [, force] = useState(0);
 
-  const filtered = useMemo(() => {
-    return discoveryRuns.filter(r => {
-      if (statusFilter !== 'All' && r.status !== statusFilter) return false;
-      return true;
-    });
-  }, [statusFilter, dateFilter, categoryFilter]);
+  // Tick every second so durations and "just now" relative times update
+  useEffect(() => {
+    const t = setInterval(() => force(n => n + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
 
-  const selectedRun = discoveryRuns.find(r => r.id === runDetailId);
+  const sorted = useMemo(
+    () => [...runs].sort((a, b) => b.startedAt - a.startedAt),
+    [runs]
+  );
+
+  const filtered = sorted.filter(r => {
+    if (statusFilter !== 'All' && r.status !== statusFilter) return false;
+    if (categoryFilter !== 'All categories' && r.category !== categoryFilter) return false;
+    return true;
+  });
+
+  const statusPill = (status: string) => {
+    if (status === 'in-progress') return <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-amber/15 text-amber border border-amber/30"><span className="w-1.5 h-1.5 rounded-full bg-amber animate-pulse" /> In progress</span>;
+    if (status === 'completed') return <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-teal/15 text-teal border border-teal/30">● Completed</span>;
+    return <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-coral/15 text-coral border border-coral/30">● Failed</span>;
+  };
+
+  if (runs.length === 0) {
+    return (
+      <div className="bg-card rounded-lg border border-border p-10 text-center space-y-2">
+        <Activity className="w-8 h-8 text-muted-foreground mx-auto" />
+        <h3 className="text-sm font-semibold text-foreground">No discovery runs yet</h3>
+        <p className="text-xs text-muted-foreground">Start one from the New Scan tab.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
@@ -1205,117 +1423,45 @@ function RunsTab() {
           <option>All categories</option>
           {scanCategories.map(c => <option key={c.category}>{c.category}</option>)}
         </select>
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as typeof statusFilter)}
           className="px-2 py-1.5 bg-muted border border-border rounded text-xs text-foreground">
-          {['All', 'Running', 'Complete', 'Failed', 'Warning'].map(s => <option key={s}>{s}</option>)}
+          <option value="All">All statuses</option>
+          <option value="in-progress">In progress</option>
+          <option value="completed">Completed</option>
+          <option value="failed">Failed</option>
         </select>
-        <select value={dateFilter} onChange={e => setDateFilter(e.target.value)}
-          className="px-2 py-1.5 bg-muted border border-border rounded text-xs text-foreground">
-          <option value="7d">Last 7 days</option>
-          <option value="30d">Last 30 days</option>
-          <option value="custom">Custom range</option>
-        </select>
-        <span className="text-[11px] text-muted-foreground ml-auto">{filtered.length} runs</span>
+        <span className="text-[11px] text-muted-foreground ml-auto">{filtered.length} of {runs.length} runs</span>
       </div>
 
       <div className="bg-card rounded-lg border border-border overflow-hidden">
         <table className="w-full text-xs">
           <thead className="bg-secondary/50">
             <tr className="border-b border-border">
-              {['Run ID', 'Profile / Type', 'Started By', 'Start Time', 'Duration', 'Discovered', 'Δ vs Previous', 'Credential Types', 'Errors', 'Status'].map(h => (
+              {['Run', 'Category', 'Started', 'Duration', 'Discovered', 'Status', 'Triggered by'].map(h => (
                 <th key={h} className="text-left py-2.5 px-3 font-medium text-muted-foreground">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {filtered.map((run, i) => {
-              // Mock delta — alternate green/amber/grey
-              const delta = (i * 137) % 7 - 3;
-              const deltaCls = delta > 0 ? 'text-teal' : delta < 0 ? 'text-amber' : 'text-muted-foreground';
-              const deltaSign = delta > 0 ? '+' : '';
-              return (
-                <tr key={run.id} className="border-b border-border hover:bg-secondary/30 cursor-pointer" onClick={() => setRunDetailId(run.id)}>
-                  <td className="py-2 px-3 font-mono text-[10px]">{run.id}</td>
-                  <td className="py-2 px-3">{run.profile}</td>
-                  <td className="py-2 px-3 text-muted-foreground">{run.startedBy}</td>
-                  <td className="py-2 px-3 text-muted-foreground">{run.startTime}</td>
-                  <td className="py-2 px-3 text-muted-foreground">{run.duration}</td>
-                  <td className="py-2 px-3 font-medium tabular-nums">{run.assetsDiscovered.toLocaleString()}</td>
-                  <td className={`py-2 px-3 tabular-nums ${deltaCls}`}>{delta === 0 ? '—' : `${deltaSign}${delta * 23}`}</td>
-                  <td className="py-2 px-3">
-                    <div className="flex gap-1">
-                      {['TLS', 'SSH', 'SEC', 'TKN'].slice(0, ((i % 4) + 1)).map(t => (
-                        <span key={t} className="text-[8.5px] px-1 py-0.5 rounded bg-teal/10 text-teal">{t}</span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="py-2 px-3">{run.errors > 0 ? <span className="text-coral">{run.errors}</span> : '0'}</td>
-                  <td className="py-2 px-3"><StatusBadge status={run.status} /></td>
-                </tr>
-              );
-            })}
+            {filtered.map(run => (
+              <tr key={run.id} className="border-b border-border hover:bg-secondary/30">
+                <td className="py-2 px-3 font-mono text-[10px] text-foreground">{run.profileName ?? run.id.slice(-8)}</td>
+                <td className="py-2 px-3">
+                  <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{run.category}</span>
+                </td>
+                <td className="py-2 px-3 text-muted-foreground">{formatRelative(run.startedAt)}</td>
+                <td className="py-2 px-3 text-muted-foreground">{formatDuration(run.startedAt, run.completedAt)}</td>
+                <td className="py-2 px-3 font-medium tabular-nums">{run.status === 'in-progress' ? '—' : run.itemsDiscovered.toLocaleString()}</td>
+                <td className="py-2 px-3">{statusPill(run.status)}</td>
+                <td className="py-2 px-3 text-muted-foreground capitalize">{run.triggeredBy}</td>
+              </tr>
+            ))}
+            {filtered.length === 0 && (
+              <tr><td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">No runs match your filter.</td></tr>
+            )}
           </tbody>
         </table>
       </div>
-
-      <Modal open={!!runDetailId} onClose={() => setRunDetailId(null)} title={`Run Detail — ${selectedRun?.id || ''}`} wide>
-        {selectedRun && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-4 gap-3">
-              {[
-                { label: 'Assets Discovered', value: selectedRun.assetsDiscovered.toLocaleString() },
-                { label: 'New Assets', value: selectedRun.newAssets.toString() },
-                { label: 'Changed', value: selectedRun.changedAssets.toString() },
-                { label: 'Errors', value: selectedRun.errors.toString() },
-              ].map(s => (
-                <div key={s.label} className="bg-secondary rounded-lg p-3 text-center">
-                  <p className="text-lg font-bold">{s.value}</p>
-                  <p className="text-[10px] text-muted-foreground">{s.label}</p>
-                </div>
-              ))}
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5">Breakdown by credential type</p>
-              <div className="grid grid-cols-4 gap-2">
-                {[
-                  { label: 'TLS Certs', value: Math.floor(selectedRun.assetsDiscovered * 0.6).toLocaleString() },
-                  { label: 'SSH Keys', value: Math.floor(selectedRun.assetsDiscovered * 0.18).toLocaleString() },
-                  { label: 'Secrets', value: Math.floor(selectedRun.assetsDiscovered * 0.15).toLocaleString() },
-                  { label: 'Tokens', value: Math.floor(selectedRun.assetsDiscovered * 0.07).toLocaleString() },
-                ].map(c => (
-                  <div key={c.label} className="bg-card border border-border rounded p-2 text-center">
-                    <p className="text-xs font-semibold tabular-nums">{c.value}</p>
-                    <p className="text-[9.5px] text-muted-foreground">{c.label}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-            {selectedRun.errors > 0 && (
-              <div>
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5">Top errors</p>
-                <div className="space-y-1">
-                  {[
-                    { target: '10.0.42.18:443', error: 'Connection timeout after 30s' },
-                    { target: '10.0.42.21:443', error: 'TLS handshake failed' },
-                    { target: 'api.partner.io', error: 'Hostname does not resolve' },
-                  ].slice(0, Math.min(3, selectedRun.errors)).map((e, i) => (
-                    <div key={i} className="text-[10.5px] bg-coral/5 border border-coral/20 rounded px-2 py-1 flex justify-between">
-                      <span className="font-mono text-foreground">{e.target}</span>
-                      <span className="text-coral">{e.error}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div className="flex gap-2 pt-2 border-t border-border">
-              <button onClick={() => toast.success('Export queued — CSV ready in ~10s')}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-teal text-primary-foreground text-xs font-semibold hover:bg-teal-light">
-                <FileDown className="w-3 h-3" /> Export Results as CSV
-              </button>
-            </div>
-          </div>
-        )}
-      </Modal>
     </div>
   );
 }
