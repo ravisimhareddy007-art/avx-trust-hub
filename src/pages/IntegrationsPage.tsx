@@ -362,9 +362,13 @@ export default function IntegrationsPage() {
   const [configItem, setConfigItem] = useState<typeof INTEGRATIONS[0] | null>(null);
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
+  const { connections: savedConnections, saveConnection } = useConnections();
   const [connections, setConnections] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(INTEGRATIONS.map(i => [i.id, i.connected])),
   );
+  // Treat HashiCorp as connected if any saved hashicorp connection exists
+  const hasSavedHashicorp = savedConnections.some(c => c.vaultType === 'HashiCorp Vault');
+  const effectiveConnections = { ...connections, hashicorp: connections.hashicorp || hasSavedHashicorp };
 
   const filtered = INTEGRATIONS.filter(
     i =>
