@@ -736,3 +736,436 @@ export default function IntegrationsPage() {
     </div>
   );
 }
+
+// ============================================================
+// HashiCorp Vault Connect Modal
+// ============================================================
+type AuthMethod = 'token' | 'approle' | 'kubernetes' | 'aws-iam' | 'tls';
+type TestStatus = 'idle' | 'testing' | 'success';
+
+interface HashiCorpVaultModalProps {
+  isConnected: boolean;
+  onClose: () => void;
+  onDisconnect: () => void;
+  onSave: () => void;
+}
+
+function HashiCorpVaultModal({
+  isConnected,
+  onClose,
+  onDisconnect,
+  onSave,
+}: HashiCorpVaultModalProps) {
+  const [connectionName, setConnectionName] = useState('');
+  const [vaultUrl, setVaultUrl] = useState('');
+  const [authMethod, setAuthMethod] = useState<AuthMethod>('token');
+  // auth-specific
+  const [token, setToken] = useState('');
+  const [showToken, setShowToken] = useState(false);
+  const [roleId, setRoleId] = useState('');
+  const [secretId, setSecretId] = useState('');
+  const [showSecretId, setShowSecretId] = useState(false);
+  const [k8sRole, setK8sRole] = useState('');
+  const [k8sJwtPath, setK8sJwtPath] = useState(
+    '/var/run/secrets/kubernetes.io/serviceaccount/token',
+  );
+  const [awsRoleArn, setAwsRoleArn] = useState('');
+  const [clientCert, setClientCert] = useState<File | null>(null);
+  const [clientKey, setClientKey] = useState<File | null>(null);
+  // namespace
+  const [namespace, setNamespace] = useState('');
+  // TLS
+  const [tlsOpen, setTlsOpen] = useState(false);
+  const [useCustomCa, setUseCustomCa] = useState(false);
+  const [caBundle, setCaBundle] = useState<File | null>(null);
+  const [skipTls, setSkipTls] = useState(false);
+  // test/save state
+  const [testStatus, setTestStatus] = useState<TestStatus>('idle');
+
+  const requiredFilled = (): boolean => {
+    if (!connectionName.trim() || !vaultUrl.trim()) return false;
+    switch (authMethod) {
+      case 'token':
+        return !!token.trim();
+      case 'approle':
+        return !!roleId.trim() && !!secretId.trim();
+      case 'kubernetes':
+        return !!k8sRole.trim() && !!k8sJwtPath.trim();
+      case 'aws-iam':
+        return !!awsRoleArn.trim();
+      case 'tls':
+        return !!clientCert && !!clientKey;
+    }
+  };
+
+  const handleTest = () => {
+    if (!requiredFilled()) {
+      toast.error('Please fill in all required fields before testing.');
+      return;
+    }
+    setTestStatus('testing');
+    setTimeout(() => setTestStatus('success'), 1500);
+  };
+
+  const inputCls =
+    'flex-1 border border-border rounded-lg px-3 py-2 text-[11px] bg-muted/30 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-teal/50';
+  const labelCls = 'text-[11px] font-medium mb-1 text-foreground';
+  const helperCls = 'text-[10px] text-muted-foreground mt-1';
+
+  const renderSecretInput = (
+    value: string,
+    onChange: (v: string) => void,
+    placeholder: string,
+    show: boolean,
+    toggle: () => void,
+  ) => (
+    <div className="flex items-center gap-2">
+      <input
+        type={show ? 'text' : 'password'}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        className={inputCls}
+      />
+      <button
+        type="button"
+        onClick={toggle}
+        className="text-muted-foreground hover:text-foreground p-1"
+      >
+        {show ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+      </button>
+    </div>
+  );
+
+  const renderFileInput = (
+    file: File | null,
+    onChange: (f: File | null) => void,
+    label: string,
+  ) => (
+    <label className="flex items-center gap-2 border border-dashed border-border rounded-lg px-3 py-2 text-[11px] bg-muted/20 text-muted-foreground cursor-pointer hover:bg-muted/30">
+      <Upload className="w-3.5 h-3.5" />
+      <span className="flex-1 truncate">{file ? file.name : `Upload ${label}`}</span>
+      <input
+        type="file"
+        className="hidden"
+        onChange={e => onChange(e.target.files?.[0] ?? null)}
+      />
+    </label>
+  );
+
+  const statusPill = () => {
+    if (isConnected) {
+      return (
+        <>
+          <span className="w-1.5 h-1.5 rounded-full bg-teal" />
+          <span className="text-[11px] text-teal">● Connected</span>
+        </>
+      );
+    }
+    if (testStatus === 'success') {
+      return (
+        <>
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+          <span className="text-[11px] text-amber-400">● Tested, not saved</span>
+        </>
+      );
+    }
+    return (
+      <>
+        <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground" />
+        <span className="text-[11px] text-muted-foreground">● Not connected</span>
+      </>
+    );
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md z-10 flex flex-col max-h-[90vh]">
+        <div className="px-5 py-4 border-b border-border flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center">
+            <span className="text-sm font-semibold text-foreground">HashiCorp Vault</span>
+            <span className="text-[9px] bg-muted px-2 py-0.5 rounded ml-2 text-muted-foreground">
+              Secrets & Vaults
+            </span>
+          </div>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="px-5 py-4 space-y-4 overflow-y-auto">
+          <p className="text-[11px] text-muted-foreground mb-2">
+            Centralized secrets management and PKI engine.
+          </p>
+
+          <div className="flex items-center gap-2 py-2 border-b border-border">
+            {statusPill()}
+          </div>
+
+          {/* Connection name */}
+          <div>
+            <div className={labelCls}>
+              Connection name <span className="text-coral">*</span>
+            </div>
+            <input
+              value={connectionName}
+              onChange={e => setConnectionName(e.target.value)}
+              placeholder="e.g. hashicorp-vault-prod"
+              className={inputCls + ' w-full'}
+            />
+            <div className={helperCls}>
+              A friendly name to identify this connection in discovery scans, policies, and
+              workflows.
+            </div>
+          </div>
+
+          {/* Vault URL */}
+          <div>
+            <div className={labelCls}>
+              Vault URL <span className="text-coral">*</span>
+            </div>
+            <input
+              value={vaultUrl}
+              onChange={e => setVaultUrl(e.target.value)}
+              placeholder="https://vault.corp.local:8200"
+              className={inputCls + ' w-full'}
+            />
+          </div>
+
+          {/* Auth method */}
+          <div>
+            <div className={labelCls}>
+              Auth method <span className="text-coral">*</span>
+            </div>
+            <select
+              value={authMethod}
+              onChange={e => {
+                setAuthMethod(e.target.value as AuthMethod);
+                setTestStatus('idle');
+              }}
+              className={inputCls + ' w-full'}
+            >
+              <option value="token">Token</option>
+              <option value="approle">AppRole</option>
+              <option value="kubernetes">Kubernetes</option>
+              <option value="aws-iam">AWS IAM</option>
+              <option value="tls">TLS Certificate</option>
+            </select>
+          </div>
+
+          {/* Auth-specific fields */}
+          {authMethod === 'token' && (
+            <div>
+              <div className={labelCls}>
+                Token <span className="text-coral">*</span>
+              </div>
+              {renderSecretInput(token, setToken, 'hvs.CAESI...', showToken, () =>
+                setShowToken(s => !s),
+              )}
+            </div>
+          )}
+
+          {authMethod === 'approle' && (
+            <>
+              <div>
+                <div className={labelCls}>
+                  Role ID <span className="text-coral">*</span>
+                </div>
+                <input
+                  value={roleId}
+                  onChange={e => setRoleId(e.target.value)}
+                  className={inputCls + ' w-full'}
+                />
+              </div>
+              <div>
+                <div className={labelCls}>
+                  Secret ID <span className="text-coral">*</span>
+                </div>
+                {renderSecretInput(secretId, setSecretId, '', showSecretId, () =>
+                  setShowSecretId(s => !s),
+                )}
+              </div>
+            </>
+          )}
+
+          {authMethod === 'kubernetes' && (
+            <>
+              <div>
+                <div className={labelCls}>
+                  Kubernetes role <span className="text-coral">*</span>
+                </div>
+                <input
+                  value={k8sRole}
+                  onChange={e => setK8sRole(e.target.value)}
+                  placeholder="avx-reader"
+                  className={inputCls + ' w-full'}
+                />
+              </div>
+              <div>
+                <div className={labelCls}>
+                  Service account JWT path <span className="text-coral">*</span>
+                </div>
+                <input
+                  value={k8sJwtPath}
+                  onChange={e => setK8sJwtPath(e.target.value)}
+                  placeholder="/var/run/secrets/kubernetes.io/serviceaccount/token"
+                  className={inputCls + ' w-full'}
+                />
+                <div className={helperCls}>Leave default unless using a custom mount.</div>
+              </div>
+            </>
+          )}
+
+          {authMethod === 'aws-iam' && (
+            <div>
+              <div className={labelCls}>
+                AWS IAM role ARN <span className="text-coral">*</span>
+              </div>
+              <input
+                value={awsRoleArn}
+                onChange={e => setAwsRoleArn(e.target.value)}
+                placeholder="arn:aws:iam::123456789012:role/avx-vault-reader"
+                className={inputCls + ' w-full'}
+              />
+            </div>
+          )}
+
+          {authMethod === 'tls' && (
+            <>
+              <div>
+                <div className={labelCls}>
+                  Client certificate <span className="text-coral">*</span>
+                </div>
+                {renderFileInput(clientCert, setClientCert, 'client certificate')}
+              </div>
+              <div>
+                <div className={labelCls}>
+                  Client private key <span className="text-coral">*</span>
+                </div>
+                {renderFileInput(clientKey, setClientKey, 'client private key')}
+              </div>
+            </>
+          )}
+
+          {/* Namespace */}
+          <div>
+            <div className={labelCls}>Namespace</div>
+            <input
+              value={namespace}
+              onChange={e => setNamespace(e.target.value)}
+              placeholder="e.g. admin/team-platform"
+              className={inputCls + ' w-full'}
+            />
+            <div className={helperCls}>
+              Optional. Required for Vault Enterprise multi-tenant deployments. Leave blank for
+              Vault OSS or root namespace.
+            </div>
+          </div>
+
+          {/* TLS configuration collapsible */}
+          <div className="border-t border-border pt-3">
+            <button
+              type="button"
+              onClick={() => setTlsOpen(o => !o)}
+              className="flex items-center gap-2 text-[11px] font-medium text-foreground hover:text-teal w-full"
+            >
+              {tlsOpen ? (
+                <ChevronDown className="w-3.5 h-3.5" />
+              ) : (
+                <ChevronRight className="w-3.5 h-3.5" />
+              )}
+              TLS configuration (advanced)
+            </button>
+            {tlsOpen && (
+              <div className="mt-3 space-y-3 pl-1">
+                <div>
+                  <label className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] text-foreground">Use custom CA certificate</span>
+                    <input
+                      type="checkbox"
+                      checked={useCustomCa}
+                      onChange={e => setUseCustomCa(e.target.checked)}
+                      className="accent-teal"
+                    />
+                  </label>
+                  {useCustomCa && (
+                    <div className="mt-2">
+                      <div className={labelCls}>CA certificate bundle (PEM)</div>
+                      {renderFileInput(caBundle, setCaBundle, 'CA bundle')}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] text-foreground">Skip TLS verification</span>
+                    <input
+                      type="checkbox"
+                      checked={skipTls}
+                      onChange={e => setSkipTls(e.target.checked)}
+                      className="accent-amber-400"
+                    />
+                  </label>
+                  {skipTls && (
+                    <div className="mt-2 flex items-start gap-1.5 text-[10px] text-amber-400">
+                      <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                      <span>
+                        Insecure. Use only for development or self-signed Vault instances.
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Inline test success card */}
+          {testStatus === 'success' && (
+            <div className="border border-teal/40 bg-teal/10 rounded-lg p-3 text-[11px] text-foreground space-y-0.5">
+              <div className="flex items-center gap-1.5 font-medium text-teal">
+                <Check className="w-3.5 h-3.5" /> Connection successful
+              </div>
+              <div className="text-muted-foreground">Token TTL: 768h · Renewable: yes</div>
+              <div className="text-muted-foreground">Policies: avx-reader, default</div>
+              <div className="text-muted-foreground">
+                Accessible mounts: secret/, pki/, transit/, ssh/
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="px-5 py-4 border-t border-border flex gap-2 justify-end flex-shrink-0">
+          {isConnected && (
+            <button
+              onClick={onDisconnect}
+              className="text-[11px] text-coral/70 hover:text-coral px-3 py-1.5 rounded-lg mr-auto"
+            >
+              Disconnect
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="text-[11px] px-3 py-1.5 rounded-lg hover:bg-muted/30 text-foreground"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleTest}
+            disabled={testStatus === 'testing'}
+            className="border border-border text-[11px] px-3 py-1.5 rounded-lg hover:bg-muted/30 text-foreground flex items-center gap-1.5 disabled:opacity-60"
+          >
+            {testStatus === 'testing' && <Loader2 className="w-3 h-3 animate-spin" />}
+            {testStatus === 'testing' ? 'Testing...' : 'Test connection'}
+          </button>
+          <button
+            onClick={onSave}
+            disabled={testStatus !== 'success'}
+            className="bg-teal text-white text-[11px] px-3 py-1.5 rounded-lg hover:bg-teal/90 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Save connection
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
