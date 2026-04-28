@@ -14,6 +14,12 @@ import {
   GitBranch,
   Server,
   CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  AlertTriangle,
+  Check,
+  Loader2,
+  Upload,
 } from 'lucide-react';
 
 const INTEGRATIONS: {
