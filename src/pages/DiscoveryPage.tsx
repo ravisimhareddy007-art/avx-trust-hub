@@ -130,7 +130,7 @@ const mockProfiles: Profile[] = [
 // ============================================================================
 export default function DiscoveryPage() {
   const [tab, setTab] = useState<'profiles' | 'new' | 'runs'>('profiles');
-  const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
+  const [editingProfile, setEditingProfile] = useState<DiscoveryProfile | null>(null);
 
   return (
     <div className="space-y-4">
@@ -163,7 +163,7 @@ export default function DiscoveryPage() {
       </div>
 
       {tab === 'profiles' && <ProfilesTab onEdit={(p) => { setEditingProfile(p); setTab('new'); }} onNew={() => { setEditingProfile(null); setTab('new'); }} />}
-      {tab === 'new' && <NewScanTab existing={editingProfile} onSaved={() => setTab('runs')} />}
+      {tab === 'new' && <NewScanTab existing={editingProfile} onSaved={() => setTab('runs')} goToTab={setTab} />}
       {tab === 'runs' && <RunsTab />}
     </div>
   );
