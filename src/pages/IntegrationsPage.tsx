@@ -611,9 +611,19 @@ export default function IntegrationsPage() {
             toast.success(`${configItem.name} disconnected`);
             setConfigItem(null);
           }}
-          onSave={() => {
+          onSaveConnection={(data) => {
+            saveConnection({
+              name: data.connectionName,
+              vaultType: 'HashiCorp Vault',
+              vaultUrl: data.vaultUrl,
+              authMethod: data.authMethod,
+              namespace: data.namespace,
+              tlsConfig: data.tlsConfig,
+              status: 'connected',
+              credentials: data.credentials,
+            });
             setConnections(p => ({ ...p, [configItem.id]: true }));
-            toast.success(`${configItem.name} connected successfully`);
+            toast.success('Connection saved. Available in Discovery and Policies.');
             setConfigItem(null);
             setItab('connected');
           }}
@@ -753,14 +763,21 @@ interface HashiCorpVaultModalProps {
   isConnected: boolean;
   onClose: () => void;
   onDisconnect: () => void;
-  onSave: () => void;
+  onSaveConnection: (data: {
+    connectionName: string;
+    vaultUrl: string;
+    authMethod: string;
+    namespace?: string;
+    tlsConfig?: Record<string, unknown>;
+    credentials?: Record<string, unknown>;
+  }) => void;
 }
 
 function HashiCorpVaultModal({
   isConnected,
   onClose,
   onDisconnect,
-  onSave,
+  onSaveConnection,
 }: HashiCorpVaultModalProps) {
   const [connectionName, setConnectionName] = useState('');
   const [vaultUrl, setVaultUrl] = useState('');
