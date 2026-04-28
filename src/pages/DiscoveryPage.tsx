@@ -3,6 +3,7 @@ import { discoveryRuns } from '@/data/mockData';
 import { StatusBadge, Modal } from '@/components/shared/UIComponents';
 import { useNav } from '@/context/NavigationContext';
 import { useIntegrations } from '@/context/IntegrationsContext';
+import { useConnections, formatRelativeTime } from '@/context/ConnectionsContext';
 import { toast } from 'sonner';
 import {
   Search, RefreshCw, Info, Plus, Play, Upload, Database,
@@ -848,36 +849,23 @@ function IaCConfig() {
 }
 
 function VaultConfig() {
-  const { byType } = useIntegrations();
-  const vaults = byType('Vault');
+  const { setCurrentPage } = useNav();
+  const { connections: savedConnections, byVaultType } = useConnections();
   const [vaultType, setVaultType] = useState('HashiCorp Vault');
-  const [vaultAccount, setVaultAccount] = useState('');
+  const [vaultAccountId, setVaultAccountId] = useState('');
   const [authMethod, setAuthMethod] = useState('AppRole');
-  const [vaultUrl, setVaultUrl] = useState('');
-  const [namespace, setNamespace] = useState('');
   const [secretTypes, setSecretTypes] = useState<string[]>(['Certificates', 'API Keys', 'Encryption Keys']);
   const [testing, setTesting] = useState(false);
 
-  // Filter vault accounts by selected vault type (match against connector name)
-  const vaultTypeMatchers: Record<string, (name: string) => boolean> = {
-    'HashiCorp Vault': n => /hashicorp/i.test(n),
-    'CyberArk Conjur': n => /cyberark|conjur/i.test(n),
-    'AWS Secrets Manager': n => /aws/i.test(n),
-    'Azure Key Vault': n => /azure/i.test(n),
-    'GCP Secret Manager': n => /gcp|google/i.test(n),
-    'Delinea Secret Server': n => /delinea|thycotic/i.test(n),
-  };
-  const filteredVaults = useMemo(
-    () => vaults.filter(v => (vaultTypeMatchers[vaultType] ?? (() => true))(v.name)),
-    [vaults, vaultType]
+  const filteredConnections = useMemo(
+    () => byVaultType(vaultType),
+    [savedConnections, vaultType, byVaultType]
   );
-
-  const showUrl = vaultType === 'HashiCorp Vault' || vaultType === 'CyberArk Conjur';
-  const showNamespace = vaultType === 'HashiCorp Vault';
+  const selected = filteredConnections.find(c => c.id === vaultAccountId);
 
   const handleTestConnection = () => {
-    if (!vaultType || !vaultAccount || !authMethod || !vaultUrl) {
-      toast.error('Please fill in all required connection fields before testing.');
+    if (!selected) {
+      toast.error('Please select a vault account before testing.');
       return;
     }
     setTesting(true);
@@ -892,34 +880,59 @@ function VaultConfig() {
   return (
     <div className="space-y-3">
       <FormRow label="Vault type" required>
-        <select value={vaultType} onChange={e => { setVaultType(e.target.value); setVaultAccount(''); }} className={selectCls}>
+        <select value={vaultType} onChange={e => { setVaultType(e.target.value); setVaultAccountId(''); }} className={selectCls}>
           {['HashiCorp Vault', 'AWS Secrets Manager', 'Azure Key Vault', 'CyberArk Conjur', 'GCP Secret Manager', 'Delinea Secret Server'].map(v => <option key={v}>{v}</option>)}
         </select>
       </FormRow>
       <FormRow label="Vault account" required>
-        {filteredVaults.length > 0
-          ? (
-            <select value={vaultAccount} onChange={e => setVaultAccount(e.target.value)} className={selectCls}>
-              <option value="">Select an account…</option>
-              {filteredVaults.map(v => <option key={v.account} value={v.account}>{v.account} ({v.name})</option>)}
-            </select>
-          )
-          : <span className="text-xs text-muted-foreground">No accounts configured for this vault type. Add one in Integrations.</span>}
+        {filteredConnections.length > 0 ? (
+          <select value={vaultAccountId} onChange={e => setVaultAccountId(e.target.value)} className={selectCls}>
+            <option value="">Select a connection…</option>
+            {filteredConnections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        ) : (
+          <span className="text-xs text-muted-foreground">
+            No connections configured.{' '}
+            <button type="button" onClick={() => setCurrentPage('integrations')} className="text-teal hover:underline">
+              Set one up in Integrations →
+            </button>
+          </span>
+        )}
       </FormRow>
-      <FormRow label="Auth method" required>
-        <select value={authMethod} onChange={e => setAuthMethod(e.target.value)} className={selectCls}><option>AppRole</option><option>AWS IAM Role</option><option>Azure MSI</option><option>API Key</option></select>
-      </FormRow>
-      {showUrl && (
-        <FormRow label="Vault URL" required><input value={vaultUrl} onChange={e => setVaultUrl(e.target.value)} className={`${inputCls} font-mono`} placeholder="https://vault.corp.local:8200" /></FormRow>
-      )}
-      {showNamespace && (
-        <FormRow label="Namespace">
-          <div className="flex-1 max-w-md">
-            <input value={namespace} onChange={e => setNamespace(e.target.value)} className={`${inputCls} font-mono w-full max-w-none`} placeholder="admin/team-platform" />
-            <p className="mt-1 text-[11px] text-muted-foreground">Required for Vault Enterprise multi-tenant deployments. Leave blank for Vault OSS or root namespace.</p>
+
+      {selected && (
+        <FormRow label="">
+          <div className="flex-1 max-w-md bg-secondary/30 border border-border rounded-lg p-3 space-y-1">
+            <div className="text-[14px] font-medium text-foreground">{selected.name}</div>
+            <div className="text-[11px] text-muted-foreground">
+              {selected.vaultType} · <span className="font-mono">{selected.vaultUrl || '—'}</span>
+            </div>
+            <div className="text-[11px] text-muted-foreground">
+              Namespace: <span className="font-mono">{selected.namespace || '—'}</span> · Auth: {selected.authMethod}
+            </div>
+            <div className="text-[11px] text-muted-foreground flex items-center gap-1">
+              Status:{' '}
+              {selected.status === 'connected' ? (
+                <span className="text-teal">● Connected</span>
+              ) : (
+                <span className="text-coral">● Disconnected</span>
+              )}
+              {' '}· Last verified: {formatRelativeTime(selected.lastVerified)}
+            </div>
+            <button
+              type="button"
+              onClick={() => setCurrentPage('integrations')}
+              className="text-[11px] text-teal hover:underline"
+            >
+              Edit connection →
+            </button>
           </div>
         </FormRow>
       )}
+
+      <FormRow label="Auth method" required>
+        <select value={authMethod} onChange={e => setAuthMethod(e.target.value)} className={selectCls}><option>AppRole</option><option>AWS IAM Role</option><option>Azure MSI</option><option>API Key</option></select>
+      </FormRow>
       <FormRow label="Secret types"><CheckGroup options={['Certificates', 'API Keys', 'Database Credentials', 'Encryption Keys', 'SSH Keys', 'Unclassified Secrets']} value={secretTypes} onChange={setSecretTypes} /></FormRow>
       <FormRow label="">
         <button
