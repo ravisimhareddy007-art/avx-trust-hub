@@ -93,18 +93,6 @@ const INTEGRATIONS: {
       { label: 'Password', placeholder: '••••••••', secret: true },
     ],
   },
-  {
-    id: 'appviewx-ca',
-    name: 'Internal CA',
-    category: 'Certificate Authorities',
-    description: 'Internal CA powered by the platform for private PKI issuance.',
-    connected: false,
-    fields: [
-      { label: 'CA URL', placeholder: 'https://ca.internal.local' },
-      { label: 'API Key', placeholder: 'avx-...', secret: true },
-    ],
-  },
-
   // ── Cloud Platforms ──
   {
     id: 'aws',
