@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { toast } from 'sonner';
+import { useConnections, formatRelativeTime, type SavedConnection } from '@/context/ConnectionsContext';
+import { useNav } from '@/context/NavigationContext';
 import {
   Search,
   Eye,
