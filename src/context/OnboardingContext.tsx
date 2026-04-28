@@ -18,7 +18,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   // Session-only state — survives navigation between pages, resets on refresh.
   // Clear any legacy persisted state from prior implementations.
   useEffect(() => {
-    try { localStorage.removeItem('avx-onboarding-dismissed'); } catch {}
+    try { localStorage.removeItem('trust-onboarding-dismissed'); } catch {}
   }, []);
 
   const [dismissed, setDismissed] = useState<string[]>([]);

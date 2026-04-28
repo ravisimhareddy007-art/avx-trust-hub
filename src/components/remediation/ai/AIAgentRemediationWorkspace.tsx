@@ -90,8 +90,8 @@ const HITL_QUEUE: HitlItem[] = [
 
 const MCP_SERVERS: McpServer[] = [
   { id: 'm1', name: 'Aws-Mcp-Server-MCP', agent: 'copilot-code-review-agent', status: 'Unsanctioned', protected: false },
-  { id: 'm2', name: 'Filemanager-Proxy-MCP', agent: 'Github_Copilot-AVXLM184', status: 'Unsanctioned', protected: false },
-  { id: 'm3', name: 'Remote-Auth-OAuth', agent: 'Github_Copilot-AVXLM184', status: 'Approved', protected: true },
+  { id: 'm2', name: 'Filemanager-Proxy-MCP', agent: 'Github_Copilot-AGENT184', status: 'Unsanctioned', protected: false },
+  { id: 'm3', name: 'Remote-Auth-OAuth', agent: 'Github_Copilot-AGENT184', status: 'Approved', protected: true },
   { id: 'm4', name: 'BigQuery-MCP', agent: 'data-analyst-mcp-server', status: 'Approved', protected: true },
 ];
 

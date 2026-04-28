@@ -95,12 +95,12 @@ const INTEGRATIONS: {
   },
   {
     id: 'appviewx-ca',
-    name: 'AppViewX CA',
+    name: 'Internal CA',
     category: 'Certificate Authorities',
-    description: 'Internal CA powered by AppViewX for private PKI issuance.',
+    description: 'Internal CA powered by the platform for private PKI issuance.',
     connected: false,
     fields: [
-      { label: 'CA URL', placeholder: 'https://ca.appviewx.local' },
+      { label: 'CA URL', placeholder: 'https://ca.internal.local' },
       { label: 'API Key', placeholder: 'avx-...', secret: true },
     ],
   },

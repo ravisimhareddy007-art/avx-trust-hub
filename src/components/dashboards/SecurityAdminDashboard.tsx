@@ -383,7 +383,7 @@ export default function SecurityAdminDashboard() {
                     Discovery finds every cryptographic asset across your environment — automatically, continuously.
                   </p>
                   {[
-                    { title: 'Network Scan', body: "Scans IP ranges and hostnames for TLS certificates on any port. Finds certs that were never enrolled through AppViewX — shadow inventory you didn't know existed." },
+                    { title: 'Network Scan', body: "Scans IP ranges and hostnames for TLS certificates on any port. Finds certs that were never enrolled through the platform — shadow inventory you didn't know existed." },
                     { title: 'SSH Host Scan', body: 'Connects to target hosts and reads authorized_keys and known_hosts files. Discovers every SSH key — managed or rogue — across your Linux and Windows fleet.' },
                     { title: 'Vault & Secret Scan', body: 'Reads secret paths from connected vaults. Classifies each secret by type — API key, OAuth token, database credential — and applies age and rotation checks.' },
                     { title: 'Cloud Discovery', body: 'Pulls certificates and keys from AWS ACM, Azure Key Vault, and GCP Certificate Manager. Also discovers IAM service account keys and cloud-native agent credentials.' },

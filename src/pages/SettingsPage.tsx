@@ -49,7 +49,7 @@ export default function SettingsPage({ initialTab = 'users' }: { initialTab?: 'u
       {tab === 'licenses' && (
         <div className="space-y-4">
           <div className="bg-card rounded-lg border border-border p-6">
-            <h3 className="text-sm font-semibold mb-4">License: AVX Trust Enterprise</h3>
+            <h3 className="text-sm font-semibold mb-4">License: Trust Enterprise</h3>
             <div className="grid grid-cols-2 gap-4 text-xs">
               <div><p className="text-muted-foreground">Tier</p><p className="font-medium">Enterprise</p></div>
               <div><p className="text-muted-foreground">Expiry</p><p className="font-medium">December 31, 2027</p></div>

@@ -106,7 +106,7 @@ function searchKnowledgeBase(query: string): { source: string; snippet: string }
   const all = [
     { source: 'NIST SP 800-208 — Stateful Hash-Based Sigs', snippet: 'Recommends ML-DSA-65 for general signatures and ML-KEM-768 for key encapsulation in hybrid mode during migration.' },
     { source: 'NIST PQC Migration Playbook (draft)', snippet: 'Prioritize harvest-now-decrypt-later exposure: customer auth, payment, long-lived data flows.' },
-    { source: 'Internal: AVX Trust Platform Architecture v2.1', snippet: 'Single shared inventory; modules are lenses (Cert+, SSH, QTH). Never duplicate per-module.' },
+    { source: 'Internal: Trust Platform Architecture v2.1', snippet: 'Single shared inventory; modules are lenses (Cert+, SSH, QTH). Never duplicate per-module.' },
     { source: 'CA/B Forum Baseline 2.0', snippet: 'Public TLS validity capped at 397 days; auto-renewal recommended via ACME.' },
   ];
   return all.filter(d => q.split(/\s+/).some(w => w.length > 3 && (d.source + d.snippet).toLowerCase().includes(w))).slice(0, 2);

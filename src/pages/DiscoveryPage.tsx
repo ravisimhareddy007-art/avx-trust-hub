@@ -1027,7 +1027,7 @@ function CBOMConfig() {
       <div className="bg-purple/5 border border-purple/30 rounded-lg p-3 flex items-start gap-2">
         <Info className="w-3.5 h-3.5 text-purple-light flex-shrink-0 mt-0.5" />
         <p className="text-[10.5px] text-foreground leading-snug">
-          CBOM import maps cryptographic component inventories from software composition analysis tools into the AVX unified identity schema.
+          CBOM import maps cryptographic component inventories from software composition analysis tools into the Trust unified identity schema.
           Quantum-vulnerable components are automatically flagged in the QTH migration queue.
         </p>
       </div>

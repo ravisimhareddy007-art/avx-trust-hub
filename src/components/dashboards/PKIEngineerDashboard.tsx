@@ -53,7 +53,7 @@ const TABS: { id: CLMTab; label: string; icon: React.ElementType }[] = [
 ];
 
 const CA_DISTRIBUTION = [
-  { name: 'AppViewX', value: 1081 },
+  { name: 'the platform', value: 1081 },
   { name: 'DigiCert', value: 313 },
   { name: 'Sectigo', value: 199 },
   { name: 'Microsoft Enterprise', value: 171 },

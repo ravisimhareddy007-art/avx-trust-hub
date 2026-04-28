@@ -46,7 +46,7 @@ const stages: Stage[] = [
 const allCerts = mockAssets.filter((a) => a.type.includes('Certificate'));
 const stalledReasons = ['Auth error', 'Timeout', 'CSR validation failed', 'Connector mismatch', 'CA policy check'];
 const schedules = ['Immediately', 'Next maintenance window'] as const;
-const caOptions = ['DigiCert', 'Entrust', "Let's Encrypt", 'MSCA Enterprise', 'AppViewX PKIaaS'] as const;
+const caOptions = ['DigiCert', 'Entrust', "Let's Encrypt", 'MSCA Enterprise', 'Internal PKIaaS'] as const;
 
 function formatDate(offset: number) {
   const d = new Date();

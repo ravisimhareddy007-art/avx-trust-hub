@@ -150,7 +150,7 @@ function LicenseManagement() {
 /* ─── HEALTH MANAGEMENT ─── */
 function HealthManagement() {
   const services = [
-    { name: 'AVX Trust API Gateway', status: 'Healthy', uptime: '99.99%', latency: '12ms', lastCheck: '30s ago', cpu: 24, mem: 61 },
+    { name: 'Trust API Gateway', status: 'Healthy', uptime: '99.99%', latency: '12ms', lastCheck: '30s ago', cpu: 24, mem: 61 },
     { name: 'Certificate Authority (CA)', status: 'Healthy', uptime: '99.99%', latency: '8ms', lastCheck: '30s ago', cpu: 18, mem: 45 },
     { name: 'Discovery Engine', status: 'Healthy', uptime: '99.97%', latency: '45ms', lastCheck: '30s ago', cpu: 52, mem: 72 },
     { name: 'Policy Engine', status: 'Healthy', uptime: '99.98%', latency: '15ms', lastCheck: '30s ago', cpu: 12, mem: 38 },
@@ -858,34 +858,34 @@ function MCPServerPanel() {
   
   const categories: { id: string; label: string; tools: { name: string; params: string; desc: string; approval?: boolean }[] }[] = [
     { id: 'discovery', label: 'Discovery & Inventory', tools: [
-      { name: 'avx_inventory_query', params: 'filter, fields, sort, page', desc: 'Query UCO inventory with full filter DSL — type, expiry, algorithm, owner, status' },
-      { name: 'avx_scan_trigger', params: 'scope, vectors, profile', desc: 'Trigger discovery scan across networks, clouds, or K8s namespaces' },
-      { name: 'avx_cert_detail', params: 'fingerprint | cn', desc: 'Return full UCO object for a specific credential' },
-      { name: 'avx_shadow_list', params: '()', desc: 'Return all shadow certs with deployment locations and CA origin gap' },
+      { name: 'trust_inventory_query', params: 'filter, fields, sort, page', desc: 'Query UCO inventory with full filter DSL — type, expiry, algorithm, owner, status' },
+      { name: 'trust_scan_trigger', params: 'scope, vectors, profile', desc: 'Trigger discovery scan across networks, clouds, or K8s namespaces' },
+      { name: 'trust_cert_detail', params: 'fingerprint | cn', desc: 'Return full UCO object for a specific credential' },
+      { name: 'trust_shadow_list', params: '()', desc: 'Return all shadow certs with deployment locations and CA origin gap' },
     ]},
     { id: 'policy', label: 'Policy & Compliance', tools: [
-      { name: 'avx_violations_list', params: 'severity, framework, limit', desc: 'List active policy violations with remediation context' },
-      { name: 'avx_policy_generate', params: 'description: string', desc: 'Natural language → Rego rule, validated and ready to deploy' },
-      { name: 'avx_compliance_report', params: 'framework', desc: 'Return compliance scorecard: passing/failing controls per framework' },
-      { name: 'avx_policy_simulate', params: 'rule_draft, sample_size', desc: 'Dry-run a new rule against live inventory — preview violations before activation' },
+      { name: 'trust_violations_list', params: 'severity, framework, limit', desc: 'List active policy violations with remediation context' },
+      { name: 'trust_policy_generate', params: 'description: string', desc: 'Natural language → Rego rule, validated and ready to deploy' },
+      { name: 'trust_compliance_report', params: 'framework', desc: 'Return compliance scorecard: passing/failing controls per framework' },
+      { name: 'trust_policy_simulate', params: 'rule_draft, sample_size', desc: 'Dry-run a new rule against live inventory — preview violations before activation' },
     ]},
     { id: 'lifecycle', label: 'Lifecycle Actions', tools: [
-      { name: 'avx_cert_renew', params: 'fingerprint, ca, approval?', desc: 'Renew via connected CA. approval=true triggers human-in-loop gate', approval: true },
-      { name: 'avx_key_rotate', params: 'ucoid, target_algo, approval?', desc: 'Rotate SSH key or encryption key to specified algorithm', approval: true },
-      { name: 'avx_bulk_renew', params: 'filter, ca, dry_run?', desc: 'Renew all certs matching filter. dry_run returns scope without executing', approval: true },
-      { name: 'avx_cert_revoke', params: 'fingerprint, reason', desc: 'Revoke cert via CA + push CRL update. Always requires approval.', approval: true },
+      { name: 'trust_cert_renew', params: 'fingerprint, ca, approval?', desc: 'Renew via connected CA. approval=true triggers human-in-loop gate', approval: true },
+      { name: 'trust_key_rotate', params: 'ucoid, target_algo, approval?', desc: 'Rotate SSH key or encryption key to specified algorithm', approval: true },
+      { name: 'trust_bulk_renew', params: 'filter, ca, dry_run?', desc: 'Renew all certs matching filter. dry_run returns scope without executing', approval: true },
+      { name: 'trust_cert_revoke', params: 'fingerprint, reason', desc: 'Revoke cert via CA + push CRL update. Always requires approval.', approval: true },
     ]},
     { id: 'pqc', label: 'PQC & Posture', tools: [
-      { name: 'avx_posture_score', params: 'scope?, breakdown?', desc: 'Return current posture score — org-wide or scoped to team/env/cloud' },
-      { name: 'avx_posture_simulate', params: 'action_description', desc: "What-if posture simulation: 'rotate all RSA-2048 in payments' → new score" },
-      { name: 'avx_pqc_queue', params: 'limit, harvest_risk?', desc: 'Return QTH migration queue, ordered by AI-ranked priority' },
-      { name: 'avx_pqc_migrate', params: 'fingerprint, target_algo, approval?', desc: 'Execute QTH PQC migration. Hybrid cert issuance + CBOM update', approval: true },
+      { name: 'trust_posture_score', params: 'scope?, breakdown?', desc: 'Return current posture score — org-wide or scoped to team/env/cloud' },
+      { name: 'trust_posture_simulate', params: 'action_description', desc: "What-if posture simulation: 'rotate all RSA-2048 in payments' → new score" },
+      { name: 'trust_pqc_queue', params: 'limit, harvest_risk?', desc: 'Return QTH migration queue, ordered by AI-ranked priority' },
+      { name: 'trust_pqc_migrate', params: 'fingerprint, target_algo, approval?', desc: 'Execute QTH PQC migration. Hybrid cert issuance + CBOM update', approval: true },
     ]},
     { id: 'agents', label: 'Eos AI Agent Tools', tools: [
-      { name: 'avx_agent_register', params: 'name, type, scope, sponsor', desc: 'Register a new AI agent identity with scoped permissions' },
-      { name: 'avx_agent_list', params: 'filter?', desc: 'List all registered AI agents with trust scores' },
-      { name: 'avx_agent_suspend', params: 'agent_id, reason', desc: 'Suspend agent identity pending review', approval: true },
-      { name: 'avx_agent_audit', params: 'agent_id, range?', desc: 'Return audit trail for agent credential usage' },
+      { name: 'trust_agent_register', params: 'name, type, scope, sponsor', desc: 'Register a new AI agent identity with scoped permissions' },
+      { name: 'trust_agent_list', params: 'filter?', desc: 'List all registered AI agents with trust scores' },
+      { name: 'trust_agent_suspend', params: 'agent_id, reason', desc: 'Suspend agent identity pending review', approval: true },
+      { name: 'trust_agent_audit', params: 'agent_id, range?', desc: 'Return audit trail for agent credential usage' },
     ]},
   ];
 
@@ -911,7 +911,7 @@ function MCPServerPanel() {
 
       {/* Architecture Summary */}
       <div className="bg-card rounded-lg border border-teal/30 p-4">
-        <h3 className="text-sm font-semibold mb-2">AVX MCP Server — Agentic AI Integration</h3>
+        <h3 className="text-sm font-semibold mb-2">Trust MCP Server — Agentic AI Integration</h3>
         <p className="text-xs text-muted-foreground leading-relaxed mb-3">
           The entire Trust Control Platform exposed as a structured tool catalogue. Any MCP-compatible AI agent can govern machine identities via natural-language tool calls.
         </p>
@@ -936,7 +936,7 @@ function MCPServerPanel() {
       <div className="bg-card rounded-lg border border-border overflow-hidden">
         <div className="px-4 py-3 border-b border-border">
           <h3 className="text-sm font-semibold">Tool Catalogue — 40+ Named Tools</h3>
-          <p className="text-[10px] text-muted-foreground">Every platform capability as a structured tool. AI agents call by name; AVX handles auth, execution, and audit.</p>
+          <p className="text-[10px] text-muted-foreground">Every platform capability as a structured tool. AI agents call by name; the platform handles auth, execution, and audit.</p>
         </div>
         <div className="flex">
           <div className="w-44 border-r border-border bg-secondary/30 py-1">
@@ -996,9 +996,9 @@ function MCPServerPanel() {
         <h3 className="text-sm font-semibold mb-3">Agentic Flow Examples</h3>
         <div className="grid grid-cols-3 gap-3">
           {[
-            { title: 'SOC Analyst Copilot', mode: 'INTERACTIVE', example: '"Which certs expire in 7 days with no owner?"', flow: 'avx_inventory_query → avx_cert_detail → User reviews → avx_cert_renew' },
-            { title: 'CI/CD Pipeline Bot', mode: 'AUTONOMOUS', example: 'On PR merge: validate cert compliance', flow: 'avx_policy_simulate → avx_violations_list → Block merge if violations' },
-            { title: 'PQC Migration Agent', mode: 'HUMAN-APPROVED', example: 'Migrate payment certs to ML-DSA-65', flow: 'avx_pqc_queue → avx_posture_simulate → Human approval → avx_pqc_migrate' },
+            { title: 'SOC Analyst Copilot', mode: 'INTERACTIVE', example: '"Which certs expire in 7 days with no owner?"', flow: 'trust_inventory_query → trust_cert_detail → User reviews → trust_cert_renew' },
+            { title: 'CI/CD Pipeline Bot', mode: 'AUTONOMOUS', example: 'On PR merge: validate cert compliance', flow: 'trust_policy_simulate → trust_violations_list → Block merge if violations' },
+            { title: 'PQC Migration Agent', mode: 'HUMAN-APPROVED', example: 'Migrate payment certs to ML-DSA-65', flow: 'trust_pqc_queue → trust_posture_simulate → Human approval → trust_pqc_migrate' },
           ].map(f => (
             <div key={f.title} className="bg-secondary/30 rounded-lg p-3 border border-border">
               <div className="flex items-center gap-2 mb-1">

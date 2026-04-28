@@ -43,7 +43,7 @@ export interface ConnectorFormValues {
   intermediateCertificateLabel: string;
   rootCertificateLabel: string;
   privateKeyInDevice: boolean;
-  scriptLocation: 'appviewx' | 'device';
+  scriptLocation: 'platform' | 'device';
   prePushScript: string;
   postPushScript: string;
   overwrite: boolean;
@@ -144,7 +144,7 @@ export const defaultConnectorValues: ConnectorFormValues = {
   intermediateCertificateLabel: '',
   rootCertificateLabel: '',
   privateKeyInDevice: false,
-  scriptLocation: 'appviewx',
+  scriptLocation: 'platform',
   prePushScript: '',
   postPushScript: '',
   overwrite: true,

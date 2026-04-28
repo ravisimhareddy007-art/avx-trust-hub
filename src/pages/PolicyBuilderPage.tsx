@@ -900,7 +900,7 @@ export default function PolicyBuilderPage() {
                       <div>
                         <label className="block text-[11px] font-medium mb-1">Certificate Authority</label>
                         <select value={formCA} onChange={e => setFormCA(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
-                          {['Any', 'AppViewX CA', 'DigiCert', 'GlobalSign', 'Entrust', "Let's Encrypt", 'Microsoft CA', 'Sectigo', 'HashiCorp Vault PKI'].map(option => <option key={option}>{option}</option>)}
+                          {['Any', 'Internal CA', 'DigiCert', 'GlobalSign', 'Entrust', "Let's Encrypt", 'Microsoft CA', 'Sectigo', 'HashiCorp Vault PKI'].map(option => <option key={option}>{option}</option>)}
                         </select>
                       </div>
                     )}
@@ -953,7 +953,7 @@ export default function PolicyBuilderPage() {
                       <div>
                         <label className="block text-[11px] font-medium mb-1">Certificate Authority</label>
                         <select value={formCA} onChange={e => setFormCA(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
-                          {['Any', 'AppViewX CA', 'DigiCert', 'GlobalSign', 'Entrust', "Let's Encrypt", 'Microsoft CA', 'Sectigo', 'HashiCorp Vault PKI'].map(option => <option key={option}>{option}</option>)}
+                          {['Any', 'Internal CA', 'DigiCert', 'GlobalSign', 'Entrust', "Let's Encrypt", 'Microsoft CA', 'Sectigo', 'HashiCorp Vault PKI'].map(option => <option key={option}>{option}</option>)}
                         </select>
                       </div>
                     </div>

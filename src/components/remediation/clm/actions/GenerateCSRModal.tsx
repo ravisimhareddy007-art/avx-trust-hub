@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import { PolicyRequestRow } from '../types';
 
 const groupOptions = ['Default', 'Private_CA_Certificates', 'Public_CA_Certificates', 'Certificate-Gateway', 'JKCert'] as const;
-const csrSelectionOptions = ['appviewx', 'hsm'] as const;
+const csrSelectionOptions = ['platform', 'hsm'] as const;
 const deviceTypeOptions = ['HSM Devices', 'ADC Devices'] as const;
 const hsmDeviceOptions = ['HSM-Device-01', 'HSM-Device-02'] as const;
 const adcDeviceOptions = ['ADC-F5-01'] as const;
@@ -164,7 +164,7 @@ function ChipInput({ values, onAdd, onRemove, placeholder }: { values: string[];
 
 export default function GenerateCSRModal({ open, onClose, onSubmit }: { open: boolean; onClose: () => void; onSubmit: (request: PolicyRequestRow) => void }) {
   const [group, setGroup] = useState<string>(groupOptions[0]);
-  const [csrSelection, setCsrSelection] = useState<CsrSelection>('appviewx');
+  const [csrSelection, setCsrSelection] = useState<CsrSelection>('platform');
   const [deviceType, setDeviceType] = useState<DeviceType>('HSM Devices');
   const [device, setDevice] = useState<string>(hsmDeviceOptions[0]);
   const [keyHandlerName, setKeyHandlerName] = useState('payments-hsm-key-handler');
@@ -288,7 +288,7 @@ export default function GenerateCSRModal({ open, onClose, onSubmit }: { open: bo
       subject: commonName,
       targetCA: group,
       stages: [
-        { label: 'Enrollment Request', timestamp: 'just now', status: 'done', details: [{ label: 'CSR Selection', value: csrSelection === 'appviewx' ? 'AppViewX' : 'HSM' }, { label: 'Group', value: group }] },
+        { label: 'Enrollment Request', timestamp: 'just now', status: 'done', details: [{ label: 'CSR Selection', value: csrSelection === 'platform' ? 'the platform' : 'HSM' }, { label: 'Group', value: group }] },
         { label: 'Request Creation', timestamp: 'just now', status: 'done', details: [{ label: 'SAN Type', value: sanType }, { label: 'SAN Count', value: String(sanValues.length) }] },
         { label: 'CA Submission', timestamp: 'just now', status: 'done', details: [{ label: 'Hash Function', value: hashFunction }, { label: 'Key Type', value: keyType }] },
         { label: 'Certificate Issued', timestamp: 'just now', status: 'done', details: [{ label: 'Result', value: 'CSR generated and added to group' }] },
@@ -325,8 +325,8 @@ export default function GenerateCSRModal({ open, onClose, onSubmit }: { open: bo
                 <Field label="CSR Selection" required error={errors.csrSelection}>
                   <RadioGroup value={csrSelection} onValueChange={(value) => setCsrSelection(value as CsrSelection)} className="flex gap-6">
                     <div className="flex items-center gap-2">
-                      <RadioGroupItem value="appviewx" id="csr-selection-appviewx" />
-                      <Label htmlFor="csr-selection-appviewx">AppViewX</Label>
+                      <RadioGroupItem value="platform" id="csr-selection-platform" />
+                      <Label htmlFor="csr-selection-platform">the platform</Label>
                     </div>
                     <div className="flex items-center gap-2">
                       <RadioGroupItem value="hsm" id="csr-selection-hsm" />
@@ -474,7 +474,7 @@ export default function GenerateCSRModal({ open, onClose, onSubmit }: { open: bo
               </div>
             </Section>
 
-            <Section title="Attachments" note="Documents uploaded here are stored in AppViewX only and will not be submitted to the CA.">
+            <Section title="Attachments" note="Documents uploaded here are stored in the platform only and will not be submitted to the CA.">
               <div className="space-y-4">
                 {filteredAttachments.map((attachment, index) => (
                   <div key={attachment.id} className="grid gap-4 rounded-lg border border-border bg-background/30 p-4 md:grid-cols-2">

@@ -115,7 +115,7 @@ const DEFAULT_VISIBLE_COLUMNS = COLUMN_OPTIONS.reduce<ColumnKey[]>((acc, column)
 
 const GROUPS = ['Default', 'Private_CA_Certificates', 'Public_CA_Certificates', 'Certificate-Gateway'];
 const CA_OPTIONS = [
-  'Amazon', 'Amazon Private CA', 'AppViewX', 'AppViewX PKIaaS NDES', 'CSC Global', 'DigiCert', 'Ejbca', 'Entrust',
+  'Amazon', 'Amazon Private CA', 'the platform', 'Internal PKIaaS NDES', 'CSC Global', 'DigiCert', 'Ejbca', 'Entrust',
   'Entrust MPKI', 'GlobalSign', 'GlobalSign Atlas', 'GlobalSign MSSL', 'GoDaddy', 'Google', 'HashiCorp Vault',
   'HydrantID', "Let's Encrypt", 'Microsoft Enterprise', 'Nexus', 'OpenTrust', 'SwissSign', 'Trustwave', 'XCA Test Issuer', 'Sectigo', 'OTHERS',
 ] as const;
