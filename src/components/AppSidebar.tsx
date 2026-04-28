@@ -85,7 +85,7 @@ export default function AppSidebar() {
         { id: 'remediation-clm', label: 'Certificates (CLM)', page: 'remediation-clm', count: 40 },
         { id: 'remediation-ssh', label: 'SSH Keys & Certs', page: 'remediation-ssh', count: 7 },
         { id: 'remediation-ai', label: 'AI Agent Tokens', page: 'remediation-ai', count: 7 },
-        { id: 'remediation-secrets', label: 'API Keys & Secrets', page: 'remediation-secrets', count: 3, icon: Lock },
+        { id: 'remediation-secrets', label: 'Secrets', page: 'remediation-secrets', count: 3, icon: Lock },
       ],
     },
     { id: 'tickets', label: 'TICKETS', icon: Ticket, page: 'tickets' },
