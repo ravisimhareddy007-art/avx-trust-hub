@@ -1181,7 +1181,14 @@ function HashiCorpVaultModal({
             {testStatus === 'testing' ? 'Testing...' : 'Test connection'}
           </button>
           <button
-            onClick={onSave}
+            onClick={() => onSaveConnection({
+              connectionName: connectionName.trim(),
+              vaultUrl: vaultUrl.trim(),
+              authMethod,
+              namespace: namespace.trim() || undefined,
+              tlsConfig: { useCustomCa, skipTls, caBundle: caBundle?.name },
+              credentials: { authMethod, hasToken: !!token, hasSecretId: !!secretId },
+            })}
             disabled={testStatus !== 'success'}
             className="bg-teal text-white text-[11px] px-3 py-1.5 rounded-lg hover:bg-teal/90 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
