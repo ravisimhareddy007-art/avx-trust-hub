@@ -9,6 +9,7 @@ import { CertificateWorkflowProvider } from '@/context/CertificateWorkflowContex
 import { NotificationProvider } from '@/context/NotificationContext';
 import { OnboardingProvider } from '@/context/OnboardingContext';
 import { ConnectionsProvider } from '@/context/ConnectionsContext';
+import { ProfilesProvider, RunsProvider } from '@/context/DiscoveryContext';
 import AppSidebar from '@/components/AppSidebar';
 import TopBar from '@/components/TopBar';
 import InfinityAIDrawer from '@/components/InfinityAIDrawer';
@@ -103,6 +104,8 @@ export default function Index() {
         <NavigationProvider>
           <OnboardingProvider>
             <ConnectionsProvider>
+            <ProfilesProvider>
+            <RunsProvider>
             <IntegrationsProvider>
               <InventoryRegistryProvider>
                 <RiskProvider>
@@ -114,6 +117,8 @@ export default function Index() {
                 </RiskProvider>
               </InventoryRegistryProvider>
             </IntegrationsProvider>
+            </RunsProvider>
+            </ProfilesProvider>
             </ConnectionsProvider>
           </OnboardingProvider>
         </NavigationProvider>
