@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { RefreshCw, LayoutDashboard, Wrench, Zap, AlertTriangle, X, CheckCircle2, Plug, ScanSearch, Shield, ChevronRight, BookOpen } from 'lucide-react';
 import { useNotifications } from '@/context/NotificationContext';
 import { useNav } from '@/context/NavigationContext';
+import { useOnboarding } from '@/context/OnboardingContext';
 import { DashboardProvider } from '@/context/DashboardContext';
 import EnterpriseRiskScore from './ers/EnterpriseRiskScore';
 import CriticalActionFeed from './CriticalActionFeed';
@@ -30,20 +31,9 @@ export default function SecurityAdminDashboard() {
   const escalations = notifications.filter(n => n.toPersona === 'security-admin');
   const unreadEscalations = escalations.filter(n => !n.read);
 
-  // Onboarding strip — dismissals are session-only so prototype always shows
-  // Steps 1/2/3 on refresh. Clear any legacy persisted state too.
-  useEffect(() => { try { localStorage.removeItem('avx-onboarding-dismissed'); } catch {} }, []);
-  const [dismissed, setDismissed] = useState<string[]>([]);
-
-  const dismiss = (id: string) => {
-    setDismissed(prev => [...prev, id]);
-  };
-
-  const dismissAll = () => {
-    setDismissed(['integrations', 'discovery', 'policy']);
-  };
-
-  const showStrip = !['integrations', 'discovery', 'policy'].every(id => dismissed.includes(id));
+  // Onboarding strip — dismissals persist across navigation (in-memory context
+  // above the router) and reset only on page refresh.
+  const { dismissed, dismiss, dismissAll, showStrip } = useOnboarding();
 
   const [helpPanel, setHelpPanel] = useState<'integrations' | 'discovery' | 'policy' | null>(null);
 
