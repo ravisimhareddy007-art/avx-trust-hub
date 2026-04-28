@@ -554,7 +554,16 @@ function NewScanTab({ existing, onSaved, goToTab }: { existing: DiscoveryProfile
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-semibold text-teal">{selectedType.value} configuration</h2>
         </div>
-        <ConfigPanel configKey={selectedType.config} scanType={selectedType.value} />
+        <ConfigPanel
+          configKey={selectedType.config}
+          scanType={selectedType.value}
+          vaultProps={{
+            vaultType, setVaultType,
+            vaultAccountId, setVaultAccountId,
+            authMethod, setAuthMethod,
+            secretTypes, setSecretTypes,
+          }}
+        />
       </div>
 
       {/* Common fields */}
@@ -649,7 +658,14 @@ function NewScanTab({ existing, onSaved, goToTab }: { existing: DiscoveryProfile
 // ============================================================================
 // CONFIG PANELS — one per scan type config key
 // ============================================================================
-function ConfigPanel({ configKey, scanType }: { configKey: ConfigKey; scanType: string }) {
+interface VaultProps {
+  vaultType: string; setVaultType: (v: string) => void;
+  vaultAccountId: string; setVaultAccountId: (v: string) => void;
+  authMethod: string; setAuthMethod: (v: string) => void;
+  secretTypes: string[]; setSecretTypes: (v: string[]) => void;
+}
+
+function ConfigPanel({ configKey, scanType, vaultProps }: { configKey: ConfigKey; scanType: string; vaultProps?: VaultProps }) {
   switch (configKey) {
     case 'network':    return <NetworkConfig scanType={scanType} />;
     case 'ca':         return <CAConfig />;
@@ -662,7 +678,7 @@ function ConfigPanel({ configKey, scanType }: { configKey: ConfigKey; scanType: 
     case 'endpoint':   return <EndpointConfig />;
     case 'sourcecode': return <SourceCodeConfig />;
     case 'iac':        return <IaCConfig />;
-    case 'vault':      return <VaultConfig />;
+    case 'vault':      return <VaultConfig {...(vaultProps as VaultProps)} />;
     case 'hsm':        return <HSMConfig />;
     case 'iam':        return <IAMConfig />;
     case 'aiagent':    return <AIAgentConfig />;
