@@ -280,7 +280,7 @@ interface RunsCtx {
 const RunsContext = createContext<RunsCtx | null>(null);
 
 export function RunsProvider({ children }: { children: ReactNode }) {
-  const [runs, setRuns] = useState<DiscoveryRun[]>([]);
+  const [runs, setRuns] = useState<DiscoveryRun[]>(SEED_RUNS);
 
   const addRun: RunsCtx['addRun'] = useCallback((r) => {
     const now = Date.now();
