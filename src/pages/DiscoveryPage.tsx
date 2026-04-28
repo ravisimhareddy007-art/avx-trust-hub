@@ -851,26 +851,88 @@ function VaultConfig() {
   const { byType } = useIntegrations();
   const vaults = byType('Vault');
   const [vaultType, setVaultType] = useState('HashiCorp Vault');
+  const [vaultAccount, setVaultAccount] = useState('');
+  const [authMethod, setAuthMethod] = useState('AppRole');
+  const [vaultUrl, setVaultUrl] = useState('');
+  const [namespace, setNamespace] = useState('');
   const [secretTypes, setSecretTypes] = useState<string[]>(['Certificates', 'API Keys', 'Encryption Keys']);
+  const [testing, setTesting] = useState(false);
+
+  // Filter vault accounts by selected vault type (match against connector name)
+  const vaultTypeMatchers: Record<string, (name: string) => boolean> = {
+    'HashiCorp Vault': n => /hashicorp/i.test(n),
+    'CyberArk Conjur': n => /cyberark|conjur/i.test(n),
+    'AWS Secrets Manager': n => /aws/i.test(n),
+    'Azure Key Vault': n => /azure/i.test(n),
+    'GCP Secret Manager': n => /gcp|google/i.test(n),
+    'Delinea Secret Server': n => /delinea|thycotic/i.test(n),
+  };
+  const filteredVaults = useMemo(
+    () => vaults.filter(v => (vaultTypeMatchers[vaultType] ?? (() => true))(v.name)),
+    [vaults, vaultType]
+  );
+
+  const showUrl = vaultType === 'HashiCorp Vault' || vaultType === 'CyberArk Conjur';
+  const showNamespace = vaultType === 'HashiCorp Vault';
+
+  const handleTestConnection = () => {
+    if (!vaultType || !vaultAccount || !authMethod || !vaultUrl) {
+      toast.error('Please fill in all required connection fields before testing.');
+      return;
+    }
+    setTesting(true);
+    setTimeout(() => {
+      setTesting(false);
+      toast.success('Connected successfully. Found 3 accessible mount paths: secret/, pki/, transit/.', {
+        icon: <Check className="w-4 h-4 text-teal" />,
+      });
+    }, 1500);
+  };
+
   return (
     <div className="space-y-3">
       <FormRow label="Vault type" required>
-        <select value={vaultType} onChange={e => setVaultType(e.target.value)} className={selectCls}>
+        <select value={vaultType} onChange={e => { setVaultType(e.target.value); setVaultAccount(''); }} className={selectCls}>
           {['HashiCorp Vault', 'AWS Secrets Manager', 'Azure Key Vault', 'CyberArk Conjur', 'GCP Secret Manager', 'Delinea Secret Server'].map(v => <option key={v}>{v}</option>)}
         </select>
       </FormRow>
-      <FormRow label="Vault account">
-        {vaults.length > 0
-          ? <select className={selectCls}>{vaults.map(v => <option key={v.account}>{v.account} ({v.name})</option>)}</select>
-          : <span className="text-xs text-muted-foreground">No vault connectors configured</span>}
+      <FormRow label="Vault account" required>
+        {filteredVaults.length > 0
+          ? (
+            <select value={vaultAccount} onChange={e => setVaultAccount(e.target.value)} className={selectCls}>
+              <option value="">Select an account…</option>
+              {filteredVaults.map(v => <option key={v.account} value={v.account}>{v.account} ({v.name})</option>)}
+            </select>
+          )
+          : <span className="text-xs text-muted-foreground">No accounts configured for this vault type. Add one in Integrations.</span>}
       </FormRow>
-      <FormRow label="Auth method">
-        <select className={selectCls}><option>AppRole</option><option>AWS IAM Role</option><option>Azure MSI</option><option>API Key</option></select>
+      <FormRow label="Auth method" required>
+        <select value={authMethod} onChange={e => setAuthMethod(e.target.value)} className={selectCls}><option>AppRole</option><option>AWS IAM Role</option><option>Azure MSI</option><option>API Key</option></select>
       </FormRow>
-      {(vaultType === 'HashiCorp Vault' || vaultType === 'CyberArk Conjur') && (
-        <FormRow label="Vault URL"><input className={`${inputCls} font-mono`} placeholder="https://vault.corp.local:8200" /></FormRow>
+      {showUrl && (
+        <FormRow label="Vault URL" required><input value={vaultUrl} onChange={e => setVaultUrl(e.target.value)} className={`${inputCls} font-mono`} placeholder="https://vault.corp.local:8200" /></FormRow>
+      )}
+      {showNamespace && (
+        <FormRow label="Namespace">
+          <div className="flex-1 max-w-md">
+            <input value={namespace} onChange={e => setNamespace(e.target.value)} className={`${inputCls} font-mono w-full max-w-none`} placeholder="admin/team-platform" />
+            <p className="mt-1 text-[11px] text-muted-foreground">Required for Vault Enterprise multi-tenant deployments. Leave blank for Vault OSS or root namespace.</p>
+          </div>
+        </FormRow>
       )}
       <FormRow label="Secret types"><CheckGroup options={['Certificates', 'API Keys', 'Database Credentials', 'Encryption Keys', 'SSH Keys', 'Unclassified Secrets']} value={secretTypes} onChange={setSecretTypes} /></FormRow>
+      <FormRow label="">
+        <button
+          type="button"
+          onClick={handleTestConnection}
+          disabled={testing}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-secondary disabled:opacity-60"
+        >
+          {testing
+            ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Testing…</>
+            : <><Check className="w-3.5 h-3.5" /> Test connection</>}
+        </button>
+      </FormRow>
     </div>
   );
 }
