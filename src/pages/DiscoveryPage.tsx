@@ -1,9 +1,13 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { discoveryRuns } from '@/data/mockData';
 import { StatusBadge, Modal } from '@/components/shared/UIComponents';
 import { useNav } from '@/context/NavigationContext';
 import { useIntegrations } from '@/context/IntegrationsContext';
-import { useConnections, formatRelativeTime } from '@/context/ConnectionsContext';
+import { useConnections, formatRelativeTime, SavedConnection } from '@/context/ConnectionsContext';
+import {
+  useProfiles, useRuns, formatRelative, formatRelativeFuture,
+  formatDuration, formatSchedule, computeNextRun, DiscoveryProfile,
+} from '@/context/DiscoveryContext';
 import { toast } from 'sonner';
 import {
   Search, RefreshCw, Info, Plus, Play, Upload, Database,
