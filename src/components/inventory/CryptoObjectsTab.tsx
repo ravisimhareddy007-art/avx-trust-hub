@@ -119,7 +119,9 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
 
   const filtered = useMemo(() => {
     if (dashboardFilterId && DASHBOARD_FILTERS[dashboardFilterId]) {
-      return [...allAssets].filter(DASHBOARD_FILTERS[dashboardFilterId].predicate);
+      const filter = DASHBOARD_FILTERS[dashboardFilterId];
+      const matched = [...allAssets].filter(filter.predicate);
+      return matched;
     }
     let result = [...allAssets];
     if (typeFilter !== 'All') result = result.filter(a => a.type === typeFilter);
@@ -225,7 +227,11 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
           {(algFilter || envFilter || statusFilter || pqcFilter || ownerFilter) && (
             <button onClick={() => { setAlgFilter(''); setEnvFilter(''); setStatusFilter(''); setPqcFilter(''); setOwnerFilter(''); }} className="text-[10px] text-coral hover:underline">Clear</button>
           )}
-          <span className="text-[10px] text-muted-foreground ml-auto">{filtered.length} identities</span>
+          <span className="text-[10px] text-muted-foreground ml-auto">
+            {dashboardFilterId && DASHBOARD_FILTERS[dashboardFilterId]
+              ? `${filtered.length} representative records · ${DASHBOARD_FILTERS[dashboardFilterId].enterpriseCount.toLocaleString()} total in estate`
+              : `${filtered.length} identities`}
+          </span>
         </div>
 
         {/* Table — flex-fills remaining height; single bottom horizontal scroll */}
