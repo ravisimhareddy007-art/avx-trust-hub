@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import DeployToDeviceModal from '@/components/integrations/DeployToDeviceModal';
 import AgentDetailPanel from '@/components/inventory/AgentDetailPanel';
 import CryptoObjectRiskDrawer from '@/components/risk/CryptoObjectRiskDrawer';
+import { DASHBOARD_FILTERS } from '@/lib/filters/cryptoFilters';
 
 interface Props {
   onCreateTicket: (ctx: any) => void;
@@ -91,18 +92,21 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   const [statusFilter, setStatusFilter] = useState('');
   const [pqcFilter, setPqcFilter] = useState('');
   const [ownerFilter, setOwnerFilter] = useState('');
+  const [dashboardFilterId, setDashboardFilterId] = useState<string>('');
   const tableScrollRef = useRef<HTMLDivElement | null>(null);
   const { manualIdentities } = useInventoryRegistry();
   const { setSelectedEntity } = useAgent();
   const { filters: navFilters } = useNav();
-  const { type: navType, status: navStatus, algorithm: navAlgorithm, owner: navOwner, pqcRisk: navPqcRisk } = navFilters;
+  const { filterId } = navFilters;
   useEffect(() => {
-    setTypeFilter(navType || 'All');
-    setStatusFilter(navStatus || '');
-    setAlgFilter(navAlgorithm || '');
-    setOwnerFilter(navOwner || '');
-    setPqcFilter(navPqcRisk || '');
-  }, [navType, navStatus, navAlgorithm, navOwner, navPqcRisk]);
+    if (!filterId) return;
+    setTypeFilter('All');
+    setStatusFilter('');
+    setAlgFilter('');
+    setOwnerFilter('');
+    setPqcFilter('');
+    setDashboardFilterId(filterId);
+  }, [filterId]);
 
   // Push current identity selection to Agent so it sees what you're looking at
   useEffect(() => {
@@ -114,6 +118,9 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   const isManual = (a: CryptoAsset) => manualIdentities.some(m => m.id === a.id);
 
   const filtered = useMemo(() => {
+    if (dashboardFilterId && DASHBOARD_FILTERS[dashboardFilterId]) {
+      return [...allAssets].filter(DASHBOARD_FILTERS[dashboardFilterId].predicate);
+    }
     let result = [...allAssets];
     if (typeFilter !== 'All') result = result.filter(a => a.type === typeFilter);
     if (search) result = result.filter(a => a.name.toLowerCase().includes(search.toLowerCase()) || a.commonName.toLowerCase().includes(search.toLowerCase()));
@@ -127,7 +134,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
     if (pqcFilter) result = result.filter(a => a.pqcRisk === pqcFilter);
     if (ownerFilter === 'Unassigned') result = result.filter(a => a.owner === 'Unassigned');
     return result;
-  }, [allAssets, search, typeFilter, algFilter, envFilter, statusFilter, pqcFilter, ownerFilter]);
+  }, [allAssets, search, typeFilter, algFilter, envFilter, statusFilter, pqcFilter, ownerFilter, dashboardFilterId]);
 
   const algorithms = [...new Set(allAssets.map(a => a.algorithm))].sort();
   const getAssociatedAssets = (co: CryptoAsset) => mockITAssets.filter(a => a.cryptoObjectIds.includes(co.id));

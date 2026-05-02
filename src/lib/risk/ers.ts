@@ -6,6 +6,7 @@ import { mockITAssets, type ITAsset } from '@/data/inventoryMockData';
 import { mockAssets } from '@/data/mockData';
 import { arsFor } from './ars';
 import { BI_MULTIPLIER, severityFor, type BusinessImpact, type Severity } from './types';
+import { DASHBOARD_FILTERS } from '@/lib/filters/cryptoFilters';
 
 // Weights used in the criticality-weighted average.
 const BI_WEIGHT: Record<BusinessImpact, number> = {
@@ -62,23 +63,22 @@ function computeQuantumRiskComponent(scored: ScoredAsset[]): number {
 }
 
 function buildDriverBuckets(scored: ScoredAsset[], weightedAvg: number): ErsBreakdown['driverBuckets'] {
-  // Aggregate the top crypto-object reasons across the whole estate so the
-  // CISO sees ranked drivers, not 35K rows.
-  const algoCount  = mockAssets.filter(o => /RSA-1024|RSA-2048|SHA-1/.test(o.algorithm)).length;
-  const expCount   = mockAssets.filter(o => o.type === 'TLS Certificate' && o.daysToExpiry >= 0 && o.daysToExpiry <= 7).length;
-  const orphaned   = mockAssets.filter(o => o.type === 'SSH Key' && o.owner === 'Unassigned').length;
-  const overpriv   = mockAssets.filter(o => o.agentMeta?.permissionRisk === 'Over-privileged').length;
+  const counts = Object.fromEntries(
+    Object.values(DASHBOARD_FILTERS).map(f => [f.id, mockAssets.filter(f.predicate).length])
+  );
 
-  // Pts = portion of weightedAvg attributable to each bucket (rough heuristic).
-  const total = algoCount + expCount + orphaned + overpriv || 1;
+  const total = Object.values(counts).reduce((s, n) => s + n, 0) || 1;
   const slice = (n: number) => Math.round((n / total) * weightedAvg * 0.45);
 
-  return [
-    { id: 'weak-algos',      label: 'Weak algorithms (RSA-1024 / 2048, SHA-1)', pts: slice(algoCount), count: algoCount, page: 'inventory', filters: { tab: 'identities', algorithm: 'weak' } },
-    { id: 'expiring',        label: 'Certificates expiring in ≤7 days',         pts: slice(expCount),  count: expCount,  page: 'inventory', filters: { tab: 'identities', type: 'TLS Certificate', status: 'Expiring' } },
-    { id: 'orphaned',        label: 'Orphaned SSH keys',                         pts: slice(orphaned),  count: orphaned,  page: 'inventory', filters: { tab: 'identities', type: 'SSH Key', owner: 'Unassigned' } },
-    { id: 'over-privileged', label: 'Over-privileged AI agent tokens',          pts: slice(overpriv),  count: overpriv,  page: 'inventory', filters: { tab: 'identities', type: 'AI Agent Token' } },
-  ]
+  return Object.values(DASHBOARD_FILTERS)
+    .map(f => ({
+      id: f.id,
+      label: f.label,
+      pts: slice(counts[f.id]),
+      count: counts[f.id],
+      page: 'inventory',
+      filters: { filterId: f.id },
+    }))
     .filter(d => d.count > 0)
     .sort((a, b) => b.pts - a.pts)
     .slice(0, 5);
