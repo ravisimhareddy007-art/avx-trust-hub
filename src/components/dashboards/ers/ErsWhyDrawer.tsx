@@ -1,17 +1,9 @@
 import React from 'react';
-import { X, ArrowRight, AlertTriangle, ShieldAlert, Wrench, ExternalLink } from 'lucide-react';
+import { X, ArrowRight, AlertTriangle, ShieldAlert, Wrench } from 'lucide-react';
 import { useRisk } from '@/context/RiskContext';
 import { useNav } from '@/context/NavigationContext';
-import { severityHsl } from '@/lib/risk/types';
 
 interface Props { open: boolean; onClose: () => void; }
-
-const BI_COLOR: Record<string, string> = {
-  Critical: 'bg-coral/15 text-coral border-coral/30',
-  High:     'bg-amber/15 text-amber border-amber/30',
-  Moderate: 'bg-purple/15 text-purple-light border-purple/30',
-  Low:      'bg-secondary text-muted-foreground border-border',
-};
 
 // Real-world remediation workflows. Each card deep-links to an existing
 // operational screen with the right filter pre-applied — no fake one-click
@@ -19,35 +11,29 @@ const BI_COLOR: Record<string, string> = {
 const WORKFLOWS = [
   {
     id: 'wf-renew-prod-expiring',
-    title: 'Bulk-renew certs expiring on Critical assets',
+    title: 'Bulk-renew certs expiring on critical assets',
     why: 'Highest leverage on ERS this week — concentrated in Production with auto-renewal disabled.',
-    page: 'remediation',
-    filters: { module: 'clm', filter: 'expiry', impact: 'critical' },
-    actionLabel: 'Open Cert Deployments',
+    filters: { tab: 'identities', type: 'TLS Certificate', status: 'Expiring', autoRenewal: 'false' },
+    actionLabel: 'View expiring certs in Inventory',
     effort: '5 day rollout · per-CA waves',
-    mechanism: 'Triggers Cert+ renewal workflows grouped by issuing CA',
     deltaPct: 8,
   },
   {
     id: 'wf-rotate-secrets',
-    title: 'Rotate non-rotated secrets on payments + data clusters',
-    why: 'Largest footprint — 42K secrets, but rotation is policy-driven, not manual.',
-    page: 'remediation',
-    filters: { module: 'secrets', filter: 'rotation' },
-    actionLabel: 'Open Secret Rotation',
+    title: 'Rotate non-rotated secrets on payments and data clusters',
+    why: 'Largest footprint — rotation is policy-driven across Vault, AWS SM, and Azure KV.',
+    filters: { tab: 'identities', type: 'API Key / Secret', rotation: 'overdue' },
+    actionLabel: 'View overdue secrets in Inventory',
     effort: '2 day rollout · 5 rotation waves',
-    mechanism: 'Vault / AWS SM / Azure KV policies with team notifications',
     deltaPct: 6,
   },
   {
     id: 'wf-pqc-migration',
-    title: 'Stage PQC migration for weak-algo certs',
+    title: 'Stage PQC migration for weak-algorithm certs',
     why: 'NIST SP 800-131A / PCI-DSS 4.2.1 — long lead time, must start now.',
-    page: 'quantum-posture',
-    filters: { algorithm: 'weak' },
-    actionLabel: 'Open Quantum Posture',
+    filters: { tab: 'identities', algorithm: 'weak' },
+    actionLabel: 'View weak-algorithm assets in Inventory',
     effort: 'Multi-quarter program',
-    mechanism: 'AI-grouped migration plan for QTH review (not auto-executed)',
     deltaPct: 5,
   },
 ];
@@ -130,7 +116,7 @@ export default function ErsWhyDrawer({ open, onClose }: Props) {
               {ers.driverBuckets.map((d, i) => (
                 <button
                   key={d.id}
-                  onClick={() => nav(d.page, d.filters)}
+                  onClick={() => nav('inventory', d.filters)}
                   className="w-full flex items-center gap-3 px-3 py-2 rounded-md bg-secondary/30 hover:bg-secondary/60 border border-transparent hover:border-coral/30 transition-all text-left"
                 >
                   <span className="text-[10px] font-bold text-muted-foreground tabular-nums w-4">#{i + 1}</span>
@@ -146,49 +132,13 @@ export default function ErsWhyDrawer({ open, onClose }: Props) {
             </div>
           </section>
 
-          {/* Section 2: Critical assets impacted */}
-          <section>
-            <div className="flex items-baseline justify-between mb-2">
-              <h3 className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
-                Business-critical assets driving ERS
-              </h3>
-                <span className="text-[10px] text-muted-foreground">Ranked by priority</span>
-            </div>
-            <div className="space-y-1">
-              {ers.topAssets
-                .filter(a => a.bi === 'Critical' || a.bi === 'High')
-                .slice(0, 5)
-                .map(a => (
-                  <button
-                    key={a.id}
-                    onClick={() => nav('inventory', { tab: 'infrastructure', assetId: a.id })}
-                    className="w-full grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-3 px-3 py-2 rounded-md bg-secondary/30 hover:bg-secondary/60 transition-colors text-left"
-                  >
-                    <span className="text-[12px] font-mono text-foreground truncate">{a.name}</span>
-                    <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded border ${BI_COLOR[a.bi]}`}>
-                      {a.bi}
-                    </span>
-                    <span
-                      className="text-[10.5px] font-bold tabular-nums"
-                      style={{ color: severityHsl(a.ars >= 80 ? 'Critical' : a.ars >= 60 ? 'High' : a.ars >= 30 ? 'Medium' : 'Low') }}
-                    >
-                      {a.ars}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground tabular-nums">Priority {a.rps}</span>
-                    <ArrowRight className="w-3 h-3 text-teal" />
-                  </button>
-                ))}
-            </div>
-          </section>
-
-          {/* Section 3: What reduces risk fastest */}
+          {/* Section 2: What reduces risk fastest */}
           <section>
             <h3 className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-2">
-              What reduces ERS fastest
+              Where to focus
             </h3>
             <p className="text-[10.5px] text-muted-foreground mb-2 leading-snug">
-              Real-world workflows. Each opens the operational screen with filters pre-applied —
-              no fake one-click bulk fixes.
+              Each row opens a filtered Inventory view — fix, assign, or create a ticket from there.
             </p>
             <div className="space-y-2">
               {WORKFLOWS.map(w => (
@@ -204,14 +154,14 @@ export default function ErsWhyDrawer({ open, onClose }: Props) {
                     </span>
                   </div>
                   <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground pl-5">
-                    <span>{w.effort} · {w.mechanism}</span>
+                    <span>{w.effort}</span>
                   </div>
                   <div className="pl-5">
                     <button
-                      onClick={() => nav(w.page, w.filters)}
+                      onClick={() => nav('inventory', w.filters)}
                       className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-teal hover:text-teal-light"
                     >
-                      {w.actionLabel} <ExternalLink className="w-2.5 h-2.5" />
+                      {w.actionLabel} <ArrowRight className="w-2.5 h-2.5" />
                     </button>
                   </div>
                 </div>
