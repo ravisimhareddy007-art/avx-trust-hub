@@ -63,19 +63,16 @@ function computeQuantumRiskComponent(scored: ScoredAsset[]): number {
 }
 
 function buildDriverBuckets(scored: ScoredAsset[], weightedAvg: number): ErsBreakdown['driverBuckets'] {
-  const total = Object.values(DASHBOARD_FILTERS).reduce((s, f) => s + f.enterpriseCount, 0) || 1;
-  const slice = (n: number) => Math.round((n / total) * weightedAvg * 0.45);
-
   return Object.values(DASHBOARD_FILTERS)
     .map(f => ({
       id: f.id,
       label: f.label,
-      pts: slice(f.enterpriseCount),
+      pts: f.pts,
       count: f.enterpriseCount,
       page: 'inventory',
       filters: { filterId: f.id },
     }))
-    .sort((a, b) => b.count - a.count)
+    .sort((a, b) => b.pts - a.pts)
     .slice(0, 5);
 }
 
