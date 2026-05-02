@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { TrendingDown, TrendingUp, Sparkles, ArrowRight, AlertTriangle } from 'lucide-react';
+import { TrendingDown, TrendingUp, Sparkles, ArrowRight, AlertTriangle, Info } from 'lucide-react';
 import { useRisk } from '@/context/RiskContext';
 import { useNav } from '@/context/NavigationContext';
 import { severityHsl } from '@/lib/risk/types';
 import { COUNT_NOUNS } from '@/lib/filters/cryptoFilters';
-import ErsWhyDrawer from './ErsWhyDrawer';
+
 
 const SCORE_DELTA_7D = -4;
 
@@ -47,7 +47,6 @@ function ErsGauge({ score, hsl, label }: { score: number; hsl: string; label: st
 export default function EnterpriseRiskScore() {
   const { ers } = useRisk();
   const { setCurrentPage, setFilters } = useNav();
-  const [whyOpen, setWhyOpen] = useState(false);
   const sevHsl = severityHsl(ers.severity);
   const improving = SCORE_DELTA_7D < 0;
 
@@ -64,6 +63,14 @@ export default function EnterpriseRiskScore() {
           <Sparkles className="w-4 h-4 text-teal" />
           <h2 className="text-sm font-semibold text-foreground">Enterprise Risk Score</h2>
           <span className="text-[9px] uppercase tracking-wider text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">ERS</span>
+          <div className="relative group">
+            <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+            <div className="absolute left-0 top-5 z-50 hidden group-hover:block w-72 bg-card border border-border rounded-lg shadow-lg px-3 py-2.5">
+              <p className="text-[11px] text-foreground leading-relaxed">
+                <span className="font-semibold">Enterprise Risk Score (ERS)</span> is a criticality-weighted average of Asset Risk Scores across your infrastructure, where production assets with Critical business impact carry 4× more weight — blended with a quantum vulnerability component that increases toward the 2030 NIST deadline.
+              </p>
+            </div>
+          </div>
         </div>
         <span className="text-[10px] text-muted-foreground">updated 2m ago</span>
       </div>
