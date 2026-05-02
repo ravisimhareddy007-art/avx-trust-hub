@@ -190,10 +190,9 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
             onChange={e => setTypeFilter(e.target.value)}
             className="px-2 py-1 bg-muted border border-border rounded text-[11px] font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-teal"
           >
-            {typeFilters.map(t => {
-              const count = t.key === 'All' ? allAssets.length : allAssets.filter(a => a.type === t.key).length;
-              return <option key={t.key} value={t.key}>{t.label} ({count})</option>;
-            })}
+            {typeFilters.map(t => (
+              <option key={t.key} value={t.key}>{t.label}</option>
+            ))}
           </select>
         </div>
 
