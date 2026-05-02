@@ -68,16 +68,14 @@ function buildDriverBuckets(scored: ScoredAsset[], weightedAvg: number): ErsBrea
   const expCount   = mockAssets.filter(o => o.type === 'TLS Certificate' && o.daysToExpiry >= 0 && o.daysToExpiry <= 7).length;
   const orphaned   = mockAssets.filter(o => o.type === 'SSH Key' && o.owner === 'Unassigned').length;
   const overpriv   = mockAssets.filter(o => o.agentMeta?.permissionRisk === 'Over-privileged').length;
-  const pqcVuln    = mockAssets.filter(o => o.pqcRisk === 'Critical').length;
 
   // Pts = portion of weightedAvg attributable to each bucket (rough heuristic).
-  const total = algoCount + expCount + orphaned + overpriv + pqcVuln || 1;
+  const total = algoCount + expCount + orphaned + overpriv || 1;
   const slice = (n: number) => Math.round((n / total) * weightedAvg * 0.45);
 
   return [
-    { id: 'weak-algos',     label: 'Weak algorithms (RSA-1024 / 2048, SHA-1)', pts: slice(algoCount), count: algoCount, page: 'inventory', filters: { tab: 'identities', algorithm: 'weak' } },
-    { id: 'expiring',       label: 'Certificates expiring in ≤7 days',         pts: slice(expCount),  count: expCount,  page: 'inventory', filters: { tab: 'identities', type: 'TLS Certificate', status: 'Expiring' } },
-    { id: 'pqc-vulnerable', label: 'PQC-vulnerable objects',                   pts: slice(pqcVuln),   count: pqcVuln,   page: 'inventory', filters: { tab: 'identities', pqcRisk: 'Critical' } },
+    { id: 'weak-algos',      label: 'Weak algorithms (RSA-1024 / 2048, SHA-1)', pts: slice(algoCount), count: algoCount, page: 'inventory', filters: { tab: 'identities', algorithm: 'weak' } },
+    { id: 'expiring',        label: 'Certificates expiring in ≤7 days',         pts: slice(expCount),  count: expCount,  page: 'inventory', filters: { tab: 'identities', type: 'TLS Certificate', status: 'Expiring' } },
     { id: 'orphaned',        label: 'Orphaned SSH keys',                         pts: slice(orphaned),  count: orphaned,  page: 'inventory', filters: { tab: 'identities', type: 'SSH Key', owner: 'Unassigned' } },
     { id: 'over-privileged', label: 'Over-privileged AI agent tokens',          pts: slice(overpriv),  count: overpriv,  page: 'inventory', filters: { tab: 'identities', type: 'AI Agent Token' } },
   ]
