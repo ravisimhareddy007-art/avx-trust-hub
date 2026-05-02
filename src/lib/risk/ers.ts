@@ -76,7 +76,7 @@ function buildDriverBuckets(scored: ScoredAsset[], weightedAvg: number): ErsBrea
 
   return [
     { id: 'weak-algos',     label: 'Weak algorithms (RSA-1024 / 2048, SHA-1)', pts: slice(algoCount), count: algoCount, page: 'inventory', filters: { tab: 'identities', algorithm: 'weak' } },
-    { id: 'expiring',       label: 'Certificates expiring in ≤7 days',         pts: slice(expCount),  count: expCount,  page: 'inventory', filters: { tab: 'identities', status: 'Expiring' } },
+    { id: 'expiring',       label: 'Certificates expiring in ≤7 days',         pts: slice(expCount),  count: expCount,  page: 'inventory', filters: { tab: 'identities', type: 'TLS Certificate', status: 'Expiring' } },
     { id: 'pqc-vulnerable', label: 'PQC-vulnerable objects',                   pts: slice(pqcVuln),   count: pqcVuln,   page: 'quantum-posture', filters: {} },
     { id: 'orphaned',       label: 'Orphaned / unowned keys',                  pts: slice(orphaned),  count: orphaned,  page: 'inventory', filters: { tab: 'identities', owner: 'Unassigned' } },
     { id: 'over-privileged',label: 'Over-privileged AI agent tokens',          pts: slice(overpriv),  count: overpriv,  page: 'inventory', filters: { tab: 'identities', type: 'AI Agent Token' } },
