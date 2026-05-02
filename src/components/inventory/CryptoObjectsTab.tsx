@@ -3,6 +3,7 @@ import { mockAssets, CryptoAsset } from '@/data/mockData';
 import { mockITAssets, mockGroups } from '@/data/inventoryMockData';
 import { useInventoryRegistry } from '@/context/InventoryRegistryContext';
 import { useAgent } from '@/context/AgentContext';
+import { useNav } from '@/context/NavigationContext';
 import { Modal } from '@/components/shared/UIComponents';
 import { StatusBadge, EnvBadge, PQCBadge, DaysToExpiry, SeverityBadge } from '@/components/shared/UIComponents';
 import { Search, ChevronDown, ChevronRight, MoreVertical, X, Shield, ShieldOff, ChevronsRight, FileEdit, Info, Upload } from 'lucide-react';
@@ -93,6 +94,14 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   const tableScrollRef = useRef<HTMLDivElement | null>(null);
   const { manualIdentities } = useInventoryRegistry();
   const { setSelectedEntity } = useAgent();
+  const { filters: navFilters } = useNav();
+  const { type: navType, status: navStatus, algorithm: navAlgorithm, owner: navOwner } = navFilters;
+  useEffect(() => {
+    setTypeFilter(navType || 'All');
+    setStatusFilter(navStatus || '');
+    setAlgFilter(navAlgorithm || '');
+    setOwnerFilter(navOwner || '');
+  }, [navType, navStatus, navAlgorithm, navOwner]);
 
   // Push current identity selection to Agent so it sees what you're looking at
   useEffect(() => {
@@ -107,7 +116,11 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
     let result = [...allAssets];
     if (typeFilter !== 'All') result = result.filter(a => a.type === typeFilter);
     if (search) result = result.filter(a => a.name.toLowerCase().includes(search.toLowerCase()) || a.commonName.toLowerCase().includes(search.toLowerCase()));
-    if (algFilter) result = result.filter(a => a.algorithm === algFilter);
+    if (algFilter === 'weak') {
+      result = result.filter(a => /RSA-1024|RSA-2048|SHA-1/.test(a.algorithm));
+    } else if (algFilter) {
+      result = result.filter(a => a.algorithm === algFilter);
+    }
     if (envFilter) result = result.filter(a => a.environment === envFilter);
     if (statusFilter) result = result.filter(a => a.status === statusFilter);
     if (pqcFilter) result = result.filter(a => a.pqcRisk === pqcFilter);
