@@ -116,7 +116,11 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
     let result = [...allAssets];
     if (typeFilter !== 'All') result = result.filter(a => a.type === typeFilter);
     if (search) result = result.filter(a => a.name.toLowerCase().includes(search.toLowerCase()) || a.commonName.toLowerCase().includes(search.toLowerCase()));
-    if (algFilter) result = result.filter(a => a.algorithm === algFilter);
+    if (algFilter === 'weak') {
+      result = result.filter(a => /RSA-1024|RSA-2048|SHA-1/.test(a.algorithm));
+    } else if (algFilter) {
+      result = result.filter(a => a.algorithm === algFilter);
+    }
     if (envFilter) result = result.filter(a => a.environment === envFilter);
     if (statusFilter) result = result.filter(a => a.status === statusFilter);
     if (pqcFilter) result = result.filter(a => a.pqcRisk === pqcFilter);
