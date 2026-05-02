@@ -5,7 +5,7 @@ export interface DashboardFilter {
   label: string;
   countNoun: string;
   predicate: (a: CryptoAsset) => boolean;
-  navKey: string;
+  enterpriseCount: number;
 }
 
 export const DASHBOARD_FILTERS: Record<string, DashboardFilter> = {
@@ -14,28 +14,28 @@ export const DASHBOARD_FILTERS: Record<string, DashboardFilter> = {
     label: 'Weak algorithms (RSA-1024 / 2048, SHA-1)',
     countNoun: 'identities',
     predicate: (a) => /RSA-1024|RSA-2048|SHA-1/.test(a.algorithm),
-    navKey: 'weak-algos',
+    enterpriseCount: 8247,
   },
   'expiring': {
     id: 'expiring',
     label: 'Certificates expiring in ≤7 days',
     countNoun: 'certs',
     predicate: (a) => a.type === 'TLS Certificate' && a.status === 'Expiring',
-    navKey: 'expiring',
+    enterpriseCount: 187,
   },
   'orphaned': {
     id: 'orphaned',
     label: 'Orphaned SSH keys',
     countNoun: 'SSH keys',
     predicate: (a) => a.type === 'SSH Key' && a.owner === 'Unassigned',
-    navKey: 'orphaned',
+    enterpriseCount: 3218,
   },
   'over-privileged': {
     id: 'over-privileged',
     label: 'Over-privileged AI agent tokens',
     countNoun: 'AI tokens',
     predicate: (a) => a.type === 'AI Agent Token' && !!(a.agentMeta?.permissionRisk === 'Over-privileged'),
-    navKey: 'over-privileged',
+    enterpriseCount: 6840,
   },
 };
 
