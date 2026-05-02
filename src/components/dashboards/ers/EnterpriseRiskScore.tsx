@@ -50,8 +50,8 @@ export default function EnterpriseRiskScore() {
   const sevHsl = severityHsl(ers.severity);
   const improving = SCORE_DELTA_7D < 0;
 
-  const navAsset = (assetId: string) => {
-    setFilters({ tab: 'infrastructure', assetId });
+  const nav = (filters: Record<string, string>) => {
+    setFilters(filters);
     setCurrentPage('inventory');
   };
 
@@ -94,24 +94,46 @@ export default function EnterpriseRiskScore() {
         </div>
       </div>
 
-      {/* Top contributing assets — replaces old factor bars */}
+      {/* Driver contribution bar */}
       <div className="mb-3">
-        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1.5">
-          Top contributing assets
+        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">
+          What's driving ERS
         </p>
-        <div className="space-y-1">
-          {ers.topAssets.slice(0, 4).map(a => {
-            const arsHsl = severityHsl(a.ars >= 80 ? 'Critical' : a.ars >= 60 ? 'High' : a.ars >= 30 ? 'Medium' : 'Low');
+
+        {/* Stacked horizontal bar — each segment proportional to pts */}
+        <div className="flex h-4 rounded-md overflow-hidden gap-px mb-2.5">
+          {ers.driverBuckets.map((d, i) => {
+            const totalPts = ers.driverBuckets.reduce((s, b) => s + b.pts, 0) || 1;
+            const pct = Math.max(6, (d.pts / totalPts) * 100);
+            const segColors = ['bg-coral', 'bg-amber', 'bg-purple', 'bg-teal', 'bg-blue-400'];
             return (
               <button
-                key={a.id}
-                onClick={() => navAsset(a.id)}
-                className="w-full grid grid-cols-[1fr_auto_auto_auto] items-center gap-2 px-2 py-1.5 rounded-md hover:bg-secondary/40 text-left transition-colors"
+                key={d.id}
+                onClick={() => nav(d.filters)}
+                className={`${segColors[i]} hover:opacity-75 transition-opacity flex-shrink-0`}
+                style={{ width: `${pct}%` }}
+                title={`${d.label} · ${d.count.toLocaleString()} affected · +${d.pts} pts to ERS`}
+              />
+            );
+          })}
+        </div>
+
+        {/* Legend rows — each clickable to filtered inventory */}
+        <div className="space-y-0.5">
+          {ers.driverBuckets.map((d, i) => {
+            const dotColors = ['bg-coral', 'bg-amber', 'bg-purple', 'bg-teal', 'bg-blue-400'];
+            return (
+              <button
+                key={d.id}
+                onClick={() => nav(d.filters)}
+                className="w-full flex items-center gap-2 px-1.5 py-1 rounded hover:bg-secondary/40 transition-colors text-left group"
               >
-                <span className="text-[11px] font-mono text-foreground truncate">{a.name}</span>
-                <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded border ${BI_COLOR[a.bi]}`}>{a.bi}</span>
-                <span className="text-[10.5px] font-bold tabular-nums" style={{ color: arsHsl }}>{a.ars}</span>
-                <ArrowRight className="w-2.5 h-2.5 text-teal" />
+                <div className={`w-1.5 h-1.5 rounded-sm flex-shrink-0 ${dotColors[i]}`} />
+                <span className="text-[10.5px] text-muted-foreground flex-1 truncate">{d.label}</span>
+                <span className="text-[10.5px] font-semibold text-foreground tabular-nums">
+                  {d.count.toLocaleString()}
+                </span>
+                <ArrowRight className="w-2.5 h-2.5 text-teal opacity-0 group-hover:opacity-100 transition-opacity" />
               </button>
             );
           })}
