@@ -95,13 +95,14 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   const { manualIdentities } = useInventoryRegistry();
   const { setSelectedEntity } = useAgent();
   const { filters: navFilters } = useNav();
-  const { type: navType, status: navStatus, algorithm: navAlgorithm, owner: navOwner } = navFilters;
+  const { type: navType, status: navStatus, algorithm: navAlgorithm, owner: navOwner, pqcRisk: navPqcRisk } = navFilters;
   useEffect(() => {
     setTypeFilter(navType || 'All');
     setStatusFilter(navStatus || '');
     setAlgFilter(navAlgorithm || '');
     setOwnerFilter(navOwner || '');
-  }, [navType, navStatus, navAlgorithm, navOwner]);
+    setPqcFilter(navPqcRisk || '');
+  }, [navType, navStatus, navAlgorithm, navOwner, navPqcRisk]);
 
   // Push current identity selection to Agent so it sees what you're looking at
   useEffect(() => {
