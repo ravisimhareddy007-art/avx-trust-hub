@@ -2,6 +2,7 @@ import React from 'react';
 import { X, ArrowRight, AlertTriangle, ShieldAlert, Wrench } from 'lucide-react';
 import { useRisk } from '@/context/RiskContext';
 import { useNav } from '@/context/NavigationContext';
+import { severityHsl } from '@/lib/risk/types';
 
 interface Props { open: boolean; onClose: () => void; }
 
