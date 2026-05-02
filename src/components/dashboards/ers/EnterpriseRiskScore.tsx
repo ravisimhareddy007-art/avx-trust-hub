@@ -3,6 +3,7 @@ import { TrendingDown, TrendingUp, Sparkles, ArrowRight, AlertTriangle } from 'l
 import { useRisk } from '@/context/RiskContext';
 import { useNav } from '@/context/NavigationContext';
 import { severityHsl } from '@/lib/risk/types';
+import { COUNT_NOUNS } from '@/lib/filters/cryptoFilters';
 import ErsWhyDrawer from './ErsWhyDrawer';
 
 const SCORE_DELTA_7D = -4;
@@ -51,7 +52,7 @@ export default function EnterpriseRiskScore() {
   const improving = SCORE_DELTA_7D < 0;
 
   const nav = (filters: Record<string, string>) => {
-    setFilters(filters);
+    setFilters({ tab: 'identities', filterId: filters.filterId || '' });
     setCurrentPage('inventory');
   };
 
@@ -122,12 +123,6 @@ export default function EnterpriseRiskScore() {
         <div className="space-y-0.5">
           {ers.driverBuckets.map((d, i) => {
             const dotColors = ['bg-coral', 'bg-amber', 'bg-purple', 'bg-teal', 'bg-blue-400'];
-            const countNouns: Record<string, string> = {
-              'weak-algos': 'identities',
-              'expiring': 'certs',
-              'orphaned': 'SSH keys',
-              'over-privileged': 'AI tokens',
-            };
             return (
               <button
                 key={d.id}
@@ -135,7 +130,7 @@ export default function EnterpriseRiskScore() {
                 className="w-full flex items-center gap-2 px-1.5 py-1 rounded hover:bg-secondary/40 transition-colors text-left group"
               >
                 <div className={`w-1.5 h-1.5 rounded-sm flex-shrink-0 ${dotColors[i]}`} />
-                <span className="text-[10.5px] font-semibold text-foreground tabular-nums whitespace-nowrap">{d.count.toLocaleString()} {countNouns[d.id]}</span>
+                <span className="text-[10.5px] font-semibold text-foreground tabular-nums whitespace-nowrap">{d.count.toLocaleString()} {COUNT_NOUNS[d.id]}</span>
                 <span className="text-[10.5px] text-muted-foreground flex-1 truncate">· {d.label}</span>
                 <span className="text-[10.5px] font-semibold text-teal tabular-nums whitespace-nowrap">+{d.pts} pts</span>
                 <ArrowRight className="w-2.5 h-2.5 text-teal opacity-0 group-hover:opacity-100 transition-opacity" />
