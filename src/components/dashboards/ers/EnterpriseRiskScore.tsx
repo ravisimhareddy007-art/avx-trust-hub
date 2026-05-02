@@ -147,16 +147,6 @@ export default function EnterpriseRiskScore() {
         </div>
       </div>
 
-      {/* Single primary CTA: opens the Why drawer */}
-      <button
-        onClick={() => setWhyOpen(true)}
-        className="w-full flex items-center justify-between text-[11px] font-semibold px-3 py-2 rounded-md bg-teal/10 hover:bg-teal/20 text-teal border border-teal/30 transition-colors mb-3"
-      >
-        <span>Why is ERS {ers.ers}? · See ranked drivers, assets & workflows</span>
-        <ArrowRight className="w-3.5 h-3.5" />
-      </button>
-
-      <ErsWhyDrawer open={whyOpen} onClose={() => setWhyOpen(false)} />
     </div>
   );
 }
