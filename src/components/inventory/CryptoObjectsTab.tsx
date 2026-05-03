@@ -14,6 +14,17 @@ import AgentDetailPanel from '@/components/inventory/AgentDetailPanel';
 import CryptoObjectRiskDrawer from '@/components/risk/CryptoObjectRiskDrawer';
 import DeployToDeviceModal from '@/components/integrations/DeployToDeviceModal';
 import TicketDraftModal, { TicketDraft } from '@/components/inventory/TicketDraftModal';
+import { computeCRS } from '@/lib/risk/crs';
+
+// CRS lookup memoised per render via module-level WeakMap
+const _crsCache = new WeakMap<CryptoAsset, number>();
+function crsScore(a: CryptoAsset): number {
+  const cached = _crsCache.get(a);
+  if (cached !== undefined) return cached;
+  const v = computeCRS(a).crs;
+  _crsCache.set(a, v);
+  return v;
+}
 
 interface Props { onCreateTicket: (ctx: unknown) => void; }
 
@@ -37,6 +48,7 @@ interface ColDef { key: string; label: string; cls: string; }
 
 const COLS: Record<string, ColDef[]> = {
   All: [
+    { key: 'riskScore',    label: 'Risk',          cls: 'w-16' },
     { key: 'name',         label: 'Name',          cls: 'min-w-[180px] flex-1' },
     { key: 'type',         label: 'Type',          cls: 'w-36' },
     { key: 'status',       label: 'Status',        cls: 'w-24' },
@@ -47,6 +59,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'violations',   label: 'Violations',    cls: 'w-20' },
   ],
   'TLS Certificate': [
+    { key: 'riskScore',    label: 'Risk',         cls: 'w-16' },
     { key: 'name',         label: 'Common Name',  cls: 'min-w-[180px] flex-1' },
     { key: 'caIssuer',     label: 'CA / Issuer',  cls: 'w-36' },
     { key: 'algorithm',    label: 'Algorithm',    cls: 'w-24' },
@@ -59,6 +72,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'violations',   label: 'Violations',   cls: 'w-20' },
   ],
   'SSH Key': [
+    { key: 'riskScore',    label: 'Risk',         cls: 'w-16' },
     { key: 'name',         label: 'Key Name',     cls: 'min-w-[180px] flex-1' },
     { key: 'algorithm',    label: 'Key Type',     cls: 'w-24' },
     { key: 'serial',       label: 'Fingerprint',  cls: 'w-40' },
@@ -70,6 +84,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'pqcRisk',      label: 'PQC',          cls: 'w-20' },
   ],
   'SSH Certificate': [
+    { key: 'riskScore',    label: 'Risk',         cls: 'w-16' },
     { key: 'name',         label: 'Cert Name',    cls: 'min-w-[180px] flex-1' },
     { key: 'caIssuer',     label: 'CA',           cls: 'w-36' },
     { key: 'commonName',   label: 'Principals',   cls: 'w-36' },
@@ -79,6 +94,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'status',       label: 'Status',       cls: 'w-24' },
   ],
   'Code-Signing Certificate': [
+    { key: 'riskScore',    label: 'Risk',         cls: 'w-16' },
     { key: 'name',         label: 'Cert Name',    cls: 'min-w-[180px] flex-1' },
     { key: 'caIssuer',     label: 'CA',           cls: 'w-36' },
     { key: 'algorithm',    label: 'Algorithm',    cls: 'w-24' },
@@ -90,6 +106,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'pqcRisk',      label: 'PQC',          cls: 'w-20' },
   ],
   'K8s Workload Cert': [
+    { key: 'riskScore',    label: 'Risk',         cls: 'w-16' },
     { key: 'name',              label: 'Workload',        cls: 'min-w-[180px] flex-1' },
     { key: 'application',       label: 'Namespace / App', cls: 'w-36' },
     { key: 'caIssuer',          label: 'CA',              cls: 'w-28' },
@@ -100,6 +117,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'status',            label: 'Status',          cls: 'w-24' },
   ],
   'Encryption Key': [
+    { key: 'riskScore',    label: 'Risk',         cls: 'w-16' },
     { key: 'name',              label: 'Key Name',       cls: 'min-w-[180px] flex-1' },
     { key: 'caIssuer',          label: 'Key Store',      cls: 'w-36' },
     { key: 'algorithm',         label: 'Algorithm',      cls: 'w-24' },
@@ -109,6 +127,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'status',            label: 'State',          cls: 'w-24' },
   ],
   'AI Agent Token': [
+    { key: 'riskScore',    label: 'Risk',         cls: 'w-16' },
     { key: 'name',         label: 'Token / Agent',   cls: 'min-w-[180px] flex-1' },
     { key: 'agentFw',      label: 'Framework',       cls: 'w-32' },
     { key: 'actionsDay',   label: 'Actions/Day',     cls: 'w-24' },
@@ -119,6 +138,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'violations',   label: 'Violations',      cls: 'w-20' },
   ],
   'API Key / Secret': [
+    { key: 'riskScore',    label: 'Risk',         cls: 'w-16' },
     { key: 'name',         label: 'Secret Name',   cls: 'min-w-[180px] flex-1' },
     { key: 'caIssuer',     label: 'Secret Store',  cls: 'w-32' },
     { key: 'secretType',   label: 'Type',          cls: 'w-28' },
@@ -218,6 +238,11 @@ function getPrimaryAction(co: CryptoAsset): InlineAction | null {
 function CellValue({ col, co }: { col: ColDef; co: CryptoAsset }) {
   const val = (co as unknown as Record<string, unknown>)[col.key];
   switch (col.key) {
+    case 'riskScore': {
+      const s = crsScore(co);
+      const c = s >= 80 ? 'text-coral' : s >= 60 ? 'text-amber' : s >= 30 ? 'text-blue-400' : 'text-teal';
+      return <span className={`text-[11px] font-bold tabular-nums ${c}`}>{s}</span>;
+    }
     case 'name':         return <span className="font-medium text-foreground truncate">{co.name}</span>;
     case 'status':       return <StatusBadge status={co.status} />;
     case 'pqcRisk':      return <PQCBadge risk={co.pqcRisk} />;
@@ -695,6 +720,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   const [ticketAction, setTicketAction] = useState('fix');
   const [riskDrawer, setRiskDrawer]     = useState<CryptoAsset | null>(null);
   const [deployAsset, setDeployAsset]   = useState<CryptoAsset | null>(null);
+  const [sortKey, setSortKey]           = useState<'riskScore' | 'daysToExpiry'>('riskScore');
   const [sortDir, setSortDir]           = useState<'asc' | 'desc'>('desc');
 
   const { manualIdentities }    = useInventoryRegistry();
@@ -737,8 +763,30 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
     if (statusFilter) r = r.filter(a => a.status === statusFilter);
     if (pqcFilter)    r = r.filter(a => a.pqcRisk === pqcFilter);
     if (ownerFilter === 'Unassigned') r = r.filter(a => a.owner === 'Unassigned');
+
+    // Sorting — default risk_score DESC, with expiry tie-breaker
+    const dir = sortDir === 'asc' ? 1 : -1;
+    const expiryTs = (a: CryptoAsset) => {
+      const t = a.expiryDate && a.expiryDate !== 'N/A' ? Date.parse(a.expiryDate) : NaN;
+      return Number.isFinite(t) ? t : Number.POSITIVE_INFINITY;
+    };
+    if (sortKey === 'riskScore') {
+      r.sort((a, b) => {
+        const sa = crsScore(a);
+        const sb = crsScore(b);
+        const va = Number.isFinite(sa) ? sa : -Infinity;
+        const vb = Number.isFinite(sb) ? sb : -Infinity;
+        if (va !== vb) return (vb - va) * (sortDir === 'desc' ? 1 : -1);
+        // tie-break: expiry ASC (earliest first)
+        const ea = expiryTs(a), eb = expiryTs(b);
+        if (ea !== eb) return ea - eb;
+        return 0;
+      });
+    } else if (sortKey === 'daysToExpiry') {
+      r.sort((a, b) => (a.daysToExpiry - b.daysToExpiry) * dir);
+    }
     return r;
-  }, [allAssets, typeFilter, search, algFilter, envFilter, statusFilter, pqcFilter, ownerFilter]);
+  }, [allAssets, typeFilter, search, algFilter, envFilter, statusFilter, pqcFilter, ownerFilter, sortKey, sortDir]);
 
   const getAssoc = (co: CryptoAsset) => mockITAssets.filter(a => a.cryptoObjectIds.includes(co.id));
   const cols = COLS[typeFilter] ?? COLS['All'];
@@ -806,9 +854,15 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                 <tr className="border-b border-border">
                   {cols.map(col => (
                     <th key={col.key} className={`text-left py-2 px-2 font-medium text-muted-foreground ${col.cls}`}>
-                      {col.key === 'daysToExpiry' ? (
-                        <button onClick={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')} className="inline-flex items-center gap-1 hover:text-foreground">
-                          {col.label} {sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                      {col.key === 'riskScore' || col.key === 'daysToExpiry' ? (
+                        <button
+                          onClick={() => {
+                            if (sortKey === col.key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+                            else { setSortKey(col.key as 'riskScore' | 'daysToExpiry'); setSortDir(col.key === 'riskScore' ? 'desc' : 'asc'); }
+                          }}
+                          className={`inline-flex items-center gap-1 hover:text-foreground ${sortKey === col.key ? 'text-foreground' : ''}`}
+                        >
+                          {col.label} {sortKey === col.key ? (sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />) : null}
                         </button>
                       ) : col.label}
                     </th>
