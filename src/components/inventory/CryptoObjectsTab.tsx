@@ -216,7 +216,7 @@ function getPrimaryAction(co: CryptoAsset): InlineAction | null {
 // ── Cell renderer ─────────────────────────────────────────────────────────────
 
 function CellValue({ col, co }: { col: ColDef; co: CryptoAsset }) {
-  const val = (co as Record<string, unknown>)[col.key];
+  const val = (co as unknown as Record<string, unknown>)[col.key];
   switch (col.key) {
     case 'name':         return <span className="font-medium text-foreground truncate">{co.name}</span>;
     case 'status':       return <StatusBadge status={co.status} />;
