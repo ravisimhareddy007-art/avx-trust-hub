@@ -640,9 +640,28 @@ function StageAssess({ onNext, nav }: { onNext: () => void; nav: (f: Record<stri
                   <AlertTriangle className="w-3 h-3 text-amber flex-shrink-0 mt-0.5" />
                   <p className="text-[9.5px] text-muted-foreground">{r.blocker}</p>
                 </div>
-                <div className="flex items-start gap-1.5 px-3 py-2">
-                  <Shield className="w-3 h-3 text-teal flex-shrink-0 mt-0.5" />
-                  <p className="text-[9.5px] text-muted-foreground">{r.compensating}</p>
+                <div className="flex items-start justify-between gap-1.5 px-3 py-2">
+                  <div className="flex items-start gap-1.5 flex-1">
+                    <Shield className="w-3 h-3 text-teal flex-shrink-0 mt-0.5" />
+                    <p className="text-[9.5px] text-muted-foreground">{r.compensating}</p>
+                  </div>
+                  {addedToWave[r.from] ? (
+                    <span className="flex-shrink-0 ml-2 text-[9px] font-semibold px-2 py-1 rounded bg-teal/10 text-teal whitespace-nowrap flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> Added to Wave 1
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setAddedToWave(prev => ({ ...prev, [r.from]: true }));
+                        toast.success(`Added to Wave 1`, {
+                          description: `${r.from} → ${r.to} · ${r.objects.toLocaleString()} objects queued for Q2 2026 migration`,
+                        });
+                      }}
+                      className="flex-shrink-0 ml-2 text-[9px] font-semibold px-2 py-1 rounded bg-purple/10 text-purple-light hover:bg-purple/20 whitespace-nowrap transition-colors"
+                    >
+                      + Add to Wave 1
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
