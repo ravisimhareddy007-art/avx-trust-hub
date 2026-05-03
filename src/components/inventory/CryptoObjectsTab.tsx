@@ -611,6 +611,32 @@ function DetailPanel({
             )}
           </div>
 
+          {/* Metadata */}
+          <div className="px-4 py-3">
+            <TypeMetadata co={co} assoc={assoc} />
+          </div>
+
+          {/* Linked infrastructure */}
+          <div className="px-4 py-3">
+            <p className="text-[10px] font-semibold text-foreground mb-1.5">
+              Linked Infrastructure ({assoc.length})
+              {assoc.length > 0 && <span className="ml-1 text-[9px] text-amber font-normal">expiry or failure affects all</span>}
+            </p>
+            {assoc.length > 0 ? (
+              <div className="space-y-1">
+                {assoc.map(a => (
+                  <div key={a.id} className="flex items-center gap-2 text-[10px]">
+                    <span className="text-foreground font-medium flex-1 truncate">{a.name}</span>
+                    <span className="text-muted-foreground flex-shrink-0">{a.type}</span>
+                    <EnvBadge env={a.environment} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[10px] text-muted-foreground italic">No linked infrastructure</p>
+            )}
+          </div>
+
           {/* Operational violations */}
           {((co.daysToExpiry >= 0 && co.daysToExpiry <= 30) || co.owner === 'Unassigned' || co.policyViolations > 0) && (
             <div className="px-4 py-3">
@@ -654,30 +680,6 @@ function DetailPanel({
                 <span className="font-mono font-semibold text-foreground">{co.algorithm}</span>
                 <span className="text-muted-foreground"> is quantum-vulnerable.</span>
                 {expYear > 0 && <span className="text-muted-foreground"> Expires {expYear}{yearsPast > 0 ? <span className="text-coral font-semibold"> — {yearsPast}yr past NIST deadline</span> : ' — at NIST deadline'}.</span>}
-              </div>
-            </div>
-          )}
-
-          {/* Metadata */}
-          <div className="px-4 py-3">
-            <TypeMetadata co={co} assoc={assoc} />
-          </div>
-
-          {/* Linked infrastructure */}
-          {assoc.length > 0 && (
-            <div className="px-4 py-3">
-              <p className="text-[10px] font-semibold text-foreground mb-1.5">
-                Linked Infrastructure ({assoc.length})
-                <span className="ml-1 text-[9px] text-amber font-normal">expiry or failure affects all</span>
-              </p>
-              <div className="space-y-1">
-                {assoc.map(a => (
-                  <div key={a.id} className="flex items-center gap-2 text-[10px]">
-                    <span className="text-foreground font-medium flex-1 truncate">{a.name}</span>
-                    <span className="text-muted-foreground flex-shrink-0">{a.type}</span>
-                    <EnvBadge env={a.environment} />
-                  </div>
-                ))}
               </div>
             </div>
           )}
