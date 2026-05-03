@@ -59,6 +59,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'violations',   label: 'Violations',    cls: 'w-20' },
   ],
   'TLS Certificate': [
+    { key: 'riskScore',    label: 'Risk',         cls: 'w-16' },
     { key: 'name',         label: 'Common Name',  cls: 'min-w-[180px] flex-1' },
     { key: 'caIssuer',     label: 'CA / Issuer',  cls: 'w-36' },
     { key: 'algorithm',    label: 'Algorithm',    cls: 'w-24' },
@@ -71,6 +72,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'violations',   label: 'Violations',   cls: 'w-20' },
   ],
   'SSH Key': [
+    { key: 'riskScore',    label: 'Risk',         cls: 'w-16' },
     { key: 'name',         label: 'Key Name',     cls: 'min-w-[180px] flex-1' },
     { key: 'algorithm',    label: 'Key Type',     cls: 'w-24' },
     { key: 'serial',       label: 'Fingerprint',  cls: 'w-40' },
@@ -82,6 +84,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'pqcRisk',      label: 'PQC',          cls: 'w-20' },
   ],
   'SSH Certificate': [
+    { key: 'riskScore',    label: 'Risk',         cls: 'w-16' },
     { key: 'name',         label: 'Cert Name',    cls: 'min-w-[180px] flex-1' },
     { key: 'caIssuer',     label: 'CA',           cls: 'w-36' },
     { key: 'commonName',   label: 'Principals',   cls: 'w-36' },
@@ -91,6 +94,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'status',       label: 'Status',       cls: 'w-24' },
   ],
   'Code-Signing Certificate': [
+    { key: 'riskScore',    label: 'Risk',         cls: 'w-16' },
     { key: 'name',         label: 'Cert Name',    cls: 'min-w-[180px] flex-1' },
     { key: 'caIssuer',     label: 'CA',           cls: 'w-36' },
     { key: 'algorithm',    label: 'Algorithm',    cls: 'w-24' },
@@ -102,6 +106,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'pqcRisk',      label: 'PQC',          cls: 'w-20' },
   ],
   'K8s Workload Cert': [
+    { key: 'riskScore',    label: 'Risk',         cls: 'w-16' },
     { key: 'name',              label: 'Workload',        cls: 'min-w-[180px] flex-1' },
     { key: 'application',       label: 'Namespace / App', cls: 'w-36' },
     { key: 'caIssuer',          label: 'CA',              cls: 'w-28' },
@@ -112,6 +117,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'status',            label: 'Status',          cls: 'w-24' },
   ],
   'Encryption Key': [
+    { key: 'riskScore',    label: 'Risk',         cls: 'w-16' },
     { key: 'name',              label: 'Key Name',       cls: 'min-w-[180px] flex-1' },
     { key: 'caIssuer',          label: 'Key Store',      cls: 'w-36' },
     { key: 'algorithm',         label: 'Algorithm',      cls: 'w-24' },
@@ -121,6 +127,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'status',            label: 'State',          cls: 'w-24' },
   ],
   'AI Agent Token': [
+    { key: 'riskScore',    label: 'Risk',         cls: 'w-16' },
     { key: 'name',         label: 'Token / Agent',   cls: 'min-w-[180px] flex-1' },
     { key: 'agentFw',      label: 'Framework',       cls: 'w-32' },
     { key: 'actionsDay',   label: 'Actions/Day',     cls: 'w-24' },
@@ -131,6 +138,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'violations',   label: 'Violations',      cls: 'w-20' },
   ],
   'API Key / Secret': [
+    { key: 'riskScore',    label: 'Risk',         cls: 'w-16' },
     { key: 'name',         label: 'Secret Name',   cls: 'min-w-[180px] flex-1' },
     { key: 'caIssuer',     label: 'Secret Store',  cls: 'w-32' },
     { key: 'secretType',   label: 'Type',          cls: 'w-28' },
