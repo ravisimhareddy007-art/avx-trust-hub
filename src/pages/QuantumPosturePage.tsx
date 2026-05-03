@@ -193,53 +193,85 @@ function MoscaBadge({ wave }: { wave: typeof WAVES[0] }) {
 
 function AlgoChart({ onBarClick }: { onBarClick: (algo: string) => void }) {
   const [hovered, setHovered] = React.useState<string | null>(null);
+  const W = 640, H = 160, BOTTOM = 24;
+  const PAD_L = 8, PAD_R = 8, GAP = 10;
   const maxVal = Math.max(...ALGO_DATA.map(d => d.count));
+  const barW = (W - PAD_L - PAD_R - GAP * (ALGO_DATA.length - 1)) / ALGO_DATA.length;
   return (
     <div className="w-full">
-      <div className="flex items-end gap-2 h-44">
-        {ALGO_DATA.map(d => {
-          const heightPct = Math.max(3, (d.count / maxVal) * 100);
+      <svg
+        width="100%"
+        viewBox={`0 0 ${W} ${H + BOTTOM}`}
+        style={{ overflow: 'visible', display: 'block' }}
+      >
+        {ALGO_DATA.map((d, i) => {
+          const barH = Math.max(6, (d.count / maxVal) * H);
+          const x = PAD_L + i * (barW + GAP);
+          const y = H - barH;
           const isHov = hovered === d.algo;
+          const ttX = Math.min(Math.max(x - 20, 0), W - 180);
+          const ttY = y - 10;
           return (
-            <div
+            <g
               key={d.algo}
-              className="flex-1 flex flex-col items-center justify-end gap-1 cursor-pointer group"
+              style={{ cursor: 'pointer' }}
               onClick={() => onBarClick(d.algo)}
               onMouseEnter={() => setHovered(d.algo)}
               onMouseLeave={() => setHovered(null)}
             >
-              {isHov && (
-                <div className="absolute z-10 bg-card border border-border rounded-lg p-2.5 shadow-xl text-left min-w-[180px] -translate-y-2" style={{ bottom: `${heightPct}%` }}>
-                  <p className="text-[10px] font-semibold text-foreground mb-1">{d.algo} — {d.count.toLocaleString()} objects</p>
-                  <p className="text-[9px] text-muted-foreground mb-1.5">{d.use}</p>
-                  {d.breakdown.map(b => (
-                    <div key={b.type} className="flex items-center justify-between gap-3">
-                      <span className="text-[9px] text-muted-foreground">{b.type}</span>
-                      <span className="text-[9px] font-semibold tabular-nums" style={{ color: d.fill }}>{b.count.toLocaleString()}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div
-                className="w-full rounded-t-md transition-opacity duration-150"
-                style={{
-                  height: `${heightPct}%`,
-                  background: d.fill,
-                  opacity: hovered && !isHov ? 0.4 : 1,
-                }}
+              <rect
+                x={x} y={y}
+                width={barW} height={barH}
+                fill={d.fill}
+                opacity={hovered && !isHov ? 0.35 : 1}
+                rx={3}
               />
-            </div>
+              <text
+                x={x + barW / 2}
+                y={H + BOTTOM - 4}
+                textAnchor="middle"
+                fontSize={9.5}
+                fill="hsl(220, 15%, 50%)"
+              >
+                {d.algo}
+              </text>
+              {isHov && (
+                <foreignObject x={ttX} y={Math.max(ttY - 100, 0)} width={190} height={130}>
+                  <div
+                    style={{
+                      background: 'hsl(225, 30%, 12%)',
+                      border: '1px solid hsl(225, 20%, 22%)',
+                      borderRadius: 8,
+                      padding: '8px 10px',
+                      fontSize: 10,
+                      color: 'hsl(220, 20%, 85%)',
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, marginBottom: 6, color: d.fill }}>
+                      {d.algo} — {d.count.toLocaleString()} objects
+                    </div>
+                    {d.breakdown.map(b => (
+                      <div
+                        key={b.type}
+                        style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 2, color: 'hsl(220, 15%, 58%)' }}
+                      >
+                        <span>{b.type}</span>
+                        <span style={{ fontWeight: 600, color: 'hsl(220, 20%, 80%)' }}>{b.count.toLocaleString()}</span>
+                      </div>
+                    ))}
+                    <div style={{ marginTop: 6, paddingTop: 5, borderTop: '1px solid hsl(225, 20%, 22%)', fontSize: 9, color: 'hsl(220, 15%, 45%)' }}>
+                      {d.use}
+                    </div>
+                  </div>
+                </foreignObject>
+              )}
+            </g>
           );
         })}
-      </div>
-      <div className="flex gap-2 mt-1.5">
-        {ALGO_DATA.map(d => (
-          <div key={d.algo} className="flex-1 text-center">
-            <span className="text-[8.5px] text-muted-foreground leading-tight block">{d.algo}</span>
-          </div>
-        ))}
-      </div>
-      <p className="text-[9.5px] text-muted-foreground text-center mt-2">Hover for breakdown · Click any bar to view in Inventory</p>
+      </svg>
+      <p className="text-[9.5px] text-muted-foreground text-center mt-1">
+        Hover for object breakdown · Click any bar to view in Inventory
+      </p>
     </div>
   );
 }
