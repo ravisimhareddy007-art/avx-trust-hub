@@ -79,7 +79,7 @@ export default function SecurityAdminDashboard() {
             </div>
 
             {/* 3 tiles */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
               {/* Tile 1 — Integrations */}
               {!dismissed.includes('integrations') && (
                 <div className="relative rounded-lg border border-border bg-background p-3.5 flex flex-col">
@@ -206,6 +206,96 @@ export default function SecurityAdminDashboard() {
                     </button>
                     <button
                       onClick={() => setHelpPanel('policy')}
+                      className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
+                    >
+                      <BookOpen className="w-3 h-3" />
+                      How it works
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Tile 4 — Inventory */}
+              {!dismissed.includes('inventory') && (
+                <div className="relative rounded-lg border border-border bg-background p-3.5 flex flex-col">
+                  <button
+                    onClick={() => dismiss('inventory')}
+                    className="absolute top-2.5 right-2.5 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <span className="w-4 h-4 rounded-full bg-teal/15 text-teal text-[9px] font-bold flex items-center justify-center">4</span>
+                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Step 4</span>
+                  </div>
+                  <div className="flex items-start gap-2.5 mb-3 flex-1">
+                    <div className="w-8 h-8 rounded-lg bg-teal/10 flex items-center justify-center flex-shrink-0">
+                      <LayoutDashboard className="w-4 h-4 text-teal" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-foreground mb-1">
+                        Review your inventory
+                      </div>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        Explore every cryptographic asset discovered — certs, SSH keys, secrets, and AI tokens — with full context on risk, ownership, and environment.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 mt-auto">
+                    <button
+                      onClick={() => setCurrentPage('inventory')}
+                      className="flex items-center gap-1 text-[10px] font-medium text-white bg-teal px-3 py-1.5 rounded-lg hover:bg-teal/90 transition-colors"
+                    >
+                      Go to Inventory
+                      <ChevronRight className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={() => setHelpPanel('inventory')}
+                      className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
+                    >
+                      <BookOpen className="w-3 h-3" />
+                      How it works
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Tile 5 — Remediation */}
+              {!dismissed.includes('remediation') && (
+                <div className="relative rounded-lg border border-border bg-background p-3.5 flex flex-col">
+                  <button
+                    onClick={() => dismiss('remediation')}
+                    className="absolute top-2.5 right-2.5 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <span className="w-4 h-4 rounded-full bg-teal/15 text-teal text-[9px] font-bold flex items-center justify-center">5</span>
+                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Step 5</span>
+                  </div>
+                  <div className="flex items-start gap-2.5 mb-3 flex-1">
+                    <div className="w-8 h-8 rounded-lg bg-teal/10 flex items-center justify-center flex-shrink-0">
+                      <Wrench className="w-4 h-4 text-teal" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-foreground mb-1">
+                        Remediate your first issue
+                      </div>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        Rotate, revoke, or renew assets flagged as at-risk. Use automation workflows for bulk operations across certs, SSH keys, secrets, and AI tokens.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 mt-auto">
+                    <button
+                      onClick={() => setCurrentPage('remediation-clm')}
+                      className="flex items-center gap-1 text-[10px] font-medium text-white bg-teal px-3 py-1.5 rounded-lg hover:bg-teal/90 transition-colors"
+                    >
+                      Go to Remediation
+                      <ChevronRight className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={() => setHelpPanel('remediation')}
                       className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
                     >
                       <BookOpen className="w-3 h-3" />
