@@ -19,12 +19,12 @@ const IN_FLIGHT_COUNT  = 847;
 // ── Static data ───────────────────────────────────────────────────────────────
 
 const ALGO_DATA = [
-  { algo: 'RSA-2048',  count: 8420, vulnerable: true  },
-  { algo: 'RSA-4096',  count: 2100, vulnerable: true  },
-  { algo: 'ECC P-256', count: 1800, vulnerable: true  },
-  { algo: 'ECC P-384', count: 340,  vulnerable: true  },
-  { algo: 'AES-256',   count: 4200, vulnerable: false },
-  { algo: 'ML-KEM',    count: 187,  vulnerable: false },
+  { algo: 'RSA-2048',  count: 8420, vulnerable: true,  fill: 'hsl(16 72% 51%)'  },
+  { algo: 'RSA-4096',  count: 2100, vulnerable: true,  fill: 'hsl(16 72% 51%)'  },
+  { algo: 'ECC P-256', count: 1800, vulnerable: true,  fill: 'hsl(38 78% 51%)'  },
+  { algo: 'ECC P-384', count: 340,  vulnerable: true,  fill: 'hsl(38 78% 51%)'  },
+  { algo: 'AES-256',   count: 4200, vulnerable: false, fill: 'hsl(162 72% 37%)' },
+  { algo: 'ML-KEM',    count: 187,  vulnerable: false, fill: 'hsl(162 72% 55%)' },
 ];
 
 const HNDL_LIST = [
@@ -172,11 +172,15 @@ function StageDiscover({ onNext, nav }: { onNext: () => void; nav: (f: Record<st
           <h3 className="text-sm font-semibold">Algorithm Breakdown — Cryptographic Estate</h3>
           <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-sm bg-coral inline-block" />
-              Quantum-vulnerable
+              <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: 'hsl(16 72% 51%)' }} />
+              RSA — Critical risk
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-sm bg-teal inline-block" />
+              <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: 'hsl(38 78% 51%)' }} />
+              ECC — High risk
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: 'hsl(162 72% 37%)' }} />
               Quantum-safe
             </span>
           </div>
@@ -193,11 +197,11 @@ function StageDiscover({ onNext, nav }: { onNext: () => void; nav: (f: Record<st
               dataKey="count"
               name="Objects"
               radius={[4, 4, 0, 0]}
-              onClick={(data: any) => nav({ tab: 'identities', algorithm: data.algo })}
+              onClick={(data) => nav({ tab: 'identities', algorithm: (data as unknown as typeof ALGO_DATA[0]).algo })}
               style={{ cursor: 'pointer' }}
             >
               {ALGO_DATA.map((d, i) => (
-                <Cell key={i} fill={d.vulnerable ? 'hsl(16 72% 51%)' : 'hsl(162 72% 37%)'} />
+                <Cell key={i} fill={d.fill} />
               ))}
             </Bar>
           </BarChart>
