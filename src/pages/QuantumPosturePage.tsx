@@ -541,7 +541,9 @@ function StageMigrate({ onNext, navTicket }: { onNext: () => void; navTicket: (a
                 <td className="py-2.5 text-right">
                   {r.status === 'Blocked' && (
                     <button
-                      onClick={() => navTicket(r.asset)}
+                      onClick={() => toast.success('TrustOps ticket created', {
+                        description: `PQC Migration — ${r.asset} — ${r.from} → ${r.to} · Priority: Critical · Assigned to ${r.owner}`,
+                      })}
                       className="text-[9.5px] px-2 py-1 rounded bg-teal/10 text-teal hover:bg-teal/20 whitespace-nowrap"
                     >
                       Create Ticket
