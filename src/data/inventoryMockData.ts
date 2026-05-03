@@ -52,7 +52,7 @@ export const mockITAssets: ITAsset[] = [
   // ── AI Platforms ─────────────────────────────────────────────────────────
   { id: 'it-ai-03', name: 'shadow-ai-platform-01', type: 'AI Platform', scanned: false, environment: 'Production', ownerTeam: 'Unassigned', cryptoObjectIds: [], riskScore: 0, criticalViolations: 0, policyCoverage: 0, lastSeen: 'Never', managedBy: 'Unknown', infrastructure: 'aws-lambda', application: 'Unknown AI Service' },
   { id: 'it-ai-04', name: 'dept-ai-tool.finance', type: 'AI Platform', scanned: false, environment: 'Production', ownerTeam: 'Unassigned', cryptoObjectIds: [], riskScore: 0, criticalViolations: 0, policyCoverage: 0, lastSeen: 'Never', managedBy: 'Unknown', infrastructure: 'azure-openai', application: 'Finance AI Tool' },
-  { id: 'it-ai-05', name: 'hr-ai-copilot-prod', type: 'AI Platform', scanned: true, environment: 'Production', ownerTeam: 'Unassigned', cryptoObjectIds: ['ai-008'], riskScore: 66, criticalViolations: 1, policyCoverage: 0, lastSeen: '2026-04-14 08:00', managedBy: 'Azure AD', application: 'HR AI Copilot' },
+  { id: 'it-ai-05', name: 'hr-ai-copilot-prod', type: 'AI Platform', scanned: true, environment: 'Production', ownerTeam: 'Unassigned', cryptoObjectIds: ['ai-008'], riskScore: 66, criticalViolations: 1, policyCoverage: 0, lastSeen: '2026-04-14 08:00', managedBy: 'Azure AD', infrastructure: 'azure-openai', application: 'HR AI Copilot' },
 ];
 
 // Risk driver data for each IT asset
