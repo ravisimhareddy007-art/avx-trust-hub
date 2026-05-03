@@ -155,7 +155,7 @@ export default function EnterpriseRiskScore() {
       {/* Driver contribution bar */}
       <div className="mb-3">
         <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">
-          What's driving ERS
+          What's driving ETS
         </p>
 
         {/* Stacked horizontal bar — each segment proportional to pts */}
