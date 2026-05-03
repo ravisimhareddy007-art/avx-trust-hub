@@ -524,98 +524,6 @@ function DetailPanel({
         {/* Body */}
         <div className="flex-1 overflow-y-auto scrollbar-thin divide-y divide-border/50">
 
-          {/* Metadata */}
-          <div className="px-4 py-3">
-            <TypeMetadata co={co} assoc={assoc} />
-          </div>
-
-          {/* Linked infrastructure */}
-          {assoc.length > 0 && (
-            <div className="px-4 py-3">
-              <p className="text-[10px] font-semibold text-foreground mb-1.5">
-                Linked Infrastructure ({assoc.length})
-                <span className="ml-1 text-[9px] text-amber font-normal">expiry or failure affects all</span>
-              </p>
-              <div className="space-y-1">
-                {assoc.map(a => (
-                  <div key={a.id} className="flex items-center gap-2 text-[10px]">
-                    <span className="text-foreground font-medium flex-1 truncate">{a.name}</span>
-                    <span className="text-muted-foreground flex-shrink-0">{a.type}</span>
-                    <EnvBadge env={a.environment} />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Operational violations */}
-          {((co.daysToExpiry >= 0 && co.daysToExpiry <= 30) || co.owner === 'Unassigned' || co.policyViolations > 0) && (
-            <div className="px-4 py-3">
-              <p className="text-[10px] font-semibold text-coral mb-1.5 flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-coral inline-block" />
-                Operational Violations
-              </p>
-              {co.daysToExpiry >= 0 && co.daysToExpiry <= 30 && (
-                <div className="flex items-center gap-2 text-[10px] py-1 border-b border-border/30">
-                  <span className="w-1.5 h-1.5 rounded-full bg-coral flex-shrink-0" />
-                  <span className="text-foreground flex-1">Expires in {co.daysToExpiry} days</span>
-                  {!isSecret && <button onClick={() => onTicket('renew')} className="text-teal hover:underline text-[10px]">Renew</button>}
-                </div>
-              )}
-              {co.owner === 'Unassigned' && (
-                <div className="flex items-center gap-2 text-[10px] py-1 border-b border-border/30">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber flex-shrink-0" />
-                  <span className="text-foreground flex-1">No owner assigned</span>
-                  {!isSecret && <button onClick={() => onTicket('assign')} className="text-teal hover:underline text-[10px]">Assign</button>}
-                </div>
-              )}
-              {co.policyViolations > 0 && (
-                <div className="flex items-center gap-2 text-[10px] py-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber flex-shrink-0" />
-                  <span className="text-foreground flex-1">{co.policyViolations} policy violation{co.policyViolations !== 1 ? 's' : ''}</span>
-                  {!isSecret && <button onClick={() => onTicket('fix')} className="text-teal hover:underline text-[10px]">Fix</button>}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Quantum Risk */}
-          {isPqc && (
-            <div className="px-4 py-3">
-              <p className="text-[10px] font-semibold text-purple-light mb-1.5 flex items-center gap-1.5">
-                <Atom className="w-3 h-3" />
-                Quantum Risk
-                <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-purple/15">NIST 2030</span>
-              </p>
-              <div className="rounded-lg bg-purple/5 border border-purple/20 p-3 text-[10px]">
-                <span className="font-mono font-semibold text-foreground">{co.algorithm}</span>
-                <span className="text-muted-foreground"> is quantum-vulnerable.</span>
-                {expYear > 0 && <span className="text-muted-foreground"> Expires {expYear}{yearsPast > 0 ? <span className="text-coral font-semibold"> — {yearsPast}yr past NIST deadline</span> : ' — at NIST deadline'}.</span>}
-                <button
-                  onClick={() => onTicket('pqc')}
-                  className="w-full mt-2 text-[10px] font-semibold px-2 py-1.5 rounded bg-purple/20 text-purple-light hover:bg-purple/30 transition-colors flex items-center justify-center gap-1.5"
-                >
-                  <Ticket className="w-3 h-3" />
-                  Create PQC Migration Ticket →
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* AI narrative */}
-          <div className="px-4 py-3">
-            <div className="bg-teal/5 border border-teal/20 rounded-lg p-3">
-              <p className="text-[10px] font-semibold text-teal mb-1">✦ Infinity AI</p>
-              <p className="text-[10px] text-muted-foreground leading-relaxed">
-                {co.pqcRisk === 'Critical'
-                  ? `${co.algorithm} is quantum-vulnerable. ${assoc.length} dependent asset${assoc.length !== 1 ? 's' : ''} — failure cascades. ${co.owner === 'Unassigned' ? 'Assign owner before migration.' : `Owned by ${co.owner}.`}`
-                  : co.daysToExpiry >= 0 && co.daysToExpiry <= 30
-                  ? `Expiring in ${co.daysToExpiry} days with ${assoc.length} dependent asset${assoc.length !== 1 ? 's' : ''}. ${co.autoRenewal ? 'Auto-renewal configured.' : 'Manual action required.'}`
-                  : `${co.algorithm} meets current standards. ${assoc.length} asset${assoc.length !== 1 ? 's' : ''} depend on it. No immediate action needed.`}
-              </p>
-            </div>
-          </div>
-
           {/* Actions */}
           <div className="px-4 py-3">
             <p className="text-[9.5px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Actions</p>
@@ -695,6 +603,77 @@ function DetailPanel({
               </div>
             )}
           </div>
+
+          {/* Operational violations */}
+          {((co.daysToExpiry >= 0 && co.daysToExpiry <= 30) || co.owner === 'Unassigned' || co.policyViolations > 0) && (
+            <div className="px-4 py-3">
+              <p className="text-[10px] font-semibold text-coral mb-1.5 flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-coral inline-block" />
+                Operational Violations
+              </p>
+              {co.daysToExpiry >= 0 && co.daysToExpiry <= 30 && (
+                <div className="flex items-center gap-2 text-[10px] py-1 border-b border-border/30">
+                  <span className="w-1.5 h-1.5 rounded-full bg-coral flex-shrink-0" />
+                  <span className="text-foreground flex-1">Expires in {co.daysToExpiry} days</span>
+                  {!isSecret && <button onClick={() => onTicket('renew')} className="text-teal hover:underline text-[10px]">Renew</button>}
+                </div>
+              )}
+              {co.owner === 'Unassigned' && (
+                <div className="flex items-center gap-2 text-[10px] py-1 border-b border-border/30">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber flex-shrink-0" />
+                  <span className="text-foreground flex-1">No owner assigned</span>
+                  {!isSecret && <button onClick={() => onTicket('assign')} className="text-teal hover:underline text-[10px]">Assign</button>}
+                </div>
+              )}
+              {co.policyViolations > 0 && (
+                <div className="flex items-center gap-2 text-[10px] py-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber flex-shrink-0" />
+                  <span className="text-foreground flex-1">{co.policyViolations} policy violation{co.policyViolations !== 1 ? 's' : ''}</span>
+                  {!isSecret && <button onClick={() => onTicket('fix')} className="text-teal hover:underline text-[10px]">Fix</button>}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Quantum Risk */}
+          {isPqc && (
+            <div className="px-4 py-3">
+              <p className="text-[10px] font-semibold text-purple-light mb-1.5 flex items-center gap-1.5">
+                <Atom className="w-3 h-3" />
+                Quantum Risk
+                <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-purple/15">NIST 2030</span>
+              </p>
+              <div className="rounded-lg bg-purple/5 border border-purple/20 p-3 text-[10px]">
+                <span className="font-mono font-semibold text-foreground">{co.algorithm}</span>
+                <span className="text-muted-foreground"> is quantum-vulnerable.</span>
+                {expYear > 0 && <span className="text-muted-foreground"> Expires {expYear}{yearsPast > 0 ? <span className="text-coral font-semibold"> — {yearsPast}yr past NIST deadline</span> : ' — at NIST deadline'}.</span>}
+              </div>
+            </div>
+          )}
+
+          {/* Metadata */}
+          <div className="px-4 py-3">
+            <TypeMetadata co={co} assoc={assoc} />
+          </div>
+
+          {/* Linked infrastructure */}
+          {assoc.length > 0 && (
+            <div className="px-4 py-3">
+              <p className="text-[10px] font-semibold text-foreground mb-1.5">
+                Linked Infrastructure ({assoc.length})
+                <span className="ml-1 text-[9px] text-amber font-normal">expiry or failure affects all</span>
+              </p>
+              <div className="space-y-1">
+                {assoc.map(a => (
+                  <div key={a.id} className="flex items-center gap-2 text-[10px]">
+                    <span className="text-foreground font-medium flex-1 truncate">{a.name}</span>
+                    <span className="text-muted-foreground flex-shrink-0">{a.type}</span>
+                    <EnvBadge env={a.environment} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -860,13 +839,13 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                         {primary ? (
                           <button
                             onClick={() => openTicket(co, primary.action)}
-                            className={`opacity-0 group-hover:opacity-100 transition-opacity text-[9.5px] font-semibold px-2 py-1 rounded whitespace-nowrap ${primary.btnCls}`}
+                            className={`text-[9.5px] font-semibold px-2 py-1 rounded whitespace-nowrap ${primary.btnCls}`}
                           >
                             {primary.label}
                           </button>
                         ) : (
                           <button onClick={() => setDetailAsset(co)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity text-[9.5px] text-muted-foreground hover:text-foreground flex items-center gap-0.5 ml-auto">
+                            className="text-[9.5px] text-muted-foreground hover:text-foreground flex items-center gap-0.5 ml-auto">
                             Details <ArrowRight className="w-3 h-3" />
                           </button>
                         )}
@@ -906,16 +885,9 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
           asset={ticketAsset}
           action={ticketAction}
           onClose={() => setTicketAsset(null)}
-          onConfirm={(draft: TicketDraft) => {
-            onCreateTicket({
-              objectName: ticketAsset.name,
-              objectType: ticketAsset.type,
-              algorithm: ticketAsset.algorithm,
-              status: ticketAsset.status,
-              daysToExpiry: ticketAsset.daysToExpiry,
-              environment: ticketAsset.environment,
-              draft,
-            });
+          onConfirm={() => {
+            // TicketDraftModal handles toast confirmation internally.
+            // Do not call onCreateTicket — that opens the legacy drawer.
           }}
         />
       )}
