@@ -775,6 +775,21 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
           </>
         );
       })()}
+      {itTicketAsset && (
+        <TicketDraftModal
+          asset={null}
+          action="fix"
+          onClose={() => setItTicketAsset(null)}
+          onConfirm={(draft: TicketDraft) => {
+            onCreateTicket({
+              objectName: itTicketAsset.name,
+              objectType: itTicketAsset.type,
+              environment: itTicketAsset.environment,
+              draft,
+            });
+          }}
+        />
+      )}
     </div>
   );
 }
