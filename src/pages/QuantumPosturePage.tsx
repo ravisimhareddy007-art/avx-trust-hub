@@ -507,7 +507,7 @@ function StagePlan({ onNext }: { onNext: () => void }) {
 
 // ── Stage 4: Migrate ──────────────────────────────────────────────────────────
 
-function StageMigrate({ onNext, navTicket }: { onNext: () => void; navTicket: (asset: string) => void }) {
+function StageMigrate({ onNext, navTicket, nav }: { onNext: () => void; navTicket: (asset: string) => void; nav: (f: Record<string, string>) => void }) {
   return (
     <div className="space-y-4">
       {/* Summary KPIs */}
@@ -519,7 +519,14 @@ function StageMigrate({ onNext, navTicket }: { onNext: () => void; navTicket: (a
           { label: 'Hybrid Mode Active',value: 3,                                                               color: 'text-purple-light'   },
         ].map(s => (
           <div key={s.label} className="bg-card rounded-xl border border-border p-4">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">{s.label}</p>
+            <div className="relative group/tip">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 cursor-help underline decoration-dotted">{s.label}</p>
+              {s.label === 'Hybrid Mode Active' && (
+                <div className="absolute bottom-full left-0 mb-1 z-50 hidden group-hover/tip:block w-56 bg-card border border-border rounded-lg shadow-xl p-2.5">
+                  <p className="text-[10px] text-foreground leading-relaxed">Running classical + PQC algorithms simultaneously during transition — per ETSI TR 103 619. Ensures zero downtime during migration.</p>
+                </div>
+              )}
+            </div>
             <p className={`text-3xl font-bold ${s.color}`}>{s.value}</p>
           </div>
         ))}
@@ -527,7 +534,13 @@ function StageMigrate({ onNext, navTicket }: { onNext: () => void; navTicket: (a
 
       {/* In-flight table */}
       <div className="bg-card rounded-xl border border-border p-5">
-        <h3 className="text-sm font-semibold mb-4">In-Flight Migrations</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold">In-Flight Migrations</h3>
+          <span className="text-[10px] text-muted-foreground flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-teal inline-block" />
+            Showing 8 representative migrations · 847 total in Wave 1
+          </span>
+        </div>
         <table className="w-full text-xs">
           <thead>
             <tr className="border-b border-border text-muted-foreground">
