@@ -36,10 +36,10 @@ function ErsGauge({ score, hsl, label }: { score: number; hsl: string; label: st
       <path d={arcPath(startAngle, startAngle + filled)} fill="none"
         stroke={hsl} strokeWidth="10" strokeLinecap="round"
         style={{ transition: 'all 0.7s ease' }} />
-      <text x="64" y="60" textAnchor="middle" fontSize="28" fontWeight="bold"
-        fill={hsl} style={{ transition: 'fill 0.7s ease' }}>{score}</text>
-      <text x="64" y="78" textAnchor="middle" fontSize="11"
-        fill="currentColor" fillOpacity="0.6">{label}</text>
+      <text x="64" y="62" textAnchor="middle" fontSize="20" fontWeight="bold"
+        fill={hsl} style={{ transition: 'fill 0.7s ease' }}>{label.toUpperCase()}</text>
+      <text x="64" y="82" textAnchor="middle" fontSize="13" fontWeight="600"
+        fill="currentColor" fillOpacity="0.55">{score}</text>
     </svg>
   );
 }
@@ -70,7 +70,7 @@ export default function EnterpriseRiskScore() {
             <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
             <div className="absolute left-0 top-5 z-50 hidden group-hover:block w-72 bg-card border border-border rounded-lg shadow-lg px-3 py-2.5">
               <p className="text-[11px] text-foreground leading-relaxed">
-                <span className="font-semibold">Enterprise Risk Score (ERS)</span> is a criticality-weighted average of Asset Risk Scores across your infrastructure, where production assets with Critical business impact carry 4× more weight — blended with a quantum vulnerability component that increases toward the 2030 NIST deadline.
+                <span className="font-semibold">Enterprise Trust Score (ETS)</span> measures your organisation-wide cryptographic security posture. Higher scores mean greater risk. Scores are weighted by asset criticality and environment — production assets with Critical business impact carry 4× more weight. The score also incorporates a quantum vulnerability component that increases toward the NIST 2030 deadline.
               </p>
             </div>
           </div>
@@ -82,12 +82,20 @@ export default function EnterpriseRiskScore() {
       <div className="flex items-start gap-4 mb-3">
         <ErsGauge score={ers.ers} hsl={sevHsl} label={ers.severity} />
         <div className="flex-1 pt-1">
-          <div className={`inline-flex items-center gap-1 text-[10.5px] font-semibold px-1.5 py-0.5 rounded mb-1.5 ${
-            improving ? 'bg-teal/15 text-teal' : 'bg-coral/15 text-coral'
-          }`}>
-            {improving ? <TrendingDown className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
-            {improving ? '↓' : '↑'} {Math.abs(SCORE_DELTA_7D)} pts (7d)
-          </div>
+          {(SCORE_DELTA_7D as number) === 0 ? (
+            <div className="inline-flex items-center gap-1 text-[10.5px] font-semibold px-1.5 py-0.5 rounded mb-1.5 bg-secondary text-muted-foreground">
+              No change this week
+            </div>
+          ) : (
+            <div className={`inline-flex items-center gap-1 text-[10.5px] font-semibold px-1.5 py-0.5 rounded mb-1.5 ${
+              improving ? 'bg-teal/15 text-teal' : 'bg-coral/15 text-coral'
+            }`}>
+              {improving ? <TrendingDown className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
+              {improving
+                ? `↓ ${Math.abs(SCORE_DELTA_7D)} pts better this week`
+                : `↑ +${Math.abs(SCORE_DELTA_7D)} pts worse this week`}
+            </div>
+          )}
           <p className="text-[12px] text-foreground leading-snug">
             {ers.topAssets.filter(a => a.bi === 'Critical').length} Critical-impact assets driving the score.
             {' '}Top driver:{' '}
