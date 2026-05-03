@@ -587,6 +587,22 @@ function StageMigrate({ onNext, navTicket, nav }: { onNext: () => void; navTicke
                       Create Ticket
                     </button>
                   )}
+                  {r.status === 'In Progress' && (
+                    <button
+                      onClick={() => nav({ tab: 'identities', algorithm: r.from })}
+                      className="text-[9.5px] px-2 py-1 rounded bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80 whitespace-nowrap"
+                    >
+                      View in Inventory →
+                    </button>
+                  )}
+                  {r.status === 'Completed' && (
+                    <button
+                      onClick={() => nav({ tab: 'identities', pqcRisk: 'Safe' })}
+                      className="text-[9.5px] px-2 py-1 rounded bg-teal/5 text-teal/60 hover:text-teal whitespace-nowrap"
+                    >
+                      Verify →
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -614,7 +630,10 @@ function StageMonitor() {
       {/* Progress bar chart */}
       <div className="bg-card rounded-xl border border-border p-5">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold">Cumulative Migrations — Actual vs Required Pace</h3>
+          <div>
+            <h3 className="text-sm font-semibold">Cumulative Migrations — Actual vs Required Pace</h3>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Wave 1 started March 2026 — acceleration reflects first production migrations going live</p>
+          </div>
           <Countdown />
         </div>
         <ResponsiveContainer width="100%" height={220}>
@@ -725,7 +744,7 @@ export default function QuantumPosturePage() {
       {active === 0 && <StageDiscover onNext={() => setActive(1)} nav={nav} />}
       {active === 1 && <StageAssess   onNext={() => setActive(2)} nav={nav} />}
       {active === 2 && <StagePlan     onNext={() => setActive(3)} />}
-      {active === 3 && <StageMigrate  onNext={() => setActive(4)} navTicket={navTicket} />}
+      {active === 3 && <StageMigrate  onNext={() => setActive(4)} navTicket={navTicket} nav={nav} />}}
       {active === 4 && <StageMonitor />}
 
     </div>
