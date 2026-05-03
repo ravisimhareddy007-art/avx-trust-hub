@@ -591,7 +591,23 @@ function StageAssess({ onNext, nav }: { onNext: () => void; nav: (f: Record<stri
                   <p className="text-[9.5px] text-muted-foreground">{item.latency}</p>
                 </div>
               </div>
-              <p className="text-[9.5px] text-muted-foreground/70 border-t border-border/30 pt-1.5">{item.note}</p>
+              <div className="flex items-center justify-between border-t border-border/30 pt-1.5">
+                <p className="text-[9.5px] text-muted-foreground/70 flex-1">{item.note}</p>
+                {item.score < 70 && (
+                  <button
+                    onClick={() => toast.success('Blocker ticket created', {
+                      description: `${item.cat} — agility ${item.score}% · ${item.swUpdatable ? 'Software' : 'Hardware'} change required · ${item.keyLimit}`,
+                    })}
+                    className={`ml-3 flex-shrink-0 text-[9px] font-semibold px-2 py-1 rounded whitespace-nowrap ${
+                      item.score < 40
+                        ? 'bg-coral/10 text-coral hover:bg-coral/20'
+                        : 'bg-amber/10 text-amber hover:bg-amber/20'
+                    } transition-colors`}
+                  >
+                    {item.score < 40 ? 'Flag as Critical Blocker' : 'Flag as Blocker'}
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
