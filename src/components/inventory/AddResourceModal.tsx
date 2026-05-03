@@ -166,6 +166,7 @@ export default function AddResourceModal({ open, onClose, initialKind }: Props) 
       id,
       name: aAddress.trim(),
       type: canonicalType,
+      scanned: false,
       environment: aEnv,
       ownerTeam: 'Unassigned',
       cryptoObjectIds: [],

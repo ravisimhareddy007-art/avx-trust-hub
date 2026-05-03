@@ -101,6 +101,7 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
   const [teamFilter, setTeamFilter] = useState('');
   const [biFilter, setBiFilter] = useState('');
   const [riskRange, setRiskRange] = useState<[number, number]>([0, 100]);
+  const [coverageFilter, setCoverageFilter] = useState<'unscanned' | 'no-policy' | 'unowned' | ''>('');
   const [sortKey, setSortKey] = useState<SortKey>('rps');
   const [selectedAsset, setSelectedAsset] = useState<ITAsset | null>(null);
   const [riskDrawerAsset, setRiskDrawerAsset] = useState<ITAsset | null>(null);
@@ -128,6 +129,14 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
     }
   }, [navFilters.assetId]);
 
+  useEffect(() => {
+    if (navFilters.type) setTypeFilter(navFilters.type);
+    if (navFilters.coverageGap === 'unscanned') setCoverageFilter('unscanned');
+    else if (navFilters.coverageGap === 'no-policy') setCoverageFilter('no-policy');
+    else if (navFilters.coverageGap === 'unowned') setCoverageFilter('unowned');
+    else setCoverageFilter('');
+  }, [navFilters.type, navFilters.coverageGap]);
+
   // Manual assets first so they're immediately visible after add.
   const allAssets = useMemo(() => [...manualITAssets, ...mockITAssets], [manualITAssets]);
 
@@ -146,6 +155,9 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
     if (teamFilter) result = result.filter(x => x.asset.ownerTeam === teamFilter);
     if (biFilter) result = result.filter(x => x.bi === biFilter);
     result = result.filter(x => x.ars >= riskRange[0] && x.ars <= riskRange[1]);
+    if (coverageFilter === 'unscanned') result = result.filter(x => x.asset.scanned === false);
+    if (coverageFilter === 'no-policy') result = result.filter(x => x.asset.policyCoverage === 0);
+    if (coverageFilter === 'unowned') result = result.filter(x => x.asset.ownerTeam === 'Unassigned');
 
     const sorted = [...result];
     sorted.sort((a, b) => {
@@ -161,7 +173,7 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
       }
     });
     return sorted;
-  }, [enriched, search, envFilter, typeFilter, teamFilter, biFilter, riskRange, sortKey]);
+  }, [enriched, search, envFilter, typeFilter, teamFilter, biFilter, riskRange, sortKey, coverageFilter]);
 
   const uniqueTeams = [...new Set(allAssets.map(a => a.ownerTeam))];
   const uniqueTypes = [...new Set(allAssets.map(a => a.type))];
@@ -231,6 +243,19 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
           )}
           <span className="text-[10px] text-muted-foreground">{filtered.length} assets · sorted by {sortKey === 'rps' ? 'priority' : sortKey === 'ars' ? 'asset risk score' : sortKey === 'bi' ? 'business impact' : 'name'}</span>
         </div>
+
+        {coverageFilter && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-secondary/40 border border-border rounded-md text-[10.5px] text-foreground flex-shrink-0">
+            <span className="text-muted-foreground">Filtered to:</span>
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-teal/15 text-teal font-semibold">
+              {coverageFilter === 'unscanned' && 'Discovery Coverage Gap — Not scanned by platform'}
+              {coverageFilter === 'no-policy' && 'Control Gap — No active policy coverage'}
+              {coverageFilter === 'unowned' && 'Ownership Gap — No owner assigned'}
+              <button onClick={() => setCoverageFilter('')} className="ml-1 hover:text-coral" aria-label="Clear filter">×</button>
+            </span>
+            <span className="text-muted-foreground tabular-nums">{filtered.length} assets</span>
+          </div>
+        )}
 
         {/* Table */}
         <div className="bg-card rounded-lg border border-border overflow-hidden flex-1 min-h-0 flex flex-col">
