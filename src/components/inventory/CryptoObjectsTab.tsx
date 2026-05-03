@@ -97,7 +97,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   const { manualIdentities } = useInventoryRegistry();
   const { setSelectedEntity } = useAgent();
   const { filters: navFilters, setFilters: setNavFilters } = useNav();
-  const { type: navType, status: navStatus, algorithm: navAlgorithm, owner: navOwner, filterId } = navFilters;
+  const { type: navType, status: navStatus, algorithm: navAlgorithm, owner: navOwner, pqcRisk: navPqcRisk, filterId } = navFilters;
   useEffect(() => {
     if (filterId) {
       const violationFilter = VIOLATION_FILTERS[filterId] ?? DASHBOARD_FILTERS[filterId];
@@ -110,8 +110,9 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
       setStatusFilter(navStatus || '');
       setAlgFilter(navAlgorithm || '');
       setOwnerFilter(navOwner || '');
+      if (navPqcRisk) setPqcFilter(navPqcRisk);
     }
-  }, [filterId, navType, navStatus, navAlgorithm, navOwner]);
+  }, [filterId, navType, navStatus, navAlgorithm, navOwner, navPqcRisk]);
 
   const clearAllDashboardFilters = () => {
     setDashboardFilterId('');
