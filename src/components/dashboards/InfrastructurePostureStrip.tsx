@@ -1,13 +1,13 @@
 import React from 'react';
-import { Globe, Server, Boxes, Shield, Bot, ArrowRight, TrendingUp, TrendingDown, Eye, Lock, User } from 'lucide-react';
+import { Globe, Server, Boxes, Shield, Bot, ArrowRight, TrendingUp, TrendingDown, User, Lock } from 'lucide-react';
 import { useNav } from '@/context/NavigationContext';
 
 interface GapRow {
+  dimension: 'Ownership' | 'Policy Coverage';
   icon: React.ComponentType<{ className?: string }>;
-  dimension: string;
   label: string;
-  value: string;
-  coverageGap: 'unscanned' | 'no-policy' | 'unowned';
+  enterpriseCount: number;
+  coverageGap: 'unowned' | 'no-policy';
 }
 
 interface Tile {
@@ -15,7 +15,7 @@ interface Tile {
   assetType: string;
   icon: React.ComponentType<{ className?: string }>;
   enterpriseTotal: string;
-  atRisk: number;
+  outsidePerimeter: number;
   trend: number;
   gaps: GapRow[];
 }
@@ -26,12 +26,11 @@ const TILES: Tile[] = [
     assetType: 'API Gateway',
     icon: Globe,
     enterpriseTotal: '1,840',
-    atRisk: 22,
+    outsidePerimeter: 22,
     trend: +1.4,
     gaps: [
-      { icon: Eye,  dimension: 'Discovery', label: '28% of gateways not scanned by platform', value: '515', coverageGap: 'unscanned' },
-      { icon: Lock, dimension: 'Control',   label: '32% not under any active TLS policy',     value: '589', coverageGap: 'no-policy' },
-      { icon: User, dimension: 'Ownership', label: '14 gateways with no owner assigned',      value: '14',  coverageGap: 'unowned'   },
+      { dimension: 'Ownership',       icon: User, label: 'Gateways with no owner assigned',   enterpriseCount: 14,  coverageGap: 'unowned'   },
+      { dimension: 'Policy Coverage', icon: Lock, label: 'Gateways with no active policy',     enterpriseCount: 589, coverageGap: 'no-policy' },
     ],
   },
   {
@@ -39,12 +38,11 @@ const TILES: Tile[] = [
     assetType: 'Application Server',
     icon: Server,
     enterpriseTotal: '12,400',
-    atRisk: 18,
+    outsidePerimeter: 18,
     trend: +0.6,
     gaps: [
-      { icon: Eye,  dimension: 'Discovery', label: '284 servers never scanned for crypto assets', value: '284',   coverageGap: 'unscanned' },
-      { icon: Lock, dimension: 'Control',   label: '18% have no key management policy',           value: '2,232', coverageGap: 'no-policy' },
-      { icon: User, dimension: 'Ownership', label: '312 servers with no owner assigned',          value: '312',   coverageGap: 'unowned'   },
+      { dimension: 'Ownership',       icon: User, label: 'Servers with no owner assigned',     enterpriseCount: 312,  coverageGap: 'unowned'   },
+      { dimension: 'Policy Coverage', icon: Lock, label: 'Servers with no active policy',       enterpriseCount: 2232, coverageGap: 'no-policy' },
     ],
   },
   {
@@ -52,12 +50,11 @@ const TILES: Tile[] = [
     assetType: 'K8s Cluster',
     icon: Boxes,
     enterpriseTotal: '648',
-    atRisk: 14,
+    outsidePerimeter: 14,
     trend: -1.2,
     gaps: [
-      { icon: Eye,  dimension: 'Discovery', label: '46 clusters not discovered by platform', value: '46',  coverageGap: 'unscanned' },
-      { icon: Lock, dimension: 'Control',   label: '138 clusters below security baseline',   value: '138', coverageGap: 'no-policy' },
-      { icon: User, dimension: 'Ownership', label: '22 clusters without owner assigned',     value: '22',  coverageGap: 'unowned'   },
+      { dimension: 'Ownership',       icon: User, label: 'Clusters with no owner assigned',    enterpriseCount: 22,  coverageGap: 'unowned'   },
+      { dimension: 'Policy Coverage', icon: Lock, label: 'Clusters with no active policy',      enterpriseCount: 138, coverageGap: 'no-policy' },
     ],
   },
   {
@@ -65,12 +62,11 @@ const TILES: Tile[] = [
     assetType: 'Vault Server',
     icon: Shield,
     enterpriseTotal: '284',
-    atRisk: 26,
+    outsidePerimeter: 26,
     trend: +2.1,
     gaps: [
-      { icon: Eye,  dimension: 'Discovery', label: '8 Vault instances not connected to platform', value: '8',  coverageGap: 'unscanned' },
-      { icon: Lock, dimension: 'Control',   label: '24 Vault servers with no governance policy',  value: '24', coverageGap: 'no-policy' },
-      { icon: User, dimension: 'Ownership', label: '12 Vault instances with no owner assigned',   value: '12', coverageGap: 'unowned'   },
+      { dimension: 'Ownership',       icon: User, label: 'Vault instances with no owner',       enterpriseCount: 12, coverageGap: 'unowned'   },
+      { dimension: 'Policy Coverage', icon: Lock, label: 'Vault servers with no active policy', enterpriseCount: 24, coverageGap: 'no-policy' },
     ],
   },
   {
@@ -78,28 +74,25 @@ const TILES: Tile[] = [
     assetType: 'AI Platform',
     icon: Bot,
     enterpriseTotal: '486',
-    atRisk: 32,
+    outsidePerimeter: 32,
     trend: +4.8,
     gaps: [
-      { icon: Eye,  dimension: 'Discovery', label: '22% of AI agents not in platform inventory',  value: '107', coverageGap: 'unscanned' },
-      { icon: Lock, dimension: 'Control',   label: '40% of agent tokens under no policy control', value: '194', coverageGap: 'no-policy' },
-      { icon: User, dimension: 'Ownership', label: '52 AI platforms without human sponsor',       value: '52',  coverageGap: 'unowned'   },
+      { dimension: 'Ownership',       icon: User, label: 'AI platforms with no human sponsor',  enterpriseCount: 52,  coverageGap: 'unowned'   },
+      { dimension: 'Policy Coverage', icon: Lock, label: 'AI platforms with no active policy',   enterpriseCount: 194, coverageGap: 'no-policy' },
     ],
   },
 ];
 
 const TOTAL_OUTSIDE_PERIMETER = 487;
 
-const DIM_COLOR: Record<string, string> = {
-  Discovery: 'text-purple-light',
-  Control:   'text-amber',
-  Ownership: 'text-coral',
+const DIM_COLOR: Record<GapRow['dimension'], string> = {
+  'Ownership':       'text-coral',
+  'Policy Coverage': 'text-amber',
 };
 
-const DIM_DOT: Record<string, string> = {
-  Discovery: 'bg-purple',
-  Control:   'bg-amber',
-  Ownership: 'bg-coral',
+const DIM_DOT: Record<GapRow['dimension'], string> = {
+  'Ownership':       'bg-coral',
+  'Policy Coverage': 'bg-amber',
 };
 
 export default function InfrastructurePostureStrip() {
@@ -110,30 +103,43 @@ export default function InfrastructurePostureStrip() {
     setCurrentPage('inventory');
   };
 
-  const navGap = (assetType: string, coverageGap: string) => {
-    setFilters({ type: assetType, coverageGap, tab: 'infrastructure' });
+  const navGap = (assetType: string, coverageGap: string, enterpriseCount: number) => {
+    setFilters({
+      type: assetType,
+      tab: 'infrastructure',
+      coverageGap,
+      enterpriseCount: String(enterpriseCount),
+    });
     setCurrentPage('inventory');
   };
 
   return (
     <div className="bg-card rounded-xl border border-border p-5">
+      {/* Strip header */}
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h2 className="text-sm font-semibold text-foreground">Infrastructure Coverage Spotlight</h2>
+          <h2 className="text-sm font-semibold text-foreground">Infrastructure Governance Gaps</h2>
           <p className="text-[10px] text-muted-foreground mt-0.5">
-            Structural gaps — not violations. For individual findings see the action queue above.
+            Asset-level ownership and policy coverage gaps — not violations.
             <span className="ml-2 inline-flex items-center gap-2">
-              <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-purple inline-block"/>Discovery</span>
-              <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber inline-block"/>Control</span>
-              <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-coral inline-block"/>Ownership</span>
+              <span className="inline-flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-coral inline-block" />
+                Ownership
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber inline-block" />
+                Policy Coverage
+              </span>
             </span>
           </p>
         </div>
-        <span className="text-[10px] text-muted-foreground tabular-nums">
-          {TOTAL_OUTSIDE_PERIMETER} assets outside trust perimeter
-        </span>
+        <div className="text-right">
+          <div className="text-sm font-semibold text-foreground tabular-nums">{TOTAL_OUTSIDE_PERIMETER.toLocaleString()}</div>
+          <div className="text-[9.5px] text-muted-foreground leading-tight">assets outside<br/>governance perimeter</div>
+        </div>
       </div>
 
+      {/* Five tiles */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2.5">
         {TILES.map(tile => {
           const Icon = tile.icon;
@@ -142,6 +148,7 @@ export default function InfrastructurePostureStrip() {
 
           return (
             <div key={tile.name} className="bg-secondary/30 hover:bg-secondary/50 rounded-lg border border-transparent hover:border-border transition-all flex flex-col">
+              {/* Tile header */}
               <button
                 onClick={() => navTile(tile.assetType)}
                 className="flex items-center justify-between px-3 pt-3 pb-2 text-left w-full group"
@@ -153,42 +160,48 @@ export default function InfrastructurePostureStrip() {
                 <span className="text-[9.5px] text-muted-foreground/70 tabular-nums flex-shrink-0">{tile.enterpriseTotal}</span>
               </button>
 
+              {/* Governance coverage bar */}
               <div className="px-3 pb-2">
                 <div className="flex h-1.5 rounded-full overflow-hidden bg-muted/40 mb-1">
-                  <div style={{ width: `${tile.atRisk}%` }} className="bg-coral" />
+                  <div style={{ width: `${tile.outsidePerimeter}%` }} className="bg-coral" />
+                  <div style={{ width: `${100 - tile.outsidePerimeter}%` }} className="bg-teal/60" />
                 </div>
                 <div className="flex items-center justify-between text-[10px]">
-                  <span className="text-coral font-semibold tabular-nums">{tile.atRisk}% at risk</span>
+                  <span className="text-coral font-semibold tabular-nums">
+                    {tile.outsidePerimeter}% outside perimeter
+                  </span>
                   <span className={`flex items-center gap-0.5 tabular-nums ${trendColor}`} title="7-day trend">
                     <TrendIcon className="w-2.5 h-2.5" />
                     {tile.trend > 0 ? '+' : ''}{tile.trend.toFixed(1)}%
+                    <span className="text-muted-foreground text-[9px] ml-0.5">7d</span>
                   </span>
                 </div>
               </div>
 
+              {/* Two fixed gap rows */}
               <div className="px-2 pb-2 border-t border-border/40 pt-1.5 space-y-0.5">
-                {tile.gaps.map(g => (
+                {tile.gaps.map(gap => (
                   <button
-                    key={g.dimension}
-                    onClick={() => navGap(tile.assetType, g.coverageGap)}
+                    key={gap.dimension}
+                    onClick={() => navGap(tile.assetType, gap.coverageGap, gap.enterpriseCount)}
                     className="w-full flex flex-col px-2 py-1.5 rounded hover:bg-background/60 transition-colors text-left group/row"
                   >
                     <div className="flex items-center justify-between w-full mb-0.5">
                       <div className="flex items-center gap-1.5">
-                        <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${DIM_DOT[g.dimension]}`} />
-                        <span className={`text-[9.5px] font-semibold uppercase tracking-wider ${DIM_COLOR[g.dimension]}`}>
-                          {g.dimension}
+                        <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${DIM_DOT[gap.dimension]}`} />
+                        <span className={`text-[9.5px] font-semibold uppercase tracking-wider ${DIM_COLOR[gap.dimension]}`}>
+                          {gap.dimension}
                         </span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <span className={`text-sm font-bold tabular-nums leading-none ${DIM_COLOR[g.dimension]}`}>
-                          {g.value}
+                        <span className={`text-sm font-bold tabular-nums leading-none ${DIM_COLOR[gap.dimension]}`}>
+                          {gap.enterpriseCount.toLocaleString()}
                         </span>
                         <ArrowRight className="w-2.5 h-2.5 text-teal opacity-0 group-hover/row:opacity-100 transition-opacity flex-shrink-0" />
                       </div>
                     </div>
                     <p className="text-[10px] text-muted-foreground leading-snug pl-3">
-                      {g.label}
+                      {gap.label}
                     </p>
                   </button>
                 ))}
