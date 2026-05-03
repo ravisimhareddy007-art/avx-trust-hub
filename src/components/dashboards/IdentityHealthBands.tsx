@@ -7,6 +7,7 @@ import { VIOLATION_FILTERS } from '@/lib/filters/cryptoFilters';
 // ── Types ──────────────────────────────────────────────────────────────────
 
 interface ViolationRow {
+  id: string;
   label: string;
   enterpriseCount: number;
   filters: Record<string, string>;
@@ -146,7 +147,13 @@ export default function IdentityHealthBands() {
             >
               {/* ── Tile header ── */}
               <button
-                onClick={() => nav(b.topFilter)}
+                onClick={() => {
+                  if (process.env.NODE_ENV === 'development') {
+                    console.log('[AVX Drilldown] Tile click:', { type: b.type, tab: 'identities' });
+                  }
+                  setFilters({ type: b.type, tab: 'identities' });
+                  setCurrentPage('inventory');
+                }}
                 className="flex items-center justify-between px-3 pt-3 pb-2 text-left w-full group"
               >
                 <div className="flex items-center gap-2 min-w-0">
@@ -176,7 +183,13 @@ export default function IdentityHealthBands() {
                 {b.violations.map(v => (
                   <button
                     key={v.label}
-                    onClick={() => nav(v.filters)}
+                    onClick={() => {
+                      if (process.env.NODE_ENV === 'development') {
+                        console.log('[AVX Drilldown] Row click:', { filterId: v.id });
+                      }
+                      setFilters({ tab: 'identities', filterId: v.id });
+                      setCurrentPage('inventory');
+                    }}
                     className="w-full flex items-center gap-2 px-1.5 py-1 rounded hover:bg-background/60 transition-colors text-left group/row"
                   >
                     <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${SEV_DOT[v.severity]}`} />
