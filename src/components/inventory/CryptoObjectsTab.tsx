@@ -696,11 +696,12 @@ function DetailPanel({
 export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   const [typeFilter, setTypeFilter]     = useState('All');
   const [search, setSearch]             = useState('');
-  const [algFilter, setAlgFilter]       = useState('');
-  const [envFilter, setEnvFilter]       = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [pqcFilter, setPqcFilter]       = useState('');
-  const [ownerFilter, setOwnerFilter]   = useState('');
+  const [algFilter, setAlgFilter]       = useState<string[]>([]);
+  const [envFilter, setEnvFilter]       = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [pqcFilter, setPqcFilter]       = useState<string[]>([]);
+  const [ownerFilter, setOwnerFilter]   = useState<string[]>([]);
+  const [filterPanelOpen, setFilterPanelOpen] = useState(false);
   const [detailAsset, setDetailAsset]   = useState<CryptoAsset | null>(null);
   const [ticketAsset, setTicketAsset]   = useState<CryptoAsset | null>(null);
   const [ticketAction, setTicketAction] = useState('fix');
@@ -716,10 +717,10 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   const { type: navType, status: navStatus, algorithm: navAlg, owner: navOwner, pqcRisk: navPqc } = navFilters;
   useEffect(() => {
     if (navType)   setTypeFilter(navType);
-    if (navStatus) setStatusFilter(navStatus);
-    if (navAlg)    setAlgFilter(navAlg);
-    if (navOwner)  setOwnerFilter(navOwner);
-    if (navPqc)    setPqcFilter(navPqc);
+    if (navStatus) setStatusFilter([navStatus]);
+    if (navAlg)    setAlgFilter([navAlg]);
+    if (navOwner)  setOwnerFilter([navOwner]);
+    if (navPqc)    setPqcFilter([navPqc]);
   }, [navType, navStatus, navAlg, navOwner, navPqc]);
 
   useEffect(() => {
