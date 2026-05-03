@@ -556,6 +556,7 @@ function StageDiscover({ onNext, nav }: { onNext: () => void; nav: (f: Record<st
 // ── Stage 2: Assess ───────────────────────────────────────────────────────────
 
 function StageAssess({ onNext, nav }: { onNext: () => void; nav: (f: Record<string, string>) => void }) {
+  const [addedToWave, setAddedToWave] = React.useState<Record<string, boolean>>({});
   return (
     <div className="space-y-4">
 
@@ -590,7 +591,23 @@ function StageAssess({ onNext, nav }: { onNext: () => void; nav: (f: Record<stri
                   <p className="text-[9.5px] text-muted-foreground">{item.latency}</p>
                 </div>
               </div>
-              <p className="text-[9.5px] text-muted-foreground/70 border-t border-border/30 pt-1.5">{item.note}</p>
+              <div className="flex items-center justify-between border-t border-border/30 pt-1.5">
+                <p className="text-[9.5px] text-muted-foreground/70 flex-1">{item.note}</p>
+                {item.score < 70 && (
+                  <button
+                    onClick={() => toast.success('Blocker ticket created', {
+                      description: `${item.cat} — agility ${item.score}% · ${item.swUpdatable ? 'Software' : 'Hardware'} change required · ${item.keyLimit}`,
+                    })}
+                    className={`ml-3 flex-shrink-0 text-[9px] font-semibold px-2 py-1 rounded whitespace-nowrap ${
+                      item.score < 40
+                        ? 'bg-coral/10 text-coral hover:bg-coral/20'
+                        : 'bg-amber/10 text-amber hover:bg-amber/20'
+                    } transition-colors`}
+                  >
+                    {item.score < 40 ? 'Flag as Critical Blocker' : 'Flag as Blocker'}
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -623,9 +640,28 @@ function StageAssess({ onNext, nav }: { onNext: () => void; nav: (f: Record<stri
                   <AlertTriangle className="w-3 h-3 text-amber flex-shrink-0 mt-0.5" />
                   <p className="text-[9.5px] text-muted-foreground">{r.blocker}</p>
                 </div>
-                <div className="flex items-start gap-1.5 px-3 py-2">
-                  <Shield className="w-3 h-3 text-teal flex-shrink-0 mt-0.5" />
-                  <p className="text-[9.5px] text-muted-foreground">{r.compensating}</p>
+                <div className="flex items-start justify-between gap-1.5 px-3 py-2">
+                  <div className="flex items-start gap-1.5 flex-1">
+                    <Shield className="w-3 h-3 text-teal flex-shrink-0 mt-0.5" />
+                    <p className="text-[9.5px] text-muted-foreground">{r.compensating}</p>
+                  </div>
+                  {addedToWave[r.from] ? (
+                    <span className="flex-shrink-0 ml-2 text-[9px] font-semibold px-2 py-1 rounded bg-teal/10 text-teal whitespace-nowrap flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> Added to Wave 1
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setAddedToWave(prev => ({ ...prev, [r.from]: true }));
+                        toast.success(`Added to Wave 1`, {
+                          description: `${r.from} → ${r.to} · ${r.objects.toLocaleString()} objects queued for Q2 2026 migration`,
+                        });
+                      }}
+                      className="flex-shrink-0 ml-2 text-[9px] font-semibold px-2 py-1 rounded bg-purple/10 text-purple-light hover:bg-purple/20 whitespace-nowrap transition-colors"
+                    >
+                      + Add to Wave 1
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -645,27 +681,51 @@ function StageAssess({ onNext, nav }: { onNext: () => void; nav: (f: Record<stri
           <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Low Data Sensitivity</div>
           <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">High Data Sensitivity</div>
           <div className="text-[10px] font-semibold text-muted-foreground text-right pr-3 self-center leading-tight">Active Harvest<br />Risk</div>
-          <div className="bg-amber/10 border border-amber/30 rounded-xl p-4">
+          <button
+            onClick={() => nav({ tab: 'identities', pqcRisk: 'High' })}
+            className="bg-amber/10 border border-amber/30 rounded-xl p-4 hover:bg-amber/20 transition-colors text-left group"
+          >
             <p className="text-2xl font-bold text-amber tabular-nums">2,000</p>
             <p className="text-[9px] text-muted-foreground mt-1">High — Wave 2 · Q3 2026</p>
-          </div>
-          <div className="bg-coral/10 border border-coral/30 rounded-xl p-4">
+            <p className="text-[9px] text-amber/60 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">View in Inventory →</p>
+          </button>
+          <button
+            onClick={() => nav({ tab: 'identities', pqcRisk: 'Critical' })}
+            className="bg-coral/10 border border-coral/30 rounded-xl p-4 hover:bg-coral/20 transition-colors text-left group"
+          >
             <p className="text-2xl font-bold text-coral tabular-nums">1,842</p>
             <p className="text-[9px] text-muted-foreground mt-1">Critical — Wave 1 · Migrate NOW</p>
-          </div>
+            <div className="mt-2 pt-2 border-t border-coral/20">
+              <span className="text-[9px] font-semibold text-coral">Highest priority · Begin Wave 1 planning →</span>
+            </div>
+          </button>
           <div className="text-[10px] font-semibold text-muted-foreground text-right pr-3 self-center leading-tight">Passive<br />Risk</div>
-          <div className="bg-secondary rounded-xl p-4">
+          <button
+            onClick={() => nav({ tab: 'identities', pqcRisk: 'Medium' })}
+            className="bg-secondary rounded-xl p-4 hover:bg-secondary/80 transition-colors text-left group"
+          >
             <p className="text-2xl font-bold text-muted-foreground tabular-nums">5,618</p>
             <p className="text-[9px] text-muted-foreground mt-1">Medium — Wave 3 · 2027+</p>
-          </div>
-          <div className="bg-amber/10 border border-amber/20 rounded-xl p-4">
+            <p className="text-[9px] text-muted-foreground/50 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">View in Inventory →</p>
+          </button>
+          <button
+            onClick={() => nav({ tab: 'identities', pqcRisk: 'High' })}
+            className="bg-amber/10 border border-amber/20 rounded-xl p-4 hover:bg-amber/20 transition-colors text-left group"
+          >
             <p className="text-2xl font-bold text-amber tabular-nums">3,200</p>
             <p className="text-[9px] text-muted-foreground mt-1">High — Wave 2 · Q4 2026</p>
-          </div>
+            <p className="text-[9px] text-amber/60 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">View in Inventory →</p>
+          </button>
         </div>
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => nav({ tab: 'identities', pqcRisk: 'Critical' })}
+          className="text-[11px] text-teal hover:text-teal/80 transition-colors flex items-center gap-1"
+        >
+          <ArrowRight className="w-3.5 h-3.5" /> View all Critical objects in Inventory
+        </button>
         <button onClick={onNext} className="flex items-center gap-2 px-5 py-2 rounded-lg bg-purple/15 text-purple-light border border-purple/30 hover:bg-purple/25 text-sm font-semibold transition-colors">
           Create Migration Plan <ChevronRight className="w-4 h-4" />
         </button>
