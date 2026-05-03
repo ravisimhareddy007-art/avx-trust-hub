@@ -14,6 +14,17 @@ import AgentDetailPanel from '@/components/inventory/AgentDetailPanel';
 import CryptoObjectRiskDrawer from '@/components/risk/CryptoObjectRiskDrawer';
 import DeployToDeviceModal from '@/components/integrations/DeployToDeviceModal';
 import TicketDraftModal, { TicketDraft } from '@/components/inventory/TicketDraftModal';
+import { computeCRS } from '@/lib/risk/crs';
+
+// CRS lookup memoised per render via module-level WeakMap
+const _crsCache = new WeakMap<CryptoAsset, number>();
+function crsScore(a: CryptoAsset): number {
+  const cached = _crsCache.get(a);
+  if (cached !== undefined) return cached;
+  const v = computeCRS(a).crs;
+  _crsCache.set(a, v);
+  return v;
+}
 
 interface Props { onCreateTicket: (ctx: unknown) => void; }
 
