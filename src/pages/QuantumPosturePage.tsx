@@ -147,11 +147,22 @@ function StageDiscover({ onNext, nav }: { onNext: () => void; nav: (f: Record<st
           { label: 'HNDL Active Exposure',       value: HNDL_ACTIVE.toLocaleString(),      color: 'text-coral', sub: 'Internet-facing + long-lived sensitive data' },
           { label: 'PQC-Safe Today',             value: PQC_SAFE.toLocaleString(),          color: 'text-teal',  sub: 'ML-KEM only · 1.5% of vulnerable estate migrated' },
         ].map(k => (
-          <div key={k.label} className="bg-card rounded-xl border border-border p-4">
+          <button
+            key={k.label}
+            onClick={() => {
+              if (k.label === 'Quantum-Vulnerable Objects') nav({ tab: 'identities', pqcRisk: 'Critical' });
+              else if (k.label === 'HNDL Active Exposure') nav({ tab: 'identities', pqcRisk: 'Critical' });
+              else if (k.label === 'PQC-Safe Today') nav({ tab: 'identities', pqcRisk: 'Safe' });
+            }}
+            className="bg-card rounded-xl border border-border p-4 text-left hover:border-teal/40 hover:bg-card/80 transition-all group"
+          >
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">{k.label}</p>
             <p className={`text-3xl font-bold tabular-nums ${k.color}`}>{k.value}</p>
             <p className="text-[10px] text-muted-foreground mt-1">{k.sub}</p>
-          </div>
+            <div className="flex justify-end mt-2">
+              <ArrowRight className="w-3 h-3 text-teal opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+          </button>
         ))}
       </div>
 
@@ -178,13 +189,20 @@ function StageDiscover({ onNext, nav }: { onNext: () => void; nav: (f: Record<st
               contentStyle={{ background: 'hsl(225 30% 14%)', border: '1px solid hsl(225 20% 20%)', borderRadius: 8, fontSize: 11 }}
               labelStyle={{ color: 'hsl(220 20% 90%)' }}
             />
-            <Bar dataKey="count" name="Objects" radius={[4, 4, 0, 0]}>
+            <Bar
+              dataKey="count"
+              name="Objects"
+              radius={[4, 4, 0, 0]}
+              onClick={(data: any) => nav({ tab: 'identities', algorithm: data.algo })}
+              style={{ cursor: 'pointer' }}
+            >
               {ALGO_DATA.map((d, i) => (
                 <Cell key={i} fill={d.vulnerable ? 'hsl(16 72% 51%)' : 'hsl(162 72% 37%)'} />
               ))}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
+        <p className="text-[9.5px] text-muted-foreground mt-2 text-center">Click any bar to view those objects in Inventory</p>
       </div>
 
       {/* PQC Risk Heatmap */}
@@ -327,7 +345,11 @@ function StageAssess({ onNext }: { onNext: () => void }) {
           </thead>
           <tbody>
             {COMPLEXITY.map(r => (
-              <tr key={r.from} className="border-b border-border/50 last:border-0">
+              <tr
+                key={r.from}
+                className="border-b border-border/50 last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer group"
+                onClick={() => nav({ tab: 'identities', algorithm: r.from })}
+              >
                 <td className="py-2.5 font-mono text-coral">{r.from}</td>
                 <td className="py-2.5 font-mono text-teal">{r.to}</td>
                 <td className="py-2.5 text-right tabular-nums font-semibold">{r.objects.toLocaleString()}</td>
@@ -335,6 +357,9 @@ function StageAssess({ onNext }: { onNext: () => void }) {
                   <span className={`text-[10px] font-bold ${CX_COLOR[r.cx]}`}>{r.cx}</span>
                 </td>
                 <td className="py-2.5 text-muted-foreground pl-4 text-[10.5px]">{r.blocker}</td>
+                <td className="py-2.5 text-right pr-1">
+                  <ArrowRight className="w-3 h-3 text-teal opacity-0 group-hover:opacity-100 transition-opacity" />
+                </td>
               </tr>
             ))}
           </tbody>
