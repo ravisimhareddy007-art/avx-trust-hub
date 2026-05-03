@@ -8,7 +8,9 @@ import { StatusBadge, EnvBadge, PQCBadge, DaysToExpiry } from '@/components/shar
 import {
   Search, X, Info, Atom, FileEdit, ArrowRight,
   RefreshCw, UserPlus, Ticket, Lock, ChevronUp, ChevronDown,
+  Filter as FilterIcon,
 } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { toast } from 'sonner';
 import AgentDetailPanel from '@/components/inventory/AgentDetailPanel';
 import CryptoObjectRiskDrawer from '@/components/risk/CryptoObjectRiskDrawer';
