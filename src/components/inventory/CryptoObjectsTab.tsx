@@ -243,16 +243,33 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
       <div className="flex-1 min-h-0 flex flex-col p-3 gap-3 overflow-hidden">
         {/* Type filter — replaced horizontal scroll-tabs with a dropdown */}
         <div className="flex items-center gap-2 border-b border-border pb-2 flex-shrink-0">
-          <span className="text-[10px] font-medium text-muted-foreground">Identity type:</span>
+          <span className="text-[10px] font-medium text-muted-foreground">
+            {dashboardFilterId && VIOLATION_FILTERS[dashboardFilterId]
+              ? VIOLATION_FILTERS[dashboardFilterId].countNoun.charAt(0).toUpperCase() + VIOLATION_FILTERS[dashboardFilterId].countNoun.slice(1)
+              : 'Identity type:'}
+          </span>
           <select
             value={typeFilter}
-            onChange={e => setTypeFilter(e.target.value)}
+            onChange={e => { setTypeFilter(e.target.value); setDashboardFilterId(''); }}
             className="px-2 py-1 bg-muted border border-border rounded text-[11px] font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-teal"
           >
             {typeFilters.map(t => (
               <option key={t.key} value={t.key}>{t.label}</option>
             ))}
           </select>
+
+          {dashboardFilterId && VIOLATION_FILTERS[dashboardFilterId] && (() => {
+            const filter = VIOLATION_FILTERS[dashboardFilterId];
+            const sampleCount = filtered.length;
+            const estateCount = filter.enterpriseCount;
+            if (sampleCount >= estateCount) return null;
+            return (
+              <span className="ml-auto text-[10px] text-muted-foreground flex items-center gap-1">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-teal flex-shrink-0" />
+                Showing {sampleCount.toLocaleString()} representative records · {estateCount.toLocaleString()} in full estate
+              </span>
+            );
+          })()}
         </div>
 
         {/* Search + filter dropdowns */}
