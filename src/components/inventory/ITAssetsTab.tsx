@@ -111,6 +111,7 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [assetStack, setAssetStack] = useState<ITAsset[]>([]);
   const [blastModalOpen, setBlastModalOpen] = useState(false);
+  const [itTicketAsset, setItTicketAsset] = useState<ITAsset | null>(null);
   const { manualITAssets } = useInventoryRegistry();
   const { setSelectedEntity } = useAgent();
   const { biMap, setBI } = useRisk();
