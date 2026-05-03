@@ -285,39 +285,78 @@ function MoscaBadge({ wave }: { wave: typeof WAVES[0] }) {
 
 // ── Stage 1: Discover ─────────────────────────────────────────────────────────
 
-function AlgoBarChart({ onBarClick }: { onBarClick: (algo: string) => void }) {
-  const maxVal = Math.max(...ALGO_DATA.map(d => d.count));
+function AlgoChart({ nav }: { nav: (f: Record<string, string>) => void }) {
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  React.useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    let chart: { destroy: () => void } | null = null;
+    const init = () => {
+      const Chart = (window as { Chart?: new (...args: unknown[]) => unknown }).Chart;
+      if (!Chart) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      chart = new (Chart as new (ctx: CanvasRenderingContext2D, config: unknown) => { destroy: () => void })(ctx, {
+        type: 'bar',
+        data: {
+          labels: ALGO_DATA.map(d => d.algo),
+          datasets: [{
+            label: 'Objects',
+            data: ALGO_DATA.map(d => d.count),
+            backgroundColor: ALGO_DATA.map(d => d.fill),
+            borderRadius: 4,
+            borderSkipped: false,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          onClick: (_: unknown, elements: { index: number }[]) => {
+            if (elements.length > 0) {
+              const idx = elements[0].index;
+              nav({ tab: 'identities', algorithm: ALGO_DATA[idx].algo });
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (c: { dataIndex: number; formattedValue: string }) =>
+                  `${c.formattedValue} objects · ${ALGO_DATA[c.dataIndex].use}`,
+                title: (items: { label: string }[]) =>
+                  `${items[0].label} — ${ALGO_DATA.find(d => d.algo === items[0].label)?.vulnerable ? 'Quantum-vulnerable' : 'Quantum-safe'}`,
+              },
+            },
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: 'hsl(220, 15%, 55%)', font: { size: 10 } } },
+            y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'hsl(220, 15%, 55%)', font: { size: 10 } } },
+          },
+        },
+      });
+    };
+    if ((window as { Chart?: unknown }).Chart) {
+      init();
+    } else {
+      let script = document.querySelector<HTMLScriptElement>('script[data-chartjs]');
+      if (!script) {
+        script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js';
+        script.dataset.chartjs = 'true';
+        document.head.appendChild(script);
+      }
+      script.addEventListener('load', init);
+    }
+    return () => { if (chart) chart.destroy(); };
+  }, [nav]);
   return (
-    <div className="w-full">
-      <div className="flex items-end gap-2 h-44 pb-1">
-        {ALGO_DATA.map(d => {
-          const heightPct = Math.max(2, (d.count / maxVal) * 100);
-          return (
-            <div
-              key={d.algo}
-              className="flex-1 flex flex-col items-center justify-end gap-1.5 cursor-pointer group"
-              onClick={() => onBarClick(d.algo)}
-              title={`${d.algo} · ${d.count.toLocaleString()} objects · ${d.use}`}
-            >
-              <span className="text-[8.5px] tabular-nums font-semibold opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: d.fill }}>
-                {d.count.toLocaleString()}
-              </span>
-              <div
-                className="w-full rounded-t-md transition-all duration-300 group-hover:opacity-80"
-                style={{ height: `${heightPct}%`, background: d.fill }}
-              />
-            </div>
-          );
-        })}
-      </div>
-      <div className="flex gap-2 mt-2">
-        {ALGO_DATA.map(d => (
-          <div key={d.algo} className="flex-1 text-center">
-            <span className="text-[8.5px] text-muted-foreground leading-tight block">{d.algo}</span>
-          </div>
-        ))}
-      </div>
-      <p className="text-[9.5px] text-muted-foreground text-center mt-2">Hover for count · Click any bar to view objects in Inventory</p>
+    <div style={{ position: 'relative', width: '100%', height: '200px' }}>
+      <canvas
+        ref={canvasRef}
+        role="img"
+        aria-label="Algorithm breakdown: RSA-2048 8420, RSA-4096 2100, ECC P-256 1800, ECC P-384 340, AES-256 4200, ML-KEM 187 objects"
+        style={{ cursor: 'pointer' }}
+      />
     </div>
   );
 }
@@ -363,7 +402,8 @@ function StageDiscover({ onNext, nav }: { onNext: () => void; nav: (f: Record<st
             <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: 'hsl(162 72% 37%)' }} />Quantum-safe</span>
           </div>
         </div>
-        <AlgoBarChart onBarClick={(algo) => nav({ tab: 'identities', algorithm: algo })} />
+        <AlgoChart nav={nav} />
+        <p className="text-[9.5px] text-muted-foreground text-center mt-2">Click any bar to view those objects in Inventory</p>
       </div>
 
       {/* PQC Risk Heatmap — every cell clickable */}
