@@ -147,7 +147,13 @@ export default function IdentityHealthBands() {
             >
               {/* ── Tile header ── */}
               <button
-                onClick={() => nav(b.topFilter)}
+                onClick={() => {
+                  if (process.env.NODE_ENV === 'development') {
+                    console.log('[AVX Drilldown] Tile click:', { type: b.type, tab: 'identities' });
+                  }
+                  setFilters({ type: b.type, tab: 'identities' });
+                  setCurrentPage('inventory');
+                }}
                 className="flex items-center justify-between px-3 pt-3 pb-2 text-left w-full group"
               >
                 <div className="flex items-center gap-2 min-w-0">
