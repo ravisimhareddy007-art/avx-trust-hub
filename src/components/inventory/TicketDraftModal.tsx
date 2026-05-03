@@ -287,7 +287,7 @@ export default function TicketDraftModal({ asset, action, onClose, onConfirm }: 
           {ACTION_ICON[action] ?? <Sparkles className="w-4 h-4 text-teal" />}
           <div>
             <p className="text-sm font-semibold text-foreground">TrustOps Ticket — AI Pre-fill</p>
-            <p className="text-[10px] text-muted-foreground">{asset.name} · Review and confirm before creating</p>
+            <p className="text-[10px] text-muted-foreground">{asset?.name ?? 'Infrastructure asset'} · Review and confirm before creating</p>
           </div>
           <button onClick={onClose} className="ml-auto p-1.5 hover:bg-secondary rounded-lg">
             <X className="w-4 h-4 text-muted-foreground" />
