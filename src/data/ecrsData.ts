@@ -157,16 +157,17 @@ export const drivers: RiskDriver[] = [
 ];
 
 export const QTH_DATA = {
-  pqrScore: 45,
-  totalVulnerable: 247_334,
-  migrated: 234,
-  inFlight: 100,
+  pqrScore: 14,
+  totalVulnerable: 12660,
+  migrated: 187,
+  inFlight: 847,
   nistDeadline: '2030',
   estimatedCompletion: '2031',
   topAlgorithms: [
-    { algorithm: 'RSA-2048', count: 47_201, harvested: true },
-    { algorithm: 'ECDSA P-256', count: 89_441, harvested: true },
-    { algorithm: 'ML-KEM-768', count: 234, harvested: false },
+    { algorithm: 'RSA-2048',   count: 8420,  harvested: true  },
+    { algorithm: 'ECC P-256',  count: 1800,  harvested: true  },
+    { algorithm: 'RSA-4096',   count: 2100,  harvested: true  },
+    { algorithm: 'ML-KEM-768', count: 187,   harvested: false },
   ],
 };
 
