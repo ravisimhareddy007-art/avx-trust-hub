@@ -181,7 +181,7 @@ export default function IdentityHealthBands() {
                       {v.label}
                     </span>
                     <span className={`text-[10.5px] font-semibold tabular-nums flex-shrink-0 ${SEV_COUNT[v.severity]}`}>
-                      {v.count.toLocaleString()}
+                      {v.enterpriseCount.toLocaleString()}
                     </span>
                     <ArrowRight className="w-2.5 h-2.5 text-teal opacity-0 group-hover/row:opacity-100 transition-opacity flex-shrink-0" />
                   </button>
