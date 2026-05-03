@@ -99,7 +99,7 @@ export const ESTATE_SUMMARY = {
   codeSigning:        2180,
   codeSigningAtRisk:  13,
   codeSigningTrend:   '-0.3%',
-  totalIdentities:    504000,
+  totalIdentities:    44946,
 } as const;
 
 export const mockAssets: CryptoAsset[] = [
