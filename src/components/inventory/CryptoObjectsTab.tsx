@@ -854,9 +854,15 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                 <tr className="border-b border-border">
                   {cols.map(col => (
                     <th key={col.key} className={`text-left py-2 px-2 font-medium text-muted-foreground ${col.cls}`}>
-                      {col.key === 'daysToExpiry' ? (
-                        <button onClick={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')} className="inline-flex items-center gap-1 hover:text-foreground">
-                          {col.label} {sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                      {col.key === 'riskScore' || col.key === 'daysToExpiry' ? (
+                        <button
+                          onClick={() => {
+                            if (sortKey === col.key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+                            else { setSortKey(col.key as 'riskScore' | 'daysToExpiry'); setSortDir(col.key === 'riskScore' ? 'desc' : 'asc'); }
+                          }}
+                          className={`inline-flex items-center gap-1 hover:text-foreground ${sortKey === col.key ? 'text-foreground' : ''}`}
+                        >
+                          {col.label} {sortKey === col.key ? (sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />) : null}
                         </button>
                       ) : col.label}
                     </th>
