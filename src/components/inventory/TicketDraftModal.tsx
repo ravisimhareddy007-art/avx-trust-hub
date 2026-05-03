@@ -245,17 +245,37 @@ export default function TicketDraftModal({ asset, action, onClose, onConfirm }: 
   const [editingStep, setEditingStep] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!asset) return;
     setThinking(true);
     setDraft(null);
     const t = setTimeout(() => {
-      setDraft(generateTicketDraft(asset, action));
+      if (asset) {
+        setDraft(generateTicketDraft(asset, action));
+      } else {
+        setDraft({
+          title: 'Remediate infrastructure asset',
+          type: 'Remediation',
+          priority: 'High',
+          assignee: 'Unassigned',
+          module: 'Infrastructure',
+          description: 'Review violations and remediation steps for this infrastructure asset.',
+          rootCause: 'Policy violations detected during last scan.',
+          remediationSteps: [
+            'Review active violations on this asset',
+            'Identify root cause per violation',
+            'Execute remediation steps',
+            'Re-scan to confirm resolution',
+          ],
+          affectedSystems: 'See asset detail',
+          complianceImpact: 'Internal Security Policy',
+          sla: 'Resolve within 72 hours — P2 SLA',
+        });
+      }
       setThinking(false);
     }, 1200);
     return () => clearTimeout(t);
   }, [asset, action]);
 
-  if (!asset) return null;
+  // Modal renders for both CryptoAsset and null (IT-asset) cases.
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center">
