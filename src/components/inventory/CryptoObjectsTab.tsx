@@ -691,6 +691,133 @@ function DetailPanel({
   );
 }
 
+// ── Filter Panel (side sheet) ─────────────────────────────────────────────────
+
+interface FilterPanelProps {
+  open: boolean;
+  onClose: () => void;
+  algorithms: string[];
+  owners: string[];
+  algFilter: string[];   setAlgFilter:    React.Dispatch<React.SetStateAction<string[]>>;
+  envFilter: string[];   setEnvFilter:    React.Dispatch<React.SetStateAction<string[]>>;
+  statusFilter: string[];setStatusFilter: React.Dispatch<React.SetStateAction<string[]>>;
+  pqcFilter: string[];   setPqcFilter:    React.Dispatch<React.SetStateAction<string[]>>;
+  ownerFilter: string[]; setOwnerFilter:  React.Dispatch<React.SetStateAction<string[]>>;
+}
+
+function FilterChips({
+  options, selected, onToggle,
+}: { options: { v: string; l: string }[]; selected: string[]; onToggle: (v: string) => void }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {options.map(o => {
+        const active = selected.includes(o.v);
+        return (
+          <button
+            key={o.v}
+            onClick={() => onToggle(o.v)}
+            className={`px-2 py-1 rounded text-[10.5px] font-medium border transition-colors ${
+              active
+                ? 'border-teal/40 bg-teal/15 text-teal'
+                : 'border-border bg-muted text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {o.l}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function FilterSection({ title, onReset, children }: { title: string; onReset?: () => void; children: React.ReactNode }) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{title}</h4>
+        {onReset && (
+          <button onClick={onReset} className="text-[10px] text-muted-foreground hover:text-coral">Reset</button>
+        )}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function FilterPanel(props: FilterPanelProps) {
+  const {
+    open, onClose, algorithms, owners,
+    algFilter, setAlgFilter, envFilter, setEnvFilter,
+    statusFilter, setStatusFilter, pqcFilter, setPqcFilter,
+    ownerFilter, setOwnerFilter,
+  } = props;
+
+  const toggle = (setter: React.Dispatch<React.SetStateAction<string[]>>) => (v: string) =>
+    setter(prev => prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v]);
+
+  const clearAll = () => {
+    setAlgFilter([]); setEnvFilter([]); setStatusFilter([]); setPqcFilter([]); setOwnerFilter([]);
+  };
+
+  const algOptions = [{ v: 'weak', l: 'Weak (RSA/SHA-1)' }, ...algorithms.map(a => ({ v: a, l: a }))];
+  const ownerOptions = owners.map(o => ({ v: o, l: o }));
+
+  return (
+    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent side="right" className="w-[360px] sm:w-[400px] p-0 flex flex-col">
+        <SheetHeader className="px-4 py-3 border-b border-border flex-row items-center justify-between space-y-0">
+          <SheetTitle className="text-sm">Filters</SheetTitle>
+          <button onClick={clearAll} className="text-[11px] text-coral hover:underline">Clear All</button>
+        </SheetHeader>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-5">
+          <div className="space-y-3">
+            <h3 className="text-[11px] font-semibold text-foreground">Crypto</h3>
+            <FilterSection title="Algorithm" onReset={algFilter.length ? () => setAlgFilter([]) : undefined}>
+              <FilterChips options={algOptions} selected={algFilter} onToggle={toggle(setAlgFilter)} />
+            </FilterSection>
+            <FilterSection title="PQC Risk" onReset={pqcFilter.length ? () => setPqcFilter([]) : undefined}>
+              <FilterChips
+                options={['Critical','High','Medium','Low','Safe'].map(v => ({ v, l: v }))}
+                selected={pqcFilter} onToggle={toggle(setPqcFilter)} />
+            </FilterSection>
+          </div>
+
+          <div className="space-y-3">
+            <h3 className="text-[11px] font-semibold text-foreground">Asset Context</h3>
+            <FilterSection title="Environment" onReset={envFilter.length ? () => setEnvFilter([]) : undefined}>
+              <FilterChips
+                options={['Production','Staging','Development'].map(v => ({ v, l: v }))}
+                selected={envFilter} onToggle={toggle(setEnvFilter)} />
+            </FilterSection>
+            <FilterSection title="Owner" onReset={ownerFilter.length ? () => setOwnerFilter([]) : undefined}>
+              <FilterChips options={ownerOptions} selected={ownerFilter} onToggle={toggle(setOwnerFilter)} />
+            </FilterSection>
+          </div>
+
+          <div className="space-y-3">
+            <h3 className="text-[11px] font-semibold text-foreground">Status</h3>
+            <FilterSection title="Status" onReset={statusFilter.length ? () => setStatusFilter([]) : undefined}>
+              <FilterChips
+                options={['Active','Expiring','Expired','Orphaned','Revoked'].map(v => ({ v, l: v }))}
+                selected={statusFilter} onToggle={toggle(setStatusFilter)} />
+            </FilterSection>
+          </div>
+        </div>
+
+        <div className="px-4 py-3 border-t border-border">
+          <button
+            onClick={onClose}
+            className="w-full py-2 rounded bg-teal text-primary-foreground hover:bg-teal-light text-xs font-semibold"
+          >
+            Done
+          </button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function CryptoObjectsTab({ onCreateTicket }: Props) {
