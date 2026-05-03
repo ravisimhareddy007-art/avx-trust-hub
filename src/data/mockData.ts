@@ -48,40 +48,58 @@ export interface CryptoAsset {
 }
 
 export const ESTATE_SUMMARY = {
-  certificates: 14847,
-  sshAndEncryptionKeys: 8412,
-  secretsAndAPIKeys: 18420,
-  aiAgentTokens: 472000,
-  codeSigning: 2180,
-  totalIdentities: 504000,
-  certsAtRisk: 16,
-  sshAtRisk: 10,
-  secretsAtRisk: 23,
-  aiTokensAtRisk: 38,
-  codeSigningAtRisk: 13,
-  certsExpiring30d: 1284,
-  certsExpiring7d: 187,
-  certsExpired: 47,
-  certsWeakAlgo: 47,
-  certsSelfSigned: 12,
-  sshNotRotated90d: 841,
-  sshOrphaned: 3218,
-  sshSuspicious: 44,
-  sshRogue: 18,
-  sshShared: 8,
-  secretsExposedCode: 4230,
-  secretsHardcoded: 142,
-  secretsUnrotated90d: 1240,
-  secretsOrphaned: 445,
-  aiTokensOverPriv: 6840,
-  aiTokensNoRotationPolicy: 179000,
-  aiTokensAdminPriv: 6,
-  aiTokensExpiredActive: 2,
-  certsTrend: '+1.2%',
-  sshTrend: '-0.8%',
-  secretsTrend: '+2.4%',
-  aiTrend: '+4.1%',
-  codeSigningTrend: '-0.3%',
+  // ── Totals ──────────────────────────────────────────
+  certificates:         14850,
+  sshAndEncryptionKeys:  8420,
+  secretsAndAPIKeys:    18460,
+  aiAgentTokens:         3216,
+
+  // ── At-risk % ───────────────────────────────────────
+  certsAtRisk:      16,
+  sshAtRisk:        10,
+  secretsAtRisk:    23,
+  aiTokensAtRisk:   18,
+
+  // ── 7-day trends ────────────────────────────────────
+  certsTrend:    '+1.2%',
+  sshTrend:      '-0.8%',
+  secretsTrend:  '+2.4%',
+  aiTrend:       '+4.1%',
+
+  // ── Certificate violations ──────────────────────────
+  certsExpired:       48,
+  certsExpiring7d:   186,
+  certsExpiring30d: 1280,
+  certsWeakAlgo:      52,
+  certsSelfSigned:    14,
+
+  // ── SSH violations (AVX SSH taxonomy) ───────────────
+  sshSuspicious:   44,
+  sshSharedUser:    8,
+  sshRogue:        18,
+  sshWeakUser:      6,
+  sshWeakHost:      4,
+  sshMisplaced:    22,
+  sshSharedHost:   12,
+  sshNotRotated90d: 840,   // retained for Operations tab only
+
+  // ── Secret violations ────────────────────────────────
+  secretsExposedCode:   4220,
+  secretsHardcoded:      144,
+  secretsUnrotated90d:  1250,
+  secretsOrphaned:       445,
+
+  // ── AI agent token violations ────────────────────────
+  aiTokensAdminPriv:        46,
+  aiTokensOverPriv:        312,
+  aiTokensNoSponsor:       185,
+  aiTokensNoRotationPolicy: 278,
+
+  // ── Preserved for legacy consumers (PKIEngineerDashboard, etc.) ──
+  codeSigning:        2180,
+  codeSigningAtRisk:  13,
+  codeSigningTrend:   '-0.3%',
+  totalIdentities:    504000,
 } as const;
 
 export const mockAssets: CryptoAsset[] = [
