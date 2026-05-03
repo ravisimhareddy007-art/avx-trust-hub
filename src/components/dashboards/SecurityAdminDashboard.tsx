@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, LayoutDashboard, Wrench, Zap, AlertTriangle, X, CheckCircle2, ChevronRight } from 'lucide-react';
+import { RefreshCw, LayoutDashboard, Zap, AlertTriangle, X, CheckCircle2, ChevronRight } from 'lucide-react';
 import { useNotifications } from '@/context/NotificationContext';
 import { useNav } from '@/context/NavigationContext';
 import { DashboardProvider } from '@/context/DashboardContext';
@@ -15,11 +15,10 @@ import CryptoReadinessSummary from './readiness/CryptoReadinessSummary';
 import AlgorithmConcentration from './readiness/AlgorithmConcentration';
 import PQCMigrationPanel from './readiness/PQCMigrationPanel';
 
-type DashTab = 'posture' | 'operations' | 'readiness';
+type DashTab = 'posture' | 'readiness';
 
 const TABS: { id: DashTab; label: string; icon: React.ElementType }[] = [
   { id: 'posture',    label: 'Posture',    icon: LayoutDashboard },
-  { id: 'operations', label: 'Operations', icon: Wrench },
   { id: 'readiness',  label: 'Readiness',  icon: Zap },
 ];
 
