@@ -92,7 +92,7 @@ export default function EnterpriseRiskScore() {
             <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
             <div className="absolute left-0 top-5 z-50 hidden group-hover:block w-72 bg-card border border-border rounded-lg shadow-lg px-3 py-2.5">
               <p className="text-[11px] text-foreground leading-relaxed">
-                <span className="font-semibold">Enterprise Trust Score (ETS)</span> measures your organisation-wide cryptographic security posture. Higher scores indicate greater risk. Scores are weighted by asset criticality — production assets with Critical business impact carry 4× more weight. Incorporates a quantum vulnerability component that increases toward the NIST 2030 deadline.
+                <span className="font-semibold">Enterprise Risk Score (ERS)</span> measures your organisation-wide cryptographic security posture. Higher scores indicate greater risk. Scores are weighted by asset criticality — production assets with Critical business impact carry 4× more weight. Incorporates a quantum vulnerability component that increases toward the NIST 2030 deadline.
               </p>
             </div>
           </div>
