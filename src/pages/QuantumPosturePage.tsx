@@ -556,6 +556,7 @@ function StageDiscover({ onNext, nav }: { onNext: () => void; nav: (f: Record<st
 // ── Stage 2: Assess ───────────────────────────────────────────────────────────
 
 function StageAssess({ onNext, nav }: { onNext: () => void; nav: (f: Record<string, string>) => void }) {
+  const [addedToWave, setAddedToWave] = React.useState<Record<string, boolean>>({});
   return (
     <div className="space-y-4">
 
