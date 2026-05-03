@@ -21,6 +21,7 @@ interface Band {
   total: string;
   atRisk: number;
   trend: string;
+  severityBreakdown: { critical: number; high: number; medium: number };
   topFilter: Record<string, string>;
   violations: ViolationRow[];
 }
@@ -33,6 +34,7 @@ const BANDS: Band[] = [
     total: ESTATE_SUMMARY.certificates.toLocaleString(),
     atRisk: ESTATE_SUMMARY.certsAtRisk,
     trend: ESTATE_SUMMARY.certsTrend,
+    severityBreakdown: { critical: 1.6, high: 9.0, medium: 0.1 },
     topFilter: { type: 'TLS Certificate', tab: 'identities' },
     violations: [
       { ...VIOLATION_FILTERS.cert_expired,      severity: 'critical' },
@@ -49,6 +51,7 @@ const BANDS: Band[] = [
     total: ESTATE_SUMMARY.sshAndEncryptionKeys.toLocaleString(),
     atRisk: ESTATE_SUMMARY.sshAtRisk,
     trend: ESTATE_SUMMARY.sshTrend,
+    severityBreakdown: { critical: 0.6, high: 0.4, medium: 0.3 },
     topFilter: { type: 'SSH Key', tab: 'identities' },
     violations: [
       { ...VIOLATION_FILTERS.ssh_suspicious,  severity: 'critical' },
@@ -65,6 +68,7 @@ const BANDS: Band[] = [
     total: ESTATE_SUMMARY.secretsAndAPIKeys.toLocaleString(),
     atRisk: ESTATE_SUMMARY.secretsAtRisk,
     trend: ESTATE_SUMMARY.secretsTrend,
+    severityBreakdown: { critical: 22.8, high: 0.1, medium: 0.0 },
     topFilter: { type: 'API Key / Secret', tab: 'identities' },
     violations: [
       { ...VIOLATION_FILTERS.secret_exposed_code,   severity: 'critical' },
@@ -80,6 +84,7 @@ const BANDS: Band[] = [
     total: ESTATE_SUMMARY.aiAgentTokens.toLocaleString(),
     atRisk: ESTATE_SUMMARY.aiTokensAtRisk,
     trend: ESTATE_SUMMARY.aiTrend,
+    severityBreakdown: { critical: 1.4, high: 9.7, medium: 5.8 },
     topFilter: { type: 'AI Agent Token', tab: 'identities' },
     violations: [
       { ...VIOLATION_FILTERS.ai_admin_no_rotation,  severity: 'critical' },
@@ -124,7 +129,7 @@ export default function IdentityHealthBands() {
             Click any tile or row to drill into Inventory with filters pre-applied
           </p>
         </div>
-        <span className="text-[10px] text-muted-foreground">4 categories · 7d trend</span>
+        <span className="text-[10px] text-muted-foreground">4 categories · 7-day trend</span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
@@ -163,15 +168,17 @@ export default function IdentityHealthBands() {
 
               {/* ── Risk bar ── */}
               <div className="px-3 pb-1.5">
-                <div className="flex h-1.5 overflow-hidden rounded-full mb-1">
-                  <div style={{ width: `${b.atRisk}%` }} className="bg-coral" />
-                  <div style={{ width: `${100 - b.atRisk}%` }} className="bg-teal" />
+                <div className="flex h-1.5 overflow-hidden rounded-full mb-1" title={`Critical ${b.severityBreakdown.critical}% · High ${b.severityBreakdown.high}% · Medium ${b.severityBreakdown.medium}% · Healthy ${(100 - b.severityBreakdown.critical - b.severityBreakdown.high - b.severityBreakdown.medium).toFixed(1)}%`}>
+                  <div style={{ width: `${b.severityBreakdown.critical}%` }} className="bg-coral" />
+                  <div style={{ width: `${b.severityBreakdown.high}%` }} className="bg-amber" />
+                  <div style={{ width: `${b.severityBreakdown.medium}%` }} className="bg-muted-foreground/50" />
+                  <div style={{ width: `${100 - b.severityBreakdown.critical - b.severityBreakdown.high - b.severityBreakdown.medium}%` }} className="bg-teal" />
                 </div>
                 <div className="flex items-center justify-between text-[10px]">
                   <span className="text-coral font-semibold tabular-nums">{b.atRisk}% at risk</span>
                   <span className={`flex items-center gap-0.5 tabular-nums ${trendColor}`}>
                     <TrendIcon className="w-2.5 h-2.5" />
-                    {b.trend}
+                    {b.trend} <span className="text-muted-foreground text-[9px] ml-0.5">7d</span>
                   </span>
                 </div>
               </div>
