@@ -96,7 +96,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   const tableScrollRef = useRef<HTMLDivElement | null>(null);
   const { manualIdentities } = useInventoryRegistry();
   const { setSelectedEntity } = useAgent();
-  const { filters: navFilters } = useNav();
+  const { filters: navFilters, setFilters: setNavFilters } = useNav();
   const { filterId } = navFilters;
   useEffect(() => {
     if (!filterId) return;
@@ -107,6 +107,35 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
     setPqcFilter('');
     setDashboardFilterId(filterId);
   }, [filterId]);
+
+  const clearAllDashboardFilters = () => {
+    setDashboardFilterId('');
+    setTypeFilter('All');
+    setStatusFilter('');
+    setAlgFilter('');
+    setEnvFilter('');
+    setOwnerFilter('');
+    setPqcFilter('');
+    setSearch('');
+    setNavFilters({});
+  };
+
+  const activeChips = useMemo(() => {
+    const chips: { key: string; label: string; clear: () => void }[] = [];
+    if (dashboardFilterId) {
+      const f = VIOLATION_FILTERS[dashboardFilterId] ?? DASHBOARD_FILTERS[dashboardFilterId];
+      if (f) chips.push({ key: 'dashboard', label: f.label, clear: () => { setDashboardFilterId(''); setNavFilters({}); } });
+    }
+    if (typeFilter !== 'All') chips.push({ key: 'type', label: typeFilter, clear: () => setTypeFilter('All') });
+    if (statusFilter) chips.push({ key: 'status', label: statusFilter, clear: () => setStatusFilter('') });
+    if (algFilter) chips.push({ key: 'alg', label: algFilter === 'weak' ? 'Weak algorithms' : algFilter, clear: () => setAlgFilter('') });
+    if (envFilter) chips.push({ key: 'env', label: envFilter, clear: () => setEnvFilter('') });
+    if (pqcFilter) chips.push({ key: 'pqc', label: `PQC: ${pqcFilter}`, clear: () => setPqcFilter('') });
+    if (ownerFilter) chips.push({ key: 'owner', label: ownerFilter, clear: () => setOwnerFilter('') });
+    return chips;
+  }, [dashboardFilterId, typeFilter, statusFilter, algFilter, envFilter, pqcFilter, ownerFilter, setNavFilters]);
+
+  const showChipBar = !!dashboardFilterId || Object.keys(navFilters).length > 0;
 
   // Push current identity selection to Agent so it sees what you're looking at
   useEffect(() => {
