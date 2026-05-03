@@ -110,7 +110,7 @@ export default function EnterpriseRiskScore() {
       {/* Gauge + verdict */}
       <div className="flex flex-col items-center mb-3 flex-shrink-0">
         <ErsGauge score={ers.ers} hsl={sevHsl} label={ers.severity} />
-        <div className={`inline-flex items-center gap-1.5 text-[10.5px] font-semibold px-2.5 py-1 rounded-full mt-1 ${improving ? 'bg-teal/15 text-teal' : 'bg-coral/15 text-coral'}`}>
+        <div className={`inline-flex items-center gap-1.5 text-[10.5px] font-semibold px-2.5 py-1 rounded-full -mt-1 ${improving ? 'bg-teal/15 text-teal' : 'bg-coral/15 text-coral'}`}>
           {improving
             ? <><TrendingDown className="w-3 h-3" /> {Math.abs(SCORE_DELTA_7D)} pts — risk reduced this week</>
             : <><TrendingUp className="w-3 h-3" /> {Math.abs(SCORE_DELTA_7D)} pts — risk increased this week</>
