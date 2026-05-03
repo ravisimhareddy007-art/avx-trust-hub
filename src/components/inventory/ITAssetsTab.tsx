@@ -241,7 +241,15 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
           {(envFilter || typeFilter || teamFilter || biFilter || riskRange[0] !== 0 || riskRange[1] !== 100) && (
             <button onClick={() => { setEnvFilter(''); setTypeFilter(''); setTeamFilter(''); setBiFilter(''); setRiskRange([0, 100]); }} className="text-[10px] text-coral hover:underline">Clear</button>
           )}
-          <span className="text-[10px] text-muted-foreground">{filtered.length} assets · sorted by {sortKey === 'rps' ? 'priority' : sortKey === 'ars' ? 'asset risk score' : sortKey === 'bi' ? 'business impact' : 'name'}</span>
+          <span className="text-[10px] text-muted-foreground">
+            {filtered.length} assets · sorted by {sortKey === 'rps' ? 'priority' : sortKey === 'ars' ? 'asset risk score' : sortKey === 'bi' ? 'business impact' : 'name'}
+          </span>
+          {coverageFilter && navFilters.enterpriseCount && filtered.length < parseInt(navFilters.enterpriseCount) && (
+            <span className="ml-3 text-[10px] text-muted-foreground flex items-center gap-1 inline-flex">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-teal flex-shrink-0" />
+              Showing {filtered.length} representative records · {parseInt(navFilters.enterpriseCount).toLocaleString()} total in estate
+            </span>
+          )}
         </div>
 
         {coverageFilter && (
