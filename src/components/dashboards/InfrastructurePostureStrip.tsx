@@ -1,5 +1,5 @@
 import React from 'react';
-import { Globe, Server, Boxes, Shield, Bot, ArrowRight, TrendingUp, TrendingDown } from 'lucide-react';
+import { Globe, Server, Boxes, Shield, Bot, ArrowRight, TrendingUp, TrendingDown, Eye, Lock, User } from 'lucide-react';
 import { useNav } from '@/context/NavigationContext';
 
 interface GapRow {
