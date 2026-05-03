@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
-type StepId = 'integrations' | 'discovery' | 'policy';
-const ALL_STEPS: StepId[] = ['integrations', 'discovery', 'policy'];
+type StepId = 'integrations' | 'discovery' | 'policy' | 'inventory' | 'remediation';
+const ALL_STEPS: StepId[] = ['integrations', 'discovery', 'policy', 'inventory', 'remediation'];
 
 interface OnboardingContextValue {
   dismissed: string[];
