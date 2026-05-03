@@ -8,7 +8,9 @@ import { StatusBadge, EnvBadge, PQCBadge, DaysToExpiry } from '@/components/shar
 import {
   Search, X, Info, Atom, FileEdit, ArrowRight,
   RefreshCw, UserPlus, Ticket, Lock, ChevronUp, ChevronDown,
+  Filter as FilterIcon,
 } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { toast } from 'sonner';
 import AgentDetailPanel from '@/components/inventory/AgentDetailPanel';
 import CryptoObjectRiskDrawer from '@/components/risk/CryptoObjectRiskDrawer';
@@ -689,16 +691,144 @@ function DetailPanel({
   );
 }
 
+// ── Filter Panel (side sheet) ─────────────────────────────────────────────────
+
+interface FilterPanelProps {
+  open: boolean;
+  onClose: () => void;
+  algorithms: string[];
+  owners: string[];
+  algFilter: string[];   setAlgFilter:    React.Dispatch<React.SetStateAction<string[]>>;
+  envFilter: string[];   setEnvFilter:    React.Dispatch<React.SetStateAction<string[]>>;
+  statusFilter: string[];setStatusFilter: React.Dispatch<React.SetStateAction<string[]>>;
+  pqcFilter: string[];   setPqcFilter:    React.Dispatch<React.SetStateAction<string[]>>;
+  ownerFilter: string[]; setOwnerFilter:  React.Dispatch<React.SetStateAction<string[]>>;
+}
+
+function FilterChips({
+  options, selected, onToggle,
+}: { options: { v: string; l: string }[]; selected: string[]; onToggle: (v: string) => void }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {options.map(o => {
+        const active = selected.includes(o.v);
+        return (
+          <button
+            key={o.v}
+            onClick={() => onToggle(o.v)}
+            className={`px-2 py-1 rounded text-[10.5px] font-medium border transition-colors ${
+              active
+                ? 'border-teal/40 bg-teal/15 text-teal'
+                : 'border-border bg-muted text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {o.l}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function FilterSection({ title, onReset, children }: { title: string; onReset?: () => void; children: React.ReactNode }) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{title}</h4>
+        {onReset && (
+          <button onClick={onReset} className="text-[10px] text-muted-foreground hover:text-coral">Reset</button>
+        )}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function FilterPanel(props: FilterPanelProps) {
+  const {
+    open, onClose, algorithms, owners,
+    algFilter, setAlgFilter, envFilter, setEnvFilter,
+    statusFilter, setStatusFilter, pqcFilter, setPqcFilter,
+    ownerFilter, setOwnerFilter,
+  } = props;
+
+  const toggle = (setter: React.Dispatch<React.SetStateAction<string[]>>) => (v: string) =>
+    setter(prev => prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v]);
+
+  const clearAll = () => {
+    setAlgFilter([]); setEnvFilter([]); setStatusFilter([]); setPqcFilter([]); setOwnerFilter([]);
+  };
+
+  const algOptions = [{ v: 'weak', l: 'Weak (RSA/SHA-1)' }, ...algorithms.map(a => ({ v: a, l: a }))];
+  const ownerOptions = owners.map(o => ({ v: o, l: o }));
+
+  return (
+    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent side="right" className="w-[360px] sm:w-[400px] p-0 flex flex-col">
+        <SheetHeader className="px-4 py-3 border-b border-border flex-row items-center justify-between space-y-0">
+          <SheetTitle className="text-sm">Filters</SheetTitle>
+          <button onClick={clearAll} className="text-[11px] text-coral hover:underline">Clear All</button>
+        </SheetHeader>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-5">
+          <div className="space-y-3">
+            <h3 className="text-[11px] font-semibold text-foreground">Crypto</h3>
+            <FilterSection title="Algorithm" onReset={algFilter.length ? () => setAlgFilter([]) : undefined}>
+              <FilterChips options={algOptions} selected={algFilter} onToggle={toggle(setAlgFilter)} />
+            </FilterSection>
+            <FilterSection title="PQC Risk" onReset={pqcFilter.length ? () => setPqcFilter([]) : undefined}>
+              <FilterChips
+                options={['Critical','High','Medium','Low','Safe'].map(v => ({ v, l: v }))}
+                selected={pqcFilter} onToggle={toggle(setPqcFilter)} />
+            </FilterSection>
+          </div>
+
+          <div className="space-y-3">
+            <h3 className="text-[11px] font-semibold text-foreground">Asset Context</h3>
+            <FilterSection title="Environment" onReset={envFilter.length ? () => setEnvFilter([]) : undefined}>
+              <FilterChips
+                options={['Production','Staging','Development'].map(v => ({ v, l: v }))}
+                selected={envFilter} onToggle={toggle(setEnvFilter)} />
+            </FilterSection>
+            <FilterSection title="Owner" onReset={ownerFilter.length ? () => setOwnerFilter([]) : undefined}>
+              <FilterChips options={ownerOptions} selected={ownerFilter} onToggle={toggle(setOwnerFilter)} />
+            </FilterSection>
+          </div>
+
+          <div className="space-y-3">
+            <h3 className="text-[11px] font-semibold text-foreground">Status</h3>
+            <FilterSection title="Status" onReset={statusFilter.length ? () => setStatusFilter([]) : undefined}>
+              <FilterChips
+                options={['Active','Expiring','Expired','Orphaned','Revoked'].map(v => ({ v, l: v }))}
+                selected={statusFilter} onToggle={toggle(setStatusFilter)} />
+            </FilterSection>
+          </div>
+        </div>
+
+        <div className="px-4 py-3 border-t border-border">
+          <button
+            onClick={onClose}
+            className="w-full py-2 rounded bg-teal text-primary-foreground hover:bg-teal-light text-xs font-semibold"
+          >
+            Done
+          </button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   const [typeFilter, setTypeFilter]     = useState('All');
   const [search, setSearch]             = useState('');
-  const [algFilter, setAlgFilter]       = useState('');
-  const [envFilter, setEnvFilter]       = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [pqcFilter, setPqcFilter]       = useState('');
-  const [ownerFilter, setOwnerFilter]   = useState('');
+  const [algFilter, setAlgFilter]       = useState<string[]>([]);
+  const [envFilter, setEnvFilter]       = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [pqcFilter, setPqcFilter]       = useState<string[]>([]);
+  const [ownerFilter, setOwnerFilter]   = useState<string[]>([]);
+  const [filterPanelOpen, setFilterPanelOpen] = useState(false);
   const [detailAsset, setDetailAsset]   = useState<CryptoAsset | null>(null);
   const [ticketAsset, setTicketAsset]   = useState<CryptoAsset | null>(null);
   const [ticketAction, setTicketAction] = useState('fix');
@@ -714,10 +844,10 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   const { type: navType, status: navStatus, algorithm: navAlg, owner: navOwner, pqcRisk: navPqc } = navFilters;
   useEffect(() => {
     if (navType)   setTypeFilter(navType);
-    if (navStatus) setStatusFilter(navStatus);
-    if (navAlg)    setAlgFilter(navAlg);
-    if (navOwner)  setOwnerFilter(navOwner);
-    if (navPqc)    setPqcFilter(navPqc);
+    if (navStatus) setStatusFilter([navStatus]);
+    if (navAlg)    setAlgFilter([navAlg]);
+    if (navOwner)  setOwnerFilter([navOwner]);
+    if (navPqc)    setPqcFilter([navPqc]);
   }, [navType, navStatus, navAlg, navOwner, navPqc]);
 
   useEffect(() => {
@@ -741,12 +871,13 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
         a.algorithm.toLowerCase().includes(q)
       );
     }
-    if (algFilter === 'weak') r = r.filter(a => /RSA-1024|RSA-2048|SHA-1/.test(a.algorithm));
-    else if (algFilter) r = r.filter(a => a.algorithm === algFilter);
-    if (envFilter)    r = r.filter(a => a.environment === envFilter);
-    if (statusFilter) r = r.filter(a => a.status === statusFilter);
-    if (pqcFilter)    r = r.filter(a => a.pqcRisk === pqcFilter);
-    if (ownerFilter === 'Unassigned') r = r.filter(a => a.owner === 'Unassigned');
+    if (algFilter.length) {
+      r = r.filter(a => algFilter.some(v => v === 'weak' ? /RSA-1024|RSA-2048|SHA-1/.test(a.algorithm) : a.algorithm === v));
+    }
+    if (envFilter.length)    r = r.filter(a => envFilter.includes(a.environment));
+    if (statusFilter.length) r = r.filter(a => statusFilter.includes(a.status));
+    if (pqcFilter.length)    r = r.filter(a => pqcFilter.includes(a.pqcRisk));
+    if (ownerFilter.length)  r = r.filter(a => ownerFilter.includes('Unassigned') ? a.owner === 'Unassigned' : true);
 
     // Sorting — default risk_score DESC, with expiry tie-breaker
     const dir = sortDir === 'asc' ? 1 : -1;
@@ -801,34 +932,65 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
           })}
         </div>
 
-        {/* Filters */}
-        <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-            <input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search name, owner, application, algorithm..."
-              className="w-full pl-7 pr-3 py-1.5 bg-muted border border-border rounded text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal" />
-          </div>
-          {[
-            { val: algFilter,    set: setAlgFilter,    label: 'All Algorithms', opts: algorithms.map(a => ({ v: a, l: a })), extra: [{ v: 'weak', l: 'Weak (RSA/SHA-1)' }] },
-            { val: envFilter,    set: setEnvFilter,    label: 'All Envs',       opts: ['Production','Staging','Development'].map(e => ({ v: e, l: e })) },
-            { val: statusFilter, set: setStatusFilter, label: 'All Status',     opts: ['Active','Expiring','Expired','Orphaned','Revoked'].map(s => ({ v: s, l: s })) },
-            { val: pqcFilter,    set: setPqcFilter,    label: 'All PQC Risk',   opts: ['Critical','High','Medium','Low','Safe'].map(r => ({ v: r, l: r })) },
-            { val: ownerFilter,  set: setOwnerFilter,  label: 'All Owners',     opts: [{ v: 'Unassigned', l: 'Unassigned only' }] },
-          ].map(({ val, set, label, opts, extra }) => (
-            <select key={label} value={val} onChange={e => set(e.target.value)}
-              className="px-2 py-1.5 bg-muted border border-border rounded text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal">
-              <option value="">{label}</option>
-              {(extra ?? []).map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
-              {opts.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
-            </select>
-          ))}
-          {(algFilter || envFilter || statusFilter || pqcFilter || ownerFilter) && (
-            <button onClick={() => { setAlgFilter(''); setEnvFilter(''); setStatusFilter(''); setPqcFilter(''); setOwnerFilter(''); }}
-              className="text-[10px] text-coral hover:underline">Clear</button>
-          )}
-          <span className="text-[10px] text-muted-foreground ml-auto">{filtered.length} identities</span>
-        </div>
+        {/* Search + Filters trigger */}
+        {(() => {
+          const activeChips: { key: string; label: string; remove: () => void }[] = [
+            ...envFilter.map(v => ({ key: `env:${v}`, label: v, remove: () => setEnvFilter(envFilter.filter(x => x !== v)) })),
+            ...pqcFilter.map(v => ({ key: `pqc:${v}`, label: `${v} PQC`, remove: () => setPqcFilter(pqcFilter.filter(x => x !== v)) })),
+            ...algFilter.map(v => ({ key: `alg:${v}`, label: v === 'weak' ? 'Weak algos' : v, remove: () => setAlgFilter(algFilter.filter(x => x !== v)) })),
+            ...statusFilter.map(v => ({ key: `st:${v}`, label: v, remove: () => setStatusFilter(statusFilter.filter(x => x !== v)) })),
+            ...ownerFilter.map(v => ({ key: `ow:${v}`, label: v, remove: () => setOwnerFilter(ownerFilter.filter(x => x !== v)) })),
+          ];
+          const visible = activeChips.slice(0, 4);
+          const overflow = activeChips.length - visible.length;
+          const totalActive = activeChips.length;
+          const clearAll = () => { setAlgFilter([]); setEnvFilter([]); setStatusFilter([]); setPqcFilter([]); setOwnerFilter([]); };
+          return (
+            <div className="flex flex-col gap-2 flex-shrink-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="relative flex-1 max-w-sm">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                  <input value={search} onChange={e => setSearch(e.target.value)}
+                    placeholder="Search name, owner, application, algorithm..."
+                    className="w-full pl-7 pr-3 py-1.5 bg-muted border border-border rounded text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal" />
+                </div>
+                <button
+                  onClick={() => setFilterPanelOpen(true)}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[11px] font-medium border transition-colors ${
+                    totalActive > 0
+                      ? 'border-teal/40 text-teal bg-teal/10 hover:bg-teal/15'
+                      : 'border-border text-foreground hover:bg-muted'
+                  }`}
+                >
+                  <FilterIcon className="w-3.5 h-3.5" />
+                  Filters
+                  {totalActive > 0 && (
+                    <span className="ml-1 px-1.5 py-0.5 rounded-full bg-teal/20 text-teal text-[9px] font-bold tabular-nums">{totalActive}</span>
+                  )}
+                </button>
+                <span className="text-[10px] text-muted-foreground ml-auto">{filtered.length} identities</span>
+              </div>
+              {totalActive > 0 && (
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {visible.map(c => (
+                    <span key={c.key} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted border border-border text-[10px] text-foreground">
+                      {c.label}
+                      <button onClick={c.remove} className="text-muted-foreground hover:text-coral">
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </span>
+                  ))}
+                  {overflow > 0 && (
+                    <button onClick={() => setFilterPanelOpen(true)} className="text-[10px] text-muted-foreground hover:text-foreground px-1.5">
+                      +{overflow} more
+                    </button>
+                  )}
+                  <button onClick={clearAll} className="text-[10px] text-coral hover:underline ml-1">Clear all</button>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Table */}
         <div className="bg-card rounded-lg border border-border overflow-hidden flex-1 min-h-0 flex flex-col">
@@ -932,6 +1094,18 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
 
       <CryptoObjectRiskDrawer object={riskDrawer} onClose={() => setRiskDrawer(null)} />
       <DeployToDeviceModal open={!!deployAsset} onClose={() => setDeployAsset(null)} cert={deployAsset} />
+
+      <FilterPanel
+        open={filterPanelOpen}
+        onClose={() => setFilterPanelOpen(false)}
+        algorithms={algorithms}
+        owners={[...new Set(allAssets.map(a => a.owner))].sort()}
+        algFilter={algFilter} setAlgFilter={setAlgFilter}
+        envFilter={envFilter} setEnvFilter={setEnvFilter}
+        statusFilter={statusFilter} setStatusFilter={setStatusFilter}
+        pqcFilter={pqcFilter} setPqcFilter={setPqcFilter}
+        ownerFilter={ownerFilter} setOwnerFilter={setOwnerFilter}
+      />
     </div>
   );
 }
