@@ -29,8 +29,8 @@ const TILES: Tile[] = [
     outsidePerimeter: 22,
     trend: +1.4,
     gaps: [
-      { dimension: 'Ownership',       icon: User, label: 'Gateways with no owner assigned',   enterpriseCount: 14,  coverageGap: 'unowned'   },
-      { dimension: 'Policy Coverage', icon: Lock, label: 'Gateways with no active policy',     enterpriseCount: 589, coverageGap: 'no-policy' },
+      { dimension: 'Ownership',       icon: User, label: '14 gateways — no owner',   enterpriseCount: 14,  coverageGap: 'unowned'   },
+      { dimension: 'Policy Coverage', icon: Lock, label: '589 gateways — no policy', enterpriseCount: 589, coverageGap: 'no-policy' },
     ],
   },
   {
@@ -41,8 +41,8 @@ const TILES: Tile[] = [
     outsidePerimeter: 18,
     trend: +0.6,
     gaps: [
-      { dimension: 'Ownership',       icon: User, label: 'Servers with no owner assigned',     enterpriseCount: 312,  coverageGap: 'unowned'   },
-      { dimension: 'Policy Coverage', icon: Lock, label: 'Servers with no active policy',       enterpriseCount: 2232, coverageGap: 'no-policy' },
+      { dimension: 'Ownership',       icon: User, label: '312 servers — no owner',     enterpriseCount: 312,  coverageGap: 'unowned'   },
+      { dimension: 'Policy Coverage', icon: Lock, label: '2,232 servers — no policy',  enterpriseCount: 2232, coverageGap: 'no-policy' },
     ],
   },
   {
@@ -53,8 +53,8 @@ const TILES: Tile[] = [
     outsidePerimeter: 14,
     trend: -1.2,
     gaps: [
-      { dimension: 'Ownership',       icon: User, label: 'Clusters with no owner assigned',    enterpriseCount: 22,  coverageGap: 'unowned'   },
-      { dimension: 'Policy Coverage', icon: Lock, label: 'Clusters with no active policy',      enterpriseCount: 138, coverageGap: 'no-policy' },
+      { dimension: 'Ownership',       icon: User, label: '22 clusters — no owner',    enterpriseCount: 22,  coverageGap: 'unowned'   },
+      { dimension: 'Policy Coverage', icon: Lock, label: '138 clusters — no policy',   enterpriseCount: 138, coverageGap: 'no-policy' },
     ],
   },
   {
@@ -65,8 +65,8 @@ const TILES: Tile[] = [
     outsidePerimeter: 26,
     trend: +2.1,
     gaps: [
-      { dimension: 'Ownership',       icon: User, label: 'Vault instances with no owner',       enterpriseCount: 12, coverageGap: 'unowned'   },
-      { dimension: 'Policy Coverage', icon: Lock, label: 'Vault servers with no active policy', enterpriseCount: 24, coverageGap: 'no-policy' },
+      { dimension: 'Ownership',       icon: User, label: '12 Vault instances — no owner',   enterpriseCount: 12, coverageGap: 'unowned'   },
+      { dimension: 'Policy Coverage', icon: Lock, label: '24 Vault servers — no policy',     enterpriseCount: 24, coverageGap: 'no-policy' },
     ],
   },
   {
@@ -77,8 +77,8 @@ const TILES: Tile[] = [
     outsidePerimeter: 32,
     trend: +4.8,
     gaps: [
-      { dimension: 'Ownership',       icon: User, label: 'AI platforms with no human sponsor',  enterpriseCount: 52,  coverageGap: 'unowned'   },
-      { dimension: 'Policy Coverage', icon: Lock, label: 'AI platforms with no active policy',   enterpriseCount: 194, coverageGap: 'no-policy' },
+      { dimension: 'Ownership',       icon: User, label: '52 platforms — no sponsor',  enterpriseCount: 52,  coverageGap: 'unowned'   },
+      { dimension: 'Policy Coverage', icon: Lock, label: '194 platforms — no policy',   enterpriseCount: 194, coverageGap: 'no-policy' },
     ],
   },
 ];
@@ -178,25 +178,16 @@ export default function InfrastructurePostureStrip() {
                   <button
                     key={gap.dimension}
                     onClick={() => navGap(tile.assetType, gap.coverageGap, gap.enterpriseCount)}
-                    className="w-full flex flex-col px-2 py-1.5 rounded hover:bg-background/60 transition-colors text-left group/row"
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-background/60 transition-colors text-left group/row"
                   >
-                    <div className="flex items-center justify-between w-full mb-0.5">
-                      <div className="flex items-center gap-1.5">
-                        <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${DIM_DOT[gap.dimension]}`} />
-                        <span className={`text-[9.5px] font-semibold uppercase tracking-wider ${DIM_COLOR[gap.dimension]}`}>
-                          {gap.dimension}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className={`text-sm font-bold tabular-nums leading-none ${DIM_COLOR[gap.dimension]}`}>
-                          {gap.enterpriseCount.toLocaleString()}
-                        </span>
-                        <ArrowRight className="w-2.5 h-2.5 text-teal opacity-0 group-hover/row:opacity-100 transition-opacity flex-shrink-0" />
-                      </div>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground leading-snug pl-3">
+                    <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${DIM_DOT[gap.dimension]}`} />
+                    <span className="text-[10px] text-muted-foreground flex-1 truncate leading-none">
                       {gap.label}
-                    </p>
+                    </span>
+                    <span className={`text-[11px] font-bold tabular-nums flex-shrink-0 ${DIM_COLOR[gap.dimension]}`}>
+                      {gap.enterpriseCount.toLocaleString()}
+                    </span>
+                    <ArrowRight className="w-2.5 h-2.5 text-teal opacity-0 group-hover/row:opacity-100 transition-opacity flex-shrink-0" />
                   </button>
                 ))}
               </div>
