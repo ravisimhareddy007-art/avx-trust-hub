@@ -15,32 +15,96 @@ const BI_COLOR: Record<string, string> = {
   Low:      'bg-secondary text-muted-foreground border-border',
 };
 
-function ErsGauge({ score, hsl, label }: { score: number; hsl: string; label: string }) {
-  const R = 52;
-  const cx = 64, cy = 64;
-  const startAngle = -220;
-  const totalDegrees = 260;
-  const filled = (score / 100) * totalDegrees;
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
-  const arcPath = (start: number, end: number) => {
-    const s = { x: cx + R * Math.cos(toRad(start)), y: cy + R * Math.sin(toRad(start)) };
-    const e = { x: cx + R * Math.cos(toRad(end)), y: cy + R * Math.sin(toRad(end)) };
-    const large = end - start > 180 ? 1 : 0;
-    return `M ${s.x} ${s.y} A ${R} ${R} 0 ${large} 1 ${e.x} ${e.y}`;
-  };
+const ZONES = [
+  { key: 'Low',      min: 0,  max: 29,  pct: 29, color: 'hsl(var(--teal))' },
+  { key: 'Medium',   min: 30, max: 59,  pct: 30, color: 'hsl(210 80% 56%)' },
+  { key: 'High',     min: 60, max: 79,  pct: 20, color: 'hsl(var(--amber))' },
+  { key: 'Critical', min: 80, max: 100, pct: 21, color: 'hsl(var(--coral))' },
+];
+
+function zoneFor(score: number) {
+  return ZONES.find(z => score >= z.min && score <= z.max) ?? ZONES[ZONES.length - 1];
+}
+
+function ErsGauge({ score, label }: { score: number; hsl: string; label: string }) {
+  const R = 70;
+  const CIRC = Math.PI * R; // semicircle length ≈ 219.9
+  const zone = zoneFor(score);
+  const fillLen = (Math.max(0, Math.min(100, score)) / 100) * CIRC;
+
+  // Needle position at score along the arc
+  const angleDeg = 180 + (score / 100) * 180; // 180 (left) → 360 (right)
+  const a = (angleDeg * Math.PI) / 180;
+  const cx = 90, cy = 95;
+  const nx = cx + R * Math.cos(a);
+  const ny = cy + R * Math.sin(a);
+
+  // Build cumulative offsets for each segment
+  let offset = 0;
+  const segs = ZONES.map(z => {
+    const len = (z.pct / 100) * CIRC;
+    const seg = { ...z, len, dashOffset: -offset };
+    offset += len;
+    return seg;
+  });
 
   return (
-    <svg width="128" height="128" viewBox="0 0 128 128">
-      <path d={arcPath(startAngle, startAngle + totalDegrees)} fill="none"
-        stroke="currentColor" strokeOpacity="0.1" strokeWidth="10" strokeLinecap="round" />
-      <path d={arcPath(startAngle, startAngle + filled)} fill="none"
-        stroke={hsl} strokeWidth="10" strokeLinecap="round"
-        style={{ transition: 'all 0.7s ease' }} />
-      <text x="64" y="62" textAnchor="middle" fontSize="20" fontWeight="bold"
-        fill={hsl} style={{ transition: 'fill 0.7s ease' }}>{label.toUpperCase()}</text>
-      <text x="64" y="82" textAnchor="middle" fontSize="13" fontWeight="600"
-        fill="currentColor" fillOpacity="0.55">{score}</text>
-    </svg>
+    <div className="flex flex-col items-start">
+      <svg width="180" height="110" viewBox="0 0 180 110">
+        {/* Track segments — rotate so 0 starts on the left and sweeps clockwise */}
+        <g transform={`rotate(180 ${cx} ${cy})`}>
+          {segs.map(s => (
+            <circle
+              key={s.key}
+              cx={cx}
+              cy={cy}
+              r={R}
+              fill="none"
+              stroke={s.color}
+              strokeOpacity="0.25"
+              strokeWidth="12"
+              strokeDasharray={`${s.len} ${CIRC * 2}`}
+              strokeDashoffset={s.dashOffset}
+              strokeLinecap="butt"
+            />
+          ))}
+          {/* Score fill arc */}
+          <circle
+            cx={cx}
+            cy={cy}
+            r={R}
+            fill="none"
+            stroke={zone.color}
+            strokeWidth="12"
+            strokeDasharray={`${fillLen} ${CIRC * 2}`}
+            strokeLinecap="round"
+            style={{ transition: 'stroke-dasharray 0.7s ease, stroke 0.7s ease' }}
+          />
+        </g>
+        {/* End-cap dot at score position */}
+        <circle cx={nx} cy={ny} r="4.5" fill={zone.color} stroke="hsl(var(--card))" strokeWidth="1.5" />
+        {/* Center text */}
+        <text x={cx} y="78" textAnchor="middle" fontSize="18" fontWeight="bold" fill={zone.color}>
+          {label.toUpperCase()}
+        </text>
+        <text x={cx} y="94" textAnchor="middle" fontSize="13" fontWeight="600" fill="hsl(var(--muted-foreground))">
+          {score}
+        </text>
+        <text x={cx} y="105" textAnchor="middle" fontSize="8" fill="hsl(var(--muted-foreground))" fillOpacity="0.5">
+          / 100
+        </text>
+      </svg>
+
+      {/* Zone legend */}
+      <div className="flex items-center gap-2 mt-1 text-[9px] leading-none">
+        {ZONES.map(z => (
+          <span key={z.key} className="inline-flex items-center gap-1" style={{ color: z.color }}>
+            <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: z.color }} />
+            {z.key} {z.min}–{z.max}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 
