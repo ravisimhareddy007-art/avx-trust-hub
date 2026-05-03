@@ -349,6 +349,15 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                         );
                       })()}
                     </td>
+                    <td className="py-2 px-2 text-center" onClick={e => e.stopPropagation()}>
+                      <button
+                        onClick={() => setItTicketAsset(asset)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-secondary"
+                        title="Create AI-filled ticket for this asset"
+                      >
+                        <Ticket className="w-3.5 h-3.5 text-muted-foreground hover:text-purple-light" />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
