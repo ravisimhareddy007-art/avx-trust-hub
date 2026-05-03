@@ -319,9 +319,7 @@ function StageDiscover({ onNext, nav }: { onNext: () => void; nav: (f: Record<st
             <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: 'hsl(162, 72%, 37%)' }} />Quantum-safe</span>
           </div>
         </div>
-        <div className="relative">
-          <AlgoChart onBarClick={(algo) => nav({ tab: 'identities', algorithm: algo })} />
-        </div>
+        <AlgoChart onBarClick={(algo) => nav({ tab: 'identities', algorithm: algo })} />
       </div>
 
       {/* PQC Risk Heatmap */}
