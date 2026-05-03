@@ -300,7 +300,7 @@ function StageDiscover({ onNext, nav }: { onNext: () => void; nav: (f: Record<st
 
 // ── Stage 2: Assess ───────────────────────────────────────────────────────────
 
-function StageAssess({ onNext }: { onNext: () => void }) {
+function StageAssess({ onNext, nav }: { onNext: () => void; nav: (f: Record<string, string>) => void }) {
   return (
     <div className="space-y-4">
       {/* Crypto Agility */}
@@ -710,7 +710,7 @@ export default function QuantumPosturePage() {
 
       {/* Stage content */}
       {active === 0 && <StageDiscover onNext={() => setActive(1)} nav={nav} />}
-      {active === 1 && <StageAssess   onNext={() => setActive(2)} />}
+      {active === 1 && <StageAssess   onNext={() => setActive(2)} nav={nav} />}
       {active === 2 && <StagePlan     onNext={() => setActive(3)} />}
       {active === 3 && <StageMigrate  onNext={() => setActive(4)} navTicket={navTicket} />}
       {active === 4 && <StageMonitor />}
