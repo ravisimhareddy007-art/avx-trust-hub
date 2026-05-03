@@ -15,93 +15,68 @@ const BI_COLOR: Record<string, string> = {
   Low:      'bg-secondary text-muted-foreground border-border',
 };
 
-const ZONES = [
-  { key: 'Low',      min: 0,  max: 29,  pct: 29, color: 'hsl(var(--teal))' },
-  { key: 'Medium',   min: 30, max: 59,  pct: 30, color: 'hsl(210 80% 56%)' },
-  { key: 'High',     min: 60, max: 79,  pct: 20, color: 'hsl(var(--amber))' },
-  { key: 'Critical', min: 80, max: 100, pct: 21, color: 'hsl(var(--coral))' },
-];
+function ErsGauge({ score, hsl, label }: { score: number; hsl: string; label: string }) {
+  const R = 52;
+  const cx = 64, cy = 68;
+  const startAngle = -220;
+  const totalDegrees = 260;
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const arcPath = (start: number, end: number) => {
+    const s = { x: cx + R * Math.cos(toRad(start)), y: cy + R * Math.sin(toRad(start)) };
+    const e = { x: cx + R * Math.cos(toRad(end)), y: cy + R * Math.sin(toRad(end)) };
+    const large = end - start > 180 ? 1 : 0;
+    return `M ${s.x} ${s.y} A ${R} ${R} 0 ${large} 1 ${e.x} ${e.y}`;
+  };
 
-function zoneFor(score: number) {
-  return ZONES.find(z => score >= z.min && score <= z.max) ?? ZONES[ZONES.length - 1];
-}
+  const lowEnd  = startAngle + (29 / 100) * totalDegrees;
+  const medEnd  = startAngle + (59 / 100) * totalDegrees;
+  const highEnd = startAngle + (79 / 100) * totalDegrees;
+  const critEnd = startAngle + totalDegrees;
+  const filled  = startAngle + (score / 100) * totalDegrees;
 
-function ErsGauge({ score, label }: { score: number; hsl: string; label: string }) {
-  const R = 70;
-  const CIRC = Math.PI * R; // semicircle length ≈ 219.9
-  const zone = zoneFor(score);
-  const fillLen = (Math.max(0, Math.min(100, score)) / 100) * CIRC;
-
-  // Needle position at score along the arc
-  const angleDeg = 180 + (score / 100) * 180; // 180 (left) → 360 (right)
-  const a = (angleDeg * Math.PI) / 180;
-  const cx = 90, cy = 95;
-  const nx = cx + R * Math.cos(a);
-  const ny = cy + R * Math.sin(a);
-
-  // Build cumulative offsets for each segment
-  let offset = 0;
-  const segs = ZONES.map(z => {
-    const len = (z.pct / 100) * CIRC;
-    const seg = { ...z, len, dashOffset: -offset };
-    offset += len;
-    return seg;
-  });
+  const TEAL  = 'hsl(162 72% 37%)';
+  const BLUE  = 'hsl(210 80% 56%)';
+  const AMBER = 'hsl(38 78% 51%)';
+  const CORAL = 'hsl(16 72% 51%)';
 
   return (
-    <div className="flex flex-col items-start">
-      <svg width="180" height="110" viewBox="0 0 180 110">
-        {/* Track segments — rotate so 0 starts on the left and sweeps clockwise */}
-        <g transform={`rotate(180 ${cx} ${cy})`}>
-          {segs.map(s => (
-            <circle
-              key={s.key}
-              cx={cx}
-              cy={cy}
-              r={R}
-              fill="none"
-              stroke={s.color}
-              strokeOpacity="0.25"
-              strokeWidth="12"
-              strokeDasharray={`${s.len} ${CIRC * 2}`}
-              strokeDashoffset={s.dashOffset}
-              strokeLinecap="butt"
-            />
-          ))}
-          {/* Score fill arc */}
-          <circle
-            cx={cx}
-            cy={cy}
-            r={R}
-            fill="none"
-            stroke={zone.color}
-            strokeWidth="12"
-            strokeDasharray={`${fillLen} ${CIRC * 2}`}
-            strokeLinecap="round"
-            style={{ transition: 'stroke-dasharray 0.7s ease, stroke 0.7s ease' }}
-          />
-        </g>
-        {/* End-cap dot at score position */}
-        <circle cx={nx} cy={ny} r="4.5" fill={zone.color} stroke="hsl(var(--card))" strokeWidth="1.5" />
-        {/* Center text */}
-        <text x={cx} y="78" textAnchor="middle" fontSize="18" fontWeight="bold" fill={zone.color}>
+    <div className="flex flex-col items-center">
+      <svg width="140" height="120" viewBox="0 0 128 128">
+        <path d={arcPath(startAngle, lowEnd)}  fill="none" stroke={TEAL}  strokeWidth="10" strokeLinecap="butt" opacity="0.35" />
+        <path d={arcPath(lowEnd,  medEnd)}     fill="none" stroke={BLUE}  strokeWidth="10" strokeLinecap="butt" opacity="0.35" />
+        <path d={arcPath(medEnd,  highEnd)}    fill="none" stroke={AMBER} strokeWidth="10" strokeLinecap="butt" opacity="0.35" />
+        <path d={arcPath(highEnd, critEnd)}    fill="none" stroke={CORAL} strokeWidth="10" strokeLinecap="butt" opacity="0.35" />
+        <path d={arcPath(startAngle, filled)} fill="none"
+          stroke={hsl} strokeWidth="10" strokeLinecap="round"
+          style={{ transition: 'all 0.7s ease' }} />
+        <circle
+          cx={cx + R * Math.cos(toRad(filled))}
+          cy={cy + R * Math.sin(toRad(filled))}
+          r="5" fill={hsl}
+          style={{ transition: 'all 0.7s ease' }}
+        />
+        <text x="64" y="62" textAnchor="middle" fontSize="18" fontWeight="bold"
+          fill={hsl} style={{ transition: 'fill 0.7s ease' }}>
           {label.toUpperCase()}
         </text>
-        <text x={cx} y="94" textAnchor="middle" fontSize="13" fontWeight="600" fill="hsl(var(--muted-foreground))">
+        <text x="64" y="78" textAnchor="middle" fontSize="13" fontWeight="600"
+          fill={hsl} fillOpacity="0.85">
           {score}
         </text>
-        <text x={cx} y="105" textAnchor="middle" fontSize="8" fill="hsl(var(--muted-foreground))" fillOpacity="0.5">
-          / 100
-        </text>
+        <text x="64" y="90" textAnchor="middle" fontSize="9"
+          fill="currentColor" fillOpacity="0.4">/ 100</text>
       </svg>
-
-      {/* Zone legend */}
-      <div className="flex items-center gap-2 mt-1 text-[9px] leading-none">
-        {ZONES.map(z => (
-          <span key={z.key} className="inline-flex items-center gap-1" style={{ color: z.color }}>
-            <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: z.color }} />
-            {z.key} {z.min}–{z.max}
-          </span>
+      <div className="flex items-center gap-3 mt-1">
+        {[
+          { label: 'Low 0–29',    color: TEAL  },
+          { label: 'Med 30–59',   color: BLUE  },
+          { label: 'High 60–79',  color: AMBER },
+          { label: 'Crit 80–100', color: CORAL },
+        ].map(z => (
+          <div key={z.label} className="flex items-center gap-1">
+            <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: z.color }} />
+            <span className="text-[8.5px] text-muted-foreground whitespace-nowrap">{z.label}</span>
+          </div>
         ))}
       </div>
     </div>
@@ -156,8 +131,8 @@ export default function EnterpriseRiskScore() {
             }`}>
               {improving ? <TrendingDown className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
               {improving
-                ? `↓ ${Math.abs(SCORE_DELTA_7D)} pts better this week`
-                : `↑ +${Math.abs(SCORE_DELTA_7D)} pts worse this week`}
+                ? `↓ ${Math.abs(SCORE_DELTA_7D)} pts — risk reduced this week`
+                : `↑ ${Math.abs(SCORE_DELTA_7D)} pts — risk increased this week`}
             </div>
           )}
           <p className="text-[12px] text-foreground leading-snug">
@@ -180,7 +155,7 @@ export default function EnterpriseRiskScore() {
       {/* Driver contribution bar */}
       <div className="mb-3">
         <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">
-          What's driving ERS
+          What's driving ETS
         </p>
 
         {/* Stacked horizontal bar — each segment proportional to pts */}
