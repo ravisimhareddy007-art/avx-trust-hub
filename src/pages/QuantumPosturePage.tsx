@@ -20,12 +20,54 @@ const IN_FLIGHT_COUNT  = 847;
 // Only public-key algorithms (RSA, ECC, DSA, DH) require migration.
 
 const ALGO_DATA = [
-  { algo: 'RSA-2048',  count: 8420, vulnerable: true,  fill: 'hsl(16 72% 51%)',  use: 'Key exchange, TLS, code signing' },
-  { algo: 'RSA-4096',  count: 2100, vulnerable: true,  fill: 'hsl(16 72% 51%)',  use: 'Key exchange, document signing' },
-  { algo: 'ECC P-256', count: 1800, vulnerable: true,  fill: 'hsl(38 78% 51%)',  use: 'TLS, JWT, API auth, SSH certs' },
-  { algo: 'ECC P-384', count: 340,  vulnerable: true,  fill: 'hsl(38 78% 51%)',  use: 'K8s workload certs, high-sec APIs' },
-  { algo: 'AES-256',   count: 4200, vulnerable: false, fill: 'hsl(162 72% 37%)', use: 'Data at rest — quantum-resistant' },
-  { algo: 'ML-KEM',    count: 187,  vulnerable: false, fill: 'hsl(162 65% 55%)', use: 'NIST FIPS 203 — PQC-safe' },
+  {
+    algo: 'RSA-2048', count: 8420, vulnerable: true, fill: 'hsl(16, 72%, 51%)', use: 'Key exchange, TLS, code signing',
+    breakdown: [
+      { type: 'TLS Certificates',  count: 3840 },
+      { type: 'SSH Keys',           count: 2940 },
+      { type: 'Code Signing Certs', count: 980  },
+      { type: 'API / Secrets',      count: 660  },
+    ],
+  },
+  {
+    algo: 'RSA-4096', count: 2100, vulnerable: true, fill: 'hsl(16, 72%, 51%)', use: 'Key exchange, document signing',
+    breakdown: [
+      { type: 'TLS Certificates',  count: 1260 },
+      { type: 'Document Signing',   count: 520  },
+      { type: 'SSH Keys',           count: 320  },
+    ],
+  },
+  {
+    algo: 'ECC P-256', count: 1800, vulnerable: true, fill: 'hsl(38, 78%, 51%)', use: 'TLS, JWT, API auth, SSH certs',
+    breakdown: [
+      { type: 'TLS Certificates',  count: 840  },
+      { type: 'SSH Certificates',   count: 480  },
+      { type: 'AI Agent Tokens',    count: 312  },
+      { type: 'JWT / API Auth',     count: 168  },
+    ],
+  },
+  {
+    algo: 'ECC P-384', count: 340, vulnerable: true, fill: 'hsl(38, 78%, 51%)', use: 'K8s workload certs, high-sec APIs',
+    breakdown: [
+      { type: 'K8s Workload Certs', count: 248 },
+      { type: 'TLS Certificates',   count: 92  },
+    ],
+  },
+  {
+    algo: 'AES-256', count: 4200, vulnerable: false, fill: 'hsl(162, 72%, 37%)', use: 'Data at rest — quantum-resistant',
+    breakdown: [
+      { type: 'Encryption Keys',    count: 2840 },
+      { type: 'Secrets / API Keys', count: 960  },
+      { type: 'Vault Secrets',      count: 400  },
+    ],
+  },
+  {
+    algo: 'ML-KEM', count: 187, vulnerable: false, fill: 'hsl(162, 65%, 55%)', use: 'NIST FIPS 203 — PQC-safe',
+    breakdown: [
+      { type: 'TLS Certificates',   count: 124 },
+      { type: 'K8s Workload Certs', count: 63  },
+    ],
+  },
 ];
 
 // ── HNDL top-5 with dependency counts and compensating controls ───────────────
