@@ -21,7 +21,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     try { localStorage.removeItem('trust-onboarding-dismissed'); } catch {}
   }, []);
 
-  const [dismissed, setDismissed] = useState<string[]>([]);
+  const [dismissed, setDismissed] = useState<string[]>([...ALL_STEPS]);
 
   const dismiss = (id: string) =>
     setDismissed(prev => (prev.includes(id) ? prev : [...prev, id]));
