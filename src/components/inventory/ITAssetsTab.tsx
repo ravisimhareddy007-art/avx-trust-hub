@@ -135,7 +135,10 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
     else if (navFilters.coverageGap === 'no-policy') setCoverageFilter('no-policy');
     else if (navFilters.coverageGap === 'unowned') setCoverageFilter('unowned');
     else setCoverageFilter('');
-  }, [navFilters.type, navFilters.coverageGap]);
+    if (navFilters.assetName) {
+      setSearch(navFilters.assetName);
+    }
+  }, [navFilters.type, navFilters.coverageGap, navFilters.assetName]);
 
   // Manual assets first so they're immediately visible after add.
   const allAssets = useMemo(() => [...manualITAssets, ...mockITAssets], [manualITAssets]);
