@@ -363,10 +363,22 @@ function AlgoChart({ nav }: { nav: (f: Record<string, string>) => void }) {
             legend: { display: false },
             tooltip: {
               callbacks: {
-                label: (c: { dataIndex: number; formattedValue: string }) =>
-                  `${c.formattedValue} objects · ${ALGO_DATA[c.dataIndex].use}`,
-                title: (items: { label: string }[]) =>
-                  `${items[0].label} — ${ALGO_DATA.find(d => d.algo === items[0].label)?.vulnerable ? 'Quantum-vulnerable' : 'Quantum-safe'}`,
+                title: (items: { label: string }[]) => {
+                  const d = ALGO_DATA.find(a => a.algo === items[0].label);
+                  return `${items[0].label} — ${d?.vulnerable ? 'Quantum-vulnerable' : 'Quantum-safe'}`;
+                },
+                label: () => '',
+                afterBody: (items: { dataIndex: number }[]) => {
+                  const d = ALGO_DATA[items[0].dataIndex];
+                  const lines: string[] = [
+                    `Total: ${d.count.toLocaleString()} objects`,
+                    '─────────────────',
+                    ...d.breakdown.map(b => `  ${b.type}: ${b.count.toLocaleString()}`),
+                    '',
+                    `Use: ${d.use}`,
+                  ];
+                  return lines;
+                },
               },
             },
           },
