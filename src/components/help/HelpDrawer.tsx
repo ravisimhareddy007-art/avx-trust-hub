@@ -96,6 +96,20 @@ export default function HelpDrawer({ open, onClose, contextPage }: Props) {
         <div className="flex-1 flex min-h-0">
           {/* LEFT PANEL */}
           <div className="w-[280px] border-r border-border flex flex-col min-h-0">
+
+            {/* Getting Started CTA */}
+            <button
+              onClick={() => { setSelectedId('gs-setup-guide'); setCategory('Getting Started'); setQuery(''); }}
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 bg-teal/10 border-b border-teal/20 hover:bg-teal/15 transition-colors text-left flex-shrink-0"
+            >
+              <div className="w-6 h-6 rounded-md bg-teal/20 flex items-center justify-center flex-shrink-0">
+                <BookOpen className="w-3.5 h-3.5 text-teal" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[11px] font-semibold text-teal">Getting Started Guide</div>
+                <div className="text-[10px] text-teal/70">5-step setup · connect → discover → policy → inventory → remediate</div>
+              </div>
+            </button>
             {/* Search */}
             <div className="p-3 border-b border-border flex-shrink-0">
               <div className="relative">
