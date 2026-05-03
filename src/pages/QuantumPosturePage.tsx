@@ -19,12 +19,12 @@ const IN_FLIGHT_COUNT  = 847;
 // ── Static data ───────────────────────────────────────────────────────────────
 
 const ALGO_DATA = [
-  { algo: 'RSA-2048',  count: 8420, vulnerable: true  },
-  { algo: 'RSA-4096',  count: 2100, vulnerable: true  },
-  { algo: 'ECC P-256', count: 1800, vulnerable: true  },
-  { algo: 'ECC P-384', count: 340,  vulnerable: true  },
-  { algo: 'AES-256',   count: 4200, vulnerable: false },
-  { algo: 'ML-KEM',    count: 187,  vulnerable: false },
+  { algo: 'RSA-2048',  count: 8420, vulnerable: true,  fill: 'hsl(16 72% 51%)'  },
+  { algo: 'RSA-4096',  count: 2100, vulnerable: true,  fill: 'hsl(16 72% 51%)'  },
+  { algo: 'ECC P-256', count: 1800, vulnerable: true,  fill: 'hsl(38 78% 51%)'  },
+  { algo: 'ECC P-384', count: 340,  vulnerable: true,  fill: 'hsl(38 78% 51%)'  },
+  { algo: 'AES-256',   count: 4200, vulnerable: false, fill: 'hsl(162 72% 37%)' },
+  { algo: 'ML-KEM',    count: 187,  vulnerable: false, fill: 'hsl(162 72% 55%)' },
 ];
 
 const HNDL_LIST = [
