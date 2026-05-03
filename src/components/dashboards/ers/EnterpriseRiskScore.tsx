@@ -82,7 +82,7 @@ export default function EnterpriseRiskScore() {
       <div className="flex items-start gap-4 mb-3">
         <ErsGauge score={ers.ers} hsl={sevHsl} label={ers.severity} />
         <div className="flex-1 pt-1">
-          {SCORE_DELTA_7D === 0 ? (
+          {(SCORE_DELTA_7D as number) === 0 ? (
             <div className="inline-flex items-center gap-1 text-[10.5px] font-semibold px-1.5 py-0.5 rounded mb-1.5 bg-secondary text-muted-foreground">
               No change this week
             </div>
