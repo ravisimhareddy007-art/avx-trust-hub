@@ -3,6 +3,9 @@ import { Shield, Key, Bot, Lock, Fingerprint, Globe, AlertTriangle, Clock, Spark
 import { toast } from 'sonner';
 import { useDashboard, feedItemToDriver } from '@/context/DashboardContext';
 import { useNav } from '@/context/NavigationContext';
+import { VIOLATION_FILTERS } from '@/lib/filters/cryptoFilters';
+
+const fmt = (n: number) => n.toLocaleString();
 
 interface RemediationGroup {
   ca: string;
@@ -33,43 +36,43 @@ interface ActionItem {
 const FEED: ActionItem[] = [
   {
     id: '1', category: 'Certs', icon: Shield, severity: 'P1',
-    title: '*.payments.acmecorp.com expires in 6 days',
-    detail: 'Wildcard cert · 7 dependent services · auto-renewal off',
-    aiPlan: 'Renew *.payments.acmecorp.com via DigiCert G2. New cert valid 90 days. Will be deployed to 7 dependent services automatically (payments-api, billing-gw, checkout-fe, settlement-svc, ledger-svc, refund-svc, dispute-svc).',
-    approveSummary: 'Renew wildcard cert and roll to 7 services.',
+    title: `${fmt(VIOLATION_FILTERS.cert_expiring_7d.enterpriseCount)} certificates expiring in 7 days — no auto-renewal`,
+    detail: 'Wildcard + edge certs · auto-renewal off · dependent services impacted',
+    aiPlan: 'Renew expiring wildcard certs via DigiCert G2. New certs valid 90 days. Will be deployed to dependent services automatically.',
+    approveSummary: `Renew ${fmt(VIOLATION_FILTERS.cert_expiring_7d.enterpriseCount)} expiring certs and roll to dependent services.`,
     ageMins: 12,
   },
   {
     id: '2', category: 'AI', icon: Bot, severity: 'P1',
-    title: 'gpt-orchestrator-token is over-privileged',
-    detail: '14,200 actions/day · 6 services · OpenAI + S3 + Slack write',
-    aiPlan: 'Right-size gpt-orchestrator-token scope. Remove S3 write (unused 14d), Slack admin (unused 30d). Keep OpenAI + S3 read. Re-issue token, hot-swap via secret manager.',
-    approveSummary: 'Strip 2 unused scopes, rotate token in-place.',
+    title: `${fmt(VIOLATION_FILTERS.ai_admin_no_rotation.enterpriseCount)} AI tokens with admin privilege — not rotated >30d`,
+    detail: 'Production agents · OpenAI + S3 + Slack write scopes',
+    aiPlan: 'Right-size admin AI tokens. Remove unused scopes. Re-issue tokens, hot-swap via secret manager.',
+    approveSummary: 'Strip unused scopes, rotate tokens in-place.',
     ageMins: 47,
   },
   {
     id: '3', category: 'SSH', icon: Key, severity: 'P1',
-    title: '3,218 orphaned SSH keys with shell access',
-    detail: 'No assigned owner · last used >180d ago',
-    aiPlan: 'Bulk revoke 3,218 SSH keys (last used >180d, no owner). Quarantine for 30d before deletion. Notify last-known accessing IPs.',
-    approveSummary: 'Quarantine 3,218 orphaned keys for 30 days.',
+    title: `${fmt(VIOLATION_FILTERS.ssh_suspicious.enterpriseCount)} suspicious SSH keys with shell access`,
+    detail: 'Anomalous login patterns · production hosts',
+    aiPlan: `Bulk quarantine ${fmt(VIOLATION_FILTERS.ssh_suspicious.enterpriseCount)} suspicious SSH keys for 30d before deletion. Notify last-known accessing IPs.`,
+    approveSummary: `Quarantine ${fmt(VIOLATION_FILTERS.ssh_suspicious.enterpriseCount)} suspicious keys for 30 days.`,
     ageMins: 95,
     remediationGroups: [
-      { ca: 'N/A', caAccount: 'ssh-prod', count: 1847, environment: 'Production', teams: ['infra-ops'], method: 'manual', requiresApproval: true, workflowTemplate: 'SSH Key Rotation' },
-      { ca: 'N/A', caAccount: 'ssh-staging', count: 1371, environment: 'Staging', teams: ['dev-platform'], method: 'manual', requiresApproval: false, workflowTemplate: 'SSH Key Rotation' },
+      { ca: 'N/A', caAccount: 'ssh-prod', count: 28, environment: 'Production', teams: ['infra-ops'], method: 'manual', requiresApproval: true, workflowTemplate: 'SSH Key Rotation' },
+      { ca: 'N/A', caAccount: 'ssh-staging', count: 16, environment: 'Staging', teams: ['dev-platform'], method: 'manual', requiresApproval: false, workflowTemplate: 'SSH Key Rotation' },
     ],
   },
   {
     id: '4', category: 'Secrets', icon: Lock, severity: 'P1',
-    title: '18,420 secrets exposed in code repositories',
-    detail: 'GitHub + GitLab scan · 142 hardcoded in last 24h',
-    aiPlan: 'Open PRs to replace hardcoded secrets with Vault references. Rotate all 18,420 exposed values. Notify last-author per repo.',
-    approveSummary: 'Rotate all 18,420 secrets and open replacement PRs.',
+    title: `${fmt(VIOLATION_FILTERS.secret_exposed_code.enterpriseCount)} secrets exposed in code repositories`,
+    detail: `GitHub + GitLab scan · ${fmt(VIOLATION_FILTERS.secret_hardcoded_24h.enterpriseCount)} hardcoded in last 24h`,
+    aiPlan: `Open PRs to replace hardcoded secrets with Vault references. Rotate all ${fmt(VIOLATION_FILTERS.secret_exposed_code.enterpriseCount)} exposed values. Notify last-author per repo.`,
+    approveSummary: `Rotate all ${fmt(VIOLATION_FILTERS.secret_exposed_code.enterpriseCount)} secrets and open replacement PRs.`,
     ageMins: 130,
     remediationGroups: [
-      { ca: 'HashiCorp Vault', caAccount: 'vault-prod', count: 9410, environment: 'Production', teams: ['platform-eng', 'data-eng'], method: 'acme-auto', requiresApproval: true, workflowTemplate: 'Secret Rotation' },
-      { ca: 'AWS Secrets Manager', caAccount: 'sm-app', count: 6280, environment: 'Production + Staging', teams: ['app-team'], method: 'acme-auto', requiresApproval: true, workflowTemplate: 'Secret Rotation' },
-      { ca: 'Azure Key Vault', caAccount: 'kv-shared', count: 2730, environment: 'Dev + Staging', teams: ['dev-platform'], method: 'acme-auto', requiresApproval: false, workflowTemplate: 'Secret Rotation' },
+      { ca: 'HashiCorp Vault', caAccount: 'vault-prod', count: 2150, environment: 'Production', teams: ['platform-eng', 'data-eng'], method: 'acme-auto', requiresApproval: true, workflowTemplate: 'Secret Rotation' },
+      { ca: 'AWS Secrets Manager', caAccount: 'sm-app', count: 1430, environment: 'Production + Staging', teams: ['app-team'], method: 'acme-auto', requiresApproval: true, workflowTemplate: 'Secret Rotation' },
+      { ca: 'Azure Key Vault', caAccount: 'kv-shared', count: 640, environment: 'Dev + Staging', teams: ['dev-platform'], method: 'acme-auto', requiresApproval: false, workflowTemplate: 'Secret Rotation' },
     ],
   },
   {
@@ -82,15 +85,15 @@ const FEED: ActionItem[] = [
   },
   {
     id: '6', category: 'Certs', icon: Shield, severity: 'P2',
-    title: '4,218 certificates use weak algorithms',
+    title: `${fmt(VIOLATION_FILTERS.cert_weak_algo.enterpriseCount)} certificates use weak algorithms`,
     detail: 'RSA-1024 / SHA-1 · NIST PQC migration required',
-    aiPlan: 'Stage PQC migration: re-issue 4,218 certs with ML-KEM-768 hybrid. Roll in waves, auto-rollback on TLS handshake failure.',
-    approveSummary: 'Begin staged PQC migration of 4,218 certs.',
+    aiPlan: `Stage PQC migration: re-issue ${fmt(VIOLATION_FILTERS.cert_weak_algo.enterpriseCount)} certs with ML-KEM-768 hybrid. Roll in waves, auto-rollback on TLS handshake failure.`,
+    approveSummary: `Begin staged PQC migration of ${fmt(VIOLATION_FILTERS.cert_weak_algo.enterpriseCount)} certs.`,
     ageMins: 240,
     remediationGroups: [
-      { ca: 'DigiCert CertCentral', caAccount: 'payments-prod', count: 847, environment: 'Production', teams: ['payments-eng', 'billing-eng'], method: 'acme-auto', requiresApproval: true, workflowTemplate: 'Renew Certificate' },
-      { ca: 'Microsoft ADCS', caAccount: 'corp-pki', count: 2103, environment: 'Production + Staging', teams: ['infra-platform'], method: 'est-semi', requiresApproval: true, workflowTemplate: 'Re-enroll Certificate' },
-      { ca: "Let's Encrypt", caAccount: 'le-prod', count: 1268, environment: 'Dev + Staging', teams: ['dev-platform'], method: 'acme-auto', requiresApproval: false, workflowTemplate: 'Renew Certificate' },
+      { ca: 'DigiCert CertCentral', caAccount: 'payments-prod', count: 18, environment: 'Production', teams: ['payments-eng', 'billing-eng'], method: 'acme-auto', requiresApproval: true, workflowTemplate: 'Renew Certificate' },
+      { ca: 'Microsoft ADCS', caAccount: 'corp-pki', count: 22, environment: 'Production + Staging', teams: ['infra-platform'], method: 'est-semi', requiresApproval: true, workflowTemplate: 'Re-enroll Certificate' },
+      { ca: "Let's Encrypt", caAccount: 'le-prod', count: 12, environment: 'Dev + Staging', teams: ['dev-platform'], method: 'acme-auto', requiresApproval: false, workflowTemplate: 'Renew Certificate' },
     ],
   },
   {
@@ -107,36 +110,36 @@ const FEED: ActionItem[] = [
   },
   {
     id: '8', category: 'Secrets', icon: Lock, severity: 'P2',
-    title: '42,180 API keys not rotated >90 days',
+    title: `${fmt(VIOLATION_FILTERS.secret_unrotated_90d.enterpriseCount)} secrets not rotated >90 days`,
     detail: 'Vault + AWS Secrets Manager · production scope',
-    aiPlan: 'Schedule rotation of 42,180 API keys grouped by vault. Notify owning teams 24h before each batch.',
-    approveSummary: 'Rotate 42,180 keys grouped by vault.',
+    aiPlan: `Schedule rotation of ${fmt(VIOLATION_FILTERS.secret_unrotated_90d.enterpriseCount)} secrets grouped by vault. Notify owning teams 24h before each batch.`,
+    approveSummary: `Rotate ${fmt(VIOLATION_FILTERS.secret_unrotated_90d.enterpriseCount)} secrets grouped by vault.`,
     ageMins: 480,
     remediationGroups: [
-      { ca: 'HashiCorp Vault', caAccount: 'vault-prod', count: 18420, environment: 'Production', teams: ['platform-eng'], method: 'acme-auto', requiresApproval: true, workflowTemplate: 'API Key Rotation' },
-      { ca: 'AWS Secrets Manager', caAccount: 'sm-prod', count: 16280, environment: 'Production', teams: ['cloud-eng'], method: 'acme-auto', requiresApproval: true, workflowTemplate: 'API Key Rotation' },
-      { ca: 'Azure Key Vault', caAccount: 'kv-prod', count: 7480, environment: 'Production', teams: ['cloud-eng'], method: 'acme-auto', requiresApproval: false, workflowTemplate: 'API Key Rotation' },
+      { ca: 'HashiCorp Vault', caAccount: 'vault-prod', count: 620, environment: 'Production', teams: ['platform-eng'], method: 'acme-auto', requiresApproval: true, workflowTemplate: 'API Key Rotation' },
+      { ca: 'AWS Secrets Manager', caAccount: 'sm-prod', count: 410, environment: 'Production', teams: ['cloud-eng'], method: 'acme-auto', requiresApproval: true, workflowTemplate: 'API Key Rotation' },
+      { ca: 'Azure Key Vault', caAccount: 'kv-prod', count: 220, environment: 'Production', teams: ['cloud-eng'], method: 'acme-auto', requiresApproval: false, workflowTemplate: 'API Key Rotation' },
     ],
   },
   {
     id: '9', category: 'SSH', icon: Key, severity: 'P3',
-    title: '14,720 keys stored outside HSM',
-    detail: 'Filesystem & vault keystores · move to Thales/AWS CloudHSM',
-    aiPlan: 'Migrate 14,720 keys to AWS CloudHSM. Wrap, transfer, verify, then delete source. Maintenance window required.',
-    approveSummary: 'Migrate 14,720 keys into HSM (windowed).',
+    title: `${fmt(VIOLATION_FILTERS.ssh_rogue.enterpriseCount)} rogue SSH keys — not provisioned by platform`,
+    detail: 'Filesystem & vault keystores · move to managed SSH CA',
+    aiPlan: `Quarantine ${fmt(VIOLATION_FILTERS.ssh_rogue.enterpriseCount)} rogue keys. Re-issue under managed CA after owner verification.`,
+    approveSummary: `Quarantine ${fmt(VIOLATION_FILTERS.ssh_rogue.enterpriseCount)} rogue keys (windowed).`,
     ageMins: 720,
   },
   {
     id: '10', category: 'AI', icon: Bot, severity: 'P3',
-    title: '44K AI agent tokens have no human sponsor',
+    title: `${fmt(VIOLATION_FILTERS.ai_over_privileged.enterpriseCount)} over-privileged AI agent tokens — unused scopes`,
     detail: 'Compliance violation · SOC2 control CC6.1',
-    aiPlan: 'Auto-assign sponsors based on token creator + service ownership graph. Send confirmation email to each sponsor with 7d objection window.',
-    approveSummary: 'Auto-sponsor 44K tokens with confirmation flow.',
+    aiPlan: `Strip unused scopes from ${fmt(VIOLATION_FILTERS.ai_over_privileged.enterpriseCount)} tokens. Send confirmation to each sponsor with 7d objection window.`,
+    approveSummary: `Right-size ${fmt(VIOLATION_FILTERS.ai_over_privileged.enterpriseCount)} tokens with confirmation flow.`,
     ageMins: 1100,
     remediationGroups: [
-      { ca: 'Okta', caAccount: 'okta-prod', count: 22000, environment: 'Production', teams: ['identity-team'], method: 'acme-auto', requiresApproval: true, workflowTemplate: 'Token Sponsor Assignment' },
-      { ca: 'Azure AD', caAccount: 'aad-corp', count: 14000, environment: 'Production', teams: ['identity-team'], method: 'acme-auto', requiresApproval: true, workflowTemplate: 'Token Sponsor Assignment' },
-      { ca: 'AWS IAM', caAccount: 'iam-prod', count: 8000, environment: 'Production', teams: ['cloud-eng'], method: 'acme-auto', requiresApproval: false, workflowTemplate: 'Token Sponsor Assignment' },
+      { ca: 'Okta', caAccount: 'okta-prod', count: 140, environment: 'Production', teams: ['identity-team'], method: 'acme-auto', requiresApproval: true, workflowTemplate: 'Token Sponsor Assignment' },
+      { ca: 'Azure AD', caAccount: 'aad-corp', count: 110, environment: 'Production', teams: ['identity-team'], method: 'acme-auto', requiresApproval: true, workflowTemplate: 'Token Sponsor Assignment' },
+      { ca: 'AWS IAM', caAccount: 'iam-prod', count: 62, environment: 'Production', teams: ['cloud-eng'], method: 'acme-auto', requiresApproval: false, workflowTemplate: 'Token Sponsor Assignment' },
     ],
   },
   {

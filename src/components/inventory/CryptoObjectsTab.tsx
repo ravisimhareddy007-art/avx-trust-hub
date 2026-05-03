@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import DeployToDeviceModal from '@/components/integrations/DeployToDeviceModal';
 import AgentDetailPanel from '@/components/inventory/AgentDetailPanel';
 import CryptoObjectRiskDrawer from '@/components/risk/CryptoObjectRiskDrawer';
-import { DASHBOARD_FILTERS } from '@/lib/filters/cryptoFilters';
+import { DASHBOARD_FILTERS, VIOLATION_FILTERS } from '@/lib/filters/cryptoFilters';
 
 interface Props {
   onCreateTicket: (ctx: any) => void;
@@ -135,6 +135,22 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
     if (statusFilter) result = result.filter(a => a.status === statusFilter);
     if (pqcFilter) result = result.filter(a => a.pqcRisk === pqcFilter);
     if (ownerFilter === 'Unassigned') result = result.filter(a => a.owner === 'Unassigned');
+
+    if (process.env.NODE_ENV === 'development' && dashboardFilterId) {
+      const filter = VIOLATION_FILTERS[dashboardFilterId] ?? DASHBOARD_FILTERS[dashboardFilterId];
+      if (filter) {
+        const inventoryCount = allAssets.filter(filter.predicate).length;
+        if (inventoryCount !== filter.enterpriseCount) {
+          console.warn(
+            `[Data consistency] "${dashboardFilterId}": ` +
+            `dashboard shows ${filter.enterpriseCount}, ` +
+            `inventory predicate returns ${inventoryCount}. ` +
+            `Update predicate or enterpriseCount in cryptoFilters.ts.`
+          );
+        }
+      }
+    }
+
     return result;
   }, [allAssets, search, typeFilter, algFilter, envFilter, statusFilter, pqcFilter, ownerFilter, dashboardFilterId]);
 
