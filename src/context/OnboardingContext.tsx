@@ -26,13 +26,15 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   const dismiss = (id: string) =>
     setDismissed(prev => (prev.includes(id) ? prev : [...prev, id]));
 
-  const dismissAll = () => setDismissed([...ALL_STEPS]);
+  const [stripVisible, setStripVisible] = useState(true);
+
+  const showStrip = stripVisible;
+
+  const dismissAll = () => { setDismissed([...ALL_STEPS]); setStripVisible(false); };
 
   const reset = () => setDismissed([]);
 
   const isDismissed = (id: string) => dismissed.includes(id);
-
-  const showStrip = !ALL_STEPS.every(id => dismissed.includes(id));
 
   return (
     <OnboardingContext.Provider value={{ dismissed, isDismissed, dismiss, dismissAll, reset, showStrip }}>
