@@ -120,8 +120,13 @@ export default function InfrastructurePostureStrip() {
       <div className="flex items-center justify-between mb-3">
         <div>
           <h2 className="text-sm font-semibold text-foreground">Infrastructure Coverage Spotlight</h2>
-          <p className="text-[10px] text-muted-foreground">
-            Discovery, Control, and Ownership gaps across your infrastructure — click any row to drill into the affected assets
+          <p className="text-[10px] text-muted-foreground mt-0.5">
+            Structural gaps — not violations. For individual findings see the action queue above.
+            <span className="ml-2 inline-flex items-center gap-2">
+              <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-purple inline-block"/>Discovery</span>
+              <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber inline-block"/>Control</span>
+              <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-coral inline-block"/>Ownership</span>
+            </span>
           </p>
         </div>
         <span className="text-[10px] text-muted-foreground tabular-nums">
@@ -162,23 +167,31 @@ export default function InfrastructurePostureStrip() {
               </div>
 
               <div className="px-2 pb-2 border-t border-border/40 pt-1.5 space-y-0.5">
-                {tile.gaps.map(g => {
-                  const GapIcon = g.icon;
-                  return (
-                    <button
-                      key={g.dimension}
-                      onClick={() => navGap(tile.assetType, g.coverageGap)}
-                      className="w-full flex items-center gap-2 px-1.5 py-1 rounded hover:bg-background/60 transition-colors text-left group/row"
-                      title={`${g.dimension} gap: ${g.label}`}
-                    >
-                      <span className={`inline-block w-1.5 h-1.5 rounded-full flex-shrink-0 ${DIM_DOT[g.dimension]}`} />
-                      <GapIcon className={`w-2.5 h-2.5 flex-shrink-0 ${DIM_COLOR[g.dimension]}`} />
-                      <span className="text-[10.5px] text-foreground/90 leading-tight flex-1 truncate">{g.label}</span>
-                      <span className={`text-[10.5px] font-semibold tabular-nums ${DIM_COLOR[g.dimension]}`}>{g.value}</span>
-                      <ArrowRight className="w-2.5 h-2.5 opacity-0 group-hover/row:opacity-60 text-teal transition-opacity flex-shrink-0" />
-                    </button>
-                  );
-                })}
+                {tile.gaps.map(g => (
+                  <button
+                    key={g.dimension}
+                    onClick={() => navGap(tile.assetType, g.coverageGap)}
+                    className="w-full flex flex-col px-2 py-1.5 rounded hover:bg-background/60 transition-colors text-left group/row"
+                  >
+                    <div className="flex items-center justify-between w-full mb-0.5">
+                      <div className="flex items-center gap-1.5">
+                        <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${DIM_DOT[g.dimension]}`} />
+                        <span className={`text-[9.5px] font-semibold uppercase tracking-wider ${DIM_COLOR[g.dimension]}`}>
+                          {g.dimension}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className={`text-sm font-bold tabular-nums leading-none ${DIM_COLOR[g.dimension]}`}>
+                          {g.value}
+                        </span>
+                        <ArrowRight className="w-2.5 h-2.5 text-teal opacity-0 group-hover/row:opacity-100 transition-opacity flex-shrink-0" />
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground leading-snug pl-3">
+                      {g.label}
+                    </p>
+                  </button>
+                ))}
               </div>
             </div>
           );
