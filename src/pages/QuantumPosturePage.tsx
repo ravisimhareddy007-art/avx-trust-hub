@@ -197,11 +197,11 @@ function StageDiscover({ onNext, nav }: { onNext: () => void; nav: (f: Record<st
               dataKey="count"
               name="Objects"
               radius={[4, 4, 0, 0]}
-              onClick={(data: any) => nav({ tab: 'identities', algorithm: data.algo })}
+              onClick={(data: typeof ALGO_DATA[0]) => nav({ tab: 'identities', algorithm: data.algo })}
               style={{ cursor: 'pointer' }}
             >
               {ALGO_DATA.map((d, i) => (
-                <Cell key={i} fill={d.vulnerable ? 'hsl(16 72% 51%)' : 'hsl(162 72% 37%)'} />
+                <Cell key={i} fill={d.fill} />
               ))}
             </Bar>
           </BarChart>
