@@ -131,10 +131,6 @@ export default function InfrastructurePostureStrip() {
             </span>
           </p>
         </div>
-        <div className="text-right">
-          <div className="text-sm font-semibold text-foreground tabular-nums">{TOTAL_OUTSIDE_PERIMETER.toLocaleString()}</div>
-          <div className="text-[9.5px] text-muted-foreground leading-tight">assets outside<br/>governance perimeter</div>
-        </div>
       </div>
 
       {/* Five tiles */}
