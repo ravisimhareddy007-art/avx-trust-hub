@@ -61,10 +61,10 @@ function ErsGauge({ score, hsl, label }: { score: number; hsl: string; label: st
         r="4.5" fill={hsl}
         style={{ transition: 'all 0.8s cubic-bezier(0.4,0,0.2,1)' }}
       />
-      <text x="14"  y="114" textAnchor="middle" fontSize="8" fill={TEAL}  opacity="0.8">LOW</text>
-      <text x="50"  y="28"  textAnchor="middle" fontSize="8" fill={BLUE}  opacity="0.8">MED</text>
-      <text x="110" y="28"  textAnchor="middle" fontSize="8" fill={AMBER} opacity="0.8">HIGH</text>
-      <text x="146" y="114" textAnchor="middle" fontSize="8" fill={CORAL} opacity="0.8">CRIT</text>
+      <text x="10"  y="108" textAnchor="middle" fontSize="7.5" fill={TEAL}  opacity="0.75">LOW</text>
+      <text x="36"  y="18"  textAnchor="middle" fontSize="7.5" fill={BLUE}  opacity="0.75">MED</text>
+      <text x="124" y="18"  textAnchor="middle" fontSize="7.5" fill={AMBER} opacity="0.75">HIGH</text>
+      <text x="150" y="108" textAnchor="middle" fontSize="7.5" fill={CORAL} opacity="0.75">CRIT</text>
       <text x={cx} y="68"  textAnchor="middle" fontSize="22" fontWeight="700" fill={hsl} style={{ transition: 'fill 0.7s ease' }}>{label.toUpperCase()}</text>
       <text x={cx} y="84"  textAnchor="middle" fontSize="14" fontWeight="500" fill={hsl} fillOpacity="0.75">{score}</text>
       <text x={cx} y="96"  textAnchor="middle" fontSize="9"  fill="currentColor" fillOpacity="0.35">/ 100</text>
