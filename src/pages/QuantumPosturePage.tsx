@@ -744,7 +744,7 @@ export default function QuantumPosturePage() {
       {active === 0 && <StageDiscover onNext={() => setActive(1)} nav={nav} />}
       {active === 1 && <StageAssess   onNext={() => setActive(2)} nav={nav} />}
       {active === 2 && <StagePlan     onNext={() => setActive(3)} />}
-      {active === 3 && <StageMigrate  onNext={() => setActive(4)} navTicket={navTicket} nav={nav} />}}
+      {active === 3 && <StageMigrate  onNext={() => setActive(4)} navTicket={navTicket} nav={nav} />}
       {active === 4 && <StageMonitor />}
 
     </div>
