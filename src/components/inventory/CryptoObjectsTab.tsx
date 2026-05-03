@@ -744,12 +744,13 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
         a.algorithm.toLowerCase().includes(q)
       );
     }
-    if (algFilter === 'weak') r = r.filter(a => /RSA-1024|RSA-2048|SHA-1/.test(a.algorithm));
-    else if (algFilter) r = r.filter(a => a.algorithm === algFilter);
-    if (envFilter)    r = r.filter(a => a.environment === envFilter);
-    if (statusFilter) r = r.filter(a => a.status === statusFilter);
-    if (pqcFilter)    r = r.filter(a => a.pqcRisk === pqcFilter);
-    if (ownerFilter === 'Unassigned') r = r.filter(a => a.owner === 'Unassigned');
+    if (algFilter.length) {
+      r = r.filter(a => algFilter.some(v => v === 'weak' ? /RSA-1024|RSA-2048|SHA-1/.test(a.algorithm) : a.algorithm === v));
+    }
+    if (envFilter.length)    r = r.filter(a => envFilter.includes(a.environment));
+    if (statusFilter.length) r = r.filter(a => statusFilter.includes(a.status));
+    if (pqcFilter.length)    r = r.filter(a => pqcFilter.includes(a.pqcRisk));
+    if (ownerFilter.length)  r = r.filter(a => ownerFilter.includes('Unassigned') ? a.owner === 'Unassigned' : true);
 
     // Sorting — default risk_score DESC, with expiry tie-breaker
     const dir = sortDir === 'asc' ? 1 : -1;
