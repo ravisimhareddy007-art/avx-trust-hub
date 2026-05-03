@@ -591,13 +591,6 @@ function DetailPanel({
                 <span className="font-mono font-semibold text-foreground">{co.algorithm}</span>
                 <span className="text-muted-foreground"> is quantum-vulnerable.</span>
                 {expYear > 0 && <span className="text-muted-foreground"> Expires {expYear}{yearsPast > 0 ? <span className="text-coral font-semibold"> — {yearsPast}yr past NIST deadline</span> : ' — at NIST deadline'}.</span>}
-                <button
-                  onClick={() => onTicket('pqc')}
-                  className="w-full mt-2 text-[10px] font-semibold px-2 py-1.5 rounded bg-purple/20 text-purple-light hover:bg-purple/30 transition-colors flex items-center justify-center gap-1.5"
-                >
-                  <Ticket className="w-3 h-3" />
-                  Create PQC Migration Ticket →
-                </button>
               </div>
             </div>
           )}
@@ -860,13 +853,13 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                         {primary ? (
                           <button
                             onClick={() => openTicket(co, primary.action)}
-                            className={`opacity-0 group-hover:opacity-100 transition-opacity text-[9.5px] font-semibold px-2 py-1 rounded whitespace-nowrap ${primary.btnCls}`}
+                            className={`text-[9.5px] font-semibold px-2 py-1 rounded whitespace-nowrap ${primary.btnCls}`}
                           >
                             {primary.label}
                           </button>
                         ) : (
                           <button onClick={() => setDetailAsset(co)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity text-[9.5px] text-muted-foreground hover:text-foreground flex items-center gap-0.5 ml-auto">
+                            className="text-[9.5px] text-muted-foreground hover:text-foreground flex items-center gap-0.5 ml-auto">
                             Details <ArrowRight className="w-3 h-3" />
                           </button>
                         )}
@@ -906,16 +899,9 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
           asset={ticketAsset}
           action={ticketAction}
           onClose={() => setTicketAsset(null)}
-          onConfirm={(draft: TicketDraft) => {
-            onCreateTicket({
-              objectName: ticketAsset.name,
-              objectType: ticketAsset.type,
-              algorithm: ticketAsset.algorithm,
-              status: ticketAsset.status,
-              daysToExpiry: ticketAsset.daysToExpiry,
-              environment: ticketAsset.environment,
-              draft,
-            });
+          onConfirm={() => {
+            // TicketDraftModal handles toast confirmation internally.
+            // Do not call onCreateTicket — that opens the legacy drawer.
           }}
         />
       )}
