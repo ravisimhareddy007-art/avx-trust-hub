@@ -763,8 +763,30 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
     if (statusFilter) r = r.filter(a => a.status === statusFilter);
     if (pqcFilter)    r = r.filter(a => a.pqcRisk === pqcFilter);
     if (ownerFilter === 'Unassigned') r = r.filter(a => a.owner === 'Unassigned');
+
+    // Sorting — default risk_score DESC, with expiry tie-breaker
+    const dir = sortDir === 'asc' ? 1 : -1;
+    const expiryTs = (a: CryptoAsset) => {
+      const t = a.expiryDate && a.expiryDate !== 'N/A' ? Date.parse(a.expiryDate) : NaN;
+      return Number.isFinite(t) ? t : Number.POSITIVE_INFINITY;
+    };
+    if (sortKey === 'riskScore') {
+      r.sort((a, b) => {
+        const sa = crsScore(a);
+        const sb = crsScore(b);
+        const va = Number.isFinite(sa) ? sa : -Infinity;
+        const vb = Number.isFinite(sb) ? sb : -Infinity;
+        if (va !== vb) return (vb - va) * (sortDir === 'desc' ? 1 : -1);
+        // tie-break: expiry ASC (earliest first)
+        const ea = expiryTs(a), eb = expiryTs(b);
+        if (ea !== eb) return ea - eb;
+        return 0;
+      });
+    } else if (sortKey === 'daysToExpiry') {
+      r.sort((a, b) => (a.daysToExpiry - b.daysToExpiry) * dir);
+    }
     return r;
-  }, [allAssets, typeFilter, search, algFilter, envFilter, statusFilter, pqcFilter, ownerFilter]);
+  }, [allAssets, typeFilter, search, algFilter, envFilter, statusFilter, pqcFilter, ownerFilter, sortKey, sortDir]);
 
   const getAssoc = (co: CryptoAsset) => mockITAssets.filter(a => a.cryptoObjectIds.includes(co.id));
   const cols = COLS[typeFilter] ?? COLS['All'];
