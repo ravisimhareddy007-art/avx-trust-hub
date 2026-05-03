@@ -366,7 +366,7 @@ function StageDiscover({ onNext, nav }: { onNext: () => void; nav: (f: Record<st
               dataKey="count"
               name="Objects"
               shape={(props: AlgoBarProps) => <CustomAlgoBar {...props} />}
-              onClick={(data: typeof ALGO_DATA[0]) => nav({ tab: 'identities', algorithm: data.algo })}
+              onClick={((data: typeof ALGO_DATA[0]) => nav({ tab: 'identities', algorithm: data.algo })) as never}
               style={{ cursor: 'pointer' }}
             />
           </BarChart>
