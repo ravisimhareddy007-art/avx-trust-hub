@@ -86,8 +86,8 @@ export default function EnterpriseRiskScore() {
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-teal" />
-          <h2 className="text-sm font-semibold text-foreground">Enterprise Trust Score</h2>
-          <span className="text-[9px] uppercase tracking-wider text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">ETS</span>
+          <h2 className="text-sm font-semibold text-foreground">Enterprise Risk Score</h2>
+          <span className="text-[9px] uppercase tracking-wider text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">ERS</span>
           <div className="relative group">
             <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
             <div className="absolute left-0 top-5 z-50 hidden group-hover:block w-72 bg-card border border-border rounded-lg shadow-lg px-3 py-2.5">
