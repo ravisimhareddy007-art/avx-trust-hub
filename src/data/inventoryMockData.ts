@@ -3,6 +3,7 @@ export interface ITAsset {
   id: string;
   name: string;
   type: 'Web Server' | 'Application Server' | 'Database Server' | 'Load Balancer' | 'API Gateway' | 'K8s Cluster' | 'CI/CD Pipeline' | 'Mail Server' | 'Bastion Host' | 'CDN' | 'HSM' | 'Vault Server' | 'AI Platform';
+  scanned: boolean;
   environment: 'Production' | 'Staging' | 'Development';
   ownerTeam: string;
   cryptoObjectIds: string[];
