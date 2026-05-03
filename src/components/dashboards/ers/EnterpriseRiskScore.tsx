@@ -131,8 +131,8 @@ export default function EnterpriseRiskScore() {
             }`}>
               {improving ? <TrendingDown className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
               {improving
-                ? `↓ ${Math.abs(SCORE_DELTA_7D)} pts better this week`
-                : `↑ +${Math.abs(SCORE_DELTA_7D)} pts worse this week`}
+                ? `↓ ${Math.abs(SCORE_DELTA_7D)} pts — risk reduced this week`
+                : `↑ ${Math.abs(SCORE_DELTA_7D)} pts — risk increased this week`}
             </div>
           )}
           <p className="text-[12px] text-foreground leading-snug">
