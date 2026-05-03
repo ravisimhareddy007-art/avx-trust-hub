@@ -36,10 +36,10 @@ function ErsGauge({ score, hsl, label }: { score: number; hsl: string; label: st
       <path d={arcPath(startAngle, startAngle + filled)} fill="none"
         stroke={hsl} strokeWidth="10" strokeLinecap="round"
         style={{ transition: 'all 0.7s ease' }} />
-      <text x="64" y="60" textAnchor="middle" fontSize="28" fontWeight="bold"
-        fill={hsl} style={{ transition: 'fill 0.7s ease' }}>{score}</text>
-      <text x="64" y="78" textAnchor="middle" fontSize="11"
-        fill="currentColor" fillOpacity="0.6">{label}</text>
+      <text x="64" y="62" textAnchor="middle" fontSize="20" fontWeight="bold"
+        fill={hsl} style={{ transition: 'fill 0.7s ease' }}>{label.toUpperCase()}</text>
+      <text x="64" y="82" textAnchor="middle" fontSize="13" fontWeight="600"
+        fill="currentColor" fillOpacity="0.55">{score}</text>
     </svg>
   );
 }
