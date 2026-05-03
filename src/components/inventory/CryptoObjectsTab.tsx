@@ -405,7 +405,21 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
           >
             <ChevronsRight className="w-3.5 h-3.5" />
           </button>
-          {filtered.length === 0 && <div className="py-12 text-center text-sm text-muted-foreground">No identities match your filters.</div>}
+          {filtered.length === 0 && (
+            activeChips.length > 0 ? (
+              <div className="py-12 px-6 text-center max-w-md mx-auto">
+                <p className="text-sm font-medium text-foreground mb-2">No results found for the selected filters.</p>
+                <p className="text-[11px] text-muted-foreground leading-relaxed mb-4">
+                  The dashboard count reflects enterprise-wide data. The sample dataset may not contain matching records for every filter combination.
+                </p>
+                <button onClick={clearAllDashboardFilters} className="text-[11px] font-semibold text-teal hover:underline">
+                  Clear filters
+                </button>
+              </div>
+            ) : (
+              <div className="py-12 text-center text-sm text-muted-foreground">No identities match your filters.</div>
+            )
+          )}
         </div>
       </div>
 
