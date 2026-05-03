@@ -524,7 +524,7 @@ function StageDiscover({ onNext, nav }: { onNext: () => void; nav: (f: Record<st
                     <span className="text-[9px] text-muted-foreground">Est. migration: {item.mig_time}</span>
                   </div>
                 </div>
-                <button onClick={() => nav({ tab: 'identities', pqcRisk: 'Critical' })} className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-teal flex items-center gap-1 flex-shrink-0">
+                <button onClick={() => nav({ tab: 'infrastructure', type: item.assetType, assetName: item.name })} className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-teal flex items-center gap-1 flex-shrink-0">
                   View <ArrowRight className="w-2.5 h-2.5" />
                 </button>
               </div>
