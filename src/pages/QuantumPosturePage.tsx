@@ -147,11 +147,22 @@ function StageDiscover({ onNext, nav }: { onNext: () => void; nav: (f: Record<st
           { label: 'HNDL Active Exposure',       value: HNDL_ACTIVE.toLocaleString(),      color: 'text-coral', sub: 'Internet-facing + long-lived sensitive data' },
           { label: 'PQC-Safe Today',             value: PQC_SAFE.toLocaleString(),          color: 'text-teal',  sub: 'ML-KEM only · 1.5% of vulnerable estate migrated' },
         ].map(k => (
-          <div key={k.label} className="bg-card rounded-xl border border-border p-4">
+          <button
+            key={k.label}
+            onClick={() => {
+              if (k.label === 'Quantum-Vulnerable Objects') nav({ tab: 'identities', pqcRisk: 'Critical' });
+              else if (k.label === 'HNDL Active Exposure') nav({ tab: 'identities', pqcRisk: 'Critical' });
+              else if (k.label === 'PQC-Safe Today') nav({ tab: 'identities', pqcRisk: 'Safe' });
+            }}
+            className="bg-card rounded-xl border border-border p-4 text-left hover:border-teal/40 hover:bg-card/80 transition-all group"
+          >
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">{k.label}</p>
             <p className={`text-3xl font-bold tabular-nums ${k.color}`}>{k.value}</p>
             <p className="text-[10px] text-muted-foreground mt-1">{k.sub}</p>
-          </div>
+            <div className="flex justify-end mt-2">
+              <ArrowRight className="w-3 h-3 text-teal opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+          </button>
         ))}
       </div>
 
@@ -178,13 +189,20 @@ function StageDiscover({ onNext, nav }: { onNext: () => void; nav: (f: Record<st
               contentStyle={{ background: 'hsl(225 30% 14%)', border: '1px solid hsl(225 20% 20%)', borderRadius: 8, fontSize: 11 }}
               labelStyle={{ color: 'hsl(220 20% 90%)' }}
             />
-            <Bar dataKey="count" name="Objects" radius={[4, 4, 0, 0]}>
+            <Bar
+              dataKey="count"
+              name="Objects"
+              radius={[4, 4, 0, 0]}
+              onClick={(data: any) => nav({ tab: 'identities', algorithm: data.algo })}
+              style={{ cursor: 'pointer' }}
+            >
               {ALGO_DATA.map((d, i) => (
                 <Cell key={i} fill={d.vulnerable ? 'hsl(16 72% 51%)' : 'hsl(162 72% 37%)'} />
               ))}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
+        <p className="text-[9.5px] text-muted-foreground mt-2 text-center">Click any bar to view those objects in Inventory</p>
       </div>
 
       {/* PQC Risk Heatmap */}
@@ -282,7 +300,7 @@ function StageDiscover({ onNext, nav }: { onNext: () => void; nav: (f: Record<st
 
 // ── Stage 2: Assess ───────────────────────────────────────────────────────────
 
-function StageAssess({ onNext }: { onNext: () => void }) {
+function StageAssess({ onNext, nav }: { onNext: () => void; nav: (f: Record<string, string>) => void }) {
   return (
     <div className="space-y-4">
       {/* Crypto Agility */}
@@ -327,7 +345,11 @@ function StageAssess({ onNext }: { onNext: () => void }) {
           </thead>
           <tbody>
             {COMPLEXITY.map(r => (
-              <tr key={r.from} className="border-b border-border/50 last:border-0">
+              <tr
+                key={r.from}
+                className="border-b border-border/50 last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer group"
+                onClick={() => nav({ tab: 'identities', algorithm: r.from })}
+              >
                 <td className="py-2.5 font-mono text-coral">{r.from}</td>
                 <td className="py-2.5 font-mono text-teal">{r.to}</td>
                 <td className="py-2.5 text-right tabular-nums font-semibold">{r.objects.toLocaleString()}</td>
@@ -335,6 +357,9 @@ function StageAssess({ onNext }: { onNext: () => void }) {
                   <span className={`text-[10px] font-bold ${CX_COLOR[r.cx]}`}>{r.cx}</span>
                 </td>
                 <td className="py-2.5 text-muted-foreground pl-4 text-[10.5px]">{r.blocker}</td>
+                <td className="py-2.5 text-right pr-1">
+                  <ArrowRight className="w-3 h-3 text-teal opacity-0 group-hover:opacity-100 transition-opacity" />
+                </td>
               </tr>
             ))}
           </tbody>
@@ -482,7 +507,7 @@ function StagePlan({ onNext }: { onNext: () => void }) {
 
 // ── Stage 4: Migrate ──────────────────────────────────────────────────────────
 
-function StageMigrate({ onNext, navTicket }: { onNext: () => void; navTicket: (asset: string) => void }) {
+function StageMigrate({ onNext, navTicket, nav }: { onNext: () => void; navTicket: (asset: string) => void; nav: (f: Record<string, string>) => void }) {
   return (
     <div className="space-y-4">
       {/* Summary KPIs */}
@@ -494,7 +519,14 @@ function StageMigrate({ onNext, navTicket }: { onNext: () => void; navTicket: (a
           { label: 'Hybrid Mode Active',value: 3,                                                               color: 'text-purple-light'   },
         ].map(s => (
           <div key={s.label} className="bg-card rounded-xl border border-border p-4">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">{s.label}</p>
+            <div className="relative group/tip">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 cursor-help underline decoration-dotted">{s.label}</p>
+              {s.label === 'Hybrid Mode Active' && (
+                <div className="absolute bottom-full left-0 mb-1 z-50 hidden group-hover/tip:block w-56 bg-card border border-border rounded-lg shadow-xl p-2.5">
+                  <p className="text-[10px] text-foreground leading-relaxed">Running classical + PQC algorithms simultaneously during transition — per ETSI TR 103 619. Ensures zero downtime during migration.</p>
+                </div>
+              )}
+            </div>
             <p className={`text-3xl font-bold ${s.color}`}>{s.value}</p>
           </div>
         ))}
@@ -502,7 +534,13 @@ function StageMigrate({ onNext, navTicket }: { onNext: () => void; navTicket: (a
 
       {/* In-flight table */}
       <div className="bg-card rounded-xl border border-border p-5">
-        <h3 className="text-sm font-semibold mb-4">In-Flight Migrations</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold">In-Flight Migrations</h3>
+          <span className="text-[10px] text-muted-foreground flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-teal inline-block" />
+            Showing 8 representative migrations · 847 total in Wave 1
+          </span>
+        </div>
         <table className="w-full text-xs">
           <thead>
             <tr className="border-b border-border text-muted-foreground">
@@ -549,6 +587,22 @@ function StageMigrate({ onNext, navTicket }: { onNext: () => void; navTicket: (a
                       Create Ticket
                     </button>
                   )}
+                  {r.status === 'In Progress' && (
+                    <button
+                      onClick={() => nav({ tab: 'identities', algorithm: r.from })}
+                      className="text-[9.5px] px-2 py-1 rounded bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80 whitespace-nowrap"
+                    >
+                      View in Inventory →
+                    </button>
+                  )}
+                  {r.status === 'Completed' && (
+                    <button
+                      onClick={() => nav({ tab: 'identities', pqcRisk: 'Safe' })}
+                      className="text-[9.5px] px-2 py-1 rounded bg-teal/5 text-teal/60 hover:text-teal whitespace-nowrap"
+                    >
+                      Verify →
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -576,7 +630,10 @@ function StageMonitor() {
       {/* Progress bar chart */}
       <div className="bg-card rounded-xl border border-border p-5">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold">Cumulative Migrations — Actual vs Required Pace</h3>
+          <div>
+            <h3 className="text-sm font-semibold">Cumulative Migrations — Actual vs Required Pace</h3>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Wave 1 started March 2026 — acceleration reflects first production migrations going live</p>
+          </div>
           <Countdown />
         </div>
         <ResponsiveContainer width="100%" height={220}>
@@ -685,9 +742,9 @@ export default function QuantumPosturePage() {
 
       {/* Stage content */}
       {active === 0 && <StageDiscover onNext={() => setActive(1)} nav={nav} />}
-      {active === 1 && <StageAssess   onNext={() => setActive(2)} />}
+      {active === 1 && <StageAssess   onNext={() => setActive(2)} nav={nav} />}
       {active === 2 && <StagePlan     onNext={() => setActive(3)} />}
-      {active === 3 && <StageMigrate  onNext={() => setActive(4)} navTicket={navTicket} />}
+      {active === 3 && <StageMigrate  onNext={() => setActive(4)} navTicket={navTicket} nav={nav} />}
       {active === 4 && <StageMonitor />}
 
     </div>
