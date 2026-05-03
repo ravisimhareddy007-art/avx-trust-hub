@@ -109,6 +109,9 @@ export default function IdentityHealthBands() {
   const { setCurrentPage, setFilters } = useNav();
 
   const nav = (filters: Record<string, string>) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[AVX Drilldown]', { source: 'IdentityHealthBands', filters });
+    }
     setFilters(filters);
     setCurrentPage('inventory');
   };

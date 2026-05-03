@@ -96,7 +96,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   const tableScrollRef = useRef<HTMLDivElement | null>(null);
   const { manualIdentities } = useInventoryRegistry();
   const { setSelectedEntity } = useAgent();
-  const { filters: navFilters } = useNav();
+  const { filters: navFilters, setFilters: setNavFilters } = useNav();
   const { filterId } = navFilters;
   useEffect(() => {
     if (!filterId) return;
@@ -107,6 +107,35 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
     setPqcFilter('');
     setDashboardFilterId(filterId);
   }, [filterId]);
+
+  const clearAllDashboardFilters = () => {
+    setDashboardFilterId('');
+    setTypeFilter('All');
+    setStatusFilter('');
+    setAlgFilter('');
+    setEnvFilter('');
+    setOwnerFilter('');
+    setPqcFilter('');
+    setSearch('');
+    setNavFilters({});
+  };
+
+  const activeChips = useMemo(() => {
+    const chips: { key: string; label: string; clear: () => void }[] = [];
+    if (dashboardFilterId) {
+      const f = VIOLATION_FILTERS[dashboardFilterId] ?? DASHBOARD_FILTERS[dashboardFilterId];
+      if (f) chips.push({ key: 'dashboard', label: f.label, clear: () => { setDashboardFilterId(''); setNavFilters({}); } });
+    }
+    if (typeFilter !== 'All') chips.push({ key: 'type', label: typeFilter, clear: () => setTypeFilter('All') });
+    if (statusFilter) chips.push({ key: 'status', label: statusFilter, clear: () => setStatusFilter('') });
+    if (algFilter) chips.push({ key: 'alg', label: algFilter === 'weak' ? 'Weak algorithms' : algFilter, clear: () => setAlgFilter('') });
+    if (envFilter) chips.push({ key: 'env', label: envFilter, clear: () => setEnvFilter('') });
+    if (pqcFilter) chips.push({ key: 'pqc', label: `PQC: ${pqcFilter}`, clear: () => setPqcFilter('') });
+    if (ownerFilter) chips.push({ key: 'owner', label: ownerFilter, clear: () => setOwnerFilter('') });
+    return chips;
+  }, [dashboardFilterId, typeFilter, statusFilter, algFilter, envFilter, pqcFilter, ownerFilter, setNavFilters]);
+
+  const showChipBar = !!dashboardFilterId || Object.keys(navFilters).length > 0;
 
   // Push current identity selection to Agent so it sees what you're looking at
   useEffect(() => {
@@ -249,6 +278,23 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
           </span>
         </div>
 
+        {/* Dashboard drilldown chip bar */}
+        {showChipBar && activeChips.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap flex-shrink-0 px-1">
+            {activeChips.map(c => (
+              <span key={c.key} className="inline-flex items-center gap-1 px-2 py-0.5 bg-teal/15 text-teal border border-teal/30 rounded-full text-[10px] font-medium">
+                {c.label}
+                <button onClick={c.clear} className="hover:text-foreground" aria-label={`Clear ${c.label}`}>
+                  <X className="w-2.5 h-2.5" />
+                </button>
+              </span>
+            ))}
+            <button onClick={clearAllDashboardFilters} className="text-[10px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline">
+              Clear all filters
+            </button>
+          </div>
+        )}
+
         {/* Table — flex-fills remaining height; single bottom horizontal scroll */}
         <div className="bg-card rounded-lg border border-border overflow-hidden relative flex-1 min-h-0 flex flex-col">
           <div
@@ -359,7 +405,21 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
           >
             <ChevronsRight className="w-3.5 h-3.5" />
           </button>
-          {filtered.length === 0 && <div className="py-12 text-center text-sm text-muted-foreground">No identities match your filters.</div>}
+          {filtered.length === 0 && (
+            activeChips.length > 0 ? (
+              <div className="py-12 px-6 text-center max-w-md mx-auto">
+                <p className="text-sm font-medium text-foreground mb-2">No results found for the selected filters.</p>
+                <p className="text-[11px] text-muted-foreground leading-relaxed mb-4">
+                  The dashboard count reflects enterprise-wide data. The sample dataset may not contain matching records for every filter combination.
+                </p>
+                <button onClick={clearAllDashboardFilters} className="text-[11px] font-semibold text-teal hover:underline">
+                  Clear filters
+                </button>
+              </div>
+            ) : (
+              <div className="py-12 text-center text-sm text-muted-foreground">No identities match your filters.</div>
+            )
+          )}
         </div>
       </div>
 
