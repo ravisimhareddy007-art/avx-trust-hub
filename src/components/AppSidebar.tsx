@@ -4,7 +4,7 @@ import { remediationPages, policyPages, useNav } from '@/context/NavigationConte
 import {
   LayoutDashboard, Search, Package,
   ChevronDown, ChevronRight, Users,
-  Link2, Lock, ScrollText, Cog, Wrench, Ticket
+  Link2, Lock, ScrollText, Cog, Wrench, Ticket, Atom
 } from 'lucide-react';
 
 interface NavChild {
@@ -65,6 +65,7 @@ export default function AppSidebar() {
 
   const navItems: NavItem[] = [
     { id: 'dashboard', label: 'DASHBOARD', icon: LayoutDashboard, page: 'dashboards' },
+    { id: 'quantum', label: 'QUANTUM READINESS', icon: Atom, page: 'quantum-posture' },
     { id: 'discovery', label: 'DISCOVERY', icon: Search, page: 'discovery' },
     { id: 'inventory', label: 'INVENTORY', icon: Package, page: 'inventory' },
     {
