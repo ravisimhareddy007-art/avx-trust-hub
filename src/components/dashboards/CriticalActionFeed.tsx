@@ -3,6 +3,9 @@ import { Shield, Key, Bot, Lock, Fingerprint, Globe, AlertTriangle, Clock, Spark
 import { toast } from 'sonner';
 import { useDashboard, feedItemToDriver } from '@/context/DashboardContext';
 import { useNav } from '@/context/NavigationContext';
+import { VIOLATION_FILTERS } from '@/lib/filters/cryptoFilters';
+
+const fmt = (n: number) => n.toLocaleString();
 
 interface RemediationGroup {
   ca: string;
