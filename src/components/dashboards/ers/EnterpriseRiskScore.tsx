@@ -161,6 +161,12 @@ export default function EnterpriseRiskScore() {
             );
           })}
         </div>
+        <button
+          onClick={() => { setCurrentPage('inventory'); }}
+          className="w-full text-center text-[10px] text-teal hover:text-teal/80 transition-colors pt-1.5 pb-0.5 border-t border-border/30 mt-1"
+        >
+          View all contributing factors →
+        </button>
       </div>
 
     </div>
