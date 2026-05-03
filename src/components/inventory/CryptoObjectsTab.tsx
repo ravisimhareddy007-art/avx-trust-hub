@@ -607,24 +607,6 @@ function DetailPanel({
                   </div>
                 </div>
 
-                {/* Governance — ghost */}
-                <div>
-                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider mb-1.5">Governance</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    <button onClick={onOpenRiskDrawer}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
-                      <Info className="w-3 h-3" /> Why this score?
-                    </button>
-                    <button onClick={() => toast.success('Added to group')}
-                      className="px-2.5 py-1.5 rounded text-[10px] text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
-                      Add to Group
-                    </button>
-                    <button onClick={() => toast.success('Added to QTH migration queue')}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
-                      <Atom className="w-3 h-3" /> Add to QTH Queue
-                    </button>
-                  </div>
-                </div>
               </div>
             )}
           </div>
