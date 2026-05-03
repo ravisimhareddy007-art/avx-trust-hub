@@ -82,12 +82,20 @@ export default function EnterpriseRiskScore() {
       <div className="flex items-start gap-4 mb-3">
         <ErsGauge score={ers.ers} hsl={sevHsl} label={ers.severity} />
         <div className="flex-1 pt-1">
-          <div className={`inline-flex items-center gap-1 text-[10.5px] font-semibold px-1.5 py-0.5 rounded mb-1.5 ${
-            improving ? 'bg-teal/15 text-teal' : 'bg-coral/15 text-coral'
-          }`}>
-            {improving ? <TrendingDown className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
-            {improving ? '↓' : '↑'} {Math.abs(SCORE_DELTA_7D)} pts (7d)
-          </div>
+          {SCORE_DELTA_7D === 0 ? (
+            <div className="inline-flex items-center gap-1 text-[10.5px] font-semibold px-1.5 py-0.5 rounded mb-1.5 bg-secondary text-muted-foreground">
+              No change this week
+            </div>
+          ) : (
+            <div className={`inline-flex items-center gap-1 text-[10.5px] font-semibold px-1.5 py-0.5 rounded mb-1.5 ${
+              improving ? 'bg-teal/15 text-teal' : 'bg-coral/15 text-coral'
+            }`}>
+              {improving ? <TrendingDown className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
+              {improving
+                ? `↓ ${Math.abs(SCORE_DELTA_7D)} pts better this week`
+                : `↑ +${Math.abs(SCORE_DELTA_7D)} pts worse this week`}
+            </div>
+          )}
           <p className="text-[12px] text-foreground leading-snug">
             {ers.topAssets.filter(a => a.bi === 'Critical').length} Critical-impact assets driving the score.
             {' '}Top driver:{' '}
