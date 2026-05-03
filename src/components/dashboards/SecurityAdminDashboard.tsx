@@ -30,12 +30,6 @@ export default function SecurityAdminDashboard() {
   const escalations = notifications.filter(n => n.toPersona === 'security-admin');
   const unreadEscalations = escalations.filter(n => !n.read);
 
-  // Onboarding strip — dismissals persist across navigation (in-memory context
-  // above the router) and reset only on page refresh.
-  const { dismissed, dismiss, dismissAll, showStrip } = useOnboarding();
-
-  const [helpPanel, setHelpPanel] = useState<'integrations' | 'discovery' | 'policy' | 'inventory' | 'remediation' | null>(null);
-
   return (
     <DashboardProvider>
       <div className="space-y-0 max-h-[calc(100vh-120px)] flex flex-col">
