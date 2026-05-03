@@ -76,7 +76,7 @@ const ALGO_DATA = [
 
 const HNDL_LIST = [
   {
-    name: 'payments-api.acmecorp.com',
+    name: 'payments-api.acmecorp.com', assetType: 'API Gateway',
     algo: 'RSA-2048', risk: 'CRITICAL' as const,
     detail: 'Internet-facing · 47,000 financial tx/day',
     sensitivity: 'PCI-DSS · financial transaction data',
@@ -85,7 +85,7 @@ const HNDL_LIST = [
     compensating: 'Restrict to internal egress only until migrated — remove direct internet exposure',
   },
   {
-    name: 'auth.acmecorp.com',
+    name: 'auth.acmecorp.com', assetType: 'Application Server',
     algo: 'ECC P-256', risk: 'CRITICAL' as const,
     detail: 'Internet-facing · SSO for 12,400 users',
     sensitivity: 'PII · GDPR scope · auth tokens',
@@ -94,7 +94,7 @@ const HNDL_LIST = [
     compensating: 'Enable MFA enforcement on all SSO sessions as interim control',
   },
   {
-    name: 'prod-gateway-01.acmecorp.com',
+    name: 'prod-gateway-01.acmecorp.com', assetType: 'API Gateway',
     algo: 'RSA-2048', risk: 'CRITICAL' as const,
     detail: 'Internet-facing · all inbound API traffic',
     sensitivity: 'Mixed — routes PCI and PHI traffic',
@@ -103,7 +103,7 @@ const HNDL_LIST = [
     compensating: 'Rate-limit external traffic and add WAF inspection as interim',
   },
   {
-    name: 'vault.internal.acmecorp.com',
+    name: 'vault.internal.acmecorp.com', assetType: 'Vault Server',
     algo: 'RSA-2048', risk: 'HIGH' as const,
     detail: 'Internal · holds 68% of production secrets',
     sensitivity: 'PHI + PCI + financial — crown jewel',
@@ -112,7 +112,7 @@ const HNDL_LIST = [
     compensating: 'Restrict Vault access to allowlisted IPs only · weekly access audit active',
   },
   {
-    name: 'eks-prod-cluster',
+    name: 'eks-prod-cluster', assetType: 'K8s Cluster',
     algo: 'ECC P-256', risk: 'HIGH' as const,
     detail: 'Internal · 847 workload certs · Payments + Platform',
     sensitivity: 'PCI workloads · service mesh east-west traffic',
@@ -524,7 +524,7 @@ function StageDiscover({ onNext, nav }: { onNext: () => void; nav: (f: Record<st
                     <span className="text-[9px] text-muted-foreground">Est. migration: {item.mig_time}</span>
                   </div>
                 </div>
-                <button onClick={() => nav({ tab: 'identities', pqcRisk: 'Critical' })} className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-teal flex items-center gap-1 flex-shrink-0">
+                <button onClick={() => nav({ tab: 'infrastructure', type: item.assetType, assetName: item.name })} className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-teal flex items-center gap-1 flex-shrink-0">
                   View <ArrowRight className="w-2.5 h-2.5" />
                 </button>
               </div>
