@@ -101,37 +101,13 @@ export default function EnterpriseRiskScore() {
       </div>
 
       {/* Gauge + verdict */}
-      <div className="flex items-start gap-4 mb-3">
+      <div className="flex flex-col items-center mb-3 flex-shrink-0">
         <ErsGauge score={ers.ers} hsl={sevHsl} label={ers.severity} />
-        <div className="flex-1 pt-1">
-          {(SCORE_DELTA_7D as number) === 0 ? (
-            <div className="inline-flex items-center gap-1 text-[10.5px] font-semibold px-1.5 py-0.5 rounded mb-1.5 bg-secondary text-muted-foreground">
-              No change this week
-            </div>
-          ) : (
-            <div className={`inline-flex items-center gap-1 text-[10.5px] font-semibold px-1.5 py-0.5 rounded mb-1.5 ${
-              improving ? 'bg-teal/15 text-teal' : 'bg-coral/15 text-coral'
-            }`}>
-              {improving ? <TrendingDown className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
-              {improving
-                ? `↓ ${Math.abs(SCORE_DELTA_7D)} pts — risk reduced this week`
-                : `↑ ${Math.abs(SCORE_DELTA_7D)} pts — risk increased this week`}
-            </div>
-          )}
-          <p className="text-[12px] text-foreground leading-snug">
-            {ers.topAssets.filter(a => a.bi === 'Critical').length} Critical-impact assets driving the score.
-            {' '}Top driver:{' '}
-            <span className="font-semibold text-coral">{ers.driverBuckets[0]?.label ?? '—'}</span>.
-          </p>
-          {ers.floorApplied && ers.floorAsset && (
-            <div className="mt-1.5 flex items-start gap-1 text-[10px] text-coral leading-snug">
-              <AlertTriangle className="w-3 h-3 flex-shrink-0 mt-0.5" />
-              <span>
-                <span className="font-semibold">Floor rule active</span> — held by{' '}
-                <span className="font-mono">{ers.floorAsset.name}</span>
-              </span>
-            </div>
-          )}
+        <div className={`inline-flex items-center gap-1.5 text-[10.5px] font-semibold px-2.5 py-1 rounded-full mt-1 ${improving ? 'bg-teal/15 text-teal' : 'bg-coral/15 text-coral'}`}>
+          {improving
+            ? <><TrendingDown className="w-3 h-3" /> {Math.abs(SCORE_DELTA_7D)} pts — risk reduced this week</>
+            : <><TrendingUp className="w-3 h-3" /> {Math.abs(SCORE_DELTA_7D)} pts — risk increased this week</>
+          }
         </div>
       </div>
 
