@@ -51,6 +51,9 @@ export default function EnterpriseRiskScore() {
   const improving = SCORE_DELTA_7D < 0;
 
   const nav = (filters: Record<string, string>) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[AVX Drilldown]', { source: 'EnterpriseRiskScore', filters });
+    }
     setFilters({ tab: 'identities', filterId: filters.filterId || '' });
     setCurrentPage('inventory');
   };
