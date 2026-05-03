@@ -681,23 +681,41 @@ function StageAssess({ onNext, nav }: { onNext: () => void; nav: (f: Record<stri
           <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Low Data Sensitivity</div>
           <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">High Data Sensitivity</div>
           <div className="text-[10px] font-semibold text-muted-foreground text-right pr-3 self-center leading-tight">Active Harvest<br />Risk</div>
-          <div className="bg-amber/10 border border-amber/30 rounded-xl p-4">
+          <button
+            onClick={() => nav({ tab: 'identities', pqcRisk: 'High' })}
+            className="bg-amber/10 border border-amber/30 rounded-xl p-4 hover:bg-amber/20 transition-colors text-left group"
+          >
             <p className="text-2xl font-bold text-amber tabular-nums">2,000</p>
             <p className="text-[9px] text-muted-foreground mt-1">High — Wave 2 · Q3 2026</p>
-          </div>
-          <div className="bg-coral/10 border border-coral/30 rounded-xl p-4">
+            <p className="text-[9px] text-amber/60 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">View in Inventory →</p>
+          </button>
+          <button
+            onClick={() => nav({ tab: 'identities', pqcRisk: 'Critical' })}
+            className="bg-coral/10 border border-coral/30 rounded-xl p-4 hover:bg-coral/20 transition-colors text-left group"
+          >
             <p className="text-2xl font-bold text-coral tabular-nums">1,842</p>
             <p className="text-[9px] text-muted-foreground mt-1">Critical — Wave 1 · Migrate NOW</p>
-          </div>
+            <div className="mt-2 pt-2 border-t border-coral/20">
+              <span className="text-[9px] font-semibold text-coral">Highest priority · Begin Wave 1 planning →</span>
+            </div>
+          </button>
           <div className="text-[10px] font-semibold text-muted-foreground text-right pr-3 self-center leading-tight">Passive<br />Risk</div>
-          <div className="bg-secondary rounded-xl p-4">
+          <button
+            onClick={() => nav({ tab: 'identities', pqcRisk: 'Medium' })}
+            className="bg-secondary rounded-xl p-4 hover:bg-secondary/80 transition-colors text-left group"
+          >
             <p className="text-2xl font-bold text-muted-foreground tabular-nums">5,618</p>
             <p className="text-[9px] text-muted-foreground mt-1">Medium — Wave 3 · 2027+</p>
-          </div>
-          <div className="bg-amber/10 border border-amber/20 rounded-xl p-4">
+            <p className="text-[9px] text-muted-foreground/50 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">View in Inventory →</p>
+          </button>
+          <button
+            onClick={() => nav({ tab: 'identities', pqcRisk: 'High' })}
+            className="bg-amber/10 border border-amber/20 rounded-xl p-4 hover:bg-amber/20 transition-colors text-left group"
+          >
             <p className="text-2xl font-bold text-amber tabular-nums">3,200</p>
             <p className="text-[9px] text-muted-foreground mt-1">High — Wave 2 · Q4 2026</p>
-          </div>
+            <p className="text-[9px] text-amber/60 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">View in Inventory →</p>
+          </button>
         </div>
       </div>
 
