@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNav } from '@/context/NavigationContext';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { toast } from 'sonner';
 import {
   Atom, Download, ArrowRight, Clock, ChevronRight, CheckCircle2,
@@ -285,6 +285,30 @@ function MoscaBadge({ wave }: { wave: typeof WAVES[0] }) {
 
 // ── Stage 1: Discover ─────────────────────────────────────────────────────────
 
+interface AlgoBarProps {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  payload?: { fill: string; algo: string };
+}
+
+function CustomAlgoBar(props: AlgoBarProps) {
+  const { x = 0, y = 0, width = 0, height = 0, payload } = props;
+  if (!height || height <= 0) return null;
+  return (
+    <rect
+      x={x}
+      y={y}
+      width={width}
+      height={height}
+      fill={payload?.fill ?? 'hsl(162 72% 37%)'}
+      rx={4}
+      ry={4}
+    />
+  );
+}
+
 function StageDiscover({ onNext, nav }: { onNext: () => void; nav: (f: Record<string, string>) => void }) {
   return (
     <div className="space-y-4">
@@ -338,9 +362,13 @@ function StageDiscover({ onNext, nav }: { onNext: () => void; nav: (f: Record<st
                 props.payload?.vulnerable ? 'Quantum-vulnerable' : 'Quantum-safe',
               ]}
             />
-            <Bar dataKey="count" name="Objects" radius={[4, 4, 0, 0]} onClick={(data: typeof ALGO_DATA[0]) => nav({ tab: 'identities', algorithm: data.algo })} style={{ cursor: 'pointer' }}>
-              {ALGO_DATA.map((d, i) => <Cell key={i} fill={d.fill} />)}
-            </Bar>
+            <Bar
+              dataKey="count"
+              name="Objects"
+              shape={(props: AlgoBarProps) => <CustomAlgoBar {...props} />}
+              onClick={(data: typeof ALGO_DATA[0]) => nav({ tab: 'identities', algorithm: data.algo })}
+              style={{ cursor: 'pointer' }}
+            />
           </BarChart>
         </ResponsiveContainer>
         <p className="text-[9.5px] text-muted-foreground text-center mt-1">Click any bar to view those objects in Inventory</p>
