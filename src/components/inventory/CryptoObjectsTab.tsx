@@ -48,6 +48,7 @@ interface ColDef { key: string; label: string; cls: string; }
 
 const COLS: Record<string, ColDef[]> = {
   All: [
+    { key: 'riskScore',    label: 'Risk',          cls: 'w-16' },
     { key: 'name',         label: 'Name',          cls: 'min-w-[180px] flex-1' },
     { key: 'type',         label: 'Type',          cls: 'w-36' },
     { key: 'status',       label: 'Status',        cls: 'w-24' },
