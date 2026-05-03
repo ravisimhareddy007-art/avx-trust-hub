@@ -181,7 +181,7 @@ export default function InfrastructurePostureStrip() {
                     className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-background/60 transition-colors text-left group/row"
                   >
                     <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${DIM_DOT[gap.dimension]}`} />
-                    <span className={`text-[10px] font-medium flex-1 leading-none ${DIM_COLOR[gap.dimension]}`}>
+                    <span className={`text-[10px] font-medium flex-1 leading-none whitespace-nowrap ${DIM_COLOR[gap.dimension]}`}>
                       {gap.label}
                     </span>
                     <span className={`text-[12px] font-bold tabular-nums flex-shrink-0 ${DIM_COLOR[gap.dimension]}`}>
