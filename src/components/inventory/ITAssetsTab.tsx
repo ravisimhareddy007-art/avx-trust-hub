@@ -296,6 +296,7 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                   </th>
                   <th className="text-left py-2 px-2 font-medium text-muted-foreground">Owner</th>
                   <th className="text-center py-2 px-2 font-medium text-muted-foreground" title="Active policy violations on this asset">Violations</th>
+                  <th className="w-8 py-2 px-2" />
                 </tr>
               </thead>
               <tbody>
