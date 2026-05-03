@@ -238,6 +238,11 @@ function getPrimaryAction(co: CryptoAsset): InlineAction | null {
 function CellValue({ col, co }: { col: ColDef; co: CryptoAsset }) {
   const val = (co as unknown as Record<string, unknown>)[col.key];
   switch (col.key) {
+    case 'riskScore': {
+      const s = crsScore(co);
+      const c = s >= 80 ? 'text-coral' : s >= 60 ? 'text-amber' : s >= 30 ? 'text-blue-400' : 'text-teal';
+      return <span className={`text-[11px] font-bold tabular-nums ${c}`}>{s}</span>;
+    }
     case 'name':         return <span className="font-medium text-foreground truncate">{co.name}</span>;
     case 'status':       return <StatusBadge status={co.status} />;
     case 'pqcRisk':      return <PQCBadge risk={co.pqcRisk} />;
