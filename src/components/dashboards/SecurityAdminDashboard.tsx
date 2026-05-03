@@ -35,7 +35,7 @@ export default function SecurityAdminDashboard() {
   // above the router) and reset only on page refresh.
   const { dismissed, dismiss, dismissAll, showStrip } = useOnboarding();
 
-  const [helpPanel, setHelpPanel] = useState<'integrations' | 'discovery' | 'policy' | null>(null);
+  const [helpPanel, setHelpPanel] = useState<'integrations' | 'discovery' | 'policy' | 'inventory' | 'remediation' | null>(null);
 
   return (
     <DashboardProvider>
