@@ -27,6 +27,7 @@ import ArsBadge from '@/components/risk/ArsBadge';
 import AssetRiskDrawer from '@/components/risk/AssetRiskDrawer';
 import CryptoObjectRiskDrawer from '@/components/risk/CryptoObjectRiskDrawer';
 import ViolationsDrawer from '@/components/risk/ViolationsDrawer';
+import TicketDraftModal, { TicketDraft } from '@/components/inventory/TicketDraftModal';
 
 interface Props {
   onCreateTicket: (ctx: any) => void;
@@ -110,6 +111,7 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [assetStack, setAssetStack] = useState<ITAsset[]>([]);
   const [blastModalOpen, setBlastModalOpen] = useState(false);
+  const [itTicketAsset, setItTicketAsset] = useState<ITAsset | null>(null);
   const { manualITAssets } = useInventoryRegistry();
   const { setSelectedEntity } = useAgent();
   const { biMap, setBI } = useRisk();
@@ -294,6 +296,7 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                   </th>
                   <th className="text-left py-2 px-2 font-medium text-muted-foreground">Owner</th>
                   <th className="text-center py-2 px-2 font-medium text-muted-foreground" title="Active policy violations on this asset">Violations</th>
+                  <th className="w-8 py-2 px-2" />
                 </tr>
               </thead>
               <tbody>
@@ -346,6 +349,15 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                         );
                       })()}
                     </td>
+                    <td className="py-2 px-2 text-center" onClick={e => e.stopPropagation()}>
+                      <button
+                        onClick={() => setItTicketAsset(asset)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-secondary"
+                        title="Create AI-filled ticket for this asset"
+                      >
+                        <Ticket className="w-3.5 h-3.5 text-muted-foreground hover:text-purple-light" />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -358,8 +370,8 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
       {/* Asset Detail Canvas — 80% width overlay */}
       {selectedAsset && (
         <div className="fixed inset-0 z-50 flex">
-          <div className="w-[20%] bg-foreground/10 backdrop-blur-sm" onClick={goBack} />
-          <div className="w-[80%] bg-card border-l border-border shadow-2xl h-full overflow-y-auto animate-slide-in-right">
+          <div className="w-[62%] bg-foreground/10 backdrop-blur-sm" onClick={goBack} />
+          <div className="w-[38%] bg-card border-l border-border shadow-2xl h-full overflow-y-auto animate-slide-in-right">
             {/* Breadcrumb */}
             <div className="sticky top-0 bg-card border-b border-border px-4 py-3 flex items-center gap-2 z-10">
               {assetStack.length > 0 && (
@@ -763,6 +775,21 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
           </>
         );
       })()}
+      {itTicketAsset && (
+        <TicketDraftModal
+          asset={null}
+          action="fix"
+          onClose={() => setItTicketAsset(null)}
+          onConfirm={(draft: TicketDraft) => {
+            onCreateTicket({
+              objectName: itTicketAsset.name,
+              objectType: itTicketAsset.type,
+              environment: itTicketAsset.environment,
+              draft,
+            });
+          }}
+        />
+      )}
     </div>
   );
 }
