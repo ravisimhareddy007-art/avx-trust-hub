@@ -278,6 +278,23 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
           </span>
         </div>
 
+        {/* Dashboard drilldown chip bar */}
+        {showChipBar && activeChips.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap flex-shrink-0 px-1">
+            {activeChips.map(c => (
+              <span key={c.key} className="inline-flex items-center gap-1 px-2 py-0.5 bg-teal/15 text-teal border border-teal/30 rounded-full text-[10px] font-medium">
+                {c.label}
+                <button onClick={c.clear} className="hover:text-foreground" aria-label={`Clear ${c.label}`}>
+                  <X className="w-2.5 h-2.5" />
+                </button>
+              </span>
+            ))}
+            <button onClick={clearAllDashboardFilters} className="text-[10px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline">
+              Clear all filters
+            </button>
+          </div>
+        )}
+
         {/* Table — flex-fills remaining height; single bottom horizontal scroll */}
         <div className="bg-card rounded-lg border border-border overflow-hidden relative flex-1 min-h-0 flex flex-col">
           <div
