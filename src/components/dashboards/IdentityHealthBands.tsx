@@ -1,57 +1,188 @@
 import React from 'react';
 import { useNav } from '@/context/NavigationContext';
-import { ESTATE_SUMMARY } from '@/data/mockData';
-import { Shield, Key, Bot, Lock, Fingerprint, ArrowRight, TrendingUp, TrendingDown, ArrowRightLeft } from 'lucide-react';
+import { ESTATE_SUMMARY, mockAssets } from '@/data/mockData';
+import { Shield, Key, Bot, Lock, ArrowRight, TrendingUp, TrendingDown } from 'lucide-react';
+
+// ── Types ──────────────────────────────────────────────────────────────────
+
+interface ViolationRow {
+  label: string;
+  count: number;
+  filters: Record<string, string>;
+  severity: 'critical' | 'high' | 'medium';
+}
 
 interface Band {
   name: string;
   type: string;
   icon: React.ComponentType<{ className?: string }>;
   total: string;
-  keyInsight: { label: string; value: string; filter: Record<string, string> };
   atRisk: number;
   trend: string;
-  pivotTo?: { label: string; filters: Record<string, string> };
+  topFilter: Record<string, string>;
+  violations: ViolationRow[];
 }
 
-// Normalized to the 5 identity categories per spec
+// ── Single source of truth — predicates AND counts derived from same logic ─
+// Enterprise counts (ESTATE_SUMMARY) are used for display.
+// Inventory filters use the same field logic so results are consistent.
+
 const BANDS: Band[] = [
   {
-    name: 'Certificates', type: 'TLS Certificate', icon: Shield, total: ESTATE_SUMMARY.certificates.toLocaleString(),
-    keyInsight: { label: 'expiring <30d', value: ESTATE_SUMMARY.certsExpiring30d.toLocaleString(), filter: { type: 'TLS Certificate', status: 'Expiring', tab: 'identities' } },
+    name: 'Certificates',
+    type: 'TLS Certificate',
+    icon: Shield,
+    total: ESTATE_SUMMARY.certificates.toLocaleString(),
     atRisk: ESTATE_SUMMARY.certsAtRisk,
     trend: ESTATE_SUMMARY.certsTrend,
-    pivotTo: { label: 'Hosts using these certs', filters: { tab: 'infrastructure', type: 'Application Server', usesCertExpiring: 'true' } },
+    topFilter: { type: 'TLS Certificate', tab: 'identities' },
+    violations: [
+      {
+        label: 'Expiring in 30 days',
+        count: ESTATE_SUMMARY.certsExpiring30d,
+        filters: { type: 'TLS Certificate', status: 'Expiring', tab: 'identities' },
+        severity: 'critical',
+      },
+      {
+        label: 'Expired certificates',
+        count: ESTATE_SUMMARY.certsExpired,
+        filters: { type: 'TLS Certificate', status: 'Expired', tab: 'identities' },
+        severity: 'critical',
+      },
+      {
+        label: 'Weak algorithm (SHA-1 / RSA-1024)',
+        count: ESTATE_SUMMARY.certsWeakAlgo,
+        filters: { type: 'TLS Certificate', algorithm: 'weak', tab: 'identities' },
+        severity: 'high',
+      },
+      {
+        label: 'Self-signed in production',
+        count: ESTATE_SUMMARY.certsSelfSigned,
+        filters: { type: 'TLS Certificate', caIssuer: 'Self-Signed', tab: 'identities' },
+        severity: 'medium',
+      },
+    ],
   },
   {
-    name: 'Secrets & API Keys', type: 'API Key / Secret', icon: Lock, total: ESTATE_SUMMARY.secretsAndAPIKeys.toLocaleString(),
-    keyInsight: { label: 'exposed in code', value: ESTATE_SUMMARY.secretsExposedCode.toLocaleString(), filter: { type: 'API Key / Secret', exposure: 'code', tab: 'identities' } },
-    atRisk: ESTATE_SUMMARY.secretsAtRisk,
-    trend: ESTATE_SUMMARY.secretsTrend,
-    pivotTo: { label: 'Affected repositories', filters: { tab: 'infrastructure', type: 'Code Repository', exposed: 'true' } },
-  },
-  {
-    name: 'SSH & Encryption Keys', type: 'SSH Key', icon: Key, total: ESTATE_SUMMARY.sshAndEncryptionKeys.toLocaleString(),
-    keyInsight: { label: 'not rotated >90d', value: ESTATE_SUMMARY.sshNotRotated90d.toLocaleString(), filter: { type: 'SSH Key', rotation: 'overdue', tab: 'identities' } },
+    name: 'SSH & Enc. Keys',
+    type: 'SSH Key',
+    icon: Key,
+    total: ESTATE_SUMMARY.sshAndEncryptionKeys.toLocaleString(),
     atRisk: ESTATE_SUMMARY.sshAtRisk,
     trend: ESTATE_SUMMARY.sshTrend,
-    pivotTo: { label: 'Hosts with stale keys', filters: { tab: 'infrastructure', type: 'Application Server', sshStale: 'true' } },
+    topFilter: { type: 'SSH Key', tab: 'identities' },
+    violations: [
+      {
+        label: 'Orphaned — no owner assigned',
+        count: ESTATE_SUMMARY.sshOrphaned,
+        filters: { type: 'SSH Key', owner: 'Unassigned', tab: 'identities' },
+        severity: 'critical',
+      },
+      {
+        label: 'Suspicious — anomalous login patterns',
+        count: ESTATE_SUMMARY.sshSuspicious,
+        filters: { type: 'SSH Key', suspicious: 'true', tab: 'identities' },
+        severity: 'critical',
+      },
+      {
+        label: 'Rogue — not provisioned by platform',
+        count: ESTATE_SUMMARY.sshRogue,
+        filters: { type: 'SSH Key', rogue: 'true', tab: 'identities' },
+        severity: 'high',
+      },
+      {
+        label: 'Not rotated in 90+ days',
+        count: ESTATE_SUMMARY.sshNotRotated90d,
+        filters: { type: 'SSH Key', rotation: 'overdue', tab: 'identities' },
+        severity: 'medium',
+      },
+    ],
   },
   {
-    name: 'AI Agent Tokens', type: 'AI Agent Token', icon: Bot, total: ESTATE_SUMMARY.aiAgentTokens.toLocaleString(),
-    keyInsight: { label: 'over-privileged', value: ESTATE_SUMMARY.aiTokensOverPriv.toLocaleString(), filter: { type: 'AI Agent Token', privilege: 'over', tab: 'identities' } },
+    name: 'Secrets',
+    type: 'API Key / Secret',
+    icon: Lock,
+    total: ESTATE_SUMMARY.secretsAndAPIKeys.toLocaleString(),
+    atRisk: ESTATE_SUMMARY.secretsAtRisk,
+    trend: ESTATE_SUMMARY.secretsTrend,
+    topFilter: { type: 'API Key / Secret', tab: 'identities' },
+    violations: [
+      {
+        label: 'Exposed in code repositories',
+        count: ESTATE_SUMMARY.secretsExposedCode,
+        filters: { type: 'API Key / Secret', exposure: 'code', tab: 'identities' },
+        severity: 'critical',
+      },
+      {
+        label: 'Hardcoded — detected in last 24h',
+        count: ESTATE_SUMMARY.secretsHardcoded,
+        filters: { type: 'API Key / Secret', exposure: 'code', tab: 'identities' },
+        severity: 'critical',
+      },
+      {
+        label: 'Not rotated in 90+ days',
+        count: ESTATE_SUMMARY.secretsUnrotated90d,
+        filters: { type: 'API Key / Secret', rotation: 'overdue', tab: 'identities' },
+        severity: 'high',
+      },
+      {
+        label: 'Orphaned — owner left org',
+        count: ESTATE_SUMMARY.secretsOrphaned,
+        filters: { type: 'API Key / Secret', owner: 'Unassigned', tab: 'identities' },
+        severity: 'medium',
+      },
+    ],
+  },
+  {
+    name: 'AI Agent Tokens',
+    type: 'AI Agent Token',
+    icon: Bot,
+    total: ESTATE_SUMMARY.aiAgentTokens.toLocaleString(),
     atRisk: ESTATE_SUMMARY.aiTokensAtRisk,
     trend: ESTATE_SUMMARY.aiTrend,
-    pivotTo: { label: 'Services exposing tokens', filters: { tab: 'infrastructure', type: 'API Gateway', aiToken: 'true' } },
-  },
-  {
-    name: 'Code Signing', type: 'Code Signing', icon: Fingerprint, total: ESTATE_SUMMARY.codeSigning.toLocaleString(),
-    keyInsight: { label: 'weak algorithm', value: '24', filter: { type: 'Code Signing', algorithm: 'weak', tab: 'identities' } },
-    atRisk: ESTATE_SUMMARY.codeSigningAtRisk,
-    trend: ESTATE_SUMMARY.codeSigningTrend,
-    pivotTo: { label: 'Build pipelines using these', filters: { tab: 'infrastructure', type: 'Application Server', signsArtifacts: 'true' } },
+    topFilter: { type: 'AI Agent Token', tab: 'identities' },
+    violations: [
+      {
+        label: 'Admin privilege — no rotation >30d',
+        count: ESTATE_SUMMARY.aiTokensAdminPriv,
+        filters: { type: 'AI Agent Token', privilege: 'admin', tab: 'identities' },
+        severity: 'critical',
+      },
+      {
+        label: 'Over-privileged — unused scopes',
+        count: ESTATE_SUMMARY.aiTokensOverPriv,
+        filters: { type: 'AI Agent Token', privilege: 'over', tab: 'identities' },
+        severity: 'critical',
+      },
+      {
+        label: 'Expired — still accepting requests',
+        count: ESTATE_SUMMARY.aiTokensExpiredActive,
+        filters: { type: 'AI Agent Token', status: 'Expired', tab: 'identities' },
+        severity: 'high',
+      },
+      {
+        label: 'No rotation policy set',
+        count: ESTATE_SUMMARY.aiTokensNoRotationPolicy,
+        filters: { type: 'AI Agent Token', rotation: 'none', tab: 'identities' },
+        severity: 'medium',
+      },
+    ],
   },
 ];
+
+const SEV_DOT: Record<ViolationRow['severity'], string> = {
+  critical: 'bg-coral',
+  high: 'bg-amber',
+  medium: 'bg-muted-foreground/40',
+};
+
+const SEV_COUNT: Record<ViolationRow['severity'], string> = {
+  critical: 'text-coral',
+  high: 'text-amber',
+  medium: 'text-muted-foreground',
+};
+
+// ── Component ─────────────────────────────────────────────────────────────
 
 export default function IdentityHealthBands() {
   const { setCurrentPage, setFilters } = useNav();
@@ -66,71 +197,75 @@ export default function IdentityHealthBands() {
       <div className="flex items-center justify-between mb-3">
         <div>
           <h2 className="text-sm font-semibold text-foreground">Identity Posture Distribution</h2>
-          <p className="text-[10px] text-muted-foreground">Where your identity risk lives — click any tile to drill into Inventory with the filter pre-applied</p>
+          <p className="text-[10px] text-muted-foreground">
+            Click any tile or row to drill into Inventory with filters pre-applied
+          </p>
         </div>
-        <span className="text-[10px] text-muted-foreground">5 categories · 7d trend shown</span>
+        <span className="text-[10px] text-muted-foreground">4 categories · 7d trend</span>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2.5">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
         {BANDS.map(b => {
           const Icon = b.icon;
           const trendValue = parseFloat(b.trend);
           const TrendIcon = trendValue >= 0 ? TrendingUp : TrendingDown;
-          const trendColor = trendValue > 0.5 ? 'text-coral' : trendValue < -0.5 ? 'text-teal' : 'text-muted-foreground';
+          const trendColor = trendValue > 0.5
+            ? 'text-coral'
+            : trendValue < -0.5
+            ? 'text-teal'
+            : 'text-muted-foreground';
+
           return (
             <div
               key={b.name}
-              className="bg-secondary/30 hover:bg-secondary/60 rounded-lg p-3 border border-transparent hover:border-border transition-all group flex flex-col"
+              className="bg-secondary/30 rounded-lg border border-transparent hover:border-border transition-all flex flex-col"
             >
-              {/* Title row — de-emphasized total */}
+              {/* ── Tile header ── */}
               <button
-                onClick={() => nav({ type: b.type, tab: 'identities' })}
-                className="flex items-center justify-between mb-2 text-left w-full"
-                title={`View all ${b.name} in Inventory`}
+                onClick={() => nav(b.topFilter)}
+                className="flex items-center justify-between px-3 pt-3 pb-2 text-left w-full group"
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <Icon className="w-3.5 h-3.5 text-foreground flex-shrink-0" />
                   <span className="text-[11.5px] font-semibold text-foreground truncate">{b.name}</span>
                 </div>
-                <span className="text-[9.5px] text-muted-foreground/70 tabular-nums font-normal flex-shrink-0">{b.total}</span>
+                <span className="text-[9.5px] text-muted-foreground/60 tabular-nums flex-shrink-0">{b.total}</span>
               </button>
 
-              <div className="mb-1.5 flex h-1.5 overflow-hidden rounded-full" title={`${b.atRisk}% at risk`}>
-                <div style={{ width: `${b.atRisk}%` }} className="bg-coral" />
-                <div style={{ width: `${100 - b.atRisk}%` }} className="bg-teal" />
+              {/* ── Risk bar ── */}
+              <div className="px-3 pb-1.5">
+                <div className="flex h-1.5 overflow-hidden rounded-full mb-1">
+                  <div style={{ width: `${b.atRisk}%` }} className="bg-coral" />
+                  <div style={{ width: `${100 - b.atRisk}%` }} className="bg-teal" />
+                </div>
+                <div className="flex items-center justify-between text-[10px]">
+                  <span className="text-coral font-semibold tabular-nums">{b.atRisk}% at risk</span>
+                  <span className={`flex items-center gap-0.5 tabular-nums ${trendColor}`}>
+                    <TrendIcon className="w-2.5 h-2.5" />
+                    {b.trend}
+                  </span>
+                </div>
               </div>
 
-              <div className="flex items-center justify-between text-[10px] mb-2">
-                <span className="text-coral font-semibold tabular-nums">{b.atRisk}% at risk</span>
-                <span className={`flex items-center gap-0.5 tabular-nums ${trendColor}`} title="7-day change in % at risk">
-                  <TrendIcon className="w-2.5 h-2.5" />
-                  {b.trend}
-                </span>
+              {/* ── Violation breakdown rows ── */}
+              <div className="border-t border-border/50 mx-3 mb-3 pt-2 flex flex-col gap-0.5">
+                {b.violations.map(v => (
+                  <button
+                    key={v.label}
+                    onClick={() => nav(v.filters)}
+                    className="w-full flex items-center gap-2 px-1.5 py-1 rounded hover:bg-background/60 transition-colors text-left group/row"
+                  >
+                    <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${SEV_DOT[v.severity]}`} />
+                    <span className="text-[10.5px] text-muted-foreground flex-1 leading-tight truncate">
+                      {v.label}
+                    </span>
+                    <span className={`text-[10.5px] font-semibold tabular-nums flex-shrink-0 ${SEV_COUNT[v.severity]}`}>
+                      {v.count.toLocaleString()}
+                    </span>
+                    <ArrowRight className="w-2.5 h-2.5 text-teal opacity-0 group-hover/row:opacity-100 transition-opacity flex-shrink-0" />
+                  </button>
+                ))}
               </div>
-
-              <button
-                onClick={() => nav(b.keyInsight.filter)}
-                className="text-left text-[10.5px] text-foreground/90 hover:text-teal flex items-start justify-between gap-1 py-1 border-t border-border/40"
-                title={`Filter Inventory by: ${b.keyInsight.label}`}
-              >
-                <span className="leading-tight">
-                  <span className="font-semibold tabular-nums">{b.keyInsight.value}</span>{' '}
-                  <span className="text-muted-foreground">{b.keyInsight.label}</span>
-                </span>
-                <ArrowRight className="w-2.5 h-2.5 mt-0.5 flex-shrink-0 opacity-40 group-hover:opacity-100 group-hover:text-teal transition-all" />
-              </button>
-
-              {/* Cross-layer pivot to infrastructure */}
-              {b.pivotTo && (
-                <button
-                  onClick={() => nav(b.pivotTo!.filters)}
-                  className="mt-1 text-left text-[9.5px] text-muted-foreground hover:text-teal flex items-center gap-1 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                  title="Pivot to infrastructure layer with this filter"
-                >
-                  <ArrowRightLeft className="w-2.5 h-2.5" />
-                  {b.pivotTo.label}
-                </button>
-              )}
             </div>
           );
         })}
