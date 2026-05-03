@@ -55,9 +55,7 @@ const BANDS: Band[] = [
       { ...VIOLATION_FILTERS.ssh_shared_user, severity: 'critical' },
       { ...VIOLATION_FILTERS.ssh_rogue,       severity: 'high'     },
       { ...VIOLATION_FILTERS.ssh_weak_user,   severity: 'high'     },
-      { ...VIOLATION_FILTERS.ssh_weak_host,   severity: 'high'     },
       { ...VIOLATION_FILTERS.ssh_misplaced,   severity: 'medium'   },
-      { ...VIOLATION_FILTERS.ssh_shared_host, severity: 'medium'   },
     ],
   },
   {
