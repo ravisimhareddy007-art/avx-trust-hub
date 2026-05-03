@@ -7,6 +7,7 @@ import { VIOLATION_FILTERS } from '@/lib/filters/cryptoFilters';
 // ── Types ──────────────────────────────────────────────────────────────────
 
 interface ViolationRow {
+  id: string;
   label: string;
   enterpriseCount: number;
   filters: Record<string, string>;
