@@ -244,6 +244,19 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
           <span className="text-[10px] text-muted-foreground">{filtered.length} assets · sorted by {sortKey === 'rps' ? 'priority' : sortKey === 'ars' ? 'asset risk score' : sortKey === 'bi' ? 'business impact' : 'name'}</span>
         </div>
 
+        {coverageFilter && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-secondary/40 border border-border rounded-md text-[10.5px] text-foreground flex-shrink-0">
+            <span className="text-muted-foreground">Filtered to:</span>
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-teal/15 text-teal font-semibold">
+              {coverageFilter === 'unscanned' && 'Discovery Coverage Gap — Not scanned by platform'}
+              {coverageFilter === 'no-policy' && 'Control Gap — No active policy coverage'}
+              {coverageFilter === 'unowned' && 'Ownership Gap — No owner assigned'}
+              <button onClick={() => setCoverageFilter('')} className="ml-1 hover:text-coral" aria-label="Clear filter">×</button>
+            </span>
+            <span className="text-muted-foreground tabular-nums">{filtered.length} assets</span>
+          </div>
+        )}
+
         {/* Table */}
         <div className="bg-card rounded-lg border border-border overflow-hidden flex-1 min-h-0 flex flex-col">
           <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto scrollbar-thin">
