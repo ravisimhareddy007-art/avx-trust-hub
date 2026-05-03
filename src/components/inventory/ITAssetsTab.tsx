@@ -358,8 +358,8 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
       {/* Asset Detail Canvas — 80% width overlay */}
       {selectedAsset && (
         <div className="fixed inset-0 z-50 flex">
-          <div className="w-[20%] bg-foreground/10 backdrop-blur-sm" onClick={goBack} />
-          <div className="w-[80%] bg-card border-l border-border shadow-2xl h-full overflow-y-auto animate-slide-in-right">
+          <div className="w-[62%] bg-foreground/10 backdrop-blur-sm" onClick={goBack} />
+          <div className="w-[38%] bg-card border-l border-border shadow-2xl h-full overflow-y-auto animate-slide-in-right">
             {/* Breadcrumb */}
             <div className="sticky top-0 bg-card border-b border-border px-4 py-3 flex items-center gap-2 z-10">
               {assetStack.length > 0 && (
