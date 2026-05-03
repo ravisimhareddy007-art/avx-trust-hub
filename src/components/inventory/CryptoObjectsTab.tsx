@@ -805,34 +805,65 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
           })}
         </div>
 
-        {/* Filters */}
-        <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-            <input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search name, owner, application, algorithm..."
-              className="w-full pl-7 pr-3 py-1.5 bg-muted border border-border rounded text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal" />
-          </div>
-          {[
-            { val: algFilter,    set: setAlgFilter,    label: 'All Algorithms', opts: algorithms.map(a => ({ v: a, l: a })), extra: [{ v: 'weak', l: 'Weak (RSA/SHA-1)' }] },
-            { val: envFilter,    set: setEnvFilter,    label: 'All Envs',       opts: ['Production','Staging','Development'].map(e => ({ v: e, l: e })) },
-            { val: statusFilter, set: setStatusFilter, label: 'All Status',     opts: ['Active','Expiring','Expired','Orphaned','Revoked'].map(s => ({ v: s, l: s })) },
-            { val: pqcFilter,    set: setPqcFilter,    label: 'All PQC Risk',   opts: ['Critical','High','Medium','Low','Safe'].map(r => ({ v: r, l: r })) },
-            { val: ownerFilter,  set: setOwnerFilter,  label: 'All Owners',     opts: [{ v: 'Unassigned', l: 'Unassigned only' }] },
-          ].map(({ val, set, label, opts, extra }) => (
-            <select key={label} value={val} onChange={e => set(e.target.value)}
-              className="px-2 py-1.5 bg-muted border border-border rounded text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal">
-              <option value="">{label}</option>
-              {(extra ?? []).map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
-              {opts.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
-            </select>
-          ))}
-          {(algFilter || envFilter || statusFilter || pqcFilter || ownerFilter) && (
-            <button onClick={() => { setAlgFilter(''); setEnvFilter(''); setStatusFilter(''); setPqcFilter(''); setOwnerFilter(''); }}
-              className="text-[10px] text-coral hover:underline">Clear</button>
-          )}
-          <span className="text-[10px] text-muted-foreground ml-auto">{filtered.length} identities</span>
-        </div>
+        {/* Search + Filters trigger */}
+        {(() => {
+          const activeChips: { key: string; label: string; remove: () => void }[] = [
+            ...envFilter.map(v => ({ key: `env:${v}`, label: v, remove: () => setEnvFilter(envFilter.filter(x => x !== v)) })),
+            ...pqcFilter.map(v => ({ key: `pqc:${v}`, label: `${v} PQC`, remove: () => setPqcFilter(pqcFilter.filter(x => x !== v)) })),
+            ...algFilter.map(v => ({ key: `alg:${v}`, label: v === 'weak' ? 'Weak algos' : v, remove: () => setAlgFilter(algFilter.filter(x => x !== v)) })),
+            ...statusFilter.map(v => ({ key: `st:${v}`, label: v, remove: () => setStatusFilter(statusFilter.filter(x => x !== v)) })),
+            ...ownerFilter.map(v => ({ key: `ow:${v}`, label: v, remove: () => setOwnerFilter(ownerFilter.filter(x => x !== v)) })),
+          ];
+          const visible = activeChips.slice(0, 4);
+          const overflow = activeChips.length - visible.length;
+          const totalActive = activeChips.length;
+          const clearAll = () => { setAlgFilter([]); setEnvFilter([]); setStatusFilter([]); setPqcFilter([]); setOwnerFilter([]); };
+          return (
+            <div className="flex flex-col gap-2 flex-shrink-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="relative flex-1 max-w-sm">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                  <input value={search} onChange={e => setSearch(e.target.value)}
+                    placeholder="Search name, owner, application, algorithm..."
+                    className="w-full pl-7 pr-3 py-1.5 bg-muted border border-border rounded text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal" />
+                </div>
+                <button
+                  onClick={() => setFilterPanelOpen(true)}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[11px] font-medium border transition-colors ${
+                    totalActive > 0
+                      ? 'border-teal/40 text-teal bg-teal/10 hover:bg-teal/15'
+                      : 'border-border text-foreground hover:bg-muted'
+                  }`}
+                >
+                  <FilterIcon className="w-3.5 h-3.5" />
+                  Filters
+                  {totalActive > 0 && (
+                    <span className="ml-1 px-1.5 py-0.5 rounded-full bg-teal/20 text-teal text-[9px] font-bold tabular-nums">{totalActive}</span>
+                  )}
+                </button>
+                <span className="text-[10px] text-muted-foreground ml-auto">{filtered.length} identities</span>
+              </div>
+              {totalActive > 0 && (
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {visible.map(c => (
+                    <span key={c.key} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted border border-border text-[10px] text-foreground">
+                      {c.label}
+                      <button onClick={c.remove} className="text-muted-foreground hover:text-coral">
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </span>
+                  ))}
+                  {overflow > 0 && (
+                    <button onClick={() => setFilterPanelOpen(true)} className="text-[10px] text-muted-foreground hover:text-foreground px-1.5">
+                      +{overflow} more
+                    </button>
+                  )}
+                  <button onClick={clearAll} className="text-[10px] text-coral hover:underline ml-1">Clear all</button>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Table */}
         <div className="bg-card rounded-lg border border-border overflow-hidden flex-1 min-h-0 flex flex-col">
