@@ -152,25 +152,37 @@ const CELL_BG: Record<RiskLevel, string> = {
 
 const AGILITY = [
   {
-    cat: 'API Gateways',  score: 34,
+    cat: 'API Gateways', score: 34,
     keyLimit: 'Max RSA-4096 today — PQC key sizes 3x larger, require config changes',
     swUpdatable: false,
     latency: 'TLS handshake +40-60ms estimated for ML-KEM vs RSA-2048',
     note: 'Hardcoded cert configs — swap requires full redeploy and load balancer reconfiguration',
+    readiness: 'NOT READY' as const,
+    timelineImpact: '+3 months to Wave 1',
+    blocker: 'HSM firmware upgrade + load balancer reconfiguration required before migration can begin',
+    affectedWave1Pct: 22,
   },
   {
-    cat: 'App Servers',   score: 52,
+    cat: 'App Servers', score: 52,
     keyLimit: 'JDK 17+ supports ML-KEM; older runtimes require upgrade first',
     swUpdatable: true,
     latency: 'Minimal — server-side key operations, client handles handshake overhead',
     note: 'Modern app servers agile via library update; legacy batch servers require runtime upgrade',
+    readiness: 'CONDITIONAL' as const,
+    timelineImpact: '+1 month to Wave 2',
+    blocker: 'Legacy JDK runtime upgrade required on 48% of servers before PQC migration',
+    affectedWave1Pct: 0,
   },
   {
-    cat: 'K8s Clusters',  score: 78,
+    cat: 'K8s Clusters', score: 78,
     keyLimit: 'cert-manager 1.14+ supports FIPS 203/204 — already deployed',
     swUpdatable: true,
     latency: 'Negligible — short-lived certs rotate frequently, per-cert overhead minimal',
     note: 'cert-manager enables algorithm swap per namespace with zero downtime',
+    readiness: 'READY' as const,
+    timelineImpact: 'On schedule',
+    blocker: null,
+    affectedWave1Pct: 18,
   },
   {
     cat: 'Vault Servers', score: 61,
@@ -178,13 +190,21 @@ const AGILITY = [
     swUpdatable: true,
     latency: 'Vault seal/unseal operations +15% slower with PQC — acceptable',
     note: 'Vault upgrade to 1.14 unblocks PQC; currently blocked by Q2 change freeze',
+    readiness: 'CONDITIONAL' as const,
+    timelineImpact: '+2 months — change freeze ends July 2026',
+    blocker: 'Q2 change freeze blocks Vault 1.14 upgrade until July 2026',
+    affectedWave1Pct: 8,
   },
   {
-    cat: 'AI Platforms',  score: 29,
+    cat: 'AI Platforms', score: 29,
     keyLimit: 'Agent token signing hardcoded in model inference configs — no abstraction layer',
     swUpdatable: false,
     latency: 'Token issuance latency unknown — no profiling data available yet',
     note: 'Agent tokens hardcoded in model configs — highest swap cost; requires model redeployment',
+    readiness: 'NOT READY' as const,
+    timelineImpact: '+4 months to Wave 2',
+    blocker: 'No crypto abstraction layer — full model redeployment required per agent platform',
+    affectedWave1Pct: 0,
   },
 ];
 
@@ -557,10 +577,20 @@ function StageDiscover({ onNext, nav }: { onNext: () => void; nav: (f: Record<st
 
 function StageAssess({ onNext, nav }: { onNext: () => void; nav: (f: Record<string, string>) => void }) {
   const [addedToWave, setAddedToWave] = React.useState<Record<string, boolean>>({});
+  const notReady     = AGILITY.filter(a => a.readiness === 'NOT READY');
+  const conditional  = AGILITY.filter(a => a.readiness === 'CONDITIONAL');
+  const ready        = AGILITY.filter(a => a.readiness === 'READY');
+  const wave1Blocker = AGILITY.find(a => a.readiness === 'NOT READY' && a.affectedWave1Pct > 0);
+
+  const READINESS_STYLE: Record<string, string> = {
+    'NOT READY':   'bg-coral/10 text-coral border border-coral/25',
+    'CONDITIONAL': 'bg-amber/10 text-amber border border-amber/25',
+    'READY':       'bg-teal/10 text-teal border border-teal/25',
+  };
+
   return (
     <div className="space-y-4">
-
-      {/* Crypto Agility — NIST detail per category */}
+      {/* Crypto Agility Assessment */}
       <div className="bg-card rounded-xl border border-border p-5">
         <h3 className="text-sm font-semibold mb-1">Crypto Agility Assessment — By Infrastructure Category</h3>
         <p className="text-[10px] text-muted-foreground mb-4">
@@ -575,11 +605,19 @@ function StageAssess({ onNext, nav }: { onNext: () => void; nav: (f: Record<stri
                   <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${item.swUpdatable ? 'bg-teal/10 text-teal' : 'bg-coral/10 text-coral'}`}>
                     {item.swUpdatable ? 'Software-updatable' : 'Hardware change required'}
                   </span>
-                  <span className={`text-sm font-bold tabular-nums ${item.score < 40 ? 'text-coral' : item.score < 65 ? 'text-amber' : 'text-teal'}`}>{item.score}%</span>
+                  <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${READINESS_STYLE[item.readiness]}`}>
+                    {item.readiness}
+                  </span>
+                  <span className={`text-sm font-bold tabular-nums ${item.score < 40 ? 'text-coral' : item.score < 65 ? 'text-amber' : 'text-teal'}`}>
+                    {item.score}%
+                  </span>
                 </div>
               </div>
               <div className="h-2 bg-secondary rounded-full overflow-hidden mb-2">
-                <div className={`h-full rounded-full ${item.score < 40 ? 'bg-coral' : item.score < 65 ? 'bg-amber' : 'bg-teal'}`} style={{ width: `${item.score}%` }} />
+                <div
+                  className={`h-full rounded-full ${item.score < 40 ? 'bg-coral' : item.score < 65 ? 'bg-amber' : 'bg-teal'}`}
+                  style={{ width: `${item.score}%` }}
+                />
               </div>
               <div className="grid grid-cols-2 gap-2 mb-1.5">
                 <div>
@@ -591,38 +629,77 @@ function StageAssess({ onNext, nav }: { onNext: () => void; nav: (f: Record<stri
                   <p className="text-[9.5px] text-muted-foreground">{item.latency}</p>
                 </div>
               </div>
-              <div className="flex items-center justify-between border-t border-border/30 pt-1.5">
+              <div className="border-t border-border/30 pt-1.5 flex items-center justify-between gap-3">
                 <p className="text-[9.5px] text-muted-foreground/70 flex-1">{item.note}</p>
-                {item.score < 70 && (
-                  <button
-                    onClick={() => toast.success('Blocker ticket created', {
-                      description: `${item.cat} — agility ${item.score}% · ${item.swUpdatable ? 'Software' : 'Hardware'} change required · ${item.keyLimit}`,
-                    })}
-                    className={`ml-3 flex-shrink-0 text-[9px] font-semibold px-2 py-1 rounded whitespace-nowrap ${
-                      item.score < 40
-                        ? 'bg-coral/10 text-coral hover:bg-coral/20'
-                        : 'bg-amber/10 text-amber hover:bg-amber/20'
-                    } transition-colors`}
-                  >
-                    {item.score < 40 ? 'Flag as Critical Blocker' : 'Flag as Blocker'}
-                  </button>
-                )}
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <Clock className="w-3 h-3 text-muted-foreground" />
+                  <span className={`text-[9.5px] font-semibold ${item.readiness === 'READY' ? 'text-teal' : item.readiness === 'CONDITIONAL' ? 'text-amber' : 'text-coral'}`}>
+                    {item.timelineImpact}
+                  </span>
+                </div>
               </div>
+              {item.blocker && (
+                <div className="flex items-start gap-1.5 mt-1.5 px-2 py-1.5 rounded bg-secondary/40">
+                  <AlertTriangle className="w-3 h-3 text-amber flex-shrink-0 mt-0.5" />
+                  <p className="text-[9.5px] text-muted-foreground">{item.blocker}</p>
+                </div>
+              )}
             </div>
           ))}
         </div>
+
+        {/* Wave 1 Feasibility Summary */}
+        <div className="mt-4 p-4 rounded-xl border border-coral/25 bg-coral/5">
+          <div className="flex items-start justify-between mb-2">
+            <div>
+              <p className="text-[11px] font-semibold text-foreground">Wave 1 Feasibility Assessment</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Based on current infrastructure readiness across all categories</p>
+            </div>
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <span className="text-[9px] font-bold px-2 py-1 rounded bg-coral/15 text-coral border border-coral/25">AT RISK</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3 mb-3">
+            <div className="text-center">
+              <p className="text-xl font-bold text-teal tabular-nums">{ready.length}</p>
+              <p className="text-[9px] text-muted-foreground">Categories ready</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xl font-bold text-amber tabular-nums">{conditional.length}</p>
+              <p className="text-[9px] text-muted-foreground">Conditional</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xl font-bold text-coral tabular-nums">{notReady.length}</p>
+              <p className="text-[9px] text-muted-foreground">Not ready</p>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            {wave1Blocker && (
+              <p className="text-[10px] text-coral font-semibold">
+                Critical: {wave1Blocker.cat} ({wave1Blocker.affectedWave1Pct}% of Wave 1 assets) — {wave1Blocker.timelineImpact}. Resolve HSM firmware blocker first.
+              </p>
+            )}
+            <p className="text-[10px] text-muted-foreground">
+              At current trajectory Wave 1 completes <span className="text-coral font-semibold">Q4 2026</span>, not Q2 2026 as planned.
+              {conditional.length > 0 && ` ${conditional.map(c => c.cat).join(' and ')} blockers must resolve by June 2026 to recover the schedule.`}
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* Algorithm Migration Complexity — rows clickable to inventory */}
+      {/* Algorithm Migration Complexity */}
       <div className="bg-card rounded-xl border border-border p-5">
         <h3 className="text-sm font-semibold mb-1">Algorithm Migration Complexity</h3>
         <p className="text-[10px] text-muted-foreground mb-4">
-          NIST: new algorithms are not drop-in replacements — key sizes, signature sizes, and protocol dependencies differ significantly. Each row shows blocker and compensating control.
+          NIST: new algorithms are not drop-in replacements — key sizes, signature sizes, and protocol dependencies differ significantly.
         </p>
         <div className="space-y-2">
           {COMPLEXITY.map(r => (
             <div key={r.from} className="border border-border/50 rounded-lg overflow-hidden">
-              <button onClick={() => nav({ tab: 'identities', algorithm: r.from })} className="w-full flex items-center gap-3 p-3 hover:bg-secondary/30 transition-colors text-left group">
+              <button
+                onClick={() => nav({ tab: 'identities', algorithm: r.from })}
+                className="w-full flex items-center gap-3 p-3 hover:bg-secondary/30 transition-colors text-left group"
+              >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
                     <span className="font-mono text-[11px] text-coral font-semibold">{r.from}</span>
@@ -653,7 +730,7 @@ function StageAssess({ onNext, nav }: { onNext: () => void; nav: (f: Record<stri
                     <button
                       onClick={() => {
                         setAddedToWave(prev => ({ ...prev, [r.from]: true }));
-                        toast.success(`Added to Wave 1`, {
+                        toast.success('Added to Wave 1', {
                           description: `${r.from} → ${r.to} · ${r.objects.toLocaleString()} objects queued for Q2 2026 migration`,
                         });
                       }}
@@ -675,7 +752,9 @@ function StageAssess({ onNext, nav }: { onNext: () => void; nav: (f: Record<stri
           <h3 className="text-sm font-semibold">HNDL Risk Matrix — Prioritization Framework</h3>
           <HndlBadge />
         </div>
-        <p className="text-[10px] text-muted-foreground mb-4">NIST: categorize data with respect to criticality, disclosure sensitivity, and consequences of unauthorized modification. Counts sum to {TOTAL_VULNERABLE.toLocaleString()}.</p>
+        <p className="text-[10px] text-muted-foreground mb-4">
+          NIST: categorize data with respect to criticality, disclosure sensitivity, and consequences of unauthorized modification. Counts sum to {TOTAL_VULNERABLE.toLocaleString()}. Click any quadrant to view those objects in Inventory.
+        </p>
         <div className="grid grid-cols-3 gap-3 text-center">
           <div />
           <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Low Data Sensitivity</div>
@@ -726,7 +805,10 @@ function StageAssess({ onNext, nav }: { onNext: () => void; nav: (f: Record<stri
         >
           <ArrowRight className="w-3.5 h-3.5" /> View all Critical objects in Inventory
         </button>
-        <button onClick={onNext} className="flex items-center gap-2 px-5 py-2 rounded-lg bg-purple/15 text-purple-light border border-purple/30 hover:bg-purple/25 text-sm font-semibold transition-colors">
+        <button
+          onClick={onNext}
+          className="flex items-center gap-2 px-5 py-2 rounded-lg bg-purple/15 text-purple-light border border-purple/30 hover:bg-purple/25 text-sm font-semibold transition-colors"
+        >
           Create Migration Plan <ChevronRight className="w-4 h-4" />
         </button>
       </div>
