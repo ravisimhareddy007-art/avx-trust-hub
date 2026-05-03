@@ -719,7 +719,13 @@ function StageAssess({ onNext, nav }: { onNext: () => void; nav: (f: Record<stri
         </div>
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => nav({ tab: 'identities', pqcRisk: 'Critical' })}
+          className="text-[11px] text-teal hover:text-teal/80 transition-colors flex items-center gap-1"
+        >
+          <ArrowRight className="w-3.5 h-3.5" /> View all Critical objects in Inventory
+        </button>
         <button onClick={onNext} className="flex items-center gap-2 px-5 py-2 rounded-lg bg-purple/15 text-purple-light border border-purple/30 hover:bg-purple/25 text-sm font-semibold transition-colors">
           Create Migration Plan <ChevronRight className="w-4 h-4" />
         </button>
