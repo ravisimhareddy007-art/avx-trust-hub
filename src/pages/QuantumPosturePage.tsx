@@ -363,28 +363,7 @@ function StageDiscover({ onNext, nav }: { onNext: () => void; nav: (f: Record<st
             <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: 'hsl(162 72% 37%)' }} />Quantum-safe</span>
           </div>
         </div>
-        <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={ALGO_DATA} barCategoryGap="30%">
-            <XAxis dataKey="algo" tick={{ fill: 'hsl(220 15% 55%)', fontSize: 10 }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fill: 'hsl(220 15% 55%)', fontSize: 10 }} axisLine={false} tickLine={false} />
-            <Tooltip
-              contentStyle={{ background: 'hsl(225 30% 14%)', border: '1px solid hsl(225 20% 20%)', borderRadius: 8, fontSize: 11 }}
-              labelStyle={{ color: 'hsl(220 20% 90%)' }}
-              formatter={(value: number, _name: string, props: { payload?: typeof ALGO_DATA[0] }) => [
-                `${value.toLocaleString()} objects · ${props.payload?.use || ''}`,
-                props.payload?.vulnerable ? 'Quantum-vulnerable' : 'Quantum-safe',
-              ]}
-            />
-            <Bar
-              dataKey="count"
-              name="Objects"
-              shape={(props: AlgoBarProps) => <CustomAlgoBar {...props} />}
-              onClick={((data: typeof ALGO_DATA[0]) => nav({ tab: 'identities', algorithm: data.algo })) as never}
-              style={{ cursor: 'pointer' }}
-            />
-          </BarChart>
-        </ResponsiveContainer>
-        <p className="text-[9.5px] text-muted-foreground text-center mt-1">Click any bar to view those objects in Inventory</p>
+        <AlgoBarChart onBarClick={(algo) => nav({ tab: 'identities', algorithm: algo })} />
       </div>
 
       {/* PQC Risk Heatmap — every cell clickable */}
