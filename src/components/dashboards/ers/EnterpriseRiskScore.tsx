@@ -16,10 +16,11 @@ const BI_COLOR: Record<string, string> = {
 };
 
 function ErsGauge({ score, hsl, label }: { score: number; hsl: string; label: string }) {
-  const R = 52;
-  const cx = 64, cy = 68;
-  const startAngle = -220;
-  const totalDegrees = 260;
+  const R = 70;
+  const cx = 110;
+  const cy = 105;
+  const startAngle = -210;
+  const totalDegrees = 240;
   const toRad = (deg: number) => (deg * Math.PI) / 180;
   const arcPath = (start: number, end: number) => {
     const s = { x: cx + R * Math.cos(toRad(start)), y: cy + R * Math.sin(toRad(start)) };
@@ -27,59 +28,41 @@ function ErsGauge({ score, hsl, label }: { score: number; hsl: string; label: st
     const large = end - start > 180 ? 1 : 0;
     return `M ${s.x} ${s.y} A ${R} ${R} 0 ${large} 1 ${e.x} ${e.y}`;
   };
-
-  const lowEnd  = startAngle + (29 / 100) * totalDegrees;
-  const medEnd  = startAngle + (59 / 100) * totalDegrees;
-  const highEnd = startAngle + (79 / 100) * totalDegrees;
-  const critEnd = startAngle + totalDegrees;
+  const tickPath = (angle: number) => {
+    const r1 = { x: cx + (R - 16) * Math.cos(toRad(angle)), y: cy + (R - 16) * Math.sin(toRad(angle)) };
+    const r2 = { x: cx + (R + 2)  * Math.cos(toRad(angle)), y: cy + (R + 2)  * Math.sin(toRad(angle)) };
+    return `M ${r1.x} ${r1.y} L ${r2.x} ${r2.y}`;
+  };
+  const lowEnd  = startAngle + 0.29 * totalDegrees;
+  const medEnd  = startAngle + 0.59 * totalDegrees;
+  const highEnd = startAngle + 0.79 * totalDegrees;
+  const arcEnd  = startAngle + totalDegrees;
   const filled  = startAngle + (score / 100) * totalDegrees;
-
+  const dotX = cx + (R - 6) * Math.cos(toRad(filled));
+  const dotY = cy + (R - 6) * Math.sin(toRad(filled));
   const TEAL  = 'hsl(162 72% 37%)';
   const BLUE  = 'hsl(210 80% 56%)';
   const AMBER = 'hsl(38 78% 51%)';
   const CORAL = 'hsl(16 72% 51%)';
-
   return (
-    <div className="flex flex-col items-center">
-      <svg width="140" height="120" viewBox="0 0 128 128">
-        <path d={arcPath(startAngle, lowEnd)}  fill="none" stroke={TEAL}  strokeWidth="10" strokeLinecap="butt" opacity="0.35" />
-        <path d={arcPath(lowEnd,  medEnd)}     fill="none" stroke={BLUE}  strokeWidth="10" strokeLinecap="butt" opacity="0.35" />
-        <path d={arcPath(medEnd,  highEnd)}    fill="none" stroke={AMBER} strokeWidth="10" strokeLinecap="butt" opacity="0.35" />
-        <path d={arcPath(highEnd, critEnd)}    fill="none" stroke={CORAL} strokeWidth="10" strokeLinecap="butt" opacity="0.35" />
-        <path d={arcPath(startAngle, filled)} fill="none"
-          stroke={hsl} strokeWidth="10" strokeLinecap="round"
-          style={{ transition: 'all 0.7s ease' }} />
-        <circle
-          cx={cx + R * Math.cos(toRad(filled))}
-          cy={cy + R * Math.sin(toRad(filled))}
-          r="5" fill={hsl}
-          style={{ transition: 'all 0.7s ease' }}
-        />
-        <text x="64" y="62" textAnchor="middle" fontSize="18" fontWeight="bold"
-          fill={hsl} style={{ transition: 'fill 0.7s ease' }}>
-          {label.toUpperCase()}
-        </text>
-        <text x="64" y="78" textAnchor="middle" fontSize="13" fontWeight="600"
-          fill={hsl} fillOpacity="0.85">
-          {score}
-        </text>
-        <text x="64" y="90" textAnchor="middle" fontSize="9"
-          fill="currentColor" fillOpacity="0.4">/ 100</text>
-      </svg>
-      <div className="flex items-center gap-3 mt-1">
-        {[
-          { label: 'Low 0–29',    color: TEAL  },
-          { label: 'Med 30–59',   color: BLUE  },
-          { label: 'High 60–79',  color: AMBER },
-          { label: 'Crit 80–100', color: CORAL },
-        ].map(z => (
-          <div key={z.label} className="flex items-center gap-1">
-            <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: z.color }} />
-            <span className="text-[8.5px] text-muted-foreground whitespace-nowrap">{z.label}</span>
-          </div>
-        ))}
-      </div>
-    </div>
+    <svg width="220" height="128" viewBox="0 0 220 128">
+      <path d={arcPath(startAngle, lowEnd)}  fill="none" stroke={TEAL}  strokeWidth="12" strokeLinecap="butt" opacity="0.25" />
+      <path d={arcPath(lowEnd,  medEnd)}     fill="none" stroke={BLUE}  strokeWidth="12" strokeLinecap="butt" opacity="0.25" />
+      <path d={arcPath(medEnd,  highEnd)}    fill="none" stroke={AMBER} strokeWidth="12" strokeLinecap="butt" opacity="0.25" />
+      <path d={arcPath(highEnd, arcEnd)}     fill="none" stroke={CORAL} strokeWidth="12" strokeLinecap="butt" opacity="0.25" />
+      <path d={arcPath(startAngle, filled)}  fill="none" stroke={hsl}   strokeWidth="12" strokeLinecap="round" style={{ transition: 'all 0.8s cubic-bezier(0.4,0,0.2,1)' }} />
+      <path d={tickPath(lowEnd)}  stroke="hsl(var(--background))" strokeWidth="2.5" strokeLinecap="round" />
+      <path d={tickPath(medEnd)}  stroke="hsl(var(--background))" strokeWidth="2.5" strokeLinecap="round" />
+      <path d={tickPath(highEnd)} stroke="hsl(var(--background))" strokeWidth="2.5" strokeLinecap="round" />
+      <circle cx={dotX} cy={dotY} r="5" fill={hsl} style={{ transition: 'all 0.8s cubic-bezier(0.4,0,0.2,1)' }} />
+      <text x="14"  y="112" textAnchor="middle" fontSize="8" fill={TEAL}  opacity="0.8">LOW</text>
+      <text x="50"  y="28"  textAnchor="middle" fontSize="8" fill={BLUE}  opacity="0.8">MED</text>
+      <text x="170" y="28"  textAnchor="middle" fontSize="8" fill={AMBER} opacity="0.8">HIGH</text>
+      <text x="206" y="112" textAnchor="middle" fontSize="8" fill={CORAL} opacity="0.8">CRIT</text>
+      <text x={cx} y="90"  textAnchor="middle" fontSize="22" fontWeight="700" fill={hsl} style={{ transition: 'fill 0.7s ease' }}>{label.toUpperCase()}</text>
+      <text x={cx} y="108" textAnchor="middle" fontSize="13" fontWeight="500" fill={hsl} fillOpacity="0.75">{score}</text>
+      <text x={cx} y="120" textAnchor="middle" fontSize="9" fill="currentColor" fillOpacity="0.35">/ 100</text>
+    </svg>
   );
 }
 
