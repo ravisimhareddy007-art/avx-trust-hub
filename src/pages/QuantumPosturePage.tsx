@@ -285,27 +285,40 @@ function MoscaBadge({ wave }: { wave: typeof WAVES[0] }) {
 
 // ── Stage 1: Discover ─────────────────────────────────────────────────────────
 
-interface AlgoBarProps {
-  x?: number;
-  y?: number;
-  width?: number;
-  height?: number;
-  payload?: { fill: string; algo: string };
-}
-
-function CustomAlgoBar(props: AlgoBarProps) {
-  const { x = 0, y = 0, width = 0, height = 0, payload } = props;
-  if (!height || height <= 0) return null;
+function AlgoBarChart({ onBarClick }: { onBarClick: (algo: string) => void }) {
+  const maxVal = Math.max(...ALGO_DATA.map(d => d.count));
   return (
-    <rect
-      x={x}
-      y={y}
-      width={width}
-      height={height}
-      fill={payload?.fill ?? 'hsl(162 72% 37%)'}
-      rx={4}
-      ry={4}
-    />
+    <div className="w-full">
+      <div className="flex items-end gap-2 h-44 pb-1">
+        {ALGO_DATA.map(d => {
+          const heightPct = Math.max(2, (d.count / maxVal) * 100);
+          return (
+            <div
+              key={d.algo}
+              className="flex-1 flex flex-col items-center justify-end gap-1.5 cursor-pointer group"
+              onClick={() => onBarClick(d.algo)}
+              title={`${d.algo} · ${d.count.toLocaleString()} objects · ${d.use}`}
+            >
+              <span className="text-[8.5px] tabular-nums font-semibold opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: d.fill }}>
+                {d.count.toLocaleString()}
+              </span>
+              <div
+                className="w-full rounded-t-md transition-all duration-300 group-hover:opacity-80"
+                style={{ height: `${heightPct}%`, background: d.fill }}
+              />
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex gap-2 mt-2">
+        {ALGO_DATA.map(d => (
+          <div key={d.algo} className="flex-1 text-center">
+            <span className="text-[8.5px] text-muted-foreground leading-tight block">{d.algo}</span>
+          </div>
+        ))}
+      </div>
+      <p className="text-[9.5px] text-muted-foreground text-center mt-2">Hover for count · Click any bar to view objects in Inventory</p>
+    </div>
   );
 }
 
@@ -350,28 +363,7 @@ function StageDiscover({ onNext, nav }: { onNext: () => void; nav: (f: Record<st
             <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: 'hsl(162 72% 37%)' }} />Quantum-safe</span>
           </div>
         </div>
-        <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={ALGO_DATA} barCategoryGap="30%">
-            <XAxis dataKey="algo" tick={{ fill: 'hsl(220 15% 55%)', fontSize: 10 }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fill: 'hsl(220 15% 55%)', fontSize: 10 }} axisLine={false} tickLine={false} />
-            <Tooltip
-              contentStyle={{ background: 'hsl(225 30% 14%)', border: '1px solid hsl(225 20% 20%)', borderRadius: 8, fontSize: 11 }}
-              labelStyle={{ color: 'hsl(220 20% 90%)' }}
-              formatter={(value: number, _name: string, props: { payload?: typeof ALGO_DATA[0] }) => [
-                `${value.toLocaleString()} objects · ${props.payload?.use || ''}`,
-                props.payload?.vulnerable ? 'Quantum-vulnerable' : 'Quantum-safe',
-              ]}
-            />
-            <Bar
-              dataKey="count"
-              name="Objects"
-              shape={(props: AlgoBarProps) => <CustomAlgoBar {...props} />}
-              onClick={((data: typeof ALGO_DATA[0]) => nav({ tab: 'identities', algorithm: data.algo })) as never}
-              style={{ cursor: 'pointer' }}
-            />
-          </BarChart>
-        </ResponsiveContainer>
-        <p className="text-[9.5px] text-muted-foreground text-center mt-1">Click any bar to view those objects in Inventory</p>
+        <AlgoBarChart onBarClick={(algo) => nav({ tab: 'identities', algorithm: algo })} />
       </div>
 
       {/* PQC Risk Heatmap — every cell clickable */}
