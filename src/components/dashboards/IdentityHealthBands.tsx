@@ -2,12 +2,13 @@ import React from 'react';
 import { useNav } from '@/context/NavigationContext';
 import { ESTATE_SUMMARY, mockAssets } from '@/data/mockData';
 import { Shield, Key, Bot, Lock, ArrowRight, TrendingUp, TrendingDown } from 'lucide-react';
+import { VIOLATION_FILTERS } from '@/lib/filters/cryptoFilters';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
 interface ViolationRow {
   label: string;
-  count: number;
+  enterpriseCount: number;
   filters: Record<string, string>;
   severity: 'critical' | 'high' | 'medium';
 }
@@ -23,10 +24,6 @@ interface Band {
   violations: ViolationRow[];
 }
 
-// ── Single source of truth — predicates AND counts derived from same logic ─
-// Enterprise counts (ESTATE_SUMMARY) are used for display.
-// Inventory filters use the same field logic so results are consistent.
-
 const BANDS: Band[] = [
   {
     name: 'Certificates',
@@ -37,30 +34,11 @@ const BANDS: Band[] = [
     trend: ESTATE_SUMMARY.certsTrend,
     topFilter: { type: 'TLS Certificate', tab: 'identities' },
     violations: [
-      {
-        label: 'Expiring in 30 days',
-        count: ESTATE_SUMMARY.certsExpiring30d,
-        filters: { type: 'TLS Certificate', status: 'Expiring', tab: 'identities' },
-        severity: 'critical',
-      },
-      {
-        label: 'Expired certificates',
-        count: ESTATE_SUMMARY.certsExpired,
-        filters: { type: 'TLS Certificate', status: 'Expired', tab: 'identities' },
-        severity: 'critical',
-      },
-      {
-        label: 'Weak algorithm (SHA-1 / RSA-1024)',
-        count: ESTATE_SUMMARY.certsWeakAlgo,
-        filters: { type: 'TLS Certificate', algorithm: 'weak', tab: 'identities' },
-        severity: 'high',
-      },
-      {
-        label: 'Self-signed in production',
-        count: ESTATE_SUMMARY.certsSelfSigned,
-        filters: { type: 'TLS Certificate', caIssuer: 'Self-Signed', tab: 'identities' },
-        severity: 'medium',
-      },
+      { ...VIOLATION_FILTERS.cert_expired,      severity: 'critical' },
+      { ...VIOLATION_FILTERS.cert_expiring_7d,  severity: 'critical' },
+      { ...VIOLATION_FILTERS.cert_expiring_30d, severity: 'high'     },
+      { ...VIOLATION_FILTERS.cert_weak_algo,    severity: 'high'     },
+      { ...VIOLATION_FILTERS.cert_self_signed,  severity: 'medium'   },
     ],
   },
   {
@@ -72,30 +50,13 @@ const BANDS: Band[] = [
     trend: ESTATE_SUMMARY.sshTrend,
     topFilter: { type: 'SSH Key', tab: 'identities' },
     violations: [
-      {
-        label: 'Orphaned — no owner assigned',
-        count: ESTATE_SUMMARY.sshOrphaned,
-        filters: { type: 'SSH Key', owner: 'Unassigned', tab: 'identities' },
-        severity: 'critical',
-      },
-      {
-        label: 'Suspicious — anomalous login patterns',
-        count: ESTATE_SUMMARY.sshSuspicious,
-        filters: { type: 'SSH Key', suspicious: 'true', tab: 'identities' },
-        severity: 'critical',
-      },
-      {
-        label: 'Rogue — not provisioned by platform',
-        count: ESTATE_SUMMARY.sshRogue,
-        filters: { type: 'SSH Key', rogue: 'true', tab: 'identities' },
-        severity: 'high',
-      },
-      {
-        label: 'Not rotated in 90+ days',
-        count: ESTATE_SUMMARY.sshNotRotated90d,
-        filters: { type: 'SSH Key', rotation: 'overdue', tab: 'identities' },
-        severity: 'medium',
-      },
+      { ...VIOLATION_FILTERS.ssh_suspicious,  severity: 'critical' },
+      { ...VIOLATION_FILTERS.ssh_shared_user, severity: 'critical' },
+      { ...VIOLATION_FILTERS.ssh_rogue,       severity: 'high'     },
+      { ...VIOLATION_FILTERS.ssh_weak_user,   severity: 'high'     },
+      { ...VIOLATION_FILTERS.ssh_weak_host,   severity: 'high'     },
+      { ...VIOLATION_FILTERS.ssh_misplaced,   severity: 'medium'   },
+      { ...VIOLATION_FILTERS.ssh_shared_host, severity: 'medium'   },
     ],
   },
   {
@@ -107,30 +68,10 @@ const BANDS: Band[] = [
     trend: ESTATE_SUMMARY.secretsTrend,
     topFilter: { type: 'API Key / Secret', tab: 'identities' },
     violations: [
-      {
-        label: 'Exposed in code repositories',
-        count: ESTATE_SUMMARY.secretsExposedCode,
-        filters: { type: 'API Key / Secret', exposure: 'code', tab: 'identities' },
-        severity: 'critical',
-      },
-      {
-        label: 'Hardcoded — detected in last 24h',
-        count: ESTATE_SUMMARY.secretsHardcoded,
-        filters: { type: 'API Key / Secret', exposure: 'code', tab: 'identities' },
-        severity: 'critical',
-      },
-      {
-        label: 'Not rotated in 90+ days',
-        count: ESTATE_SUMMARY.secretsUnrotated90d,
-        filters: { type: 'API Key / Secret', rotation: 'overdue', tab: 'identities' },
-        severity: 'high',
-      },
-      {
-        label: 'Orphaned — owner left org',
-        count: ESTATE_SUMMARY.secretsOrphaned,
-        filters: { type: 'API Key / Secret', owner: 'Unassigned', tab: 'identities' },
-        severity: 'medium',
-      },
+      { ...VIOLATION_FILTERS.secret_exposed_code,   severity: 'critical' },
+      { ...VIOLATION_FILTERS.secret_hardcoded_24h,  severity: 'critical' },
+      { ...VIOLATION_FILTERS.secret_unrotated_90d,  severity: 'high'     },
+      { ...VIOLATION_FILTERS.secret_orphaned,       severity: 'medium'   },
     ],
   },
   {
@@ -142,30 +83,10 @@ const BANDS: Band[] = [
     trend: ESTATE_SUMMARY.aiTrend,
     topFilter: { type: 'AI Agent Token', tab: 'identities' },
     violations: [
-      {
-        label: 'Admin privilege — no rotation >30d',
-        count: ESTATE_SUMMARY.aiTokensAdminPriv,
-        filters: { type: 'AI Agent Token', privilege: 'admin', tab: 'identities' },
-        severity: 'critical',
-      },
-      {
-        label: 'Over-privileged — unused scopes',
-        count: ESTATE_SUMMARY.aiTokensOverPriv,
-        filters: { type: 'AI Agent Token', privilege: 'over', tab: 'identities' },
-        severity: 'critical',
-      },
-      {
-        label: 'Expired — still accepting requests',
-        count: ESTATE_SUMMARY.aiTokensExpiredActive,
-        filters: { type: 'AI Agent Token', status: 'Expired', tab: 'identities' },
-        severity: 'high',
-      },
-      {
-        label: 'No rotation policy set',
-        count: ESTATE_SUMMARY.aiTokensNoRotationPolicy,
-        filters: { type: 'AI Agent Token', rotation: 'none', tab: 'identities' },
-        severity: 'medium',
-      },
+      { ...VIOLATION_FILTERS.ai_admin_no_rotation,  severity: 'critical' },
+      { ...VIOLATION_FILTERS.ai_over_privileged,    severity: 'high'     },
+      { ...VIOLATION_FILTERS.ai_no_sponsor,         severity: 'high'     },
+      { ...VIOLATION_FILTERS.ai_no_rotation_policy, severity: 'medium'   },
     ],
   },
 ];
