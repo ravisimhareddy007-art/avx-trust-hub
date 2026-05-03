@@ -8,9 +8,6 @@ import CriticalActionFeed from './CriticalActionFeed';
 import IdentityHealthBands from './IdentityHealthBands';
 import QTHPostureStrip from './QTHPostureStrip';
 import InfrastructurePostureStrip from './InfrastructurePostureStrip';
-import OperationsKPIStrip from './operations/OperationsKPIStrip';
-import ExpiryForecast from './operations/ExpiryForecast';
-import TriageQueue from './operations/TriageQueue';
 import CryptoReadinessSummary from './readiness/CryptoReadinessSummary';
 import AlgorithmConcentration from './readiness/AlgorithmConcentration';
 import PQCMigrationPanel from './readiness/PQCMigrationPanel';
@@ -128,15 +125,6 @@ export default function SecurityAdminDashboard() {
               <QTHPostureStrip />
               <IdentityHealthBands />
               <InfrastructurePostureStrip />
-            </div>
-          )}
-
-          {/* ── OPERATIONS TAB ────────────────────────────────────── */}
-          {tab === 'operations' && (
-            <div className="space-y-4 pr-1">
-              <OperationsKPIStrip />
-              <ExpiryForecast />
-              <TriageQueue />
             </div>
           )}
 
