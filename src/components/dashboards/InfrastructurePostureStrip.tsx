@@ -118,9 +118,9 @@ export default function InfrastructurePostureStrip() {
       {/* Strip header */}
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h2 className="text-sm font-semibold text-foreground">Infrastructure Governance Gaps</h2>
+          <h2 className="text-sm font-semibold text-foreground">Infrastructure Governance Coverage</h2>
           <p className="text-[10px] text-muted-foreground mt-0.5">
-            Asset-level ownership and policy coverage gaps — not violations.
+            Assets not yet under ownership or policy governance — click any row to see which ones.
             <span className="ml-2 inline-flex items-center gap-2">
               <span className="inline-flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-coral inline-block" />
@@ -168,7 +168,7 @@ export default function InfrastructurePostureStrip() {
                 </div>
                 <div className="flex items-center justify-between text-[10px]">
                   <span className="text-coral font-semibold tabular-nums">
-                    {tile.outsidePerimeter}% outside perimeter
+                    {tile.outsidePerimeter}% not governed
                   </span>
                   <span className={`flex items-center gap-0.5 tabular-nums ${trendColor}`} title="7-day trend">
                     <TrendIcon className="w-2.5 h-2.5" />
