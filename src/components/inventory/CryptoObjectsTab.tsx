@@ -720,6 +720,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   const [ticketAction, setTicketAction] = useState('fix');
   const [riskDrawer, setRiskDrawer]     = useState<CryptoAsset | null>(null);
   const [deployAsset, setDeployAsset]   = useState<CryptoAsset | null>(null);
+  const [sortKey, setSortKey]           = useState<'riskScore' | 'daysToExpiry'>('riskScore');
   const [sortDir, setSortDir]           = useState<'asc' | 'desc'>('desc');
 
   const { manualIdentities }    = useInventoryRegistry();
