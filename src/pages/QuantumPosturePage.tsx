@@ -172,11 +172,15 @@ function StageDiscover({ onNext, nav }: { onNext: () => void; nav: (f: Record<st
           <h3 className="text-sm font-semibold">Algorithm Breakdown — Cryptographic Estate</h3>
           <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-sm bg-coral inline-block" />
-              Quantum-vulnerable
+              <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: 'hsl(16 72% 51%)' }} />
+              RSA — Critical risk
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-sm bg-teal inline-block" />
+              <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: 'hsl(38 78% 51%)' }} />
+              ECC — High risk
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: 'hsl(162 72% 37%)' }} />
               Quantum-safe
             </span>
           </div>
