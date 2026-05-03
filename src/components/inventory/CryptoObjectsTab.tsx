@@ -967,6 +967,18 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
 
       <CryptoObjectRiskDrawer object={riskDrawer} onClose={() => setRiskDrawer(null)} />
       <DeployToDeviceModal open={!!deployAsset} onClose={() => setDeployAsset(null)} cert={deployAsset} />
+
+      <FilterPanel
+        open={filterPanelOpen}
+        onClose={() => setFilterPanelOpen(false)}
+        algorithms={algorithms}
+        owners={[...new Set(allAssets.map(a => a.owner))].sort()}
+        algFilter={algFilter} setAlgFilter={setAlgFilter}
+        envFilter={envFilter} setEnvFilter={setEnvFilter}
+        statusFilter={statusFilter} setStatusFilter={setStatusFilter}
+        pqcFilter={pqcFilter} setPqcFilter={setPqcFilter}
+        ownerFilter={ownerFilter} setOwnerFilter={setOwnerFilter}
+      />
     </div>
   );
 }
