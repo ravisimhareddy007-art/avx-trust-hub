@@ -6,7 +6,8 @@ import { severityHsl } from '@/lib/risk/types';
 import { COUNT_NOUNS } from '@/lib/filters/cryptoFilters';
 
 
-const SCORE_DELTA_7D = -4;
+const SCORE_DELTA_7D = 4;
+const ERS_SCORE_OVERRIDE = 74;
 
 const BI_COLOR: Record<string, string> = {
   Critical: 'bg-coral/15 text-coral border-coral/30',
@@ -18,7 +19,7 @@ const BI_COLOR: Record<string, string> = {
 function ErsGauge({ score, hsl, label }: { score: number; hsl: string; label: string }) {
   const R = 52;
   const cx = 80;
-  const cy = 68;
+  const cy = 70;
   const startAngle = -220;
   const totalDegrees = 260;
   const toRad = (deg: number) => (deg * Math.PI) / 180;
@@ -27,6 +28,13 @@ function ErsGauge({ score, hsl, label }: { score: number; hsl: string; label: st
     const e = { x: cx + R * Math.cos(toRad(end)),   y: cy + R * Math.sin(toRad(end))   };
     const large = end - start > 180 ? 1 : 0;
     return `M ${s.x} ${s.y} A ${R} ${R} 0 ${large} 1 ${e.x} ${e.y}`;
+  };
+  const tickLine = (angle: number) => {
+    const x1 = cx + (R - 8) * Math.cos(toRad(angle));
+    const y1 = cy + (R - 8) * Math.sin(toRad(angle));
+    const x2 = cx + (R + 2)  * Math.cos(toRad(angle));
+    const y2 = cy + (R + 2)  * Math.sin(toRad(angle));
+    return `M ${x1} ${y1} L ${x2} ${y2}`;
   };
   const lowEnd  = startAngle + 0.29 * totalDegrees;
   const medEnd  = startAngle + 0.59 * totalDegrees;
@@ -37,38 +45,29 @@ function ErsGauge({ score, hsl, label }: { score: number; hsl: string; label: st
   const BLUE  = 'hsl(210 80% 56%)';
   const AMBER = 'hsl(38 78% 51%)';
   const CORAL = 'hsl(16 72% 51%)';
-  const tickLine = (angle: number) => {
-    const inner = R - 8;
-    const outer = R + 2;
-    const x1 = cx + inner * Math.cos(toRad(angle));
-    const y1 = cy + inner * Math.sin(toRad(angle));
-    const x2 = cx + outer * Math.cos(toRad(angle));
-    const y2 = cy + outer * Math.sin(toRad(angle));
-    return `M ${x1} ${y1} L ${x2} ${y2}`;
-  };
   return (
-    <svg width="160" height="118" viewBox="0 0 160 118">
+    <svg width="160" height="120" viewBox="0 0 160 120">
       <path d={arcPath(startAngle, lowEnd)}  fill="none" stroke={TEAL}  strokeWidth="10" strokeLinecap="butt" opacity="0.28" />
       <path d={arcPath(lowEnd,  medEnd)}     fill="none" stroke={BLUE}  strokeWidth="10" strokeLinecap="butt" opacity="0.28" />
       <path d={arcPath(medEnd,  highEnd)}    fill="none" stroke={AMBER} strokeWidth="10" strokeLinecap="butt" opacity="0.28" />
       <path d={arcPath(highEnd, arcEnd)}     fill="none" stroke={CORAL} strokeWidth="10" strokeLinecap="butt" opacity="0.28" />
-      <path d={arcPath(startAngle, filled)}  fill="none" stroke={hsl}   strokeWidth="10" strokeLinecap="round"
-        style={{ transition: 'all 0.8s cubic-bezier(0.4,0,0.2,1)' }} />
-      <path d={tickLine(lowEnd)}  stroke="hsl(var(--card))" strokeWidth="2" />
-      <path d={tickLine(medEnd)}  stroke="hsl(var(--card))" strokeWidth="2" />
-      <path d={tickLine(highEnd)} stroke="hsl(var(--card))" strokeWidth="2" />
+      <path d={arcPath(startAngle, filled)}  fill="none" stroke={hsl}   strokeWidth="10" strokeLinecap="round" style={{ transition: 'all 0.8s cubic-bezier(0.4,0,0.2,1)' }} />
+      <path d={tickLine(lowEnd)}  stroke="hsl(var(--card))" strokeWidth="2.5" />
+      <path d={tickLine(medEnd)}  stroke="hsl(var(--card))" strokeWidth="2.5" />
+      <path d={tickLine(highEnd)} stroke="hsl(var(--card))" strokeWidth="2.5" />
       <circle
         cx={cx + (R - 3) * Math.cos(toRad(filled))}
         cy={cy + (R - 3) * Math.sin(toRad(filled))}
         r="4.5" fill={hsl}
         style={{ transition: 'all 0.8s cubic-bezier(0.4,0,0.2,1)' }}
       />
-      <text x="12"  y="112" textAnchor="middle" fontSize="8" fill={TEAL}  opacity="0.75">LOW</text>
-      <text x="148" y="112" textAnchor="middle" fontSize="8" fill={CORAL} opacity="0.75">CRIT</text>
-      <text x={cx} y="64" textAnchor="middle" fontSize="20" fontWeight="700" fill={hsl}
-        style={{ transition: 'fill 0.7s ease' }}>{label.toUpperCase()}</text>
-      <text x={cx} y="80" textAnchor="middle" fontSize="13" fontWeight="500" fill={hsl} fillOpacity="0.7">{score}</text>
-      <text x={cx} y="92" textAnchor="middle" fontSize="9" fill="currentColor" fillOpacity="0.35">/ 100</text>
+      <text x="14"  y="114" textAnchor="middle" fontSize="8" fill={TEAL}  opacity="0.8">LOW</text>
+      <text x="50"  y="28"  textAnchor="middle" fontSize="8" fill={BLUE}  opacity="0.8">MED</text>
+      <text x="110" y="28"  textAnchor="middle" fontSize="8" fill={AMBER} opacity="0.8">HIGH</text>
+      <text x="146" y="114" textAnchor="middle" fontSize="8" fill={CORAL} opacity="0.8">CRIT</text>
+      <text x={cx} y="68"  textAnchor="middle" fontSize="22" fontWeight="700" fill={hsl} style={{ transition: 'fill 0.7s ease' }}>{label.toUpperCase()}</text>
+      <text x={cx} y="84"  textAnchor="middle" fontSize="14" fontWeight="500" fill={hsl} fillOpacity="0.75">{score}</text>
+      <text x={cx} y="96"  textAnchor="middle" fontSize="9"  fill="currentColor" fillOpacity="0.35">/ 100</text>
     </svg>
   );
 }
@@ -77,6 +76,9 @@ export default function EnterpriseRiskScore() {
   const { ers } = useRisk();
   const { setCurrentPage, setFilters } = useNav();
   const sevHsl = severityHsl(ers.severity);
+  const displayScore = ERS_SCORE_OVERRIDE;
+  const displaySeverity = displayScore >= 80 ? 'Critical' : displayScore >= 60 ? 'High' : displayScore >= 30 ? 'Medium' : 'Low';
+  const displayHsl = severityHsl(displaySeverity);
   const improving = SCORE_DELTA_7D < 0;
 
   const nav = (filters: Record<string, string>) => {
@@ -109,7 +111,7 @@ export default function EnterpriseRiskScore() {
 
       {/* Gauge + verdict */}
       <div className="flex flex-col items-center mb-3 flex-shrink-0">
-        <ErsGauge score={ers.ers} hsl={sevHsl} label={ers.severity} />
+        <ErsGauge score={displayScore} hsl={displayHsl} label={displaySeverity} />
         <div className={`inline-flex items-center gap-1.5 text-[10.5px] font-semibold px-2.5 py-1 rounded-full -mt-1 ${improving ? 'bg-teal/15 text-teal' : 'bg-coral/15 text-coral'}`}>
           {improving
             ? <><TrendingDown className="w-3 h-3" /> {Math.abs(SCORE_DELTA_7D)} pts — risk reduced this week</>
