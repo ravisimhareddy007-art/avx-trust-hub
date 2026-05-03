@@ -83,8 +83,6 @@ const TILES: Tile[] = [
   },
 ];
 
-const TOTAL_OUTSIDE_PERIMETER = 487;
-
 const DIM_COLOR: Record<GapRow['dimension'], string> = {
   'Ownership':       'text-coral',
   'Policy Coverage': 'text-amber',
