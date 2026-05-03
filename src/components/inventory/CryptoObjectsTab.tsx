@@ -150,10 +150,19 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   const isManual = (a: CryptoAsset) => manualIdentities.some(m => m.id === a.id);
 
   const filtered = useMemo(() => {
-    if (dashboardFilterId && DASHBOARD_FILTERS[dashboardFilterId]) {
-      const filter = DASHBOARD_FILTERS[dashboardFilterId];
-      const matched = [...allAssets].filter(filter.predicate);
-      return matched;
+    if (dashboardFilterId) {
+      const filter = VIOLATION_FILTERS[dashboardFilterId] ?? DASHBOARD_FILTERS[dashboardFilterId];
+      if (filter) {
+        if (process.env.NODE_ENV === 'development') {
+          const count = allAssets.filter(filter.predicate).length;
+          console.log(
+            `[AVX Consistency] "${dashboardFilterId}": ` +
+            `dashboard shows ${filter.enterpriseCount}, ` +
+            `inventory predicate returns ${count}`
+          );
+        }
+        return [...allAssets].filter(filter.predicate);
+      }
     }
     let result = [...allAssets];
     if (typeFilter !== 'All') result = result.filter(a => a.type === typeFilter);
