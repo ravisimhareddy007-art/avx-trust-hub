@@ -36,7 +36,7 @@ interface Props {
 const assetTypeIcons: Record<string, string> = {
   'Web Server': '🌐', 'Application Server': '📦', 'Database Server': '🗃️', 'Load Balancer': '⚖️',
   'API Gateway': '🔌', 'K8s Cluster': '☸️', 'CI/CD Pipeline': '🔧', 'Mail Server': '📧',
-  'Bastion Host': '🏰', 'CDN': '🌍', 'HSM': '🔐', 'Vault Server': '🗝️',
+  'Bastion Host': '🏰', 'CDN': '🌍', 'HSM': '🔐', 'Vault Server': '🗝️', 'AI Platform': '🤖',
 };
 
 function RiskGauge({ score, size = 80 }: { score: number; size?: number }) {

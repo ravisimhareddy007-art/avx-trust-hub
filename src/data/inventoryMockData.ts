@@ -2,7 +2,7 @@
 export interface ITAsset {
   id: string;
   name: string;
-  type: 'Web Server' | 'Application Server' | 'Database Server' | 'Load Balancer' | 'API Gateway' | 'K8s Cluster' | 'CI/CD Pipeline' | 'Mail Server' | 'Bastion Host' | 'CDN' | 'HSM' | 'Vault Server';
+  type: 'Web Server' | 'Application Server' | 'Database Server' | 'Load Balancer' | 'API Gateway' | 'K8s Cluster' | 'CI/CD Pipeline' | 'Mail Server' | 'Bastion Host' | 'CDN' | 'HSM' | 'Vault Server' | 'AI Platform';
   environment: 'Production' | 'Staging' | 'Development';
   ownerTeam: string;
   cryptoObjectIds: string[];
@@ -30,7 +30,9 @@ export const mockITAssets: ITAsset[] = [
   { id: 'it-012', name: 'staging-api.acmecorp.com', type: 'API Gateway', environment: 'Staging', ownerTeam: 'Platform Engineering', cryptoObjectIds: ['cert-005', 'cert-007'], riskScore: 38, criticalViolations: 1, policyCoverage: 50, lastSeen: '2026-04-14 08:45', managedBy: 'Terraform', infrastructure: 'azure-eastus-stg', application: 'Staging API' },
   { id: 'it-013', name: 'hsm-signing-cluster', type: 'HSM', environment: 'Production', ownerTeam: 'Security Operations', cryptoObjectIds: ['cs-001', 'cs-002', 'enc-002'], riskScore: 42, criticalViolations: 1, policyCoverage: 67, lastSeen: '2026-04-14 09:02', managedBy: 'Manual', infrastructure: 'thales-luna-hsm', application: 'Code Signing HSM' },
   { id: 'it-014', name: 'gitlab-runner-01.internal', type: 'CI/CD Pipeline', environment: 'Production', ownerTeam: 'DevOps', cryptoObjectIds: ['ssh-005', 'secret-004'], riskScore: 68, criticalViolations: 2, policyCoverage: 25, lastSeen: '2026-04-14 08:20', managedBy: 'Manual', infrastructure: 'on-prem-dc2', application: 'GitLab CI' },
-  { id: 'it-015', name: 'ai-platform.eks-prod', type: 'K8s Cluster', environment: 'Production', ownerTeam: 'AI Engineering', cryptoObjectIds: ['ai-001', 'ai-002', 'ai-003', 'ai-005'], riskScore: 55, criticalViolations: 1, policyCoverage: 50, lastSeen: '2026-04-14 09:09', managedBy: 'Kubernetes', infrastructure: 'aws-eks-ai-cluster', application: 'AI Platform' },
+  { id: 'it-015', name: 'ai-platform.eks-prod', type: 'AI Platform', environment: 'Production', ownerTeam: 'AI Engineering', cryptoObjectIds: ['ai-001', 'ai-002', 'ai-003', 'ai-005'], riskScore: 55, criticalViolations: 1, policyCoverage: 50, lastSeen: '2026-04-14 09:09', managedBy: 'Kubernetes', infrastructure: 'aws-eks-ai-cluster', application: 'AI Platform' },
+  { id: 'it-ai-01', name: 'mcp-server-platform.prod', type: 'AI Platform', environment: 'Production', ownerTeam: 'AI Engineering', cryptoObjectIds: ['ai-005', 'ai-006', 'ai-ns01'], riskScore: 72, criticalViolations: 2, policyCoverage: 40, lastSeen: '2026-04-14 09:10', managedBy: 'Kubernetes', infrastructure: 'gcp-cloud-run', application: 'MCP Server Platform' },
+  { id: 'it-ai-02', name: 'llm-gateway.acmecorp.com', type: 'AI Platform', environment: 'Production', ownerTeam: 'AI Engineering', cryptoObjectIds: ['ai-007', 'ai-008', 'ai-adm01', 'ai-nr01'], riskScore: 68, criticalViolations: 2, policyCoverage: 60, lastSeen: '2026-04-14 09:08', managedBy: 'Terraform', infrastructure: 'aws-bedrock', application: 'LLM Gateway' },
 ];
 
 // Risk driver data for each IT asset
