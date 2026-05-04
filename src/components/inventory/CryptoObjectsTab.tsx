@@ -59,7 +59,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'environment',  label: 'Env',              cls: 'w-24' },
     { key: 'lastActivity', label: 'Last Activity',    cls: 'w-28' },
     { key: 'violations',   label: 'Violations',       cls: 'w-20' },
-    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-28' },
+    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-36' },
   ],
   'TLS Certificate': [
     { key: 'name',         label: 'Common Name',      cls: 'min-w-[180px] flex-1' },
@@ -72,7 +72,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'status',       label: 'Status',           cls: 'w-24' },
     { key: 'pqcRisk',      label: 'PQC',              cls: 'w-20' },
     { key: 'violations',   label: 'Violations',       cls: 'w-20' },
-    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-28' },
+    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-36' },
   ],
   'SSH Key': [
     { key: 'name',         label: 'Key Name',         cls: 'min-w-[180px] flex-1' },
@@ -84,7 +84,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'sshHosts',     label: 'Hosts',            cls: 'w-16' },
     { key: 'status',       label: 'Status',           cls: 'w-24' },
     { key: 'pqcRisk',      label: 'PQC',              cls: 'w-20' },
-    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-28' },
+    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-36' },
   ],
   'SSH Certificate': [
     { key: 'name',         label: 'Cert Name',        cls: 'min-w-[180px] flex-1' },
@@ -94,7 +94,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'daysToExpiry', label: 'Days',             cls: 'w-16' },
     { key: 'autoRenewal',  label: 'Auto',             cls: 'w-14' },
     { key: 'status',       label: 'Status',           cls: 'w-24' },
-    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-28' },
+    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-36' },
   ],
   'Code-Signing Certificate': [
     { key: 'name',          label: 'Cert Name',        cls: 'min-w-[180px] flex-1' },
@@ -106,7 +106,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'infrastructure',label: 'HSM',              cls: 'w-28' },
     { key: 'status',        label: 'Status',           cls: 'w-24' },
     { key: 'pqcRisk',       label: 'PQC',              cls: 'w-20' },
-    { key: 'riskScore',     label: 'Crypto Risk Score',cls: 'w-28' },
+    { key: 'riskScore',     label: 'Crypto Risk Score',cls: 'w-36' },
   ],
   'K8s Workload Cert': [
     { key: 'name',              label: 'Workload',         cls: 'min-w-[180px] flex-1' },
@@ -117,7 +117,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'daysToExpiry',      label: 'Days',             cls: 'w-16' },
     { key: 'autoRenewal',       label: 'Auto',             cls: 'w-14' },
     { key: 'status',            label: 'Status',           cls: 'w-24' },
-    { key: 'riskScore',         label: 'Crypto Risk Score',cls: 'w-28' },
+    { key: 'riskScore',         label: 'Crypto Risk Score',cls: 'w-36' },
   ],
   'Encryption Key': [
     { key: 'name',              label: 'Key Name',         cls: 'min-w-[180px] flex-1' },
@@ -127,7 +127,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'lastRotated',       label: 'Last Rotated',     cls: 'w-28' },
     { key: 'autoRenewal',       label: 'Auto-Rotation',    cls: 'w-24' },
     { key: 'status',            label: 'State',            cls: 'w-24' },
-    { key: 'riskScore',         label: 'Crypto Risk Score',cls: 'w-28' },
+    { key: 'riskScore',         label: 'Crypto Risk Score',cls: 'w-36' },
   ],
   'AI Agent Token': [
     { key: 'name',         label: 'Token / Agent',    cls: 'min-w-[180px] flex-1' },
@@ -138,7 +138,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'daysToExpiry', label: 'Days',             cls: 'w-16' },
     { key: 'status',       label: 'Status',           cls: 'w-24' },
     { key: 'violations',   label: 'Violations',       cls: 'w-20' },
-    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-28' },
+    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-36' },
   ],
   'API Key / Secret': [
     { key: 'name',         label: 'Secret Name',      cls: 'min-w-[180px] flex-1' },
@@ -149,7 +149,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'exposedIn',    label: 'Exposed In',       cls: 'w-32' },
     { key: 'status',       label: 'Status',           cls: 'w-24' },
     { key: 'violations',   label: 'Violations',       cls: 'w-20' },
-    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-28' },
+    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-36' },
   ],
 };
 
