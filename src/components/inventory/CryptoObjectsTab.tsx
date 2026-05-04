@@ -1060,7 +1060,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                               )}
                             </span>
                           ) : (
-                            <div className={`flex items-center ${col.cls.includes('text-right') ? 'justify-end' : col.cls.includes('text-center') ? 'justify-center' : ''}`}>
+                            <div className={`flex items-center ${col.cls.includes('text-center') ? 'justify-center' : ''}`}>
                               <CellValue col={col} co={co} />
                             </div>
                           )}
