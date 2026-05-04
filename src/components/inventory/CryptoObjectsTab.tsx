@@ -1004,6 +1004,18 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
           );
         })()}
 
+        {filterIdActive && VIOLATION_FILTERS[filterIdActive] && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-teal/5 border border-teal/20 flex-shrink-0">
+            <Info className="w-3.5 h-3.5 text-teal flex-shrink-0" />
+            <p className="text-[11px] text-muted-foreground leading-snug">
+              Showing <span className="font-semibold text-foreground">{filtered.length}</span> representative samples matching "<span className="text-foreground">{VIOLATION_FILTERS[filterIdActive].label}</span>". Enterprise total: <span className="font-semibold text-foreground tabular-nums">{VIOLATION_FILTERS[filterIdActive].enterpriseCount.toLocaleString()}</span> {VIOLATION_FILTERS[filterIdActive].countNoun}.
+            </p>
+            <button onClick={() => setFilterIdActive('')} className="ml-auto text-[10px] text-muted-foreground hover:text-foreground flex-shrink-0">
+              Clear ×
+            </button>
+          </div>
+        )}
+
         {/* Table */}
         <div className="bg-card rounded-lg border border-border overflow-hidden flex-1 min-h-0 flex flex-col">
           <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto scrollbar-thin">
