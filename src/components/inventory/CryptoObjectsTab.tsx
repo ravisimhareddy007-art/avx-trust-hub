@@ -729,18 +729,16 @@ function DetailPanel({
                     <UserPlus className="w-3 h-3" /> Assign owner
                   </button>
                 )}
-                {!['AI Agent Token', 'API Key / Secret'].includes(co.type) && (
+                {!['API Key / Secret'].includes(co.type) && (
                   <button onClick={() => toast.error(`Revoke ${co.name}?`, { action: { label: 'Confirm', onClick: () => toast.success('Revoked') } })}
                     className="px-2.5 py-1.5 rounded text-[10px] font-semibold border border-coral/30 text-coral hover:bg-coral/10 transition-colors">
                     Revoke
                   </button>
                 )}
-                {isPqc && (
-                  <button onClick={() => onTicket('pqc')}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-purple/30 text-purple-light hover:bg-purple/10 transition-colors">
-                    <Atom className="w-3 h-3" /> PQC Migration Ticket
-                  </button>
-                )}
+                <button onClick={() => onTicket(isPqc ? 'pqc' : 'fix')}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-purple/30 text-purple-light hover:bg-purple/10 transition-colors">
+                  <Ticket className="w-3 h-3" /> Create ticket
+                </button>
               </div>
             )}
           </div>
@@ -811,10 +809,6 @@ function DetailPanel({
                       <div key={i} className="flex items-start gap-2 py-1 border-b border-border/30 last:border-0">
                         <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 bg-purple/60" />
                         <span className="text-[11px] text-foreground flex-1">{v.label}</span>
-                        {v.action && (
-                          <button onClick={() => onTicket(v.actionKey ?? 'pqc')}
-                            className="text-[10px] text-purple-light hover:underline flex-shrink-0">{v.action}</button>
-                        )}
                       </div>
                     ))}
                   </div>
