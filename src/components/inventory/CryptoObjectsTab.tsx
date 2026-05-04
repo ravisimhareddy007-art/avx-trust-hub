@@ -956,7 +956,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
           const visible = activeChips.slice(0, 4);
           const overflow = activeChips.length - visible.length;
           const totalActive = activeChips.length;
-          const clearAll = () => { setAlgFilter([]); setEnvFilter([]); setStatusFilter([]); setPqcFilter([]); setOwnerFilter([]); };
+          const clearAll = () => { setAlgFilter([]); setEnvFilter([]); setStatusFilter([]); setPqcFilter([]); setOwnerFilter([]); setFilterIdActive(''); };
           return (
             <div className="flex flex-col gap-2 flex-shrink-0">
               <div className="flex items-center gap-2 flex-wrap">
