@@ -51,24 +51,24 @@ interface ColDef { key: string; label: string; cls: string; }
 
 const COLS: Record<string, ColDef[]> = {
   All: [
-    { key: 'name',         label: 'Name',        cls: 'min-w-[160px] flex-1' },
+    { key: 'name',         label: 'Name',         cls: 'w-auto min-w-[180px] max-w-0' },
     { key: 'type',         label: 'Type',         cls: 'w-28' },
     { key: 'status',       label: 'Status',       cls: 'w-24' },
     { key: 'pqcRisk',      label: 'PQC',          cls: 'w-20' },
-    { key: 'owner',        label: 'Owner',        cls: 'w-28' },
+    { key: 'owner',        label: 'Owner',        cls: 'w-32' },
     { key: 'environment',  label: 'Env',          cls: 'w-20' },
-    { key: 'lastActivity', label: 'Last Activity',cls: 'w-24' },
-    { key: 'violations',   label: 'V',            cls: 'w-8 text-center' },
+    { key: 'lastActivity', label: 'Last Activity',cls: 'w-32' },
+    { key: 'violations',   label: 'Violations',   cls: 'w-24 text-center' },
     { key: 'riskScore',    label: 'Risk',         cls: 'w-20 text-right pr-4' },
   ],
   'TLS Certificate': [
-    { key: 'name',         label: 'Common Name',  cls: 'min-w-[200px] flex-1' },
+    { key: 'name',         label: 'Common Name',  cls: 'w-auto min-w-[200px] max-w-0' },
     { key: 'caIssuer',     label: 'CA / Issuer',  cls: 'w-36' },
     { key: 'algorithm',    label: 'Algorithm',    cls: 'w-24' },
     { key: 'expiryDays',   label: 'Expiry',       cls: 'w-36' },
     { key: 'status',       label: 'Status',       cls: 'w-24' },
     { key: 'pqcRisk',      label: 'PQC',          cls: 'w-20' },
-    { key: 'violations',   label: 'V',            cls: 'w-10 text-center' },
+    { key: 'violations',   label: 'Violations',   cls: 'w-24 text-center' },
     { key: 'riskScore',    label: 'Risk',         cls: 'w-20 text-right pr-4' },
   ],
   'SSH Key': [
