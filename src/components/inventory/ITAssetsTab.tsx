@@ -8,7 +8,7 @@ import { useNav } from '@/context/NavigationContext';
 import { arsFor } from '@/lib/risk/ars';
 import { computeRPS } from '@/lib/risk/rps';
 import { StatusBadge, EnvBadge, DaysToExpiry, SeverityBadge } from '@/components/shared/UIComponents';
-import { Search, Server, Database, Globe, Shield, ShieldOff, ChevronDown, ChevronRight, MoreVertical, X, Ticket, RefreshCw, XCircle, RotateCcw, User, Plus, FileEdit, ArrowUpDown, AlertTriangle, Maximize2, FileBadge, KeyRound, Lock, Bot } from 'lucide-react';
+import { Search, Server, Database, Globe, Shield, ShieldOff, ChevronDown, ChevronRight, MoreVertical, X, Ticket, RefreshCw, XCircle, RotateCcw, User, Plus, FileEdit, ArrowUpDown, AlertTriangle, Maximize2, FileBadge, KeyRound, Lock, Bot, Info, Atom, ArrowRight } from 'lucide-react';
 
 // Object type → icon + short label, for compact rendering in tables/lists
 function objectTypeMeta(type: string): { Icon: React.ComponentType<{ className?: string }>; label: string; color: string } {
@@ -95,6 +95,200 @@ function CryptoRowMenu({ asset, onAction }: { asset: CryptoAsset; onAction: (act
 
 type SortKey = 'rps' | 'ars' | 'name' | 'bi';
 
+// ── IT Asset Detail Panel ─────────────────────────────────────────────────────
+
+interface DetailPanelProps {
+  asset: ITAsset;
+  identities: CryptoAsset[];
+  violations: ReturnType<typeof getAssetViolations>;
+  onClose: () => void;
+  onBlastRadius: () => void;
+  onRiskDrawer: () => void;
+  onViolations: () => void;
+  onPqcTicket: () => void;
+  setFilters: (f: Record<string, string>) => void;
+  setCurrentPage: (p: string) => void;
+  setCurrentPanel: (a: ITAsset | null) => void;
+}
+
+function ITAssetDetailPanel({ asset, identities, violations, onClose, onBlastRadius, onRiskDrawer, onViolations, onPqcTicket, setFilters, setCurrentPage }: DetailPanelProps) {
+  const classic = violations.filter(v => v.violationType === 'classic');
+  const pqc = violations.filter(v => v.violationType === 'pqc');
+  const totalViolations = classic.length + pqc.length;
+  const riskCol = asset.riskScore > 70 ? 'text-coral' : asset.riskScore > 40 ? 'text-amber' : 'text-teal';
+
+  return (
+    <div className="fixed inset-0 z-50 flex">
+      <div className="flex-1 bg-foreground/10 backdrop-blur-sm" onClick={onClose} />
+      <div className="w-[38%] bg-card border-l border-border shadow-2xl h-full flex flex-col animate-slide-in-right">
+
+        {/* Header */}
+        <div className="px-4 py-3 border-b border-border flex-shrink-0 bg-secondary/30">
+          <div className="flex items-start justify-between gap-2 mb-1">
+            <p className="text-[13px] font-semibold text-foreground truncate">{asset.name}</p>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button onClick={onBlastRadius}
+                className="flex items-center gap-1.5 px-2.5 py-1 border border-border rounded-lg text-[10px] text-muted-foreground hover:text-foreground hover:border-teal/30 transition-colors">
+                <Maximize2 className="w-3 h-3" /> Blast Radius
+              </button>
+              <button onClick={onClose} className="p-1 hover:bg-secondary rounded">
+                <X className="w-3.5 h-3.5 text-muted-foreground" />
+              </button>
+            </div>
+          </div>
+          <p className="text-[11px] text-muted-foreground mb-2.5">
+            {asset.type} · {asset.environment} · {asset.application}
+          </p>
+          <div className="flex items-center gap-1.5 flex-wrap mb-3">
+            <EnvBadge env={asset.environment} />
+            <span className="text-[10px] px-2 py-0.5 rounded bg-secondary text-muted-foreground">{asset.ownerTeam}</span>
+            <span className="text-[10px] px-2 py-0.5 rounded bg-secondary text-muted-foreground">{asset.managedBy}</span>
+            {!asset.scanned && <span className="text-[10px] px-2 py-0.5 rounded bg-amber/10 text-amber border border-amber/20">Not scanned</span>}
+          </div>
+
+          {/* Stat strip */}
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-card rounded-lg px-3 py-2 border border-border/50">
+              <div className="flex items-center gap-1">
+                <span className={`text-[18px] font-bold tabular-nums ${riskCol}`}>{asset.riskScore}</span>
+                <button onClick={onRiskDrawer} className="p-0.5 mt-1">
+                  <Info className="w-3 h-3 text-muted-foreground/50 hover:text-muted-foreground" />
+                </button>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Asset risk score</p>
+            </div>
+            <div className="bg-card rounded-lg px-3 py-2 border border-border/50">
+              <p className="text-[18px] font-bold tabular-nums text-foreground">{identities.length}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Linked identities</p>
+            </div>
+            <div className="bg-card rounded-lg px-3 py-2 border border-border/50">
+              <p className={`text-[18px] font-bold tabular-nums ${totalViolations > 0 ? 'text-coral' : 'text-teal'}`}>{totalViolations}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Violations</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto scrollbar-thin divide-y divide-border/40">
+
+          {/* Actions — PQC ticket only when relevant */}
+          {pqc.length > 0 && (
+            <div className="px-4 py-3">
+              <p className="text-[11px] font-semibold text-muted-foreground mb-2">Actions</p>
+              <button onClick={onPqcTicket}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-purple/30 text-purple-light hover:bg-purple/10 transition-colors">
+                <Atom className="w-3 h-3" /> PQC Migration Ticket
+              </button>
+            </div>
+          )}
+
+          {/* Asset details */}
+          <div className="px-4 py-3">
+            <p className="text-[11px] font-semibold text-muted-foreground mb-2">Asset details</p>
+            {[
+              { label: 'Type', value: asset.type },
+              { label: 'Infrastructure', value: asset.infrastructure },
+              { label: 'Managed by', value: asset.managedBy },
+              { label: 'Application', value: asset.application },
+              { label: 'Last seen', value: asset.lastSeen },
+              { label: 'Policy coverage', value: <span className={asset.policyCoverage < 50 ? 'text-coral' : asset.policyCoverage < 80 ? 'text-amber' : 'text-teal'}>{asset.policyCoverage}%</span> },
+              { label: 'Discovery scan', value: asset.scanned ? <span className="text-teal">Scanned</span> : <span className="text-amber">Not scanned</span> },
+            ].map(({ label, value }) => (
+              <div key={label} className="grid grid-cols-[130px_1fr] gap-2 py-1.5 border-b border-border/30 last:border-0 items-start">
+                <span className="text-[11px] text-muted-foreground">{label}</span>
+                <span className="text-[11px] text-foreground font-medium">{value}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Violations */}
+          {totalViolations > 0 && (
+            <div className="px-4 py-3">
+              <div className="flex items-center gap-2 mb-2">
+                <p className="text-[11px] font-semibold text-muted-foreground">Violations</p>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-coral/15 text-coral font-medium">{totalViolations}</span>
+              </div>
+
+              {classic.length > 0 && (
+                <div className="mb-3">
+                  <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Operational</p>
+                  <div className="space-y-1.5">
+                    {classic.map((v, i) => (
+                      <div key={i} className="flex items-start gap-2 py-1 border-b border-border/30 last:border-0">
+                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 ${v.severity === 'Critical' ? 'bg-coral' : v.severity === 'High' ? 'bg-amber' : 'bg-muted-foreground'}`} />
+                        <span className="text-[11px] text-foreground flex-1">{v.type}</span>
+                        <button onClick={onViolations} className="text-[10px] text-teal hover:underline flex-shrink-0">Fix</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {pqc.length > 0 && (
+                <div>
+                  <p className="text-[10px] text-purple-light mb-1.5 font-medium flex items-center gap-1">
+                    <Atom className="w-3 h-3" /> Quantum / PQC
+                    <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-purple/15 text-purple-light">NIST 2030</span>
+                  </p>
+                  <div className="space-y-1.5">
+                    {pqc.map((v, i) => (
+                      <div key={i} className="flex items-start gap-2 py-1 border-b border-border/30 last:border-0">
+                        <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 bg-purple/60" />
+                        <div className="flex-1">
+                          <span className="text-[11px] font-mono text-foreground">{v.algorithm}</span>
+                          <span className="text-[10px] text-muted-foreground ml-1.5">
+                            · Expires {v.expiryYear} · {(v.yearsPastDeadline ?? 0) > 0 ? `+${v.yearsPastDeadline}yr past` : 'at'} NIST deadline
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Associated crypto objects */}
+          <div className="px-4 py-3">
+            <div className="flex items-center gap-2 mb-2">
+              <p className="text-[11px] font-semibold text-muted-foreground">Associated crypto objects ({identities.length})</p>
+              {identities.length > 0 && <span className="text-[10px] text-amber ml-auto">failure affects all</span>}
+            </div>
+            {identities.length > 0 ? (
+              <div className="space-y-0.5">
+                {identities.map(co => {
+                  const meta = objectTypeMeta(co.type);
+                  const expCol = co.daysToExpiry >= 0 && co.daysToExpiry <= 7 ? 'text-coral' : co.daysToExpiry >= 0 && co.daysToExpiry <= 30 ? 'text-amber' : 'text-muted-foreground';
+                  return (
+                    <button key={co.id}
+                      onClick={() => { setFilters({ tab: 'identities', search: co.name }); setCurrentPage('inventory'); onClose(); }}
+                      className="w-full flex items-center gap-2 text-[11px] rounded px-2 py-1.5 hover:bg-secondary/50 transition-colors text-left group">
+                      <meta.Icon className={`w-3 h-3 flex-shrink-0 ${meta.color}`} />
+                      <span className="text-foreground font-medium flex-1 truncate group-hover:text-teal">{co.name}</span>
+                      <span className="text-muted-foreground text-[10px] flex-shrink-0">{co.algorithm}</span>
+                      {co.daysToExpiry >= 0 && (
+                        <span className={`text-[10px] flex-shrink-0 tabular-nums ${expCol}`}>{co.daysToExpiry}d</span>
+                      )}
+                      <StatusBadge status={co.status} />
+                      <ArrowRight className="w-3 h-3 text-muted-foreground/40 group-hover:text-teal flex-shrink-0" />
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-border/40 px-3 py-3 text-[11px] text-muted-foreground">
+                No crypto objects linked to this asset.
+                <span className="block text-[10px] mt-0.5">Discovered identities will appear here after a scan.</span>
+              </div>
+            )}
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Props) {
   const [search, setSearch] = useState('');
   const [envFilter, setEnvFilter] = useState('');
@@ -115,7 +309,7 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
   const { manualITAssets } = useInventoryRegistry();
   const { setSelectedEntity } = useAgent();
   const { biMap, setBI } = useRisk();
-  const { filters: navFilters } = useNav();
+  const { filters: navFilters, setFilters, setCurrentPage } = useNav();
 
   // Sync infrastructure asset selection to Agent context
   useEffect(() => {
@@ -296,7 +490,6 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                   </th>
                   <th className="text-left py-2 px-2 font-medium text-muted-foreground">Owner</th>
                   <th className="text-center py-2 px-2 font-medium text-muted-foreground" title="Active policy violations on this asset">Violations</th>
-                  <th className="w-8 py-2 px-2" />
                 </tr>
               </thead>
               <tbody>
@@ -349,15 +542,6 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                         );
                       })()}
                     </td>
-                    <td className="py-2 px-2 text-center" onClick={e => e.stopPropagation()}>
-                      <button
-                        onClick={() => setItTicketAsset(asset)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-secondary"
-                        title="Create AI-filled ticket for this asset"
-                      >
-                        <Ticket className="w-3.5 h-3.5 text-muted-foreground hover:text-purple-light" />
-                      </button>
-                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -367,289 +551,21 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
         </div>
       </div>
 
-      {/* Asset Detail Canvas — 80% width overlay */}
-      {selectedAsset && (
-        <div className="fixed inset-0 z-50 flex">
-          <div className="w-[62%] bg-foreground/10 backdrop-blur-sm" onClick={goBack} />
-          <div className="w-[38%] bg-card border-l border-border shadow-2xl h-full overflow-y-auto animate-slide-in-right">
-            {/* Breadcrumb */}
-            <div className="sticky top-0 bg-card border-b border-border px-4 py-3 flex items-center gap-2 z-10">
-              {assetStack.length > 0 && (
-                <>
-                  {assetStack.map((a, i) => (
-                    <React.Fragment key={a.id}>
-                      <button onClick={() => { setSelectedAsset(a); setAssetStack(prev => prev.slice(0, i)); }} className="text-[10px] text-teal hover:underline">{a.name}</button>
-                      <span className="text-muted-foreground text-[10px]">›</span>
-                    </React.Fragment>
-                  ))}
-                </>
-              )}
-              <span className="text-xs font-medium text-foreground truncate">{selectedAsset.name}</span>
-              <button
-                onClick={() => setBlastModalOpen(true)}
-                className="ml-auto flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-[10px] text-muted-foreground hover:text-foreground hover:border-teal/30 transition-colors mr-2"
-              >
-                <Maximize2 className="w-3 h-3" />
-                Blast Radius
-              </button>
-              <button onClick={goBack} className="p-1 hover:bg-secondary rounded"><X className="w-4 h-4 text-muted-foreground" /></button>
-            </div>
+      {/* Asset Detail Panel — 38% right overlay */}
+      {selectedAsset && <ITAssetDetailPanel
+        asset={selectedAsset}
+        identities={getIdentities(selectedAsset)}
+        violations={getAssetViolations(selectedAsset)}
+        onClose={goBack}
+        onBlastRadius={() => setBlastModalOpen(true)}
+        onRiskDrawer={() => setRiskDrawerAsset(selectedAsset)}
+        onViolations={() => setViolationsAsset(selectedAsset)}
+        onPqcTicket={() => setItTicketAsset(selectedAsset)}
+        setFilters={setFilters}
+        setCurrentPage={setCurrentPage}
+        setCurrentPanel={setSelectedAsset}
+      />}
 
-            {/* Three column layout */}
-            <div className="grid grid-cols-[280px_1fr] gap-0 h-[calc(100vh-48px)]">
-              {/* Column 1 — Summary + Risk */}
-              <div className="border-r border-border p-4 space-y-4 overflow-y-auto scrollbar-thin">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl">{assetTypeIcons[selectedAsset.type]}</span>
-                    <div>
-                      <h3 className="text-sm font-semibold text-foreground">{selectedAsset.name}</h3>
-                      <p className="text-[10px] text-muted-foreground">{selectedAsset.type}</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5 text-[10px]">
-                    <EnvBadge env={selectedAsset.environment} />
-                    <span className="px-2 py-0.5 rounded bg-secondary text-muted-foreground">{selectedAsset.ownerTeam}</span>
-                    <span className="px-2 py-0.5 rounded bg-secondary text-muted-foreground">{selectedAsset.managedBy}</span>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground">Last seen: {selectedAsset.lastSeen}</p>
-                </div>
-
-                {/* Risk gauge */}
-                <div className="flex flex-col items-center gap-2">
-                  <RiskGauge score={selectedAsset.riskScore} size={100} />
-                  <button
-                    onClick={() => setRiskDrawerAsset(selectedAsset)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-border text-[10px] text-muted-foreground hover:text-foreground hover:border-teal/40 transition-colors"
-                  >
-                    <AlertTriangle className="w-3 h-3 text-teal" />
-                    Why this score?
-                  </button>
-                </div>
-
-                {/* Credential severity distribution */}
-                {(() => {
-                  const br = arsFor(selectedAsset);
-                  const critCount = br.critCount;
-                  const highCount = br.highCount;
-                  const totalCount = br.count;
-                  const maxCRS = br.max;
-
-                  return (
-                    <div className="space-y-3">
-                      {/* Credential severity distribution */}
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Credential severity</span>
-                          <span className="text-[10px] text-muted-foreground">Worst: CRS {maxCRS}</span>
-                        </div>
-                        <div className="grid grid-cols-4 gap-1.5">
-                          {[
-                            { label: 'Crit', value: critCount, color: 'bg-coral/20 text-coral' },
-                            { label: 'High', value: highCount, color: 'bg-amber/20 text-amber' },
-                            { label: 'Total', value: totalCount, color: 'bg-muted text-foreground' },
-                            { label: 'Avg', value: totalCount > 0 ? Math.round(br.p75) : 0, color: 'bg-muted text-muted-foreground' },
-                          ].map(s => (
-                            <div key={s.label} className={`rounded-md px-1.5 py-1.5 text-center ${s.color}`}>
-                              <div className="text-sm font-bold tabular-nums leading-tight">{s.value}</div>
-                              <div className="text-[9px] uppercase tracking-wide opacity-80">{s.label}</div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Top 3 CRS objects — compact */}
-                      {br.topObjects.length > 0 && (
-                        <div className="space-y-1.5">
-                          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Top risk drivers</p>
-                          <div className="space-y-1">
-                            {br.topObjects.slice(0, 3).map(o => {
-                              const obj = mockAssets.find(a => a.id === o.id);
-                              const meta = obj ? objectTypeMeta(obj.type) : { Icon: Lock, label: '—', color: 'text-muted-foreground' };
-                              return (
-                              <button
-                                key={o.id}
-                                onClick={() => {
-                                  if (obj) setRiskDrawerObject(obj);
-                                }}
-                                className="w-full grid grid-cols-[28px_1fr] gap-2 items-start text-left rounded px-1.5 py-1.5 hover:bg-secondary/40 transition-colors"
-                              >
-                                <span className={`text-[11px] font-bold tabular-nums ${o.crs >= 80 ? 'text-coral' : o.crs >= 60 ? 'text-amber' : o.crs >= 30 ? 'text-blue-400' : 'text-teal'}`}>
-                                  {o.crs}
-                                </span>
-                                <span className="min-w-0">
-                                  <span className="flex items-center gap-1 min-w-0">
-                                    <meta.Icon className={`w-3 h-3 flex-shrink-0 ${meta.color}`} />
-                                    <span className={`text-[9px] uppercase tracking-wide ${meta.color} flex-shrink-0`}>{meta.label}</span>
-                                    <span className="block text-[10px] font-medium text-foreground truncate">{o.name}</span>
-                                  </span>
-                                  <span className="block text-[9px] text-muted-foreground truncate">{o.reason}</span>
-                                </span>
-                              </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Operational vs Quantum split */}
-                      {(br.operationalCount > 0 || br.quantumCount > 0) && (
-                        <div className="grid grid-cols-2 gap-1.5 pt-1">
-                          <div className="rounded-md border border-border px-2 py-1.5">
-                            <div className="text-sm font-bold tabular-nums text-foreground leading-tight">{br.operationalCount}</div>
-                            <div className="text-[9px] text-muted-foreground uppercase tracking-wide">Operational</div>
-                          </div>
-                          <div className="rounded-md border border-border px-2 py-1.5">
-                            <div className="text-sm font-bold tabular-nums text-purple-light leading-tight">{br.quantumCount}</div>
-                            <div className="text-[9px] text-muted-foreground uppercase tracking-wide">Quantum risk</div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {/* Column 2 — Identities */}
-              <div className="p-4 overflow-y-auto scrollbar-thin">
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs font-semibold text-foreground">Identities ({getIdentities(selectedAsset).length})</p>
-                </div>
-                <div className="space-y-0">
-                  {/* Header */}
-                  <div className="grid grid-cols-[24px_92px_1fr_60px_55px_50px_36px_36px_28px] gap-1 text-[10px] font-medium text-muted-foreground py-1.5 border-b border-border px-1">
-                    <span></span><span>Type</span><span>Common Name</span><span>Algorithm</span><span>Expiry</span><span>Days</span><span>Policy</span><span>Viol.</span><span></span>
-                  </div>
-                  {getIdentities(selectedAsset).map(co => {
-                    const meta = objectTypeMeta(co.type);
-                    return (
-                    <React.Fragment key={co.id}>
-                      <div className="grid grid-cols-[24px_92px_1fr_60px_55px_50px_36px_36px_28px] gap-1 items-center text-[10px] py-2 border-b border-border/50 hover:bg-secondary/30 px-1 cursor-pointer"
-                        onClick={() => setExpandedRow(expandedRow === co.id ? null : co.id)}>
-                        <span className="text-muted-foreground">{expandedRow === co.id ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}</span>
-                        <span className="flex items-center gap-1 min-w-0">
-                          <meta.Icon className={`w-3 h-3 flex-shrink-0 ${meta.color}`} />
-                          <span className={`text-[9px] uppercase tracking-wide truncate ${meta.color}`}>{meta.label}</span>
-                        </span>
-                        <span className="font-medium text-foreground truncate">{co.name}</span>
-                        <span className="text-muted-foreground">{co.algorithm}</span>
-                        <span className="text-muted-foreground">{co.expiryDate === 'N/A' ? '—' : co.expiryDate.slice(5)}</span>
-                        <DaysToExpiry days={co.daysToExpiry} />
-                        {co.policyViolations === 0 ? <Shield className="w-3.5 h-3.5 text-teal" /> : <ShieldOff className="w-3.5 h-3.5 text-coral" />}
-                        {co.policyViolations > 0 ? <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-coral/10 text-coral text-[9px] font-bold">{co.policyViolations}</span> : <span className="text-muted-foreground">—</span>}
-                        <CryptoRowMenu asset={co} onAction={action => {
-                          if (action === 'Create Ticket') {
-                            onCreateTicket({ objectName: co.name, objectType: co.type, algorithm: co.algorithm, status: co.status, daysToExpiry: co.daysToExpiry, environment: co.environment });
-                          } else {
-                            toast.success(`${action} initiated for ${co.name}`);
-                          }
-                        }} />
-                      </div>
-                      {/* Expanded inline detail */}
-                      {expandedRow === co.id && (
-                        <div className="bg-secondary/30 border-b border-border px-3 py-3 grid grid-cols-3 gap-3">
-                          <div>
-                            <p className="text-[10px] font-semibold text-foreground mb-1.5">Policies Applied</p>
-                            {co.policyViolations > 0 ? (
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-1.5 text-[10px]">
-                                  <span className="px-1.5 py-0.5 rounded bg-amber/10 text-amber">Warn</span>
-                                  <span className="text-foreground">Weak Algorithm Detection</span>
-                                </div>
-                                <div className="flex items-center gap-1.5 text-[10px]">
-                                  <span className="px-1.5 py-0.5 rounded bg-coral/10 text-coral">Enforce</span>
-                                  <span className="text-foreground">Certificate Expiry Alert</span>
-                                </div>
-                              </div>
-                            ) : <p className="text-[10px] text-teal">✓ Compliant — no violations</p>}
-                          </div>
-                          <div>
-                            <p className="text-[10px] font-semibold text-foreground mb-1.5">Active Violations</p>
-                            {co.policyViolations > 0 ? (
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-1 text-[10px]"><span className="w-1.5 h-1.5 rounded-full bg-coral" /><span className="text-foreground">{co.algorithm} is quantum-vulnerable</span></div>
-                                {co.daysToExpiry >= 0 && co.daysToExpiry <= 30 && <div className="flex items-center gap-1 text-[10px]"><span className="w-1.5 h-1.5 rounded-full bg-amber" /><span className="text-foreground">Expires in {co.daysToExpiry}d</span></div>}
-                              </div>
-                            ) : <p className="text-[10px] text-muted-foreground">None</p>}
-                          </div>
-                          <div>
-                            <p className="text-[10px] font-semibold text-foreground mb-1.5">Quick Actions</p>
-                            <div className="flex flex-wrap gap-1">
-                              {['Renew', 'Revoke', 'Assign Owner', 'Create Ticket', 'Add to Group'].map(a => (
-                                <button key={a} onClick={() => {
-                                  if (a === 'Create Ticket') onCreateTicket({ objectName: co.name, objectType: co.type, algorithm: co.algorithm, status: co.status, daysToExpiry: co.daysToExpiry, environment: co.environment });
-                                  else toast.success(`${a} initiated`);
-                                }} className="px-1.5 py-0.5 rounded text-[9px] border border-border text-muted-foreground hover:text-foreground hover:bg-secondary">{a}</button>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </React.Fragment>
-                    );
-                  })}
-                </div>
-
-                {/* Operational Violations + Quantum Risk + AI narrative — moved from Column 1 */}
-                {(() => {
-                  const violations = getAssetViolations(selectedAsset);
-                  const classic = violations.filter(v => v.violationType === 'classic');
-                  const pqc = violations.filter(v => v.violationType === 'pqc');
-                  return (
-                    <>
-                      {classic.length > 0 && (
-                        <div className="border-t border-border pt-4 mt-4 space-y-1.5">
-                          <p className="text-[10px] font-semibold text-coral flex items-center gap-1">
-                            <AlertTriangle className="w-3 h-3" /> Operational Violations ({classic.length})
-                          </p>
-                          {classic.slice(0, 4).map((v, i) => (
-                            <div key={`c-${i}`} className="flex items-center gap-2 text-[10px] py-1 border-b border-border/50 last:border-0">
-                              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                                v.severity === 'Critical' ? 'bg-coral' :
-                                v.severity === 'High' ? 'bg-amber' : 'bg-purple'
-                              }`} />
-                              <span className="text-foreground truncate flex-1">{v.type}</span>
-                              <button onClick={() => setViolationsAsset(selectedAsset)} className="text-teal hover:underline flex-shrink-0">Fix</button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      {pqc.length > 0 && (
-                        <div className="border-t border-border pt-4 mt-4 space-y-1.5">
-                          <p className="text-[10px] font-semibold text-purple-light flex items-center gap-1">
-                            <Shield className="w-3 h-3" /> Quantum Risk ({pqc.length})
-                            <span className="ml-auto text-[8.5px] font-semibold px-1 py-0.5 rounded bg-purple/15 text-purple-light">NIST 2030</span>
-                          </p>
-                          {pqc.slice(0, 4).map((v, i) => (
-                            <div key={`p-${i}`} className="text-[10px] py-1 border-b border-border/50 last:border-0">
-                              <div className="flex items-center gap-2">
-                                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'hsl(280 65% 55%)' }} />
-                                <span className="text-foreground font-mono flex-1 truncate">{v.algorithm}</span>
-                                <button onClick={() => setViolationsAsset(selectedAsset)} className="text-purple-light hover:underline flex-shrink-0">QTH</button>
-                              </div>
-                              <p className="text-[9px] text-muted-foreground ml-3.5 mt-0.5">
-                                Expires {v.expiryYear} · {(v.yearsPastDeadline ?? 0) > 0 ? `+${v.yearsPastDeadline}y past` : 'at'} NIST deadline
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      <div className="border-t border-border pt-4 mt-4">
-                        <div className="bg-teal/5 border border-teal/20 rounded-lg p-3">
-                          <p className="text-[10px] font-semibold text-teal mb-1">✦ Infinity AI</p>
-                          <p className="text-[10px] text-muted-foreground leading-relaxed">{getAssetAINarrative(selectedAsset)}</p>
-                        </div>
-                      </div>
-                    </>
-                  );
-                })()}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Risk drawers — Asset (ARS + BI editor + audit) and Crypto Object (CRS) */}
       <AssetRiskDrawer
         asset={riskDrawerAsset}
         onClose={() => setRiskDrawerAsset(null)}
