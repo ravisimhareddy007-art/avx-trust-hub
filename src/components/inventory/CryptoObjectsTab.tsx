@@ -238,6 +238,13 @@ function CellValue({ col, co }: { col: ColDef; co: CryptoAsset }) {
     case 'pqcRisk':      return <PQCBadge risk={co.pqcRisk} />;
     case 'environment':  return <EnvBadge env={co.environment} />;
     case 'daysToExpiry': return <DaysToExpiry days={co.daysToExpiry} />;
+    case 'expiryDays':
+      return (
+        <span className="flex flex-col">
+          <span className="text-muted-foreground">{co.expiryDate !== 'N/A' ? co.expiryDate : '—'}</span>
+          {co.daysToExpiry >= 0 && <DaysToExpiry days={co.daysToExpiry} />}
+        </span>
+      );
     case 'autoRenewal':
       return <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${co.autoRenewal ? 'bg-teal/10 text-teal' : 'bg-muted text-muted-foreground'}`}>{co.autoRenewal ? 'Yes' : 'No'}</span>;
     case 'violations':
