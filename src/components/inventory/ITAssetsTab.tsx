@@ -201,53 +201,6 @@ function ITAssetDetailPanel({ asset, identities, violations, onClose, onBlastRad
             ))}
           </div>
 
-          {/* Violations */}
-          {totalViolations > 0 && (
-            <div className="px-4 py-3">
-              <div className="flex items-center gap-2 mb-2">
-                <p className="text-[11px] font-semibold text-muted-foreground">Violations</p>
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-coral/15 text-coral font-medium">{totalViolations}</span>
-              </div>
-
-              {classic.length > 0 && (
-                <div className="mb-3">
-                  <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Operational</p>
-                  <div className="space-y-1.5">
-                    {classic.map((v, i) => (
-                      <div key={i} className="flex items-start gap-2 py-1 border-b border-border/30 last:border-0">
-                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 ${v.severity === 'Critical' ? 'bg-coral' : v.severity === 'High' ? 'bg-amber' : 'bg-muted-foreground'}`} />
-                        <span className="text-[11px] text-foreground flex-1">{v.type}</span>
-                        <button onClick={onViolations} className="text-[10px] text-teal hover:underline flex-shrink-0">Fix</button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {pqc.length > 0 && (
-                <div>
-                  <p className="text-[10px] text-purple-light mb-1.5 font-medium flex items-center gap-1">
-                    <Atom className="w-3 h-3" /> Quantum / PQC
-                    <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-purple/15 text-purple-light">NIST 2030</span>
-                  </p>
-                  <div className="space-y-1.5">
-                    {pqc.map((v, i) => (
-                      <div key={i} className="flex items-start gap-2 py-1 border-b border-border/30 last:border-0">
-                        <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 bg-purple/60" />
-                        <div className="flex-1">
-                          <span className="text-[11px] font-mono text-foreground">{v.algorithm}</span>
-                          <span className="text-[10px] text-muted-foreground ml-1.5">
-                            · Expires {v.expiryYear} · {(v.yearsPastDeadline ?? 0) > 0 ? `+${v.yearsPastDeadline}yr past` : 'at'} NIST deadline
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Associated crypto objects */}
           <div className="px-4 py-3">
             <div className="flex items-center gap-2 mb-2">
@@ -282,6 +235,52 @@ function ITAssetDetailPanel({ asset, identities, violations, onClose, onBlastRad
               </div>
             )}
           </div>
+
+          {/* Violations */}
+          {totalViolations > 0 && (
+            <div className="px-4 py-3">
+              <div className="flex items-center gap-2 mb-2">
+                <p className="text-[11px] font-semibold text-muted-foreground">Violations</p>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-coral/15 text-coral font-medium">{totalViolations}</span>
+              </div>
+
+              {classic.length > 0 && (
+                <div className="mb-3">
+                  <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Operational</p>
+                  <div className="space-y-1.5">
+                    {classic.map((v, i) => (
+                      <div key={i} className="flex items-start gap-2 py-1 border-b border-border/30 last:border-0">
+                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 ${v.severity === 'Critical' ? 'bg-coral' : v.severity === 'High' ? 'bg-amber' : 'bg-muted-foreground'}`} />
+                        <span className="text-[11px] text-foreground flex-1">{v.type}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {pqc.length > 0 && (
+                <div>
+                  <p className="text-[10px] text-purple-light mb-1.5 font-medium flex items-center gap-1">
+                    <Atom className="w-3 h-3" /> Quantum / PQC
+                    <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-purple/15 text-purple-light">NIST 2030</span>
+                  </p>
+                  <div className="space-y-1.5">
+                    {pqc.map((v, i) => (
+                      <div key={i} className="flex items-start gap-2 py-1 border-b border-border/30 last:border-0">
+                        <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 bg-purple/60" />
+                        <div className="flex-1">
+                          <span className="text-[11px] font-mono text-foreground">{v.algorithm}</span>
+                          <span className="text-[10px] text-muted-foreground ml-1.5">
+                            · Expires {v.expiryYear} · {(v.yearsPastDeadline ?? 0) > 0 ? `+${v.yearsPastDeadline}yr past` : 'at'} NIST deadline
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
         </div>
       </div>
