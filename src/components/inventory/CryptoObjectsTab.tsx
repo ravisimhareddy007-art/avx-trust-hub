@@ -980,7 +980,9 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                     <span className="ml-1 px-1.5 py-0.5 rounded-full bg-teal/20 text-teal text-[9px] font-bold tabular-nums">{totalActive}</span>
                   )}
                 </button>
-                <span className="text-[10px] text-muted-foreground ml-auto">{filtered.length} identities</span>
+                <span className="text-[10px] text-muted-foreground ml-auto">{filterIdActive && VIOLATION_FILTERS[filterIdActive]
+                  ? `${filtered.length} of ${VIOLATION_FILTERS[filterIdActive].enterpriseCount.toLocaleString()} ${VIOLATION_FILTERS[filterIdActive].countNoun}`
+                  : `${filtered.length} identities`}</span>
               </div>
               {totalActive > 0 && (
                 <div className="flex items-center gap-1.5 flex-wrap">
