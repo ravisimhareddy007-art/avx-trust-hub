@@ -72,7 +72,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'riskScore',    label: 'Risk',         cls: 'w-20 text-right pr-4' },
   ],
   'SSH Key': [
-    { key: 'name',         label: 'Key Name',     cls: 'min-w-[200px] flex-1' },
+    { key: 'name',         label: 'Key Name',     cls: 'w-auto min-w-[200px] max-w-0' },
     { key: 'algorithm',    label: 'Key Type',     cls: 'w-24' },
     { key: 'owner',        label: 'Owner',        cls: 'w-28' },
     { key: 'sshLastUsed',  label: 'Last Used',    cls: 'w-28' },
@@ -83,7 +83,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'riskScore',    label: 'Risk',         cls: 'w-20 text-right pr-4' },
   ],
   'SSH Certificate': [
-    { key: 'name',         label: 'Cert Name',    cls: 'min-w-[200px] flex-1' },
+    { key: 'name',         label: 'Cert Name',    cls: 'w-auto min-w-[200px] max-w-0' },
     { key: 'caIssuer',     label: 'CA',           cls: 'w-36' },
     { key: 'commonName',   label: 'Principals',   cls: 'w-36' },
     { key: 'expiryDays',   label: 'Expiry',       cls: 'w-36' },
@@ -91,7 +91,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'riskScore',    label: 'Risk',         cls: 'w-20 text-right pr-4' },
   ],
   'Code-Signing Certificate': [
-    { key: 'name',          label: 'Cert Name',   cls: 'min-w-[200px] flex-1' },
+    { key: 'name',          label: 'Cert Name',   cls: 'w-auto min-w-[200px] max-w-0' },
     { key: 'caIssuer',      label: 'CA',          cls: 'w-36' },
     { key: 'algorithm',     label: 'Algorithm',   cls: 'w-24' },
     { key: 'keyLength',     label: 'Key Size',    cls: 'w-20' },
@@ -101,7 +101,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'riskScore',     label: 'Risk',        cls: 'w-20 text-right pr-4' },
   ],
   'K8s Workload Cert': [
-    { key: 'name',              label: 'Workload',       cls: 'min-w-[200px] flex-1' },
+    { key: 'name',              label: 'Workload',       cls: 'w-auto min-w-[200px] max-w-0' },
     { key: 'application',       label: 'Namespace / App',cls: 'w-36' },
     { key: 'caIssuer',          label: 'CA',             cls: 'w-28' },
     { key: 'expiryDays',        label: 'Expiry',         cls: 'w-36' },
@@ -109,7 +109,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'riskScore',         label: 'Risk',           cls: 'w-20 text-right pr-4' },
   ],
   'Encryption Key': [
-    { key: 'name',              label: 'Key Name',       cls: 'min-w-[200px] flex-1' },
+    { key: 'name',              label: 'Key Name',       cls: 'w-auto min-w-[200px] max-w-0' },
     { key: 'caIssuer',          label: 'Key Store',      cls: 'w-36' },
     { key: 'algorithm',         label: 'Algorithm',      cls: 'w-24' },
     { key: 'lastRotated',       label: 'Last Rotated',   cls: 'w-28' },
