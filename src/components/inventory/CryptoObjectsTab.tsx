@@ -947,6 +947,11 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
             ...algFilter.map(v => ({ key: `alg:${v}`, label: v === 'weak' ? 'Weak algos' : v, remove: () => setAlgFilter(algFilter.filter(x => x !== v)) })),
             ...statusFilter.map(v => ({ key: `st:${v}`, label: v, remove: () => setStatusFilter(statusFilter.filter(x => x !== v)) })),
             ...ownerFilter.map(v => ({ key: `ow:${v}`, label: v, remove: () => setOwnerFilter(ownerFilter.filter(x => x !== v)) })),
+            ...(filterIdActive && VIOLATION_FILTERS[filterIdActive] ? [{
+              key: `fid:${filterIdActive}`,
+              label: VIOLATION_FILTERS[filterIdActive].label,
+              remove: () => setFilterIdActive(''),
+            }] : []),
           ];
           const visible = activeChips.slice(0, 4);
           const overflow = activeChips.length - visible.length;
