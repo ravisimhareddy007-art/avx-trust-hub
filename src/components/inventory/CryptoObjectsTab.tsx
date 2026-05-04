@@ -1088,14 +1088,6 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                           ) : <CellValue col={col} co={co} />}
                         </td>
                       ))}
-                      <td className="w-0 p-0 relative">
-                        <button
-                          onClick={e => { e.stopPropagation(); setDetailAsset(co); }}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-secondary text-muted-foreground"
-                        >
-                          <MoreVertical className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
                     </tr>
                   );
                 })}
