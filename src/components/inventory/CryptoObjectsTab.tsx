@@ -51,28 +51,28 @@ interface ColDef { key: string; label: string; cls: string; }
 
 const COLS: Record<string, ColDef[]> = {
   All: [
-    { key: 'name',         label: 'Name',        cls: 'min-w-[160px] flex-1' },
+    { key: 'name',         label: 'Name',         cls: 'w-auto min-w-[180px] max-w-0' },
     { key: 'type',         label: 'Type',         cls: 'w-28' },
     { key: 'status',       label: 'Status',       cls: 'w-24' },
     { key: 'pqcRisk',      label: 'PQC',          cls: 'w-20' },
-    { key: 'owner',        label: 'Owner',        cls: 'w-28' },
+    { key: 'owner',        label: 'Owner',        cls: 'w-32' },
     { key: 'environment',  label: 'Env',          cls: 'w-20' },
-    { key: 'lastActivity', label: 'Last Activity',cls: 'w-24' },
-    { key: 'violations',   label: 'V',            cls: 'w-8 text-center' },
+    { key: 'lastActivity', label: 'Last Activity',cls: 'w-32' },
+    { key: 'violations',   label: 'Violations',   cls: 'w-24 text-center' },
     { key: 'riskScore',    label: 'Risk',         cls: 'w-20 text-right pr-4' },
   ],
   'TLS Certificate': [
-    { key: 'name',         label: 'Common Name',  cls: 'min-w-[200px] flex-1' },
+    { key: 'name',         label: 'Common Name',  cls: 'w-auto min-w-[200px] max-w-0' },
     { key: 'caIssuer',     label: 'CA / Issuer',  cls: 'w-36' },
     { key: 'algorithm',    label: 'Algorithm',    cls: 'w-24' },
     { key: 'expiryDays',   label: 'Expiry',       cls: 'w-36' },
     { key: 'status',       label: 'Status',       cls: 'w-24' },
     { key: 'pqcRisk',      label: 'PQC',          cls: 'w-20' },
-    { key: 'violations',   label: 'V',            cls: 'w-10 text-center' },
+    { key: 'violations',   label: 'Violations',   cls: 'w-24 text-center' },
     { key: 'riskScore',    label: 'Risk',         cls: 'w-20 text-right pr-4' },
   ],
   'SSH Key': [
-    { key: 'name',         label: 'Key Name',     cls: 'min-w-[200px] flex-1' },
+    { key: 'name',         label: 'Key Name',     cls: 'w-auto min-w-[200px] max-w-0' },
     { key: 'algorithm',    label: 'Key Type',     cls: 'w-24' },
     { key: 'owner',        label: 'Owner',        cls: 'w-28' },
     { key: 'sshLastUsed',  label: 'Last Used',    cls: 'w-28' },
@@ -83,7 +83,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'riskScore',    label: 'Risk',         cls: 'w-20 text-right pr-4' },
   ],
   'SSH Certificate': [
-    { key: 'name',         label: 'Cert Name',    cls: 'min-w-[200px] flex-1' },
+    { key: 'name',         label: 'Cert Name',    cls: 'w-auto min-w-[200px] max-w-0' },
     { key: 'caIssuer',     label: 'CA',           cls: 'w-36' },
     { key: 'commonName',   label: 'Principals',   cls: 'w-36' },
     { key: 'expiryDays',   label: 'Expiry',       cls: 'w-36' },
@@ -91,7 +91,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'riskScore',    label: 'Risk',         cls: 'w-20 text-right pr-4' },
   ],
   'Code-Signing Certificate': [
-    { key: 'name',          label: 'Cert Name',   cls: 'min-w-[200px] flex-1' },
+    { key: 'name',          label: 'Cert Name',   cls: 'w-auto min-w-[200px] max-w-0' },
     { key: 'caIssuer',      label: 'CA',          cls: 'w-36' },
     { key: 'algorithm',     label: 'Algorithm',   cls: 'w-24' },
     { key: 'keyLength',     label: 'Key Size',    cls: 'w-20' },
@@ -101,7 +101,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'riskScore',     label: 'Risk',        cls: 'w-20 text-right pr-4' },
   ],
   'K8s Workload Cert': [
-    { key: 'name',              label: 'Workload',       cls: 'min-w-[200px] flex-1' },
+    { key: 'name',              label: 'Workload',       cls: 'w-auto min-w-[200px] max-w-0' },
     { key: 'application',       label: 'Namespace / App',cls: 'w-36' },
     { key: 'caIssuer',          label: 'CA',             cls: 'w-28' },
     { key: 'expiryDays',        label: 'Expiry',         cls: 'w-36' },
@@ -109,7 +109,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'riskScore',         label: 'Risk',           cls: 'w-20 text-right pr-4' },
   ],
   'Encryption Key': [
-    { key: 'name',              label: 'Key Name',       cls: 'min-w-[200px] flex-1' },
+    { key: 'name',              label: 'Key Name',       cls: 'w-auto min-w-[200px] max-w-0' },
     { key: 'caIssuer',          label: 'Key Store',      cls: 'w-36' },
     { key: 'algorithm',         label: 'Algorithm',      cls: 'w-24' },
     { key: 'lastRotated',       label: 'Last Rotated',   cls: 'w-28' },
@@ -118,24 +118,24 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'riskScore',         label: 'Risk',           cls: 'w-20 text-right pr-4' },
   ],
   'AI Agent Token': [
-    { key: 'name',         label: 'Token / Agent',   cls: 'min-w-[200px] flex-1' },
+    { key: 'name',         label: 'Token / Agent',   cls: 'w-auto min-w-[200px] max-w-0' },
     { key: 'agentFw',      label: 'Framework',       cls: 'w-32' },
     { key: 'actionsDay',   label: 'Actions/Day',     cls: 'w-24' },
     { key: 'permRisk',     label: 'Permission Risk', cls: 'w-28' },
     { key: 'expiryDays',   label: 'Expiry',          cls: 'w-36' },
     { key: 'status',       label: 'Status',          cls: 'w-24' },
-    { key: 'violations',   label: 'V',               cls: 'w-10 text-center' },
+    { key: 'violations',   label: 'Violations',      cls: 'w-24 text-center' },
     { key: 'riskScore',    label: 'Risk',            cls: 'w-20 text-right pr-4' },
   ],
   'API Key / Secret': [
-    { key: 'name',         label: 'Secret Name',  cls: 'min-w-[200px] flex-1' },
+    { key: 'name',         label: 'Secret Name',  cls: 'w-auto min-w-[200px] max-w-0' },
     { key: 'caIssuer',     label: 'Secret Store', cls: 'w-32' },
     { key: 'secretType',   label: 'Type',         cls: 'w-28' },
     { key: 'owner',        label: 'Owner',        cls: 'w-28' },
     { key: 'lastRotated',  label: 'Last Rotated', cls: 'w-28' },
     { key: 'exposedIn',    label: 'Exposed In',   cls: 'w-28' },
     { key: 'status',       label: 'Status',       cls: 'w-24' },
-    { key: 'violations',   label: 'V',            cls: 'w-10 text-center' },
+    { key: 'violations',   label: 'Violations',   cls: 'w-24 text-center' },
     { key: 'riskScore',    label: 'Risk',         cls: 'w-20 text-right pr-4' },
   ],
 };
@@ -1048,12 +1048,12 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
 
         {/* Table */}
         <div className="bg-card rounded-lg border border-border overflow-hidden flex-1 min-h-0 flex flex-col">
-          <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto scrollbar-thin">
-            <table className="w-full text-xs table-auto">
+          <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto scrollbar-thin pr-2">
+            <table className="w-full text-xs table-fixed">
               <thead className="bg-secondary/50 sticky top-0 z-10">
                 <tr className="border-b border-border">
                   {cols.map(col => (
-                    <th key={col.key} className={`text-left py-2 px-3 font-medium text-muted-foreground whitespace-nowrap ${col.cls}`}>
+                    <th key={col.key} className={`py-2 px-3 font-medium text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis ${col.cls.includes('text-right') ? 'text-right' : col.cls.includes('text-center') ? 'text-center' : 'text-left'} ${col.cls}`}>
                       {col.key === 'riskScore' || col.key === 'daysToExpiry' ? (
                         <button
                           onClick={() => {
@@ -1077,9 +1077,9 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                       onClick={() => setDetailAsset(co)}
                       className={`relative border-b border-border/30 hover:bg-secondary/30 transition-colors cursor-pointer group ${isManual ? 'opacity-75' : ''}`}>
                       {cols.map(col => (
-                        <td key={col.key} className={`py-2 px-3 whitespace-nowrap ${col.cls}`}>
+                        <td key={col.key} className={`py-2 px-3 align-middle ${col.key === 'name' ? 'overflow-hidden' : 'whitespace-nowrap overflow-hidden text-ellipsis'} ${col.cls}`}>
                           {col.key === 'name' && isManual ? (
-                            <span className="font-medium text-foreground truncate flex items-center gap-1.5">
+                            <span className="font-medium text-foreground flex items-center gap-1.5 min-w-0">
                               <span className="truncate">{co.name}</span>
                               <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-teal/10 text-teal text-[8px] flex-shrink-0">
                                 <FileEdit className="w-2 h-2" />
