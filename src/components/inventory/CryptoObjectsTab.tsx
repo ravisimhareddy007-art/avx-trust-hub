@@ -59,7 +59,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'environment',  label: 'Env',              cls: 'w-24' },
     { key: 'lastActivity', label: 'Last Activity',    cls: 'w-28' },
     { key: 'violations',   label: 'Violations',       cls: 'w-20' },
-    { key: 'riskScore',    label: 'Risk', cls: 'w-20' },
+    { key: 'riskScore',    label: 'Risk', cls: 'w-20 text-right pr-3' },
   ],
   'TLS Certificate': [
     { key: 'name',         label: 'Common Name',      cls: 'min-w-[180px] flex-1' },
@@ -72,7 +72,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'status',       label: 'Status',           cls: 'w-24' },
     { key: 'pqcRisk',      label: 'PQC',              cls: 'w-20' },
     { key: 'violations',   label: 'Violations',       cls: 'w-20' },
-    { key: 'riskScore',    label: 'Risk', cls: 'w-20' },
+    { key: 'riskScore',    label: 'Risk', cls: 'w-20 text-right pr-3' },
   ],
   'SSH Key': [
     { key: 'name',         label: 'Key Name',         cls: 'min-w-[180px] flex-1' },
@@ -84,7 +84,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'sshHosts',     label: 'Hosts',            cls: 'w-16' },
     { key: 'status',       label: 'Status',           cls: 'w-24' },
     { key: 'pqcRisk',      label: 'PQC',              cls: 'w-20' },
-    { key: 'riskScore',    label: 'Risk', cls: 'w-20' },
+    { key: 'riskScore',    label: 'Risk', cls: 'w-20 text-right pr-3' },
   ],
   'SSH Certificate': [
     { key: 'name',         label: 'Cert Name',        cls: 'min-w-[180px] flex-1' },
@@ -94,7 +94,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'daysToExpiry', label: 'Days',             cls: 'w-16' },
     { key: 'autoRenewal',  label: 'Auto',             cls: 'w-14' },
     { key: 'status',       label: 'Status',           cls: 'w-24' },
-    { key: 'riskScore',    label: 'Risk', cls: 'w-20' },
+    { key: 'riskScore',    label: 'Risk', cls: 'w-20 text-right pr-3' },
   ],
   'Code-Signing Certificate': [
     { key: 'name',          label: 'Cert Name',        cls: 'min-w-[180px] flex-1' },
@@ -106,7 +106,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'infrastructure',label: 'HSM',              cls: 'w-28' },
     { key: 'status',        label: 'Status',           cls: 'w-24' },
     { key: 'pqcRisk',       label: 'PQC',              cls: 'w-20' },
-    { key: 'riskScore',     label: 'Risk', cls: 'w-20' },
+    { key: 'riskScore',     label: 'Risk', cls: 'w-20 text-right pr-3' },
   ],
   'K8s Workload Cert': [
     { key: 'name',              label: 'Workload',         cls: 'min-w-[180px] flex-1' },
@@ -117,7 +117,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'daysToExpiry',      label: 'Days',             cls: 'w-16' },
     { key: 'autoRenewal',       label: 'Auto',             cls: 'w-14' },
     { key: 'status',            label: 'Status',           cls: 'w-24' },
-    { key: 'riskScore',         label: 'Risk', cls: 'w-20' },
+    { key: 'riskScore',         label: 'Risk', cls: 'w-20 text-right pr-3' },
   ],
   'Encryption Key': [
     { key: 'name',              label: 'Key Name',         cls: 'min-w-[180px] flex-1' },
@@ -127,7 +127,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'lastRotated',       label: 'Last Rotated',     cls: 'w-28' },
     { key: 'autoRenewal',       label: 'Auto-Rotation',    cls: 'w-24' },
     { key: 'status',            label: 'State',            cls: 'w-24' },
-    { key: 'riskScore',         label: 'Risk', cls: 'w-20' },
+    { key: 'riskScore',         label: 'Risk', cls: 'w-20 text-right pr-3' },
   ],
   'AI Agent Token': [
     { key: 'name',         label: 'Token / Agent',    cls: 'min-w-[180px] flex-1' },
@@ -138,7 +138,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'daysToExpiry', label: 'Days',             cls: 'w-16' },
     { key: 'status',       label: 'Status',           cls: 'w-24' },
     { key: 'violations',   label: 'Violations',       cls: 'w-20' },
-    { key: 'riskScore',    label: 'Risk', cls: 'w-20' },
+    { key: 'riskScore',    label: 'Risk', cls: 'w-20 text-right pr-3' },
   ],
   'API Key / Secret': [
     { key: 'name',         label: 'Secret Name',      cls: 'min-w-[180px] flex-1' },
@@ -149,7 +149,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'exposedIn',    label: 'Exposed In',       cls: 'w-32' },
     { key: 'status',       label: 'Status',           cls: 'w-24' },
     { key: 'violations',   label: 'Violations',       cls: 'w-20' },
-    { key: 'riskScore',    label: 'Risk', cls: 'w-20' },
+    { key: 'riskScore',    label: 'Risk', cls: 'w-20 text-right pr-3' },
   ],
 };
 
@@ -280,9 +280,9 @@ function CellValue({ col, co }: { col: ColDef; co: CryptoAsset }) {
 
 function MetaRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-[110px_1fr] gap-1 py-1.5 border-b border-border/30 last:border-0">
-      <span className="text-[9px] text-muted-foreground/60 uppercase tracking-wider self-start pt-0.5 leading-tight">{label}</span>
-      <span className="text-[10.5px] break-words">{value}</span>
+    <div className="grid grid-cols-[130px_1fr] gap-2 py-1.5 border-b border-border/30 last:border-0 items-start">
+      <span className="text-[11px] text-muted-foreground leading-tight pt-0.5">{label}</span>
+      <span className="text-[11px] text-foreground font-medium break-words leading-tight">{value}</span>
     </div>
   );
 }
@@ -323,52 +323,80 @@ function RiskScoreAttr({ co, assocCount }: { co: CryptoAsset; assocCount: number
   );
 }
 
+// ── Derive violations from real data ─────────────────────────────────────────
+
+interface ViolationItem { label: string; severity: 'critical' | 'high' | 'medium'; action?: string; actionKey?: string; }
+
+function deriveViolations(co: CryptoAsset): { operational: ViolationItem[]; quantum: ViolationItem[] } {
+  const operational: ViolationItem[] = [];
+  const quantum: ViolationItem[] = [];
+
+  if (co.status === 'Expired')
+    operational.push({ label: `Expired ${co.daysToExpiry < 0 ? Math.abs(co.daysToExpiry) + 'd ago' : ''}`, severity: 'critical', action: 'Renew', actionKey: 'renew' });
+  else if (co.status === 'Expiring' && co.daysToExpiry >= 0)
+    operational.push({ label: `Expires in ${co.daysToExpiry}d`, severity: co.daysToExpiry <= 7 ? 'critical' : 'high', action: 'Renew', actionKey: 'renew' });
+
+  if (!co.autoRenewal && co.daysToExpiry >= 0 && co.daysToExpiry <= 30 && co.type !== 'SSH Key' && co.type !== 'Encryption Key')
+    operational.push({ label: 'Auto-renewal disabled — manual action required', severity: 'high' });
+
+  if (co.owner === 'Unassigned' || co.status === 'Orphaned')
+    operational.push({ label: 'No owner assigned', severity: 'high', action: 'Assign', actionKey: 'assign' });
+
+  if (co.rotationFrequency === 'Never')
+    operational.push({ label: 'No rotation policy configured', severity: 'medium' });
+
+  if ((co.tags ?? []).includes('source-code') || (co.tags ?? []).includes('code-exposed') || (co.tags ?? []).includes('hardcoded'))
+    operational.push({ label: 'Secret detected in source code', severity: 'critical' });
+
+  if (co.agentMeta?.permissionRisk === 'Over-privileged')
+    operational.push({ label: 'Token is over-privileged — unused scopes detected', severity: 'high' });
+
+  if (co.environment === 'Production' && co.caIssuer === 'Self-Signed')
+    operational.push({ label: 'Self-signed certificate in production', severity: 'high' });
+
+  const isPqc = ['RSA-1024','RSA-2048','RSA-4096','ECDSA-P256','ECDSA-P384','ECC P-256','ECC P-384','SHA-1','MD5','DH-1024','DH-2048'].includes(co.algorithm);
+  if (isPqc) {
+    const expYear = co.expiryDate && co.expiryDate !== 'N/A' ? new Date(co.expiryDate).getFullYear() : 0;
+    const yearsPast = expYear > 0 ? Math.max(0, expYear - 2030) : 0;
+    quantum.push({
+      label: `${co.algorithm} is quantum-vulnerable (NIST deprecated)${expYear > 0 ? ` · Expires ${expYear}${yearsPast > 0 ? ` — ${yearsPast}yr past deadline` : ' — at NIST 2030 deadline'}` : ''}`,
+      severity: co.pqcRisk === 'Critical' ? 'critical' : 'high',
+      action: 'PQC Ticket', actionKey: 'pqc',
+    });
+  }
+
+  return { operational, quantum };
+}
+
+// ── Section heading ───────────────────────────────────────────────────────────
+
+function SectionHeading({ label, count }: { label: string; count?: number }) {
+  return (
+    <p className="text-[11px] font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
+      {label}
+      {count !== undefined && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${count > 0 ? 'bg-coral/15 text-coral' : 'bg-secondary text-muted-foreground'}`}>{count}</span>}
+    </p>
+  );
+}
+
 // ── Type-specific metadata ────────────────────────────────────────────────────
 
-function TypeMetadata({ co, assoc }: { co: CryptoAsset; assoc: typeof mockITAssets }) {
-  const tags = co.tags ?? [];
-
-  const commonRows = (
-    <>
-      <MetaRow label="Owner" value={<span className={co.owner === 'Unassigned' ? 'text-coral font-semibold' : 'text-foreground'}>{co.owner}</span>} />
-      <MetaRow label="Team" value={<span className="text-foreground">{co.team}</span>} />
-      <MetaRow label="Application" value={<span className="text-foreground">{co.application}</span>} />
-      <MetaRow label="Environment" value={<EnvBadge env={co.environment} />} />
-      <MetaRow label="Infrastructure" value={<span className="text-foreground">{co.infrastructure}</span>} />
-      <MetaRow label="Discovery" value={<span className="text-foreground">{co.discoverySource}</span>} />
-      <MetaRow label="Risk Score" value={<RiskScoreAttr co={co} assocCount={assoc.length} />} />
-      <MetaRow label="PQC Risk" value={<PQCBadge risk={co.pqcRisk} />} />
-      <MetaRow label="Violations" value={co.policyViolations > 0
-        ? <span className="text-coral font-semibold">{co.policyViolations} active</span>
-        : <span className="text-teal text-[10px]">None</span>} />
-      {tags.length > 0 && <MetaRow label="Tags" value={<div className="flex flex-wrap gap-1">{tags.map(t => <span key={t} className="text-[9px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{t}</span>)}</div>} />}
-    </>
-  );
-
-  if (co.type === 'TLS Certificate' || co.type === 'Code-Signing Certificate' || co.type === 'SSH Certificate') {
+function TypeMetadata({ co }: { co: CryptoAsset }) {
+  if (co.type === 'TLS Certificate') {
     return (
       <>
-        <MetaRow label="Common Name" value={<span className="text-foreground font-medium">{co.commonName}</span>} />
-        {co.type === 'TLS Certificate' && <MetaRow label="Subject DN" value={<span className="text-foreground text-[10px]">CN={co.commonName}, O=Acme Corp, C=US</span>} />}
-        <MetaRow label="CA / Issuer" value={<span className="text-foreground">{co.caIssuer}</span>} />
-        <MetaRow label="CA Type" value={<span className="text-foreground">{caTypeFor(co.caIssuer)}</span>} />
-        <MetaRow label="Serial" value={<span className="font-mono text-[9.5px] text-foreground break-all">{co.serial}</span>} />
-        <MetaRow label="Signature Algo" value={<span className="text-foreground">{signatureAlgoFor(co.algorithm)}</span>} />
-        <MetaRow label="Key Algorithm" value={<span className="text-foreground">{co.algorithm}</span>} />
-        <MetaRow label="Key Size" value={<span className="text-foreground">{co.keyLength} bits</span>} />
-        {co.type !== 'Code-Signing Certificate' && <>
-          <MetaRow label="Key Usage" value={<span className="text-foreground">{keyUsageFor(co.type)}</span>} />
-          <MetaRow label="Ext Key Usage" value={<span className="text-foreground text-[10px]">{extKeyUsageFor(co.type)}</span>} />
-        </>}
-        <MetaRow label="Valid From" value={<span className="text-foreground">{co.issueDate}</span>} />
-        <MetaRow label="Valid To" value={<span className="text-foreground">{co.expiryDate}</span>} />
-        <MetaRow label="Days Remaining" value={<DaysToExpiry days={co.daysToExpiry} />} />
-        <MetaRow label="Auto-Renewal" value={co.autoRenewal
-          ? <span className="text-teal font-medium">Enabled — {co.rotationFrequency}</span>
-          : <span className="text-coral font-medium">Disabled — manual required</span>} />
-        <MetaRow label="Last Renewed" value={<span className="text-foreground">{co.lastRotated}</span>} />
-        {commonRows}
-        <MetaRow label="Linked Assets" value={<span className="text-foreground">{assoc.length} infrastructure asset{assoc.length !== 1 ? 's' : ''}</span>} />
+        <MetaRow label="Subject DN" value={<span className="font-mono text-[10px]">CN={co.commonName}, O=Acme Corp, C=US</span>} />
+        <MetaRow label="CA type" value={caTypeFor(co.caIssuer)} />
+        <MetaRow label="Serial" value={<span className="font-mono text-[10px] break-all">{co.serial}</span>} />
+        <MetaRow label="Signature algorithm" value={signatureAlgoFor(co.algorithm)} />
+        <MetaRow label="Key size" value={`${co.keyLength} bits`} />
+        <MetaRow label="Key usage" value={keyUsageFor(co.type)} />
+        <MetaRow label="Extended key usage" value={extKeyUsageFor(co.type)} />
+        <MetaRow label="Last renewed" value={co.lastRotated} />
+        <MetaRow label="Auto-renewal" value={co.autoRenewal
+          ? <span className="text-teal">Enabled — {co.rotationFrequency}</span>
+          : <span className="text-coral">Disabled — manual required</span>} />
+        <MetaRow label="Managed via" value={co.discoverySource} />
       </>
     );
   }
@@ -376,29 +404,71 @@ function TypeMetadata({ co, assoc }: { co: CryptoAsset; assoc: typeof mockITAsse
   if (co.type === 'SSH Key') {
     return (
       <>
-        <MetaRow label="Key Type" value={<span className="text-foreground">{co.algorithm}</span>} />
-        <MetaRow label="Key Size" value={<span className="text-foreground">{co.keyLength} bits</span>} />
-        <MetaRow label="Fingerprint" value={<span className="font-mono text-[9px] text-foreground break-all">{co.serial}</span>} />
-        <MetaRow label="Privilege Level" value={<span className={`font-semibold ${privilegeLevelFor(co) === 'root' ? 'text-coral' : privilegeLevelFor(co) === 'admin' ? 'text-amber' : 'text-muted-foreground'}`}>{privilegeLevelFor(co)}</span>} />
-        <MetaRow label="Auth Method" value={<span className="text-foreground">Public Key Authentication</span>} />
-        <MetaRow label="Last Used" value={<span className="text-foreground">{co.sshEndpoints?.[0]?.lastSeen ?? 'Unknown'}</span>} />
-        <MetaRow label="Last Rotated" value={<span className="text-foreground">{co.lastRotated}</span>} />
-        <MetaRow label="Rotation Policy" value={<span className={co.rotationFrequency === 'Never' ? 'text-coral font-medium' : 'text-foreground'}>{co.rotationFrequency}</span>} />
-        <MetaRow label="Authorized Hosts" value={<span className="text-foreground">{co.sshEndpoints?.length ?? 0} endpoint{(co.sshEndpoints?.length ?? 0) !== 1 ? 's' : ''}</span>} />
+        <MetaRow label="Fingerprint" value={<span className="font-mono text-[10px] break-all">{co.serial}</span>} />
+        <MetaRow label="Key size" value={`${co.keyLength} bits`} />
+        <MetaRow label="Privilege level" value={
+          <span className={privilegeLevelFor(co) === 'root' ? 'text-coral' : privilegeLevelFor(co) === 'admin' ? 'text-amber' : 'text-foreground'}>
+            {privilegeLevelFor(co)}
+          </span>
+        } />
+        <MetaRow label="Auth method" value="Public key authentication" />
+        <MetaRow label="Rotation policy" value={<span className={co.rotationFrequency === 'Never' ? 'text-coral' : 'text-foreground'}>{co.rotationFrequency}</span>} />
+        <MetaRow label="Last rotated" value={co.lastRotated} />
         {co.sshEndpoints && co.sshEndpoints.length > 0 && (
-          <MetaRow label="Endpoints" value={
+          <MetaRow label={`Authorized endpoints (${co.sshEndpoints.length})`} value={
             <div className="space-y-1">
-              {co.sshEndpoints.slice(0, 4).map((ep, i) => (
-                <div key={i} className="text-[9.5px]">
+              {co.sshEndpoints.slice(0, 5).map((ep, i) => (
+                <div key={i} className="text-[10px]">
                   <span className="font-mono text-foreground">{ep.host}</span>
-                  <span className="text-muted-foreground"> · {ep.role} · {ep.ip}</span>
+                  <span className="text-muted-foreground"> · {ep.ip} · {ep.role} · {ep.lastSeen.split(' ')[0]}</span>
                 </div>
               ))}
-              {co.sshEndpoints.length > 4 && <span className="text-[9px] text-muted-foreground">+{co.sshEndpoints.length - 4} more</span>}
+              {co.sshEndpoints.length > 5 && <span className="text-[10px] text-muted-foreground">+{co.sshEndpoints.length - 5} more</span>}
             </div>
           } />
         )}
-        {commonRows}
+        <MetaRow label="Discovery source" value={co.discoverySource} />
+      </>
+    );
+  }
+
+  if (co.type === 'SSH Certificate') {
+    return (
+      <>
+        <MetaRow label="KRL serial" value={<span className="font-mono text-[10px]">{co.serial}</span>} />
+        <MetaRow label="Principals" value={co.commonName} />
+        <MetaRow label="Key algorithm" value={co.algorithm} />
+        <MetaRow label="Key size" value={`${co.keyLength} bits`} />
+        <MetaRow label="Auto-renewal" value={co.autoRenewal
+          ? <span className="text-teal">Enabled — {co.rotationFrequency}</span>
+          : <span className="text-coral">Disabled</span>} />
+        <MetaRow label="CA" value={co.caIssuer} />
+        {co.sshEndpoints && co.sshEndpoints.length > 0 && (
+          <MetaRow label={`Authorized hosts (${co.sshEndpoints.length})`} value={
+            <div className="space-y-1">
+              {co.sshEndpoints.map((ep, i) => (
+                <div key={i} className="font-mono text-[10px] text-foreground">{ep.host} <span className="text-muted-foreground">· {ep.role}</span></div>
+              ))}
+            </div>
+          } />
+        )}
+        <MetaRow label="Discovery source" value={co.discoverySource} />
+      </>
+    );
+  }
+
+  if (co.type === 'Code-Signing Certificate') {
+    return (
+      <>
+        <MetaRow label="Serial" value={<span className="font-mono text-[10px] break-all">{co.serial}</span>} />
+        <MetaRow label="Subject" value={co.commonName} />
+        <MetaRow label="CA type" value={caTypeFor(co.caIssuer)} />
+        <MetaRow label="Key size" value={`${co.keyLength} bits`} />
+        <MetaRow label="Key usage" value="Digital Signature" />
+        <MetaRow label="Code signing OID" value="1.3.6.1.5.5.7.3.3" />
+        <MetaRow label="HSM / Store" value={co.infrastructure} />
+        <MetaRow label="Auto-renewal" value={co.autoRenewal ? <span className="text-teal">Enabled</span> : <span className="text-coral">Disabled — {co.rotationFrequency}</span>} />
+        <MetaRow label="Managed via" value={co.discoverySource} />
       </>
     );
   }
@@ -406,19 +476,15 @@ function TypeMetadata({ co, assoc }: { co: CryptoAsset; assoc: typeof mockITAsse
   if (co.type === 'K8s Workload Cert') {
     return (
       <>
-        <MetaRow label="SPIFFE ID" value={<span className="font-mono text-[9.5px] text-foreground break-all">{co.serial}</span>} />
-        <MetaRow label="Common Name" value={<span className="text-foreground">{co.commonName}</span>} />
-        <MetaRow label="CA / Issuer" value={<span className="text-foreground">{co.caIssuer}</span>} />
-        <MetaRow label="Algorithm" value={<span className="text-foreground">{co.algorithm}</span>} />
-        <MetaRow label="Key Size" value={<span className="text-foreground">{co.keyLength} bits</span>} />
-        <MetaRow label="Rotation Freq." value={<span className="text-foreground">{co.rotationFrequency}</span>} />
-        <MetaRow label="Valid From" value={<span className="text-foreground">{co.issueDate}</span>} />
-        <MetaRow label="Valid To" value={<span className="text-foreground">{co.expiryDate}</span>} />
-        <MetaRow label="Days Remaining" value={<DaysToExpiry days={co.daysToExpiry} />} />
-        <MetaRow label="Auto-Rotation" value={co.autoRenewal
-          ? <span className="text-teal font-medium">cert-manager — {co.rotationFrequency}</span>
-          : <span className="text-coral font-medium">Manual — not automated</span>} />
-        {commonRows}
+        <MetaRow label="SPIFFE ID" value={<span className="font-mono text-[10px] break-all">{co.serial}</span>} />
+        <MetaRow label="Workload" value={co.commonName} />
+        <MetaRow label="Key algorithm" value={co.algorithm} />
+        <MetaRow label="Key size" value={`${co.keyLength} bits`} />
+        <MetaRow label="Auto-rotation" value={co.autoRenewal
+          ? <span className="text-teal">cert-manager — {co.rotationFrequency}</span>
+          : <span className="text-coral">Manual — not automated</span>} />
+        <MetaRow label="Namespace" value={co.application} />
+        <MetaRow label="Discovery source" value={co.discoverySource} />
       </>
     );
   }
@@ -426,19 +492,17 @@ function TypeMetadata({ co, assoc }: { co: CryptoAsset; assoc: typeof mockITAsse
   if (co.type === 'Encryption Key') {
     return (
       <>
-        <MetaRow label="Key Store" value={<span className="text-foreground">{co.caIssuer}</span>} />
-        <MetaRow label="Key ID / ARN" value={<span className="font-mono text-[9px] text-foreground break-all">{co.serial}</span>} />
-        <MetaRow label="Algorithm" value={<span className="text-foreground">{co.algorithm}</span>} />
-        <MetaRow label="Key Size" value={<span className="text-foreground">{co.keyLength} bits</span>} />
-        <MetaRow label="Key State" value={<span className={co.status === 'Active' ? 'text-teal font-medium' : 'text-amber font-medium'}>{co.status === 'Active' ? 'Active / Enabled' : co.status}</span>} />
-        <MetaRow label="Key Usage" value={<span className="text-foreground">ENCRYPT_DECRYPT</span>} />
-        <MetaRow label="Auto-Rotation" value={co.autoRenewal
-          ? <span className="text-teal font-medium">Enabled — {co.rotationFrequency}</span>
-          : <span className="text-coral font-medium">Disabled</span>} />
-        <MetaRow label="Created" value={<span className="text-foreground">{co.issueDate}</span>} />
-        <MetaRow label="Last Rotated" value={<span className="text-foreground">{co.lastRotated}</span>} />
-        <MetaRow label="Rotation Policy" value={<span className="text-foreground">{co.rotationFrequency}</span>} />
-        {commonRows}
+        <MetaRow label="Key ID / ARN" value={<span className="font-mono text-[10px] break-all">{co.serial}</span>} />
+        <MetaRow label="Key store" value={co.caIssuer} />
+        <MetaRow label="Key size" value={`${co.keyLength} bits`} />
+        <MetaRow label="Key usage" value="ENCRYPT_DECRYPT" />
+        <MetaRow label="Key state" value={<span className={co.status === 'Active' ? 'text-teal' : 'text-amber'}>{co.status === 'Active' ? 'Active / Enabled' : co.status}</span>} />
+        <MetaRow label="Auto-rotation" value={co.autoRenewal
+          ? <span className="text-teal">Enabled — {co.rotationFrequency}</span>
+          : <span className="text-coral">Disabled</span>} />
+        <MetaRow label="Created" value={co.issueDate} />
+        <MetaRow label="Last rotated" value={co.lastRotated} />
+        <MetaRow label="Managed via" value={co.discoverySource} />
       </>
     );
   }
@@ -447,20 +511,30 @@ function TypeMetadata({ co, assoc }: { co: CryptoAsset; assoc: typeof mockITAsse
     const m = co.agentMeta;
     return (
       <>
-        <MetaRow label="Agent Type" value={<span className="text-foreground">{m?.agentType ?? '—'}</span>} />
-        <MetaRow label="Framework" value={<span className="text-foreground">{m?.framework ?? '—'}</span>} />
-        <MetaRow label="Issuing Platform" value={<span className="text-foreground">{co.caIssuer}</span>} />
-        <MetaRow label="Actions / Day" value={<span className="text-foreground tabular-nums">{m?.actionsPerDay?.toLocaleString() ?? '—'}</span>} />
-        <MetaRow label="Permission Risk" value={<span className={`font-semibold ${permRiskStyle(m?.permissionRisk)}`}>{m?.permissionRisk ?? '—'}</span>} />
-        <MetaRow label="Scopes" value={<span className="text-foreground">{m?.permissions?.length ?? 0} permission{(m?.permissions?.length ?? 0) !== 1 ? 's' : ''}</span>} />
-        {m?.permissions && <MetaRow label="Permission List" value={<div className="space-y-0.5">{m.permissions.map((p, i) => <div key={i} className="text-[9px] font-mono text-muted-foreground">{p}</div>)}</div>} />}
-        <MetaRow label="Services" value={<div className="space-y-0.5">{(m?.servicesAccessed ?? []).map((s, i) => <div key={i} className="text-[9.5px] text-foreground">{s}</div>)}</div>} />
-        <MetaRow label="Last Activity" value={<span className="text-foreground">{m?.lastActivity ?? '—'}</span>} />
-        <MetaRow label="Human Sponsor" value={<span className="text-amber font-medium">Unassigned</span>} />
-        <MetaRow label="Valid To" value={<span className="text-foreground">{co.expiryDate}</span>} />
-        <MetaRow label="Days Remaining" value={<DaysToExpiry days={co.daysToExpiry} />} />
-        <MetaRow label="Rotation Policy" value={<span className="text-foreground">{co.rotationFrequency}</span>} />
-        {commonRows}
+        <MetaRow label="Token ID" value={<span className="font-mono text-[10px] break-all">{co.serial}</span>} />
+        <MetaRow label="Agent type" value={m?.agentType ?? '—'} />
+        <MetaRow label="Framework" value={m?.framework ?? '—'} />
+        <MetaRow label="Issuing platform" value={co.caIssuer} />
+        <MetaRow label="Actions / day" value={<span className="tabular-nums">{m?.actionsPerDay?.toLocaleString() ?? '—'}</span>} />
+        <MetaRow label="Last activity" value={m?.lastActivity ?? '—'} />
+        <MetaRow label="Permission risk" value={<span className={permRiskStyle(m?.permissionRisk)}>{m?.permissionRisk ?? '—'}</span>} />
+        <MetaRow label="Rotation policy" value={co.rotationFrequency} />
+        <MetaRow label="Human sponsor" value={<span className={co.owner === 'Unassigned' ? 'text-coral' : 'text-foreground'}>{co.owner}</span>} />
+        {m?.permissions && m.permissions.length > 0 && (
+          <MetaRow label={`Permissions (${m.permissions.length})`} value={
+            <div className="space-y-0.5">
+              {m.permissions.map((p, i) => <div key={i} className="font-mono text-[10px] text-muted-foreground">{p}</div>)}
+            </div>
+          } />
+        )}
+        {m?.servicesAccessed && m.servicesAccessed.length > 0 && (
+          <MetaRow label="Services accessed" value={
+            <div className="flex flex-wrap gap-1">
+              {m.servicesAccessed.map((s, i) => <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{s}</span>)}
+            </div>
+          } />
+        )}
+        {m?.mcpTools && <MetaRow label="MCP tools" value={m.mcpTools.join(', ')} />}
       </>
     );
   }
@@ -469,22 +543,18 @@ function TypeMetadata({ co, assoc }: { co: CryptoAsset; assoc: typeof mockITAsse
     const ei = exposedInFor(co);
     return (
       <>
-        <MetaRow label="Secret Store" value={<span className="text-foreground">{co.caIssuer}</span>} />
-        <MetaRow label="Secret Type" value={<span className="text-foreground">{secretTypeFor(co)}</span>} />
-        <MetaRow label="Secret Path" value={<span className="font-mono text-[9px] text-foreground break-all">{co.serial}</span>} />
-        <MetaRow label="Exposed In" value={<span className={`font-semibold ${ei.color}`}>{ei.label}</span>} />
-        <MetaRow label="Last Rotated" value={<span className="text-foreground">{co.lastRotated}</span>} />
-        <MetaRow label="Rotation Policy" value={<span className={co.rotationFrequency === 'Never' ? 'text-coral font-medium' : 'text-foreground'}>{co.rotationFrequency}</span>} />
-        <MetaRow label="Auto-Rotation" value={co.autoRenewal
-          ? <span className="text-teal font-medium">Enabled</span>
-          : <span className="text-coral font-medium">Disabled</span>} />
-        {commonRows}
+        <MetaRow label="Secret path" value={<span className="font-mono text-[10px] break-all">{co.serial}</span>} />
+        <MetaRow label="Secret store" value={co.caIssuer} />
+        <MetaRow label="Secret type" value={secretTypeFor(co)} />
+        <MetaRow label="Algorithm" value={co.algorithm} />
+        <MetaRow label="Exposure" value={<span className={ei.color}>{ei.label}</span>} />
+        <MetaRow label="Last rotated" value={co.lastRotated} />
+        <MetaRow label="Rotation policy" value={<span className={co.rotationFrequency === 'Never' ? 'text-coral' : 'text-foreground'}>{co.rotationFrequency}</span>} />
+        <MetaRow label="Auto-rotation" value={co.autoRenewal ? <span className="text-teal">Enabled</span> : <span className="text-coral">Disabled</span>} />
+        <MetaRow label="Managed via" value={co.discoverySource} />
       </>
     );
   }
-
-  return <>{commonRows}</>;
-}
 
 // ── Secrets upsell ────────────────────────────────────────────────────────────
 
@@ -534,9 +604,24 @@ function DetailPanel({
   setCurrentPage: (p: string) => void;
 }) {
   const isPqc = ['RSA-1024','RSA-2048','RSA-4096','ECDSA-P256','ECDSA-P384','ECC P-256','ECC P-384','SHA-1','MD5','DH-1024','DH-2048'].includes(co.algorithm);
-  const expYear = co.expiryDate && co.expiryDate !== 'N/A' ? new Date(co.expiryDate).getFullYear() : 0;
-  const yearsPast = expYear > 0 ? Math.max(0, expYear - 2030) : 0;
   const isSecret = co.type === 'API Key / Secret';
+  const [riskTip, setRiskTip] = useState(false);
+
+  const alg = co.pqcRisk === 'Critical' ? 90 : co.pqcRisk === 'High' ? 65 : co.pqcRisk === 'Medium' ? 40 : 15;
+  const exp = co.daysToExpiry >= 0 && co.daysToExpiry <= 7 ? 95 : co.daysToExpiry >= 0 && co.daysToExpiry <= 30 ? 60 : 15;
+  const env = co.environment === 'Production' ? 70 : 30;
+  const dep = Math.min(100, assoc.length * 20);
+  const own = co.owner === 'Unassigned' ? 90 : 5;
+  const riskScore = Math.round(alg * 0.30 + exp * 0.20 + env * 0.20 + dep * 0.15 + own * 0.15);
+  const riskCol = riskScore > 70 ? 'text-coral' : riskScore > 40 ? 'text-amber' : 'text-teal';
+
+  const { operational, quantum } = deriveViolations(co);
+  const totalViolations = operational.length + quantum.length;
+
+  const expiryDisplay = co.daysToExpiry >= 0
+    ? co.daysToExpiry === 0 ? 'Today' : `${co.daysToExpiry}d`
+    : co.daysToExpiry === -1 ? 'No expiry' : `${Math.abs(co.daysToExpiry)}d ago`;
+  const expiryCol = co.daysToExpiry >= 0 && co.daysToExpiry <= 7 ? 'text-coral' : co.daysToExpiry >= 0 && co.daysToExpiry <= 30 ? 'text-amber' : 'text-foreground';
 
   return (
     <div className="fixed inset-0 z-50 flex">
@@ -544,94 +629,109 @@ function DetailPanel({
       <div className="w-[38%] bg-card border-l border-border shadow-2xl h-full flex flex-col animate-slide-in-right">
 
         {/* Header */}
-        <div className="flex items-start gap-2 px-4 py-3 border-b border-border flex-shrink-0">
-          <div className="flex-1 min-w-0">
-            <p className="text-[11.5px] font-semibold text-foreground truncate">{co.name}</p>
-            <p className="text-[9.5px] text-muted-foreground">{co.type} · {co.environment} · {co.application}</p>
-          </div>
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            <StatusBadge status={co.status} />
-            <PQCBadge risk={co.pqcRisk} />
-            <button onClick={onClose} className="p-1 hover:bg-secondary rounded ml-1">
+        <div className="px-4 py-3 border-b border-border flex-shrink-0 bg-secondary/30">
+          <div className="flex items-start justify-between gap-2 mb-1">
+            <p className="text-[13px] font-semibold text-foreground truncate">{co.name}</p>
+            <button onClick={onClose} className="p-1 hover:bg-secondary rounded flex-shrink-0">
               <X className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
+          </div>
+          <p className="text-[11px] text-muted-foreground mb-2.5">{co.type} · {co.environment} · {co.application}</p>
+          <div className="flex items-center gap-1.5">
+            <StatusBadge status={co.status} />
+            {isPqc && <PQCBadge risk={co.pqcRisk} />}
+          </div>
+
+          {/* Stat strip */}
+          <div className="grid grid-cols-3 gap-2 mt-3">
+            <div className="bg-card rounded-lg px-3 py-2 border border-border/50">
+              <div className="flex items-center gap-1">
+                <span className={`text-[18px] font-bold tabular-nums ${riskCol}`}>{riskScore}</span>
+                <div className="relative">
+                  <button onMouseEnter={() => setRiskTip(true)} onMouseLeave={() => setRiskTip(false)} className="p-0.5 mt-1">
+                    <Info className="w-3 h-3 text-muted-foreground/50 hover:text-muted-foreground" />
+                  </button>
+                  {riskTip && (
+                    <div className="absolute bottom-full left-0 mb-1 z-[9999] w-64 bg-card border border-border rounded-lg shadow-xl p-3 text-[10px] text-muted-foreground space-y-1">
+                      <p className="font-semibold text-foreground mb-1">Risk score breakdown</p>
+                      <div className="grid grid-cols-[1fr_auto] gap-x-2 gap-y-0.5">
+                        <span>Algorithm vulnerability</span><span className="tabular-nums text-foreground">{alg} × 30%</span>
+                        <span>Expiry urgency</span><span className="tabular-nums text-foreground">{exp} × 20%</span>
+                        <span>Environment exposure</span><span className="tabular-nums text-foreground">{env} × 20%</span>
+                        <span>Dependent assets</span><span className="tabular-nums text-foreground">{dep} × 15%</span>
+                        <span>Ownership gap</span><span className="tabular-nums text-foreground">{own} × 15%</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Risk score</p>
+            </div>
+            <div className="bg-card rounded-lg px-3 py-2 border border-border/50">
+              <p className={`text-[18px] font-bold tabular-nums ${expiryCol}`}>{expiryDisplay}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {co.daysToExpiry >= 0 ? 'Expires in' : co.daysToExpiry === -1 ? 'Validity' : 'Expired'}
+              </p>
+            </div>
+            <div className="bg-card rounded-lg px-3 py-2 border border-border/50">
+              <p className={`text-[18px] font-bold tabular-nums ${totalViolations > 0 ? 'text-coral' : 'text-teal'}`}>{totalViolations}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Violations</p>
+            </div>
           </div>
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto scrollbar-thin divide-y divide-border/50">
+        <div className="flex-1 overflow-y-auto scrollbar-thin divide-y divide-border/40">
 
           {/* Actions */}
           <div className="px-4 py-3">
-            <p className="text-[9.5px] font-semibold text-muted-foreground uppercase tracking-wider mb-2.5">Actions</p>
-
+            <SectionHeading label="Actions" />
             {isSecret && !SECRETS_LICENSED ? (
               <SecretsUpsell co={co} />
             ) : (
               <div className="flex flex-wrap gap-1.5">
-                {/* Download Cert */}
                 {(co.type === 'TLS Certificate' || co.type === 'Code-Signing Certificate') && (
-                  <button onClick={() => toast.success(`Certificate downloaded`)}
+                  <button onClick={() => toast.success('Certificate downloaded')}
                     className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-border text-foreground hover:bg-secondary/80 transition-colors">
-                    ↓ Download Cert
+                    ↓ Download
                   </button>
                 )}
-
-                {/* Renew */}
                 {(co.type === 'TLS Certificate' || co.type === 'K8s Workload Cert' || co.type === 'SSH Certificate') && (
                   <button
-                    onClick={() => co.status === 'Active' ? undefined : toast.success(`Renewal initiated for ${co.name}`)}
+                    onClick={() => co.status === 'Active' ? undefined : toast.success(`Renewal initiated`)}
                     disabled={co.status === 'Active'}
                     title={co.status === 'Active' ? 'Certificate is active — renew when nearing expiry' : undefined}
-                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold transition-colors ${
-                      co.status === 'Active'
-                        ? 'opacity-40 cursor-not-allowed bg-teal/10 text-teal border border-teal/20'
-                        : 'bg-teal text-primary-foreground hover:bg-teal/90'
-                    }`}>
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold transition-colors ${co.status === 'Active' ? 'opacity-40 cursor-not-allowed bg-teal/10 text-teal border border-teal/20' : 'bg-teal text-primary-foreground hover:bg-teal/90'}`}>
                     <RefreshCw className="w-3 h-3" /> Renew
                   </button>
                 )}
-
-                {/* Rotate */}
                 {(co.type === 'SSH Key' || co.type === 'Encryption Key' || co.type === 'AI Agent Token') && (
-                  <button onClick={() => toast.success(`Rotation initiated for ${co.name}`)}
+                  <button onClick={() => toast.success(`Rotation initiated`)}
                     className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold bg-teal text-primary-foreground hover:bg-teal/90 transition-colors">
                     <RefreshCw className="w-3 h-3" /> Rotate
                   </button>
                 )}
-
-                {/* Deploy — after renew */}
                 {(co.type === 'TLS Certificate' || co.type === 'K8s Workload Cert') && (
                   <button
                     onClick={() => co.status === 'Active' ? undefined : onDeploy()}
                     disabled={co.status === 'Active'}
                     title={co.status === 'Active' ? 'Deploy is available after renewal' : undefined}
-                    className={`px-2.5 py-1.5 rounded text-[10px] font-semibold border transition-colors ${
-                      co.status === 'Active'
-                        ? 'opacity-40 cursor-not-allowed border-border text-muted-foreground'
-                        : 'border-border text-foreground hover:bg-secondary/80'
-                    }`}>
+                    className={`px-2.5 py-1.5 rounded text-[10px] font-semibold border transition-colors ${co.status === 'Active' ? 'opacity-40 cursor-not-allowed border-border text-muted-foreground' : 'border-border text-foreground hover:bg-secondary/80'}`}>
                     Deploy
                   </button>
                 )}
-
-                {/* Assign Owner — only when unassigned */}
                 {co.owner === 'Unassigned' && (
                   <button onClick={() => toast.success('Owner assignment opened')}
                     className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-amber/30 text-amber hover:bg-amber/10 transition-colors">
-                    <UserPlus className="w-3 h-3" /> Assign Owner
+                    <UserPlus className="w-3 h-3" /> Assign owner
                   </button>
                 )}
-
-                {/* Revoke */}
                 {!['AI Agent Token', 'API Key / Secret'].includes(co.type) && (
                   <button onClick={() => toast.error(`Revoke ${co.name}?`, { action: { label: 'Confirm', onClick: () => toast.success('Revoked') } })}
                     className="px-2.5 py-1.5 rounded text-[10px] font-semibold border border-coral/30 text-coral hover:bg-coral/10 transition-colors">
                     Revoke
                   </button>
                 )}
-
-                {/* PQC Migration Ticket — only when quantum-vulnerable */}
                 {isPqc && (
                   <button onClick={() => onTicket('pqc')}
                     className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-purple/30 text-purple-light hover:bg-purple/10 transition-colors">
@@ -642,50 +742,111 @@ function DetailPanel({
             )}
           </div>
 
-          {/* Metadata */}
+          {/* Type-specific details */}
           <div className="px-4 py-3">
-            <TypeMetadata co={co} assoc={assoc} />
+            <SectionHeading label={
+              co.type === 'TLS Certificate' ? 'Certificate details' :
+              co.type === 'SSH Key' ? 'Key details' :
+              co.type === 'SSH Certificate' ? 'Certificate details' :
+              co.type === 'Code-Signing Certificate' ? 'Certificate details' :
+              co.type === 'K8s Workload Cert' ? 'Workload details' :
+              co.type === 'Encryption Key' ? 'Key details' :
+              co.type === 'AI Agent Token' ? 'Token & agent details' :
+              'Secret details'
+            } />
+            <TypeMetadata co={co} />
           </div>
 
-          {/* Linked infrastructure — clickable */}
+          {/* Ownership */}
           <div className="px-4 py-3">
-            <p className="text-[10px] font-semibold text-foreground mb-1.5">
-              Linked Infrastructure ({assoc.length})
-              {assoc.length > 0 && <span className="ml-1 text-[9px] text-amber font-normal">expiry or failure affects all</span>}
-            </p>
+            <SectionHeading label="Ownership & operations" />
+            <MetaRow label="Owner" value={<span className={co.owner === 'Unassigned' ? 'text-coral' : 'text-foreground'}>{co.owner}</span>} />
+            <MetaRow label="Team" value={co.team} />
+            <MetaRow label="Application" value={co.application} />
+            <MetaRow label="Environment" value={<EnvBadge env={co.environment} />} />
+            <MetaRow label="Infrastructure" value={co.infrastructure} />
+            {(co.tags ?? []).length > 0 && (
+              <MetaRow label="Tags" value={
+                <div className="flex flex-wrap gap-1">
+                  {(co.tags ?? []).map(t => <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{t}</span>)}
+                </div>
+              } />
+            )}
+          </div>
+
+          {/* Violations */}
+          {totalViolations > 0 && (
+            <div className="px-4 py-3">
+              <SectionHeading label="Violations" count={totalViolations} />
+
+              {operational.length > 0 && (
+                <div className="mb-3">
+                  <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Operational</p>
+                  <div className="space-y-1.5">
+                    {operational.map((v, i) => (
+                      <div key={i} className="flex items-start gap-2 py-1 border-b border-border/30 last:border-0">
+                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 ${v.severity === 'critical' ? 'bg-coral' : v.severity === 'high' ? 'bg-amber' : 'bg-muted-foreground'}`} />
+                        <span className="text-[11px] text-foreground flex-1">{v.label}</span>
+                        {v.action && !isSecret && (
+                          <button onClick={() => onTicket(v.actionKey ?? 'fix')}
+                            className="text-[10px] text-teal hover:underline flex-shrink-0">{v.action}</button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {quantum.length > 0 && (
+                <div>
+                  <p className="text-[10px] text-purple-light mb-1.5 font-medium flex items-center gap-1">
+                    <Atom className="w-3 h-3" /> Quantum / PQC
+                    <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-purple/15 text-purple-light">NIST 2030</span>
+                  </p>
+                  <div className="space-y-1.5">
+                    {quantum.map((v, i) => (
+                      <div key={i} className="flex items-start gap-2 py-1 border-b border-border/30 last:border-0">
+                        <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 bg-purple/60" />
+                        <span className="text-[11px] text-foreground flex-1">{v.label}</span>
+                        {v.action && (
+                          <button onClick={() => onTicket(v.actionKey ?? 'pqc')}
+                            className="text-[10px] text-purple-light hover:underline flex-shrink-0">{v.action}</button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Linked infrastructure */}
+          <div className="px-4 py-3">
+            <div className="flex items-center gap-2 mb-2">
+              <SectionHeading label={`Linked infrastructure (${assoc.length})`} />
+              {assoc.length > 0 && <span className="text-[10px] text-amber ml-auto">failure affects all</span>}
+            </div>
             {assoc.length > 0 ? (
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 {assoc.map(a => (
                   <button key={a.id}
                     onClick={() => { setFilters({ tab: 'infrastructure', assetId: a.id }); setCurrentPage('inventory'); onClose(); }}
-                    className="w-full flex items-center gap-2 text-[10px] rounded px-1.5 py-1 hover:bg-secondary/50 transition-colors text-left group">
-                    <span className="text-foreground font-medium flex-1 truncate group-hover:text-teal transition-colors">{a.name}</span>
-                    <span className="text-muted-foreground flex-shrink-0">{a.type}</span>
+                    className="w-full flex items-center gap-2 text-[11px] rounded px-2 py-1.5 hover:bg-secondary/50 transition-colors text-left group">
+                    <span className="text-foreground font-medium flex-1 truncate group-hover:text-teal">{a.name}</span>
+                    <span className="text-muted-foreground flex-shrink-0 text-[10px]">{a.type}</span>
                     <EnvBadge env={a.environment} />
-                    <ArrowRight className="w-3 h-3 text-muted-foreground/40 group-hover:text-teal transition-colors flex-shrink-0" />
+                    <ArrowRight className="w-3 h-3 text-muted-foreground/40 group-hover:text-teal flex-shrink-0" />
                   </button>
                 ))}
               </div>
             ) : (
-              <p className="text-[10px] text-muted-foreground italic">No linked infrastructure</p>
+              <div className="rounded-lg border border-border/40 px-3 py-3 text-[11px] text-muted-foreground">
+                Not deployed to any tracked infrastructure asset.
+                <span className="block text-[10px] mt-0.5">Add this identity to an asset in the Infrastructure tab to track blast radius.</span>
+              </div>
             )}
           </div>
 
-          {/* Quantum Risk */}
-          {isPqc && (
-            <div className="px-4 py-3">
-              <p className="text-[10px] font-semibold text-purple-light mb-1.5 flex items-center gap-1.5">
-                <Atom className="w-3 h-3" />
-                Quantum Risk
-                <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-purple/15">NIST 2030</span>
-              </p>
-              <div className="rounded-lg bg-purple/5 border border-purple/20 p-3 text-[10px]">
-                <span className="font-mono font-semibold text-foreground">{co.algorithm}</span>
-                <span className="text-muted-foreground"> is quantum-vulnerable.</span>
-                {expYear > 0 && <span className="text-muted-foreground"> Expires {expYear}{yearsPast > 0 ? <span className="text-coral font-semibold"> — {yearsPast}yr past NIST deadline</span> : ' — at NIST deadline'}.</span>}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
@@ -1033,7 +1194,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                             if (sortKey === col.key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
                             else { setSortKey('riskScore'); setSortDir('desc'); }
                           }}
-                          className={`inline-flex items-center gap-1 hover:text-foreground w-full ${sortKey === col.key ? 'text-foreground' : ''}`}
+                          className={`inline-flex items-center gap-1 hover:text-foreground w-full justify-end ${sortKey === col.key ? 'text-foreground' : ''}`}
                         >
                           {col.label} {sortKey === col.key ? (sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />) : <ChevronDown className="w-3 h-3 opacity-30" />}
                         </button>
@@ -1060,7 +1221,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                               )}
                             </span>
                           ) : (
-                            <div className={`flex items-center ${col.cls.includes('text-center') ? 'justify-center' : ''}`}>
+                            <div className={`flex items-center ${col.cls.includes('text-right') ? 'justify-end' : col.cls.includes('text-center') ? 'justify-center' : ''}`}>
                               <CellValue col={col} co={co} />
                             </div>
                           )}
