@@ -1288,3 +1288,4 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
     </div>
   );
 }
+}
