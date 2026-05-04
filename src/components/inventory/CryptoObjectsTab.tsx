@@ -59,7 +59,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'environment',  label: 'Env',              cls: 'w-24' },
     { key: 'lastActivity', label: 'Last Activity',    cls: 'w-28' },
     { key: 'violations',   label: 'Violations',       cls: 'w-20' },
-    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-28' },
+    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-36' },
   ],
   'TLS Certificate': [
     { key: 'name',         label: 'Common Name',      cls: 'min-w-[180px] flex-1' },
@@ -72,7 +72,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'status',       label: 'Status',           cls: 'w-24' },
     { key: 'pqcRisk',      label: 'PQC',              cls: 'w-20' },
     { key: 'violations',   label: 'Violations',       cls: 'w-20' },
-    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-28' },
+    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-36' },
   ],
   'SSH Key': [
     { key: 'name',         label: 'Key Name',         cls: 'min-w-[180px] flex-1' },
@@ -84,7 +84,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'sshHosts',     label: 'Hosts',            cls: 'w-16' },
     { key: 'status',       label: 'Status',           cls: 'w-24' },
     { key: 'pqcRisk',      label: 'PQC',              cls: 'w-20' },
-    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-28' },
+    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-36' },
   ],
   'SSH Certificate': [
     { key: 'name',         label: 'Cert Name',        cls: 'min-w-[180px] flex-1' },
@@ -94,7 +94,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'daysToExpiry', label: 'Days',             cls: 'w-16' },
     { key: 'autoRenewal',  label: 'Auto',             cls: 'w-14' },
     { key: 'status',       label: 'Status',           cls: 'w-24' },
-    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-28' },
+    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-36' },
   ],
   'Code-Signing Certificate': [
     { key: 'name',          label: 'Cert Name',        cls: 'min-w-[180px] flex-1' },
@@ -106,7 +106,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'infrastructure',label: 'HSM',              cls: 'w-28' },
     { key: 'status',        label: 'Status',           cls: 'w-24' },
     { key: 'pqcRisk',       label: 'PQC',              cls: 'w-20' },
-    { key: 'riskScore',     label: 'Crypto Risk Score',cls: 'w-28' },
+    { key: 'riskScore',     label: 'Crypto Risk Score',cls: 'w-36' },
   ],
   'K8s Workload Cert': [
     { key: 'name',              label: 'Workload',         cls: 'min-w-[180px] flex-1' },
@@ -117,7 +117,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'daysToExpiry',      label: 'Days',             cls: 'w-16' },
     { key: 'autoRenewal',       label: 'Auto',             cls: 'w-14' },
     { key: 'status',            label: 'Status',           cls: 'w-24' },
-    { key: 'riskScore',         label: 'Crypto Risk Score',cls: 'w-28' },
+    { key: 'riskScore',         label: 'Crypto Risk Score',cls: 'w-36' },
   ],
   'Encryption Key': [
     { key: 'name',              label: 'Key Name',         cls: 'min-w-[180px] flex-1' },
@@ -127,7 +127,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'lastRotated',       label: 'Last Rotated',     cls: 'w-28' },
     { key: 'autoRenewal',       label: 'Auto-Rotation',    cls: 'w-24' },
     { key: 'status',            label: 'State',            cls: 'w-24' },
-    { key: 'riskScore',         label: 'Crypto Risk Score',cls: 'w-28' },
+    { key: 'riskScore',         label: 'Crypto Risk Score',cls: 'w-36' },
   ],
   'AI Agent Token': [
     { key: 'name',         label: 'Token / Agent',    cls: 'min-w-[180px] flex-1' },
@@ -138,7 +138,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'daysToExpiry', label: 'Days',             cls: 'w-16' },
     { key: 'status',       label: 'Status',           cls: 'w-24' },
     { key: 'violations',   label: 'Violations',       cls: 'w-20' },
-    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-28' },
+    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-36' },
   ],
   'API Key / Secret': [
     { key: 'name',         label: 'Secret Name',      cls: 'min-w-[180px] flex-1' },
@@ -149,7 +149,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'exposedIn',    label: 'Exposed In',       cls: 'w-32' },
     { key: 'status',       label: 'Status',           cls: 'w-24' },
     { key: 'violations',   label: 'Violations',       cls: 'w-20' },
-    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-28' },
+    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-36' },
   ],
 };
 
@@ -246,7 +246,7 @@ function CellValue({ col, co }: { col: ColDef; co: CryptoAsset }) {
       const c = s >= 80 ? 'text-coral' : s >= 60 ? 'text-amber' : s >= 30 ? 'text-blue-400' : 'text-teal';
       return <span className={`text-[11px] font-bold tabular-nums ${c}`}>{s}</span>;
     }
-    case 'name':         return <span className="font-medium text-foreground truncate">{co.name}</span>;
+    case 'name':         return <span className="font-medium text-foreground truncate block max-w-full">{co.name}</span>;
     case 'status':       return <StatusBadge status={co.status} />;
     case 'pqcRisk':      return <PQCBadge risk={co.pqcRisk} />;
     case 'environment':  return <EnvBadge env={co.environment} />;
@@ -1055,11 +1055,11 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
         {/* Table */}
         <div className="bg-card rounded-lg border border-border overflow-hidden flex-1 min-h-0 flex flex-col">
           <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto scrollbar-thin">
-            <table className="w-full text-xs table-auto">
+            <table className="w-full text-xs table-fixed">
               <thead className="bg-secondary/50 sticky top-0 z-10">
                 <tr className="border-b border-border">
                   {cols.map(col => (
-                    <th key={col.key} className={`text-left py-2 px-2 font-medium text-muted-foreground ${col.cls}`}>
+                    <th key={col.key} className={`text-left py-2 px-3 font-medium text-muted-foreground whitespace-nowrap ${col.cls}`}>
                       {col.key === 'riskScore' || col.key === 'daysToExpiry' ? (
                         <button
                           onClick={() => {
@@ -1073,7 +1073,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                       ) : col.label}
                     </th>
                   ))}
-                  <th className="w-28 py-2 px-2" />
+                  <th className="w-8 py-2 px-3" />
                 </tr>
               </thead>
               <tbody>
@@ -1084,7 +1084,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                       onClick={() => setDetailAsset(co)}
                       className={`border-b border-border/30 hover:bg-secondary/30 transition-colors cursor-pointer group ${isManual ? 'opacity-75' : ''}`}>
                       {cols.map(col => (
-                        <td key={col.key} className={`py-2 px-2 ${col.cls}`}>
+                        <td key={col.key} className={`py-2 px-3 whitespace-nowrap ${col.cls}`}>
                           {col.key === 'name' && isManual ? (
                             <span className="font-medium text-foreground truncate flex items-center gap-1.5">
                               <span className="truncate">{co.name}</span>
@@ -1095,7 +1095,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                           ) : <CellValue col={col} co={co} />}
                         </td>
                       ))}
-                      <td className="py-2 px-2 text-right" onClick={e => e.stopPropagation()}>
+                      <td className="w-8 py-2 px-3 text-right" onClick={e => e.stopPropagation()}>
                         <button
                           onClick={() => setDetailAsset(co)}
                           className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-secondary text-muted-foreground"
