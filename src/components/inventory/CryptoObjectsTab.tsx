@@ -51,14 +51,14 @@ interface ColDef { key: string; label: string; cls: string; }
 
 const COLS: Record<string, ColDef[]> = {
   All: [
-    { key: 'name',         label: 'Name',        cls: 'min-w-[200px] flex-1' },
-    { key: 'type',         label: 'Type',         cls: 'w-32' },
+    { key: 'name',         label: 'Name',        cls: 'min-w-[160px] flex-1' },
+    { key: 'type',         label: 'Type',         cls: 'w-28' },
     { key: 'status',       label: 'Status',       cls: 'w-24' },
     { key: 'pqcRisk',      label: 'PQC',          cls: 'w-20' },
-    { key: 'owner',        label: 'Owner',        cls: 'w-32' },
-    { key: 'environment',  label: 'Env',          cls: 'w-24' },
-    { key: 'lastActivity', label: 'Last Activity',cls: 'w-28' },
-    { key: 'violations',   label: 'V',            cls: 'w-10 text-center' },
+    { key: 'owner',        label: 'Owner',        cls: 'w-28' },
+    { key: 'environment',  label: 'Env',          cls: 'w-20' },
+    { key: 'lastActivity', label: 'Last Activity',cls: 'w-24' },
+    { key: 'violations',   label: 'V',            cls: 'w-8 text-center' },
     { key: 'riskScore',    label: 'Risk',         cls: 'w-20 text-right pr-4' },
   ],
   'TLS Certificate': [
