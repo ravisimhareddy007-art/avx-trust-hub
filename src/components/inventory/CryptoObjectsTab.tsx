@@ -1033,7 +1033,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                             if (sortKey === col.key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
                             else { setSortKey('riskScore'); setSortDir('desc'); }
                           }}
-                          className={`inline-flex items-center gap-1 hover:text-foreground w-full justify-end ${sortKey === col.key ? 'text-foreground' : ''}`}
+                          className={`inline-flex items-center gap-1 hover:text-foreground w-full ${sortKey === col.key ? 'text-foreground' : ''}`}
                         >
                           {col.label} {sortKey === col.key ? (sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />) : <ChevronDown className="w-3 h-3 opacity-30" />}
                         </button>
