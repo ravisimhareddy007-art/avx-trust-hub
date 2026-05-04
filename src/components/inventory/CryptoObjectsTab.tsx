@@ -9,7 +9,7 @@ import { StatusBadge, EnvBadge, PQCBadge, DaysToExpiry } from '@/components/shar
 import {
   Search, X, Info, Atom, FileEdit, ArrowRight,
   RefreshCw, UserPlus, Ticket, Lock, ChevronUp, ChevronDown,
-  Filter as FilterIcon,
+  Filter as FilterIcon, MoreHorizontal,
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { toast } from 'sonner';
