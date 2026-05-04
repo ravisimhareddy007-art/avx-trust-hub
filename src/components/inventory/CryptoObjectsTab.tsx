@@ -1048,7 +1048,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
 
         {/* Table */}
         <div className="bg-card rounded-lg border border-border overflow-hidden flex-1 min-h-0 flex flex-col">
-          <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto scrollbar-thin">
+          <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto scrollbar-thin">
             <table className="w-full text-xs table-auto">
               <thead className="bg-secondary/50 sticky top-0 z-10">
                 <tr className="border-b border-border">
