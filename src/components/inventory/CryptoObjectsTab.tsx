@@ -9,7 +9,7 @@ import { StatusBadge, EnvBadge, PQCBadge, DaysToExpiry } from '@/components/shar
 import {
   Search, X, Info, Atom, FileEdit, ArrowRight,
   RefreshCw, UserPlus, Ticket, Lock, ChevronUp, ChevronDown,
-  Filter as FilterIcon, MoreVertical,
+  Filter as FilterIcon,
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { toast } from 'sonner';
@@ -51,92 +51,105 @@ interface ColDef { key: string; label: string; cls: string; }
 
 const COLS: Record<string, ColDef[]> = {
   All: [
-    { key: 'name',         label: 'Name',         cls: 'w-auto min-w-[180px] max-w-0' },
-    { key: 'type',         label: 'Type',         cls: 'w-28' },
-    { key: 'status',       label: 'Status',       cls: 'w-24' },
-    { key: 'pqcRisk',      label: 'PQC',          cls: 'w-20' },
-    { key: 'owner',        label: 'Owner',        cls: 'w-32' },
-    { key: 'environment',  label: 'Env',          cls: 'w-20' },
-    { key: 'lastActivity', label: 'Last Activity',cls: 'w-32' },
-    { key: 'violations',   label: 'Violations',   cls: 'w-24 text-center' },
-    { key: 'riskScore',    label: 'Risk',         cls: 'w-20 text-right pr-4' },
+    { key: 'name',         label: 'Name',             cls: 'min-w-[180px] flex-1' },
+    { key: 'type',         label: 'Type',             cls: 'w-36' },
+    { key: 'status',       label: 'Status',           cls: 'w-24' },
+    { key: 'pqcRisk',      label: 'PQC',              cls: 'w-20' },
+    { key: 'owner',        label: 'Owner',            cls: 'w-32' },
+    { key: 'environment',  label: 'Env',              cls: 'w-24' },
+    { key: 'lastActivity', label: 'Last Activity',    cls: 'w-28' },
+    { key: 'violations',   label: 'Violations',       cls: 'w-20' },
+    { key: 'riskScore',    label: 'Risk', cls: 'w-20 text-right pr-3' },
   ],
   'TLS Certificate': [
-    { key: 'name',         label: 'Common Name',  cls: 'w-auto min-w-[200px] max-w-0' },
-    { key: 'caIssuer',     label: 'CA / Issuer',  cls: 'w-36' },
-    { key: 'algorithm',    label: 'Algorithm',    cls: 'w-24' },
-    { key: 'expiryDays',   label: 'Expiry',       cls: 'w-36' },
-    { key: 'status',       label: 'Status',       cls: 'w-24' },
-    { key: 'pqcRisk',      label: 'PQC',          cls: 'w-20' },
-    { key: 'violations',   label: 'Violations',   cls: 'w-24 text-center' },
-    { key: 'riskScore',    label: 'Risk',         cls: 'w-20 text-right pr-4' },
+    { key: 'name',         label: 'Common Name',      cls: 'min-w-[180px] flex-1' },
+    { key: 'caIssuer',     label: 'CA / Issuer',      cls: 'w-36' },
+    { key: 'algorithm',    label: 'Algorithm',        cls: 'w-24' },
+    { key: 'issueDate',    label: 'Valid From',       cls: 'w-24' },
+    { key: 'expiryDate',   label: 'Expiry',           cls: 'w-24' },
+    { key: 'daysToExpiry', label: 'Days',             cls: 'w-16' },
+    { key: 'autoRenewal',  label: 'Auto',             cls: 'w-14' },
+    { key: 'status',       label: 'Status',           cls: 'w-24' },
+    { key: 'pqcRisk',      label: 'PQC',              cls: 'w-20' },
+    { key: 'violations',   label: 'Violations',       cls: 'w-20' },
+    { key: 'riskScore',    label: 'Risk', cls: 'w-20 text-right pr-3' },
   ],
   'SSH Key': [
-    { key: 'name',         label: 'Key Name',     cls: 'w-auto min-w-[200px] max-w-0' },
-    { key: 'algorithm',    label: 'Key Type',     cls: 'w-24' },
-    { key: 'owner',        label: 'Owner',        cls: 'w-28' },
-    { key: 'sshLastUsed',  label: 'Last Used',    cls: 'w-28' },
-    { key: 'lastRotated',  label: 'Last Rotated', cls: 'w-28' },
-    { key: 'sshHosts',     label: 'Hosts',        cls: 'w-14 text-center' },
-    { key: 'status',       label: 'Status',       cls: 'w-24' },
-    { key: 'pqcRisk',      label: 'PQC',          cls: 'w-20' },
-    { key: 'riskScore',    label: 'Risk',         cls: 'w-20 text-right pr-4' },
+    { key: 'name',         label: 'Key Name',         cls: 'min-w-[180px] flex-1' },
+    { key: 'algorithm',    label: 'Key Type',         cls: 'w-24' },
+    { key: 'serial',       label: 'Fingerprint',      cls: 'w-40' },
+    { key: 'owner',        label: 'Owner',            cls: 'w-28' },
+    { key: 'sshLastUsed',  label: 'Last Used',        cls: 'w-28' },
+    { key: 'lastRotated',  label: 'Last Rotated',     cls: 'w-28' },
+    { key: 'sshHosts',     label: 'Hosts',            cls: 'w-16' },
+    { key: 'status',       label: 'Status',           cls: 'w-24' },
+    { key: 'pqcRisk',      label: 'PQC',              cls: 'w-20' },
+    { key: 'riskScore',    label: 'Risk', cls: 'w-20 text-right pr-3' },
   ],
   'SSH Certificate': [
-    { key: 'name',         label: 'Cert Name',    cls: 'w-auto min-w-[200px] max-w-0' },
-    { key: 'caIssuer',     label: 'CA',           cls: 'w-36' },
-    { key: 'commonName',   label: 'Principals',   cls: 'w-36' },
-    { key: 'expiryDays',   label: 'Expiry',       cls: 'w-36' },
-    { key: 'status',       label: 'Status',       cls: 'w-24' },
-    { key: 'riskScore',    label: 'Risk',         cls: 'w-20 text-right pr-4' },
+    { key: 'name',         label: 'Cert Name',        cls: 'min-w-[180px] flex-1' },
+    { key: 'caIssuer',     label: 'CA',               cls: 'w-36' },
+    { key: 'commonName',   label: 'Principals',       cls: 'w-36' },
+    { key: 'expiryDate',   label: 'Expiry',           cls: 'w-24' },
+    { key: 'daysToExpiry', label: 'Days',             cls: 'w-16' },
+    { key: 'autoRenewal',  label: 'Auto',             cls: 'w-14' },
+    { key: 'status',       label: 'Status',           cls: 'w-24' },
+    { key: 'riskScore',    label: 'Risk', cls: 'w-20 text-right pr-3' },
   ],
   'Code-Signing Certificate': [
-    { key: 'name',          label: 'Cert Name',   cls: 'w-auto min-w-[200px] max-w-0' },
-    { key: 'caIssuer',      label: 'CA',          cls: 'w-36' },
-    { key: 'algorithm',     label: 'Algorithm',   cls: 'w-24' },
-    { key: 'keyLength',     label: 'Key Size',    cls: 'w-20' },
-    { key: 'expiryDays',    label: 'Expiry',      cls: 'w-36' },
-    { key: 'status',        label: 'Status',      cls: 'w-24' },
-    { key: 'pqcRisk',       label: 'PQC',         cls: 'w-20' },
-    { key: 'riskScore',     label: 'Risk',        cls: 'w-20 text-right pr-4' },
+    { key: 'name',          label: 'Cert Name',        cls: 'min-w-[180px] flex-1' },
+    { key: 'caIssuer',      label: 'CA',               cls: 'w-36' },
+    { key: 'algorithm',     label: 'Algorithm',        cls: 'w-24' },
+    { key: 'keyLength',     label: 'Key Size',         cls: 'w-20' },
+    { key: 'expiryDate',    label: 'Expiry',           cls: 'w-24' },
+    { key: 'daysToExpiry',  label: 'Days',             cls: 'w-16' },
+    { key: 'infrastructure',label: 'HSM',              cls: 'w-28' },
+    { key: 'status',        label: 'Status',           cls: 'w-24' },
+    { key: 'pqcRisk',       label: 'PQC',              cls: 'w-20' },
+    { key: 'riskScore',     label: 'Risk', cls: 'w-20 text-right pr-3' },
   ],
   'K8s Workload Cert': [
-    { key: 'name',              label: 'Workload',       cls: 'w-auto min-w-[200px] max-w-0' },
-    { key: 'application',       label: 'Namespace / App',cls: 'w-36' },
-    { key: 'caIssuer',          label: 'CA',             cls: 'w-28' },
-    { key: 'expiryDays',        label: 'Expiry',         cls: 'w-36' },
-    { key: 'status',            label: 'Status',         cls: 'w-24' },
-    { key: 'riskScore',         label: 'Risk',           cls: 'w-20 text-right pr-4' },
+    { key: 'name',              label: 'Workload',         cls: 'min-w-[180px] flex-1' },
+    { key: 'application',       label: 'Namespace / App',  cls: 'w-36' },
+    { key: 'caIssuer',          label: 'CA',               cls: 'w-28' },
+    { key: 'rotationFrequency', label: 'Rotation',         cls: 'w-24' },
+    { key: 'expiryDate',        label: 'Expiry',           cls: 'w-24' },
+    { key: 'daysToExpiry',      label: 'Days',             cls: 'w-16' },
+    { key: 'autoRenewal',       label: 'Auto',             cls: 'w-14' },
+    { key: 'status',            label: 'Status',           cls: 'w-24' },
+    { key: 'riskScore',         label: 'Risk', cls: 'w-20 text-right pr-3' },
   ],
   'Encryption Key': [
-    { key: 'name',              label: 'Key Name',       cls: 'w-auto min-w-[200px] max-w-0' },
-    { key: 'caIssuer',          label: 'Key Store',      cls: 'w-36' },
-    { key: 'algorithm',         label: 'Algorithm',      cls: 'w-24' },
-    { key: 'lastRotated',       label: 'Last Rotated',   cls: 'w-28' },
-    { key: 'rotationFrequency', label: 'Rotation Policy',cls: 'w-28' },
-    { key: 'status',            label: 'State',          cls: 'w-24' },
-    { key: 'riskScore',         label: 'Risk',           cls: 'w-20 text-right pr-4' },
+    { key: 'name',              label: 'Key Name',         cls: 'min-w-[180px] flex-1' },
+    { key: 'caIssuer',          label: 'Key Store',        cls: 'w-36' },
+    { key: 'algorithm',         label: 'Algorithm',        cls: 'w-24' },
+    { key: 'rotationFrequency', label: 'Rotation Policy',  cls: 'w-28' },
+    { key: 'lastRotated',       label: 'Last Rotated',     cls: 'w-28' },
+    { key: 'autoRenewal',       label: 'Auto-Rotation',    cls: 'w-24' },
+    { key: 'status',            label: 'State',            cls: 'w-24' },
+    { key: 'riskScore',         label: 'Risk', cls: 'w-20 text-right pr-3' },
   ],
   'AI Agent Token': [
-    { key: 'name',         label: 'Token / Agent',   cls: 'w-auto min-w-[200px] max-w-0' },
-    { key: 'agentFw',      label: 'Framework',       cls: 'w-32' },
-    { key: 'actionsDay',   label: 'Actions/Day',     cls: 'w-24' },
-    { key: 'permRisk',     label: 'Permission Risk', cls: 'w-28' },
-    { key: 'expiryDays',   label: 'Expiry',          cls: 'w-36' },
-    { key: 'status',       label: 'Status',          cls: 'w-24' },
-    { key: 'violations',   label: 'Violations',      cls: 'w-24 text-center' },
-    { key: 'riskScore',    label: 'Risk',            cls: 'w-20 text-right pr-4' },
+    { key: 'name',         label: 'Token / Agent',    cls: 'min-w-[180px] flex-1' },
+    { key: 'agentFw',      label: 'Framework',        cls: 'w-32' },
+    { key: 'actionsDay',   label: 'Actions/Day',      cls: 'w-24' },
+    { key: 'permRisk',     label: 'Permission Risk',  cls: 'w-28' },
+    { key: 'expiryDate',   label: 'Expiry',           cls: 'w-24' },
+    { key: 'daysToExpiry', label: 'Days',             cls: 'w-16' },
+    { key: 'status',       label: 'Status',           cls: 'w-24' },
+    { key: 'violations',   label: 'Violations',       cls: 'w-20' },
+    { key: 'riskScore',    label: 'Risk', cls: 'w-20 text-right pr-3' },
   ],
   'API Key / Secret': [
-    { key: 'name',         label: 'Secret Name',  cls: 'w-auto min-w-[200px] max-w-0' },
-    { key: 'caIssuer',     label: 'Secret Store', cls: 'w-32' },
-    { key: 'secretType',   label: 'Type',         cls: 'w-28' },
-    { key: 'owner',        label: 'Owner',        cls: 'w-28' },
-    { key: 'lastRotated',  label: 'Last Rotated', cls: 'w-28' },
-    { key: 'exposedIn',    label: 'Exposed In',   cls: 'w-28' },
-    { key: 'status',       label: 'Status',       cls: 'w-24' },
-    { key: 'violations',   label: 'Violations',   cls: 'w-24 text-center' },
-    { key: 'riskScore',    label: 'Risk',         cls: 'w-20 text-right pr-4' },
+    { key: 'name',         label: 'Secret Name',      cls: 'min-w-[180px] flex-1' },
+    { key: 'caIssuer',     label: 'Secret Store',     cls: 'w-32' },
+    { key: 'secretType',   label: 'Type',             cls: 'w-28' },
+    { key: 'owner',        label: 'Owner',            cls: 'w-28' },
+    { key: 'lastRotated',  label: 'Last Rotated',     cls: 'w-28' },
+    { key: 'exposedIn',    label: 'Exposed In',       cls: 'w-32' },
+    { key: 'status',       label: 'Status',           cls: 'w-24' },
+    { key: 'violations',   label: 'Violations',       cls: 'w-20' },
+    { key: 'riskScore',    label: 'Risk', cls: 'w-20 text-right pr-3' },
   ],
 };
 
@@ -233,18 +246,11 @@ function CellValue({ col, co }: { col: ColDef; co: CryptoAsset }) {
       const c = s >= 80 ? 'text-coral' : s >= 60 ? 'text-amber' : s >= 30 ? 'text-blue-400' : 'text-teal';
       return <span className={`text-[11px] font-bold tabular-nums ${c}`}>{s}</span>;
     }
-    case 'name':         return <span className="font-medium text-foreground truncate block">{co.name}</span>;
+    case 'name':         return <span className="font-medium text-foreground truncate">{co.name}</span>;
     case 'status':       return <StatusBadge status={co.status} />;
     case 'pqcRisk':      return <PQCBadge risk={co.pqcRisk} />;
     case 'environment':  return <EnvBadge env={co.environment} />;
     case 'daysToExpiry': return <DaysToExpiry days={co.daysToExpiry} />;
-    case 'expiryDays':
-      return (
-        <span className="flex flex-col">
-          <span className="text-muted-foreground">{co.expiryDate !== 'N/A' ? co.expiryDate : '—'}</span>
-          {co.daysToExpiry >= 0 && <DaysToExpiry days={co.daysToExpiry} />}
-        </span>
-      );
     case 'autoRenewal':
       return <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${co.autoRenewal ? 'bg-teal/10 text-teal' : 'bg-muted text-muted-foreground'}`}>{co.autoRenewal ? 'Yes' : 'No'}</span>;
     case 'violations':
@@ -825,7 +831,6 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   const [ownerFilter, setOwnerFilter]   = useState<string[]>([]);
   const [filterIdActive, setFilterIdActive] = useState<string>('');
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
-  const [presetOpen, setPresetOpen] = useState(false);
   const [detailAsset, setDetailAsset]   = useState<CryptoAsset | null>(null);
   const [ticketAsset, setTicketAsset]   = useState<CryptoAsset | null>(null);
   const [ticketAction, setTicketAction] = useState('fix');
@@ -932,50 +937,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
               </button>
             );
           })}
-          <button
-            onClick={() => setPresetOpen(p => !p)}
-            className={`ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded text-[10.5px] font-medium border transition-colors ${
-              presetOpen
-                ? 'border-teal/40 text-teal bg-teal/10'
-                : 'border-border text-muted-foreground hover:text-foreground hover:bg-muted'
-            }`}
-          >
-            <span>Preset views</span>
-            {presetOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-          </button>
         </div>
-
-        {presetOpen && (
-          <div className="flex items-center gap-2 px-1 py-2 flex-wrap border-b border-border/40">
-            {[
-              { id: 'cert_expiring_7d',   label: 'Expiring soon' },
-              { id: 'cert_expired',       label: 'Expired' },
-              { id: 'ssh_suspicious',     label: 'Suspicious keys' },
-              { id: 'cert_weak_algo',     label: 'Weak algorithms' },
-              { id: 'cert_self_signed',   label: 'Self-signed in prod' },
-              { id: 'secret_exposed_code',label: 'Exposed secrets' },
-              { id: 'ai_over_privileged', label: 'Over-privileged tokens' },
-            ].map(p => (
-              <button
-                key={p.id}
-                onClick={() => {
-                  setFilterIdActive(p.id);
-                  if (VIOLATION_FILTERS[p.id]?.filters?.type) {
-                    setTypeFilter(VIOLATION_FILTERS[p.id].filters.type);
-                  }
-                  setPresetOpen(false);
-                }}
-                className={`px-2.5 py-1 rounded-full text-[10.5px] font-medium border transition-colors ${
-                  filterIdActive === p.id
-                    ? 'bg-purple/15 border-purple/30 text-purple-light'
-                    : 'bg-secondary border-border text-muted-foreground hover:text-foreground hover:border-border/80'
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-        )}
 
         {/* Search + Filters trigger */}
         {(() => {
@@ -995,6 +957,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
           const overflow = activeChips.length - visible.length;
           const totalActive = activeChips.length;
           const clearAll = () => { setAlgFilter([]); setEnvFilter([]); setStatusFilter([]); setPqcFilter([]); setOwnerFilter([]); setFilterIdActive(''); };
+          const activeDashFilter = filterIdActive ? VIOLATION_FILTERS[filterIdActive] : null;
           return (
             <div className="flex flex-col gap-2 flex-shrink-0">
               <div className="flex items-center gap-2 flex-wrap">
@@ -1018,51 +981,61 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                     <span className="ml-1 px-1.5 py-0.5 rounded-full bg-teal/20 text-teal text-[9px] font-bold tabular-nums">{totalActive}</span>
                   )}
                 </button>
-                {visible.map(c => (
-                  <span key={c.key} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted border border-border text-[10px] text-foreground flex-shrink-0">
-                    {c.label}
-                    <button onClick={c.remove} className="text-muted-foreground hover:text-coral">
-                      <X className="w-2.5 h-2.5" />
-                    </button>
-                  </span>
-                ))}
-                {overflow > 0 && (
-                  <button onClick={() => setFilterPanelOpen(true)} className="text-[10px] text-muted-foreground hover:text-foreground px-1 flex-shrink-0">
-                    +{overflow} more
-                  </button>
-                )}
-                {totalActive > 0 && (
-                  <button onClick={clearAll} className="text-[10px] text-coral hover:underline flex-shrink-0">
-                    Clear all
-                  </button>
-                )}
-                <span className="text-[10px] text-muted-foreground ml-auto flex-shrink-0">
-                  {filterIdActive && VIOLATION_FILTERS[filterIdActive]
-                    ? `${filtered.length} of ${VIOLATION_FILTERS[filterIdActive].enterpriseCount.toLocaleString()} ${VIOLATION_FILTERS[filterIdActive].countNoun}`
-                    : `${filtered.length} identities`}
-                </span>
+                <span className="text-[10px] text-muted-foreground ml-auto">{filtered.length} identities</span>
               </div>
+              {totalActive > 0 && (
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {visible.map(c => (
+                    <span key={c.key} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted border border-border text-[10px] text-foreground">
+                      {c.label}
+                      <button onClick={c.remove} className="text-muted-foreground hover:text-coral">
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </span>
+                  ))}
+                  {overflow > 0 && (
+                    <button onClick={() => setFilterPanelOpen(true)} className="text-[10px] text-muted-foreground hover:text-foreground px-1.5">
+                      +{overflow} more
+                    </button>
+                  )}
+                  <button onClick={clearAll} className="text-[10px] text-coral hover:underline ml-1">Clear all</button>
+                </div>
+              )}
+              {/* Representative data banner — shown when drilled in from dashboard */}
+              {activeDashFilter && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-teal/5 border border-teal/20 text-[10.5px]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-teal flex-shrink-0" />
+                  <span className="text-muted-foreground">
+                    Showing <span className="font-semibold text-foreground">{filtered.length}</span> representative samples matching
+                    {' '}<span className="font-semibold text-foreground">"{activeDashFilter.label}"</span>.
+                    {' '}Enterprise total: <span className="font-semibold text-teal">{activeDashFilter.enterpriseCount.toLocaleString()} {activeDashFilter.countNoun}</span>.
+                  </span>
+                  <button onClick={() => setFilterIdActive('')} className="ml-auto text-[10px] text-muted-foreground hover:text-foreground flex-shrink-0">
+                    Clear ×
+                  </button>
+                </div>
+              )}
             </div>
           );
         })()}
 
         {/* Table */}
         <div className="bg-card rounded-lg border border-border overflow-hidden flex-1 min-h-0 flex flex-col">
-          <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto scrollbar-thin pr-2">
-            <table className="w-full text-xs table-fixed">
+          <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto scrollbar-thin">
+            <table className="w-full text-xs table-auto">
               <thead className="bg-secondary/50 sticky top-0 z-10">
                 <tr className="border-b border-border">
                   {cols.map(col => (
-                    <th key={col.key} className={`py-2 px-3 font-medium text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis ${col.cls.includes('text-right') ? 'text-right' : col.cls.includes('text-center') ? 'text-center' : 'text-left'} ${col.cls}`}>
-                      {col.key === 'riskScore' || col.key === 'daysToExpiry' ? (
+                    <th key={col.key} className={`text-left py-2.5 px-3 font-medium text-muted-foreground whitespace-nowrap ${col.cls}`}>
+                      {col.key === 'riskScore' ? (
                         <button
                           onClick={() => {
                             if (sortKey === col.key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-                            else { setSortKey(col.key as 'riskScore' | 'daysToExpiry'); setSortDir(col.key === 'riskScore' ? 'desc' : 'asc'); }
+                            else { setSortKey('riskScore'); setSortDir('desc'); }
                           }}
-                          className={`inline-flex items-center gap-1 hover:text-foreground ${sortKey === col.key ? 'text-foreground' : ''}`}
+                          className={`inline-flex items-center gap-1 hover:text-foreground w-full justify-end ${sortKey === col.key ? 'text-foreground' : ''}`}
                         >
-                          {col.label} {sortKey === col.key ? (sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />) : null}
+                          {col.label} {sortKey === col.key ? (sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />) : <ChevronDown className="w-3 h-3 opacity-30" />}
                         </button>
                       ) : col.label}
                     </th>
@@ -1073,19 +1046,24 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                 {filtered.map(co => {
                   const isManual = manualIdentities.some(m => m.id === co.id);
                   return (
-                    <tr key={co.id}
-                      onClick={() => setDetailAsset(co)}
-                      className={`relative border-b border-border/30 hover:bg-secondary/30 transition-colors cursor-pointer group ${isManual ? 'opacity-75' : ''}`}>
+                    <tr key={co.id} onClick={() => setDetailAsset(co)}
+                      className="border-b border-border/40 hover:bg-secondary/30 cursor-pointer transition-colors">
                       {cols.map(col => (
-                        <td key={col.key} className={`py-2 px-3 align-middle ${col.key === 'name' ? 'overflow-hidden' : 'whitespace-nowrap overflow-hidden text-ellipsis'} ${col.cls}`}>
-                          {col.key === 'name' && isManual ? (
-                            <span className="font-medium text-foreground flex items-center gap-1.5 min-w-0">
+                        <td key={col.key} className={`py-2.5 px-3 overflow-hidden ${col.cls}`}>
+                          {col.key === 'name' ? (
+                            <span className="font-medium text-foreground truncate flex items-center gap-1.5 max-w-full">
                               <span className="truncate">{co.name}</span>
-                              <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-teal/10 text-teal text-[8px] flex-shrink-0">
-                                <FileEdit className="w-2 h-2" />
-                              </span>
+                              {isManual && (
+                                <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-teal/10 text-teal text-[8px] flex-shrink-0">
+                                  <FileEdit className="w-2 h-2" />
+                                </span>
+                              )}
                             </span>
-                          ) : <CellValue col={col} co={co} />}
+                          ) : (
+                            <div className={`flex items-center ${col.cls.includes('text-right') ? 'justify-end' : col.cls.includes('text-center') ? 'justify-center' : ''}`}>
+                              <CellValue col={col} co={co} />
+                            </div>
+                          )}
                         </td>
                       ))}
                     </tr>
