@@ -246,7 +246,7 @@ function CellValue({ col, co }: { col: ColDef; co: CryptoAsset }) {
       const c = s >= 80 ? 'text-coral' : s >= 60 ? 'text-amber' : s >= 30 ? 'text-blue-400' : 'text-teal';
       return <span className={`text-[11px] font-bold tabular-nums ${c}`}>{s}</span>;
     }
-    case 'name':         return <span className="font-medium text-foreground truncate block max-w-full">{co.name}</span>;
+    case 'name':         return <span className="font-medium text-foreground truncate block w-full">{co.name}</span>;
     case 'status':       return <StatusBadge status={co.status} />;
     case 'pqcRisk':      return <PQCBadge risk={co.pqcRisk} />;
     case 'environment':  return <EnvBadge env={co.environment} />;
@@ -1073,7 +1073,6 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                       ) : col.label}
                     </th>
                   ))}
-                  <th className="w-8 py-2 px-3" />
                 </tr>
               </thead>
               <tbody>
@@ -1082,9 +1081,9 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                   return (
                     <tr key={co.id}
                       onClick={() => setDetailAsset(co)}
-                      className={`border-b border-border/30 hover:bg-secondary/30 transition-colors cursor-pointer group ${isManual ? 'opacity-75' : ''}`}>
+                      className={`relative border-b border-border/30 hover:bg-secondary/30 transition-colors cursor-pointer group ${isManual ? 'opacity-75' : ''}`}>
                       {cols.map(col => (
-                        <td key={col.key} className={`py-2 px-3 whitespace-nowrap ${col.cls}`}>
+                        <td key={col.key} className={`py-2 px-3 ${col.cls}`}>
                           {col.key === 'name' && isManual ? (
                             <span className="font-medium text-foreground truncate flex items-center gap-1.5">
                               <span className="truncate">{co.name}</span>
@@ -1095,10 +1094,10 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                           ) : <CellValue col={col} co={co} />}
                         </td>
                       ))}
-                      <td className="w-8 py-2 px-3 text-right" onClick={e => e.stopPropagation()}>
+                      <td className="w-0 p-0 relative">
                         <button
-                          onClick={() => setDetailAsset(co)}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-secondary text-muted-foreground"
+                          onClick={e => { e.stopPropagation(); setDetailAsset(co); }}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-secondary text-muted-foreground"
                         >
                           <MoreVertical className="w-3.5 h-3.5" />
                         </button>
