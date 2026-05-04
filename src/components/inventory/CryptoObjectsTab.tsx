@@ -831,6 +831,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   const [ownerFilter, setOwnerFilter]   = useState<string[]>([]);
   const [filterIdActive, setFilterIdActive] = useState<string>('');
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+  const [presetOpen, setPresetOpen] = useState(false);
   const [detailAsset, setDetailAsset]   = useState<CryptoAsset | null>(null);
   const [ticketAsset, setTicketAsset]   = useState<CryptoAsset | null>(null);
   const [ticketAction, setTicketAction] = useState('fix');
@@ -937,7 +938,50 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
               </button>
             );
           })}
+          <button
+            onClick={() => setPresetOpen(p => !p)}
+            className={`ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded text-[10.5px] font-medium border transition-colors ${
+              presetOpen
+                ? 'border-teal/40 text-teal bg-teal/10'
+                : 'border-border text-muted-foreground hover:text-foreground hover:bg-muted'
+            }`}
+          >
+            <span>Preset views</span>
+            {presetOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          </button>
         </div>
+
+        {presetOpen && (
+          <div className="flex items-center gap-2 px-1 py-2 flex-wrap border-b border-border/40">
+            {[
+              { id: 'cert_expiring_7d',   label: 'Expiring soon' },
+              { id: 'cert_expired',       label: 'Expired' },
+              { id: 'ssh_suspicious',     label: 'Suspicious keys' },
+              { id: 'cert_weak_algo',     label: 'Weak algorithms' },
+              { id: 'cert_self_signed',   label: 'Self-signed in prod' },
+              { id: 'secret_exposed_code',label: 'Exposed secrets' },
+              { id: 'ai_over_privileged', label: 'Over-privileged tokens' },
+            ].map(p => (
+              <button
+                key={p.id}
+                onClick={() => {
+                  setFilterIdActive(p.id);
+                  if (VIOLATION_FILTERS[p.id]?.filters?.type) {
+                    setTypeFilter(VIOLATION_FILTERS[p.id].filters.type);
+                  }
+                  setPresetOpen(false);
+                }}
+                className={`px-2.5 py-1 rounded-full text-[10.5px] font-medium border transition-colors ${
+                  filterIdActive === p.id
+                    ? 'bg-purple/15 border-purple/30 text-purple-light'
+                    : 'bg-secondary border-border text-muted-foreground hover:text-foreground hover:border-border/80'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Search + Filters trigger */}
         {(() => {
@@ -980,28 +1024,30 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                     <span className="ml-1 px-1.5 py-0.5 rounded-full bg-teal/20 text-teal text-[9px] font-bold tabular-nums">{totalActive}</span>
                   )}
                 </button>
-                <span className="text-[10px] text-muted-foreground ml-auto">{filterIdActive && VIOLATION_FILTERS[filterIdActive]
-                  ? `${filtered.length} of ${VIOLATION_FILTERS[filterIdActive].enterpriseCount.toLocaleString()} ${VIOLATION_FILTERS[filterIdActive].countNoun}`
-                  : `${filtered.length} identities`}</span>
-              </div>
-              {totalActive > 0 && (
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {visible.map(c => (
-                    <span key={c.key} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted border border-border text-[10px] text-foreground">
-                      {c.label}
-                      <button onClick={c.remove} className="text-muted-foreground hover:text-coral">
-                        <X className="w-2.5 h-2.5" />
-                      </button>
-                    </span>
-                  ))}
-                  {overflow > 0 && (
-                    <button onClick={() => setFilterPanelOpen(true)} className="text-[10px] text-muted-foreground hover:text-foreground px-1.5">
-                      +{overflow} more
+                {visible.map(c => (
+                  <span key={c.key} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted border border-border text-[10px] text-foreground flex-shrink-0">
+                    {c.label}
+                    <button onClick={c.remove} className="text-muted-foreground hover:text-coral">
+                      <X className="w-2.5 h-2.5" />
                     </button>
-                  )}
-                  <button onClick={clearAll} className="text-[10px] text-coral hover:underline ml-1">Clear all</button>
-                </div>
-              )}
+                  </span>
+                ))}
+                {overflow > 0 && (
+                  <button onClick={() => setFilterPanelOpen(true)} className="text-[10px] text-muted-foreground hover:text-foreground px-1 flex-shrink-0">
+                    +{overflow} more
+                  </button>
+                )}
+                {totalActive > 0 && (
+                  <button onClick={clearAll} className="text-[10px] text-coral hover:underline flex-shrink-0">
+                    Clear all
+                  </button>
+                )}
+                <span className="text-[10px] text-muted-foreground ml-auto flex-shrink-0">
+                  {filterIdActive && VIOLATION_FILTERS[filterIdActive]
+                    ? `${filtered.length} of ${VIOLATION_FILTERS[filterIdActive].enterpriseCount.toLocaleString()} ${VIOLATION_FILTERS[filterIdActive].countNoun}`
+                    : `${filtered.length} identities`}
+                </span>
+              </div>
             </div>
           );
         })()}
