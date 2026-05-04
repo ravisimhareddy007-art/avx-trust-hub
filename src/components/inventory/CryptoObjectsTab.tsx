@@ -1048,12 +1048,12 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
 
         {/* Table */}
         <div className="bg-card rounded-lg border border-border overflow-hidden flex-1 min-h-0 flex flex-col">
-          <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto scrollbar-thin">
-            <table className="w-full text-xs table-auto">
+          <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto scrollbar-thin pr-2">
+            <table className="w-full text-xs table-fixed">
               <thead className="bg-secondary/50 sticky top-0 z-10">
                 <tr className="border-b border-border">
                   {cols.map(col => (
-                    <th key={col.key} className={`text-left py-2 px-3 font-medium text-muted-foreground whitespace-nowrap ${col.cls}`}>
+                    <th key={col.key} className={`py-2 px-3 font-medium text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis ${col.cls.includes('text-right') ? 'text-right' : col.cls.includes('text-center') ? 'text-center' : 'text-left'} ${col.cls}`}>
                       {col.key === 'riskScore' || col.key === 'daysToExpiry' ? (
                         <button
                           onClick={() => {
@@ -1077,9 +1077,9 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                       onClick={() => setDetailAsset(co)}
                       className={`relative border-b border-border/30 hover:bg-secondary/30 transition-colors cursor-pointer group ${isManual ? 'opacity-75' : ''}`}>
                       {cols.map(col => (
-                        <td key={col.key} className={`py-2 px-3 whitespace-nowrap ${col.cls}`}>
+                        <td key={col.key} className={`py-2 px-3 align-middle ${col.key === 'name' ? 'overflow-hidden' : 'whitespace-nowrap overflow-hidden text-ellipsis'} ${col.cls}`}>
                           {col.key === 'name' && isManual ? (
-                            <span className="font-medium text-foreground truncate flex items-center gap-1.5">
+                            <span className="font-medium text-foreground flex items-center gap-1.5 min-w-0">
                               <span className="truncate">{co.name}</span>
                               <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-teal/10 text-teal text-[8px] flex-shrink-0">
                                 <FileEdit className="w-2 h-2" />
