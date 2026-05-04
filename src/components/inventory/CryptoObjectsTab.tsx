@@ -1077,7 +1077,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                       onClick={() => setDetailAsset(co)}
                       className={`relative border-b border-border/30 hover:bg-secondary/30 transition-colors cursor-pointer group ${isManual ? 'opacity-75' : ''}`}>
                       {cols.map(col => (
-                        <td key={col.key} className={`py-2 px-3 ${col.cls}`}>
+                        <td key={col.key} className={`py-2 px-3 whitespace-nowrap ${col.cls}`}>
                           {col.key === 'name' && isManual ? (
                             <span className="font-medium text-foreground truncate flex items-center gap-1.5">
                               <span className="truncate">{co.name}</span>
