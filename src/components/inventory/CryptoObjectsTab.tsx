@@ -556,6 +556,9 @@ function TypeMetadata({ co }: { co: CryptoAsset }) {
     );
   }
 
+  return null;
+}
+
 // ── Secrets upsell ────────────────────────────────────────────────────────────
 
 const SECRETS_LICENSED = false;
@@ -1287,5 +1290,4 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
       />
     </div>
   );
-}
 }
