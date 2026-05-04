@@ -9,7 +9,7 @@ import { StatusBadge, EnvBadge, PQCBadge, DaysToExpiry } from '@/components/shar
 import {
   Search, X, Info, Atom, FileEdit, ArrowRight,
   RefreshCw, UserPlus, Ticket, Lock, ChevronUp, ChevronDown,
-  Filter as FilterIcon, MoreHorizontal,
+  Filter as FilterIcon, MoreVertical,
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { toast } from 'sonner';
@@ -51,7 +51,7 @@ interface ColDef { key: string; label: string; cls: string; }
 
 const COLS: Record<string, ColDef[]> = {
   All: [
-    { key: 'name',         label: 'Name',             cls: 'min-w-[180px] flex-1' },
+    { key: 'name',         label: 'Name',             cls: 'min-w-[180px] flex-1 max-w-[220px]' },
     { key: 'type',         label: 'Type',             cls: 'w-36' },
     { key: 'status',       label: 'Status',           cls: 'w-24' },
     { key: 'pqcRisk',      label: 'PQC',              cls: 'w-20' },
@@ -59,10 +59,10 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'environment',  label: 'Env',              cls: 'w-24' },
     { key: 'lastActivity', label: 'Last Activity',    cls: 'w-28' },
     { key: 'violations',   label: 'Violations',       cls: 'w-20' },
-    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-36' },
+    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-32 text-right' },
   ],
   'TLS Certificate': [
-    { key: 'name',         label: 'Common Name',      cls: 'min-w-[180px] flex-1' },
+    { key: 'name',         label: 'Common Name',      cls: 'min-w-[180px] flex-1 max-w-[220px]' },
     { key: 'caIssuer',     label: 'CA / Issuer',      cls: 'w-36' },
     { key: 'algorithm',    label: 'Algorithm',        cls: 'w-24' },
     { key: 'issueDate',    label: 'Valid From',       cls: 'w-24' },
@@ -72,10 +72,10 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'status',       label: 'Status',           cls: 'w-24' },
     { key: 'pqcRisk',      label: 'PQC',              cls: 'w-20' },
     { key: 'violations',   label: 'Violations',       cls: 'w-20' },
-    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-36' },
+    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-32 text-right' },
   ],
   'SSH Key': [
-    { key: 'name',         label: 'Key Name',         cls: 'min-w-[180px] flex-1' },
+    { key: 'name',         label: 'Key Name',         cls: 'min-w-[180px] flex-1 max-w-[220px]' },
     { key: 'algorithm',    label: 'Key Type',         cls: 'w-24' },
     { key: 'serial',       label: 'Fingerprint',      cls: 'w-40' },
     { key: 'owner',        label: 'Owner',            cls: 'w-28' },
@@ -84,20 +84,20 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'sshHosts',     label: 'Hosts',            cls: 'w-16' },
     { key: 'status',       label: 'Status',           cls: 'w-24' },
     { key: 'pqcRisk',      label: 'PQC',              cls: 'w-20' },
-    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-36' },
+    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-32 text-right' },
   ],
   'SSH Certificate': [
-    { key: 'name',         label: 'Cert Name',        cls: 'min-w-[180px] flex-1' },
+    { key: 'name',         label: 'Cert Name',        cls: 'min-w-[180px] flex-1 max-w-[220px]' },
     { key: 'caIssuer',     label: 'CA',               cls: 'w-36' },
     { key: 'commonName',   label: 'Principals',       cls: 'w-36' },
     { key: 'expiryDate',   label: 'Expiry',           cls: 'w-24' },
     { key: 'daysToExpiry', label: 'Days',             cls: 'w-16' },
     { key: 'autoRenewal',  label: 'Auto',             cls: 'w-14' },
     { key: 'status',       label: 'Status',           cls: 'w-24' },
-    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-36' },
+    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-32 text-right' },
   ],
   'Code-Signing Certificate': [
-    { key: 'name',          label: 'Cert Name',        cls: 'min-w-[180px] flex-1' },
+    { key: 'name',          label: 'Cert Name',        cls: 'min-w-[180px] flex-1 max-w-[220px]' },
     { key: 'caIssuer',      label: 'CA',               cls: 'w-36' },
     { key: 'algorithm',     label: 'Algorithm',        cls: 'w-24' },
     { key: 'keyLength',     label: 'Key Size',         cls: 'w-20' },
@@ -106,10 +106,10 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'infrastructure',label: 'HSM',              cls: 'w-28' },
     { key: 'status',        label: 'Status',           cls: 'w-24' },
     { key: 'pqcRisk',       label: 'PQC',              cls: 'w-20' },
-    { key: 'riskScore',     label: 'Crypto Risk Score',cls: 'w-36' },
+    { key: 'riskScore',     label: 'Crypto Risk Score',cls: 'w-32 text-right' },
   ],
   'K8s Workload Cert': [
-    { key: 'name',              label: 'Workload',         cls: 'min-w-[180px] flex-1' },
+    { key: 'name',              label: 'Workload',         cls: 'min-w-[180px] flex-1 max-w-[220px]' },
     { key: 'application',       label: 'Namespace / App',  cls: 'w-36' },
     { key: 'caIssuer',          label: 'CA',               cls: 'w-28' },
     { key: 'rotationFrequency', label: 'Rotation',         cls: 'w-24' },
@@ -117,20 +117,20 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'daysToExpiry',      label: 'Days',             cls: 'w-16' },
     { key: 'autoRenewal',       label: 'Auto',             cls: 'w-14' },
     { key: 'status',            label: 'Status',           cls: 'w-24' },
-    { key: 'riskScore',         label: 'Crypto Risk Score',cls: 'w-36' },
+    { key: 'riskScore',         label: 'Crypto Risk Score',cls: 'w-32 text-right' },
   ],
   'Encryption Key': [
-    { key: 'name',              label: 'Key Name',         cls: 'min-w-[180px] flex-1' },
+    { key: 'name',              label: 'Key Name',         cls: 'min-w-[180px] flex-1 max-w-[220px]' },
     { key: 'caIssuer',          label: 'Key Store',        cls: 'w-36' },
     { key: 'algorithm',         label: 'Algorithm',        cls: 'w-24' },
     { key: 'rotationFrequency', label: 'Rotation Policy',  cls: 'w-28' },
     { key: 'lastRotated',       label: 'Last Rotated',     cls: 'w-28' },
     { key: 'autoRenewal',       label: 'Auto-Rotation',    cls: 'w-24' },
     { key: 'status',            label: 'State',            cls: 'w-24' },
-    { key: 'riskScore',         label: 'Crypto Risk Score',cls: 'w-36' },
+    { key: 'riskScore',         label: 'Crypto Risk Score',cls: 'w-32 text-right' },
   ],
   'AI Agent Token': [
-    { key: 'name',         label: 'Token / Agent',    cls: 'min-w-[180px] flex-1' },
+    { key: 'name',         label: 'Token / Agent',    cls: 'min-w-[180px] flex-1 max-w-[220px]' },
     { key: 'agentFw',      label: 'Framework',        cls: 'w-32' },
     { key: 'actionsDay',   label: 'Actions/Day',      cls: 'w-24' },
     { key: 'permRisk',     label: 'Permission Risk',  cls: 'w-28' },
@@ -138,10 +138,10 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'daysToExpiry', label: 'Days',             cls: 'w-16' },
     { key: 'status',       label: 'Status',           cls: 'w-24' },
     { key: 'violations',   label: 'Violations',       cls: 'w-20' },
-    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-36' },
+    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-32 text-right' },
   ],
   'API Key / Secret': [
-    { key: 'name',         label: 'Secret Name',      cls: 'min-w-[180px] flex-1' },
+    { key: 'name',         label: 'Secret Name',      cls: 'min-w-[180px] flex-1 max-w-[220px]' },
     { key: 'caIssuer',     label: 'Secret Store',     cls: 'w-32' },
     { key: 'secretType',   label: 'Type',             cls: 'w-28' },
     { key: 'owner',        label: 'Owner',            cls: 'w-28' },
@@ -149,7 +149,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'exposedIn',    label: 'Exposed In',       cls: 'w-32' },
     { key: 'status',       label: 'Status',           cls: 'w-24' },
     { key: 'violations',   label: 'Violations',       cls: 'w-20' },
-    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-36' },
+    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-32 text-right' },
   ],
 };
 
@@ -1100,7 +1100,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                           onClick={() => setDetailAsset(co)}
                           className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-secondary text-muted-foreground"
                         >
-                          <MoreHorizontal className="w-3.5 h-3.5" />
+                          <MoreVertical className="w-3.5 h-3.5" />
                         </button>
                       </td>
                     </tr>
