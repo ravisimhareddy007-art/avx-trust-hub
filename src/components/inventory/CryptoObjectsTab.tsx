@@ -1020,15 +1020,16 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   const { setSelectedEntity }   = useAgent();
   const { filters: navFilters, setFilters, setCurrentPage } = useNav();
 
-  const { type: navType, status: navStatus, algorithm: navAlg, owner: navOwner, pqcRisk: navPqc } = navFilters;
+  const { type: navType, status: navStatus, algorithm: navAlg, owner: navOwner, pqcRisk: navPqc, search: navSearch } = navFilters;
   useEffect(() => {
     if (navType)              setTypeFilter(navType);
     if (navStatus)            setStatusFilter([navStatus]);
     if (navAlg)               setAlgFilter([navAlg]);
     if (navOwner)             setOwnerFilter([navOwner]);
     if (navPqc)               setPqcFilter([navPqc]);
+    if (navSearch)            setSearch(navSearch);
     if (navFilters.filterId)  setFilterIdActive(navFilters.filterId);
-  }, [navType, navStatus, navAlg, navOwner, navPqc, navFilters.filterId]);
+  }, [navType, navStatus, navAlg, navOwner, navPqc, navSearch, navFilters.filterId]);
 
   useEffect(() => {
     if (detailAsset) setSelectedEntity({ kind: 'identity', id: detailAsset.id, name: detailAsset.name });
