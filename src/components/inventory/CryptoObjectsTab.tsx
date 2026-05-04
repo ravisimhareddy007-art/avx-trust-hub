@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { mockAssets, CryptoAsset } from '@/data/mockData';
+import { VIOLATION_FILTERS } from '@/lib/filters/cryptoFilters';
 import { mockITAssets } from '@/data/inventoryMockData';
 import { useInventoryRegistry } from '@/context/InventoryRegistryContext';
 import { useAgent } from '@/context/AgentContext';
@@ -828,6 +829,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [pqcFilter, setPqcFilter]       = useState<string[]>([]);
   const [ownerFilter, setOwnerFilter]   = useState<string[]>([]);
+  const [filterIdActive, setFilterIdActive] = useState<string>('');
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
   const [detailAsset, setDetailAsset]   = useState<CryptoAsset | null>(null);
   const [ticketAsset, setTicketAsset]   = useState<CryptoAsset | null>(null);
@@ -843,12 +845,13 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
 
   const { type: navType, status: navStatus, algorithm: navAlg, owner: navOwner, pqcRisk: navPqc } = navFilters;
   useEffect(() => {
-    if (navType)   setTypeFilter(navType);
-    if (navStatus) setStatusFilter([navStatus]);
-    if (navAlg)    setAlgFilter([navAlg]);
-    if (navOwner)  setOwnerFilter([navOwner]);
-    if (navPqc)    setPqcFilter([navPqc]);
-  }, [navType, navStatus, navAlg, navOwner, navPqc]);
+    if (navType)              setTypeFilter(navType);
+    if (navStatus)            setStatusFilter([navStatus]);
+    if (navAlg)               setAlgFilter([navAlg]);
+    if (navOwner)             setOwnerFilter([navOwner]);
+    if (navPqc)               setPqcFilter([navPqc]);
+    if (navFilters.filterId)  setFilterIdActive(navFilters.filterId);
+  }, [navType, navStatus, navAlg, navOwner, navPqc, navFilters.filterId]);
 
   useEffect(() => {
     if (detailAsset) setSelectedEntity({ kind: 'identity', id: detailAsset.id, name: detailAsset.name });
@@ -878,6 +881,10 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
     if (statusFilter.length) r = r.filter(a => statusFilter.includes(a.status));
     if (pqcFilter.length)    r = r.filter(a => pqcFilter.includes(a.pqcRisk));
     if (ownerFilter.length)  r = r.filter(a => ownerFilter.includes('Unassigned') ? a.owner === 'Unassigned' : true);
+    // filterId — dashboard drill-down predicate (highest specificity, applied last)
+    if (filterIdActive && VIOLATION_FILTERS[filterIdActive]) {
+      r = r.filter(VIOLATION_FILTERS[filterIdActive].predicate);
+    }
 
     // Sorting — default risk_score DESC, with expiry tie-breaker
     const dir = sortDir === 'asc' ? 1 : -1;
@@ -901,7 +908,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
       r.sort((a, b) => (a.daysToExpiry - b.daysToExpiry) * dir);
     }
     return r;
-  }, [allAssets, typeFilter, search, algFilter, envFilter, statusFilter, pqcFilter, ownerFilter, sortKey, sortDir]);
+  }, [allAssets, typeFilter, search, algFilter, envFilter, statusFilter, pqcFilter, ownerFilter, sortKey, sortDir, filterIdActive]);
 
   const getAssoc = (co: CryptoAsset) => mockITAssets.filter(a => a.cryptoObjectIds.includes(co.id));
   const cols = COLS[typeFilter] ?? COLS['All'];
