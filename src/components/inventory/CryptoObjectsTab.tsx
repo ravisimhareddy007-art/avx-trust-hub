@@ -1080,8 +1080,9 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                 {filtered.map(co => {
                   const isManual = manualIdentities.some(m => m.id === co.id);
                   return (
-                    <tr key={co.id} onClick={() => setDetailAsset(co)}
-                      className="border-b border-border hover:bg-secondary/30 cursor-pointer transition-colors group">
+                    <tr key={co.id}
+                      onClick={() => setDetailAsset(co)}
+                      className={`border-b border-border/30 hover:bg-secondary/30 transition-colors cursor-pointer group ${isManual ? 'opacity-75' : ''}`}>
                       {cols.map(col => (
                         <td key={col.key} className={`py-2 px-2 ${col.cls}`}>
                           {col.key === 'name' && isManual ? (
@@ -1095,9 +1096,11 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                         </td>
                       ))}
                       <td className="py-2 px-2 text-right" onClick={e => e.stopPropagation()}>
-                        <button onClick={() => setDetailAsset(co)}
-                          className="text-[9.5px] text-muted-foreground hover:text-foreground flex items-center gap-0.5 ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
-                          Details <ArrowRight className="w-3 h-3" />
+                        <button
+                          onClick={() => setDetailAsset(co)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-secondary text-muted-foreground"
+                        >
+                          <MoreHorizontal className="w-3.5 h-3.5" />
                         </button>
                       </td>
                     </tr>
