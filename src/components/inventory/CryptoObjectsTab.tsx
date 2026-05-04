@@ -831,6 +831,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   const [ownerFilter, setOwnerFilter]   = useState<string[]>([]);
   const [filterIdActive, setFilterIdActive] = useState<string>('');
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+  const [presetOpen, setPresetOpen] = useState(false);
   const [detailAsset, setDetailAsset]   = useState<CryptoAsset | null>(null);
   const [ticketAsset, setTicketAsset]   = useState<CryptoAsset | null>(null);
   const [ticketAction, setTicketAction] = useState('fix');
