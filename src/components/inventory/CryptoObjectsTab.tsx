@@ -51,7 +51,7 @@ interface ColDef { key: string; label: string; cls: string; }
 
 const COLS: Record<string, ColDef[]> = {
   All: [
-    { key: 'name',         label: 'Name',             cls: 'min-w-[180px] flex-1 max-w-[220px]' },
+    { key: 'name',         label: 'Name',             cls: 'w-auto min-w-[260px] max-w-none' },
     { key: 'type',         label: 'Type',             cls: 'w-36' },
     { key: 'status',       label: 'Status',           cls: 'w-24' },
     { key: 'pqcRisk',      label: 'PQC',              cls: 'w-20' },
@@ -62,7 +62,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-32 text-right' },
   ],
   'TLS Certificate': [
-    { key: 'name',         label: 'Common Name',      cls: 'min-w-[180px] flex-1 max-w-[220px]' },
+    { key: 'name',         label: 'Common Name',      cls: 'w-auto min-w-[260px] max-w-none' },
     { key: 'caIssuer',     label: 'CA / Issuer',      cls: 'w-36' },
     { key: 'algorithm',    label: 'Algorithm',        cls: 'w-24' },
     { key: 'issueDate',    label: 'Valid From',       cls: 'w-24' },
@@ -75,7 +75,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-32 text-right' },
   ],
   'SSH Key': [
-    { key: 'name',         label: 'Key Name',         cls: 'min-w-[180px] flex-1 max-w-[220px]' },
+    { key: 'name',         label: 'Key Name',         cls: 'w-auto min-w-[260px] max-w-none' },
     { key: 'algorithm',    label: 'Key Type',         cls: 'w-24' },
     { key: 'serial',       label: 'Fingerprint',      cls: 'w-40' },
     { key: 'owner',        label: 'Owner',            cls: 'w-28' },
@@ -87,7 +87,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-32 text-right' },
   ],
   'SSH Certificate': [
-    { key: 'name',         label: 'Cert Name',        cls: 'min-w-[180px] flex-1 max-w-[220px]' },
+    { key: 'name',         label: 'Cert Name',        cls: 'w-auto min-w-[260px] max-w-none' },
     { key: 'caIssuer',     label: 'CA',               cls: 'w-36' },
     { key: 'commonName',   label: 'Principals',       cls: 'w-36' },
     { key: 'expiryDate',   label: 'Expiry',           cls: 'w-24' },
@@ -97,7 +97,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-32 text-right' },
   ],
   'Code-Signing Certificate': [
-    { key: 'name',          label: 'Cert Name',        cls: 'min-w-[180px] flex-1 max-w-[220px]' },
+    { key: 'name',          label: 'Cert Name',        cls: 'w-auto min-w-[260px] max-w-none' },
     { key: 'caIssuer',      label: 'CA',               cls: 'w-36' },
     { key: 'algorithm',     label: 'Algorithm',        cls: 'w-24' },
     { key: 'keyLength',     label: 'Key Size',         cls: 'w-20' },
@@ -109,7 +109,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'riskScore',     label: 'Crypto Risk Score',cls: 'w-32 text-right' },
   ],
   'K8s Workload Cert': [
-    { key: 'name',              label: 'Workload',         cls: 'min-w-[180px] flex-1 max-w-[220px]' },
+    { key: 'name',              label: 'Workload',         cls: 'w-auto min-w-[260px] max-w-none' },
     { key: 'application',       label: 'Namespace / App',  cls: 'w-36' },
     { key: 'caIssuer',          label: 'CA',               cls: 'w-28' },
     { key: 'rotationFrequency', label: 'Rotation',         cls: 'w-24' },
@@ -120,7 +120,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'riskScore',         label: 'Crypto Risk Score',cls: 'w-32 text-right' },
   ],
   'Encryption Key': [
-    { key: 'name',              label: 'Key Name',         cls: 'min-w-[180px] flex-1 max-w-[220px]' },
+    { key: 'name',              label: 'Key Name',         cls: 'w-auto min-w-[260px] max-w-none' },
     { key: 'caIssuer',          label: 'Key Store',        cls: 'w-36' },
     { key: 'algorithm',         label: 'Algorithm',        cls: 'w-24' },
     { key: 'rotationFrequency', label: 'Rotation Policy',  cls: 'w-28' },
@@ -130,7 +130,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'riskScore',         label: 'Crypto Risk Score',cls: 'w-32 text-right' },
   ],
   'AI Agent Token': [
-    { key: 'name',         label: 'Token / Agent',    cls: 'min-w-[180px] flex-1 max-w-[220px]' },
+    { key: 'name',         label: 'Token / Agent',    cls: 'w-auto min-w-[260px] max-w-none' },
     { key: 'agentFw',      label: 'Framework',        cls: 'w-32' },
     { key: 'actionsDay',   label: 'Actions/Day',      cls: 'w-24' },
     { key: 'permRisk',     label: 'Permission Risk',  cls: 'w-28' },
@@ -141,7 +141,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-32 text-right' },
   ],
   'API Key / Secret': [
-    { key: 'name',         label: 'Secret Name',      cls: 'min-w-[180px] flex-1 max-w-[220px]' },
+    { key: 'name',         label: 'Secret Name',      cls: 'w-auto min-w-[260px] max-w-none' },
     { key: 'caIssuer',     label: 'Secret Store',     cls: 'w-32' },
     { key: 'secretType',   label: 'Type',             cls: 'w-28' },
     { key: 'owner',        label: 'Owner',            cls: 'w-28' },
@@ -246,7 +246,7 @@ function CellValue({ col, co }: { col: ColDef; co: CryptoAsset }) {
       const c = s >= 80 ? 'text-coral' : s >= 60 ? 'text-amber' : s >= 30 ? 'text-blue-400' : 'text-teal';
       return <span className={`text-[11px] font-bold tabular-nums ${c}`}>{s}</span>;
     }
-    case 'name':         return <span className="font-medium text-foreground truncate block w-full">{co.name}</span>;
+    case 'name':         return <span className="font-medium text-foreground truncate block">{co.name}</span>;
     case 'status':       return <StatusBadge status={co.status} />;
     case 'pqcRisk':      return <PQCBadge risk={co.pqcRisk} />;
     case 'environment':  return <EnvBadge env={co.environment} />;
@@ -1055,7 +1055,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
         {/* Table */}
         <div className="bg-card rounded-lg border border-border overflow-hidden flex-1 min-h-0 flex flex-col">
           <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto scrollbar-thin">
-            <table className="w-full text-xs table-fixed">
+            <table className="w-full text-xs table-auto">
               <thead className="bg-secondary/50 sticky top-0 z-10">
                 <tr className="border-b border-border">
                   {cols.map(col => (
