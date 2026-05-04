@@ -50,105 +50,105 @@ interface ColDef { key: string; label: string; cls: string; }
 
 const COLS: Record<string, ColDef[]> = {
   All: [
-    { key: 'riskScore',    label: 'Risk',          cls: 'w-16' },
-    { key: 'name',         label: 'Name',          cls: 'min-w-[180px] flex-1' },
-    { key: 'type',         label: 'Type',          cls: 'w-36' },
-    { key: 'status',       label: 'Status',        cls: 'w-24' },
-    { key: 'pqcRisk',      label: 'PQC',           cls: 'w-20' },
-    { key: 'owner',        label: 'Owner',         cls: 'w-32' },
-    { key: 'environment',  label: 'Env',           cls: 'w-24' },
-    { key: 'lastActivity', label: 'Last Activity', cls: 'w-28' },
-    { key: 'violations',   label: 'Violations',    cls: 'w-20' },
+    { key: 'name',         label: 'Name',             cls: 'min-w-[180px] flex-1' },
+    { key: 'type',         label: 'Type',             cls: 'w-36' },
+    { key: 'status',       label: 'Status',           cls: 'w-24' },
+    { key: 'pqcRisk',      label: 'PQC',              cls: 'w-20' },
+    { key: 'owner',        label: 'Owner',            cls: 'w-32' },
+    { key: 'environment',  label: 'Env',              cls: 'w-24' },
+    { key: 'lastActivity', label: 'Last Activity',    cls: 'w-28' },
+    { key: 'violations',   label: 'Violations',       cls: 'w-20' },
+    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-28' },
   ],
   'TLS Certificate': [
-    { key: 'riskScore',    label: 'Risk',         cls: 'w-16' },
-    { key: 'name',         label: 'Common Name',  cls: 'min-w-[180px] flex-1' },
-    { key: 'caIssuer',     label: 'CA / Issuer',  cls: 'w-36' },
-    { key: 'algorithm',    label: 'Algorithm',    cls: 'w-24' },
-    { key: 'issueDate',    label: 'Valid From',   cls: 'w-24' },
-    { key: 'expiryDate',   label: 'Expiry',       cls: 'w-24' },
-    { key: 'daysToExpiry', label: 'Days',         cls: 'w-16' },
-    { key: 'autoRenewal',  label: 'Auto',         cls: 'w-14' },
-    { key: 'status',       label: 'Status',       cls: 'w-24' },
-    { key: 'pqcRisk',      label: 'PQC',          cls: 'w-20' },
-    { key: 'violations',   label: 'Violations',   cls: 'w-20' },
+    { key: 'name',         label: 'Common Name',      cls: 'min-w-[180px] flex-1' },
+    { key: 'caIssuer',     label: 'CA / Issuer',      cls: 'w-36' },
+    { key: 'algorithm',    label: 'Algorithm',        cls: 'w-24' },
+    { key: 'issueDate',    label: 'Valid From',       cls: 'w-24' },
+    { key: 'expiryDate',   label: 'Expiry',           cls: 'w-24' },
+    { key: 'daysToExpiry', label: 'Days',             cls: 'w-16' },
+    { key: 'autoRenewal',  label: 'Auto',             cls: 'w-14' },
+    { key: 'status',       label: 'Status',           cls: 'w-24' },
+    { key: 'pqcRisk',      label: 'PQC',              cls: 'w-20' },
+    { key: 'violations',   label: 'Violations',       cls: 'w-20' },
+    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-28' },
   ],
   'SSH Key': [
-    { key: 'riskScore',    label: 'Risk',         cls: 'w-16' },
-    { key: 'name',         label: 'Key Name',     cls: 'min-w-[180px] flex-1' },
-    { key: 'algorithm',    label: 'Key Type',     cls: 'w-24' },
-    { key: 'serial',       label: 'Fingerprint',  cls: 'w-40' },
-    { key: 'owner',        label: 'Owner',        cls: 'w-28' },
-    { key: 'sshLastUsed',  label: 'Last Used',    cls: 'w-28' },
-    { key: 'lastRotated',  label: 'Last Rotated', cls: 'w-28' },
-    { key: 'sshHosts',     label: 'Hosts',        cls: 'w-16' },
-    { key: 'status',       label: 'Status',       cls: 'w-24' },
-    { key: 'pqcRisk',      label: 'PQC',          cls: 'w-20' },
+    { key: 'name',         label: 'Key Name',         cls: 'min-w-[180px] flex-1' },
+    { key: 'algorithm',    label: 'Key Type',         cls: 'w-24' },
+    { key: 'serial',       label: 'Fingerprint',      cls: 'w-40' },
+    { key: 'owner',        label: 'Owner',            cls: 'w-28' },
+    { key: 'sshLastUsed',  label: 'Last Used',        cls: 'w-28' },
+    { key: 'lastRotated',  label: 'Last Rotated',     cls: 'w-28' },
+    { key: 'sshHosts',     label: 'Hosts',            cls: 'w-16' },
+    { key: 'status',       label: 'Status',           cls: 'w-24' },
+    { key: 'pqcRisk',      label: 'PQC',              cls: 'w-20' },
+    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-28' },
   ],
   'SSH Certificate': [
-    { key: 'riskScore',    label: 'Risk',         cls: 'w-16' },
-    { key: 'name',         label: 'Cert Name',    cls: 'min-w-[180px] flex-1' },
-    { key: 'caIssuer',     label: 'CA',           cls: 'w-36' },
-    { key: 'commonName',   label: 'Principals',   cls: 'w-36' },
-    { key: 'expiryDate',   label: 'Expiry',       cls: 'w-24' },
-    { key: 'daysToExpiry', label: 'Days',         cls: 'w-16' },
-    { key: 'autoRenewal',  label: 'Auto',         cls: 'w-14' },
-    { key: 'status',       label: 'Status',       cls: 'w-24' },
+    { key: 'name',         label: 'Cert Name',        cls: 'min-w-[180px] flex-1' },
+    { key: 'caIssuer',     label: 'CA',               cls: 'w-36' },
+    { key: 'commonName',   label: 'Principals',       cls: 'w-36' },
+    { key: 'expiryDate',   label: 'Expiry',           cls: 'w-24' },
+    { key: 'daysToExpiry', label: 'Days',             cls: 'w-16' },
+    { key: 'autoRenewal',  label: 'Auto',             cls: 'w-14' },
+    { key: 'status',       label: 'Status',           cls: 'w-24' },
+    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-28' },
   ],
   'Code-Signing Certificate': [
-    { key: 'riskScore',    label: 'Risk',         cls: 'w-16' },
-    { key: 'name',         label: 'Cert Name',    cls: 'min-w-[180px] flex-1' },
-    { key: 'caIssuer',     label: 'CA',           cls: 'w-36' },
-    { key: 'algorithm',    label: 'Algorithm',    cls: 'w-24' },
-    { key: 'keyLength',    label: 'Key Size',     cls: 'w-20' },
-    { key: 'expiryDate',   label: 'Expiry',       cls: 'w-24' },
-    { key: 'daysToExpiry', label: 'Days',         cls: 'w-16' },
-    { key: 'infrastructure',label: 'HSM',         cls: 'w-28' },
-    { key: 'status',       label: 'Status',       cls: 'w-24' },
-    { key: 'pqcRisk',      label: 'PQC',          cls: 'w-20' },
+    { key: 'name',          label: 'Cert Name',        cls: 'min-w-[180px] flex-1' },
+    { key: 'caIssuer',      label: 'CA',               cls: 'w-36' },
+    { key: 'algorithm',     label: 'Algorithm',        cls: 'w-24' },
+    { key: 'keyLength',     label: 'Key Size',         cls: 'w-20' },
+    { key: 'expiryDate',    label: 'Expiry',           cls: 'w-24' },
+    { key: 'daysToExpiry',  label: 'Days',             cls: 'w-16' },
+    { key: 'infrastructure',label: 'HSM',              cls: 'w-28' },
+    { key: 'status',        label: 'Status',           cls: 'w-24' },
+    { key: 'pqcRisk',       label: 'PQC',              cls: 'w-20' },
+    { key: 'riskScore',     label: 'Crypto Risk Score',cls: 'w-28' },
   ],
   'K8s Workload Cert': [
-    { key: 'riskScore',    label: 'Risk',         cls: 'w-16' },
-    { key: 'name',              label: 'Workload',        cls: 'min-w-[180px] flex-1' },
-    { key: 'application',       label: 'Namespace / App', cls: 'w-36' },
-    { key: 'caIssuer',          label: 'CA',              cls: 'w-28' },
-    { key: 'rotationFrequency', label: 'Rotation',        cls: 'w-24' },
-    { key: 'expiryDate',        label: 'Expiry',          cls: 'w-24' },
-    { key: 'daysToExpiry',      label: 'Days',            cls: 'w-16' },
-    { key: 'autoRenewal',       label: 'Auto',            cls: 'w-14' },
-    { key: 'status',            label: 'Status',          cls: 'w-24' },
+    { key: 'name',              label: 'Workload',         cls: 'min-w-[180px] flex-1' },
+    { key: 'application',       label: 'Namespace / App',  cls: 'w-36' },
+    { key: 'caIssuer',          label: 'CA',               cls: 'w-28' },
+    { key: 'rotationFrequency', label: 'Rotation',         cls: 'w-24' },
+    { key: 'expiryDate',        label: 'Expiry',           cls: 'w-24' },
+    { key: 'daysToExpiry',      label: 'Days',             cls: 'w-16' },
+    { key: 'autoRenewal',       label: 'Auto',             cls: 'w-14' },
+    { key: 'status',            label: 'Status',           cls: 'w-24' },
+    { key: 'riskScore',         label: 'Crypto Risk Score',cls: 'w-28' },
   ],
   'Encryption Key': [
-    { key: 'riskScore',    label: 'Risk',         cls: 'w-16' },
-    { key: 'name',              label: 'Key Name',       cls: 'min-w-[180px] flex-1' },
-    { key: 'caIssuer',          label: 'Key Store',      cls: 'w-36' },
-    { key: 'algorithm',         label: 'Algorithm',      cls: 'w-24' },
-    { key: 'rotationFrequency', label: 'Rotation Policy',cls: 'w-28' },
-    { key: 'lastRotated',       label: 'Last Rotated',   cls: 'w-28' },
-    { key: 'autoRenewal',       label: 'Auto-Rotation',  cls: 'w-24' },
-    { key: 'status',            label: 'State',          cls: 'w-24' },
+    { key: 'name',              label: 'Key Name',         cls: 'min-w-[180px] flex-1' },
+    { key: 'caIssuer',          label: 'Key Store',        cls: 'w-36' },
+    { key: 'algorithm',         label: 'Algorithm',        cls: 'w-24' },
+    { key: 'rotationFrequency', label: 'Rotation Policy',  cls: 'w-28' },
+    { key: 'lastRotated',       label: 'Last Rotated',     cls: 'w-28' },
+    { key: 'autoRenewal',       label: 'Auto-Rotation',    cls: 'w-24' },
+    { key: 'status',            label: 'State',            cls: 'w-24' },
+    { key: 'riskScore',         label: 'Crypto Risk Score',cls: 'w-28' },
   ],
   'AI Agent Token': [
-    { key: 'riskScore',    label: 'Risk',         cls: 'w-16' },
-    { key: 'name',         label: 'Token / Agent',   cls: 'min-w-[180px] flex-1' },
-    { key: 'agentFw',      label: 'Framework',       cls: 'w-32' },
-    { key: 'actionsDay',   label: 'Actions/Day',     cls: 'w-24' },
-    { key: 'permRisk',     label: 'Permission Risk', cls: 'w-28' },
-    { key: 'expiryDate',   label: 'Expiry',          cls: 'w-24' },
-    { key: 'daysToExpiry', label: 'Days',            cls: 'w-16' },
-    { key: 'status',       label: 'Status',          cls: 'w-24' },
-    { key: 'violations',   label: 'Violations',      cls: 'w-20' },
+    { key: 'name',         label: 'Token / Agent',    cls: 'min-w-[180px] flex-1' },
+    { key: 'agentFw',      label: 'Framework',        cls: 'w-32' },
+    { key: 'actionsDay',   label: 'Actions/Day',      cls: 'w-24' },
+    { key: 'permRisk',     label: 'Permission Risk',  cls: 'w-28' },
+    { key: 'expiryDate',   label: 'Expiry',           cls: 'w-24' },
+    { key: 'daysToExpiry', label: 'Days',             cls: 'w-16' },
+    { key: 'status',       label: 'Status',           cls: 'w-24' },
+    { key: 'violations',   label: 'Violations',       cls: 'w-20' },
+    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-28' },
   ],
   'API Key / Secret': [
-    { key: 'riskScore',    label: 'Risk',         cls: 'w-16' },
-    { key: 'name',         label: 'Secret Name',   cls: 'min-w-[180px] flex-1' },
-    { key: 'caIssuer',     label: 'Secret Store',  cls: 'w-32' },
-    { key: 'secretType',   label: 'Type',          cls: 'w-28' },
-    { key: 'owner',        label: 'Owner',         cls: 'w-28' },
-    { key: 'lastRotated',  label: 'Last Rotated',  cls: 'w-28' },
-    { key: 'exposedIn',    label: 'Exposed In',    cls: 'w-32' },
-    { key: 'status',       label: 'Status',        cls: 'w-24' },
-    { key: 'violations',   label: 'Violations',    cls: 'w-20' },
+    { key: 'name',         label: 'Secret Name',      cls: 'min-w-[180px] flex-1' },
+    { key: 'caIssuer',     label: 'Secret Store',     cls: 'w-32' },
+    { key: 'secretType',   label: 'Type',             cls: 'w-28' },
+    { key: 'owner',        label: 'Owner',            cls: 'w-28' },
+    { key: 'lastRotated',  label: 'Last Rotated',     cls: 'w-28' },
+    { key: 'exposedIn',    label: 'Exposed In',       cls: 'w-32' },
+    { key: 'status',       label: 'Status',           cls: 'w-24' },
+    { key: 'violations',   label: 'Violations',       cls: 'w-20' },
+    { key: 'riskScore',    label: 'Crypto Risk Score',cls: 'w-28' },
   ],
 };
 
@@ -306,8 +306,15 @@ function RiskScoreAttr({ co, assocCount }: { co: CryptoAsset; assocCount: number
           <Info className="w-3 h-3 text-muted-foreground/50 hover:text-muted-foreground" />
         </button>
         {tip && (
-          <div className="absolute bottom-full right-0 mb-1 z-50 w-60 bg-card border border-border rounded-lg shadow-xl p-2.5 text-[9.5px] text-muted-foreground leading-relaxed">
-            Algorithm risk ({alg}) × 30% + Expiry urgency ({exp}) × 20% + Exposure ({env}) × 20% + Dependents ({dep}) × 15% + Ownership ({own}) × 15%
+          <div className="absolute bottom-full left-0 mb-1 z-[9999] w-72 bg-card border border-border rounded-lg shadow-xl p-3 text-[9.5px] text-muted-foreground leading-relaxed space-y-1">
+            <p className="font-semibold text-foreground text-[10px] mb-1">Crypto Risk Score breakdown</p>
+            <div className="grid grid-cols-[1fr_auto] gap-x-2 gap-y-0.5">
+              <span>Algorithm vulnerability</span><span className="tabular-nums font-medium text-foreground">{alg} × 30%</span>
+              <span>Expiry urgency</span><span className="tabular-nums font-medium text-foreground">{exp} × 20%</span>
+              <span>Environment exposure</span><span className="tabular-nums font-medium text-foreground">{env} × 20%</span>
+              <span>Dependent assets</span><span className="tabular-nums font-medium text-foreground">{dep} × 15%</span>
+              <span>Ownership gap</span><span className="tabular-nums font-medium text-foreground">{own} × 15%</span>
+            </div>
           </div>
         )}
       </div>
@@ -514,7 +521,7 @@ function SecretsUpsell({ co }: { co: CryptoAsset }) {
 // ── Side panel (38%) ──────────────────────────────────────────────────────────
 
 function DetailPanel({
-  co, onClose, onTicket, assoc, onOpenRiskDrawer, onDeploy,
+  co, onClose, onTicket, assoc, onOpenRiskDrawer, onDeploy, setFilters, setCurrentPage,
 }: {
   co: CryptoAsset;
   onClose: () => void;
@@ -522,6 +529,8 @@ function DetailPanel({
   assoc: typeof mockITAssets;
   onOpenRiskDrawer: () => void;
   onDeploy: () => void;
+  setFilters: (f: Record<string, string>) => void;
+  setCurrentPage: (p: string) => void;
 }) {
   const isPqc = ['RSA-1024','RSA-2048','RSA-4096','ECDSA-P256','ECDSA-P384','ECC P-256','ECC P-384','SHA-1','MD5','DH-1024','DH-2048'].includes(co.algorithm);
   const expYear = co.expiryDate && co.expiryDate !== 'N/A' ? new Date(co.expiryDate).getFullYear() : 0;
@@ -553,62 +562,81 @@ function DetailPanel({
 
           {/* Actions */}
           <div className="px-4 py-3">
-            <p className="text-[9.5px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Actions</p>
+            <p className="text-[9.5px] font-semibold text-muted-foreground uppercase tracking-wider mb-2.5">Actions</p>
 
             {isSecret && !SECRETS_LICENSED ? (
               <SecretsUpsell co={co} />
             ) : (
-              <div className="space-y-3">
-                {/* Remediation — teal, direct execution */}
-                <div>
-                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider mb-1.5">Remediation</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {(co.type === 'TLS Certificate' || co.type === 'K8s Workload Cert' || co.type === 'SSH Certificate') && (
-                      <button onClick={() => toast.success(`Renewal initiated for ${co.name}`)}
-                        className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold bg-teal text-primary-foreground hover:bg-teal/90 transition-colors">
-                        <RefreshCw className="w-3 h-3" /> Renew
-                      </button>
-                    )}
-                    {(co.type === 'SSH Key' || co.type === 'Encryption Key' || co.type === 'AI Agent Token') && (
-                      <button onClick={() => toast.success(`Rotation initiated for ${co.name}`)}
-                        className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold bg-teal text-primary-foreground hover:bg-teal/90 transition-colors">
-                        <RefreshCw className="w-3 h-3" /> Rotate
-                      </button>
-                    )}
-                    <button onClick={() => toast.success(`Owner assignment opened`)}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold bg-secondary border border-border text-foreground hover:bg-secondary/80 transition-colors">
-                      <UserPlus className="w-3 h-3" /> Assign Owner
-                    </button>
-                    <button onClick={() => toast.error(`Revoke ${co.name}?`, { action: { label: 'Confirm', onClick: () => toast.success('Revoked') } })}
-                      className="px-2.5 py-1.5 rounded text-[10px] font-semibold border border-coral/30 text-coral hover:bg-coral/10 transition-colors">
-                      Revoke
-                    </button>
-                    {(co.type === 'TLS Certificate' || co.type === 'K8s Workload Cert') && (
-                      <button onClick={onDeploy}
-                        className="px-2.5 py-1.5 rounded text-[10px] font-semibold bg-secondary border border-border text-foreground hover:bg-secondary/80 transition-colors">
-                        Deploy
-                      </button>
-                    )}
-                  </div>
-                </div>
+              <div className="flex flex-wrap gap-1.5">
+                {/* Download Cert */}
+                {(co.type === 'TLS Certificate' || co.type === 'Code-Signing Certificate') && (
+                  <button onClick={() => toast.success(`Certificate downloaded`)}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-border text-foreground hover:bg-secondary/80 transition-colors">
+                    ↓ Download Cert
+                  </button>
+                )}
 
-                {/* Ticket — outlined purple */}
-                <div>
-                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider mb-1.5">Create Ticket (AI-filled)</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    <button onClick={() => onTicket('fix')}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-purple/30 text-purple-light hover:bg-purple/10 transition-colors">
-                      <Ticket className="w-3 h-3" /> Remediation Ticket
-                    </button>
-                    {isPqc && (
-                      <button onClick={() => onTicket('pqc')}
-                        className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-purple/30 text-purple-light hover:bg-purple/10 transition-colors">
-                        <Atom className="w-3 h-3" /> PQC Ticket
-                      </button>
-                    )}
-                  </div>
-                </div>
+                {/* Renew */}
+                {(co.type === 'TLS Certificate' || co.type === 'K8s Workload Cert' || co.type === 'SSH Certificate') && (
+                  <button
+                    onClick={() => co.status === 'Active' ? undefined : toast.success(`Renewal initiated for ${co.name}`)}
+                    disabled={co.status === 'Active'}
+                    title={co.status === 'Active' ? 'Certificate is active — renew when nearing expiry' : undefined}
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold transition-colors ${
+                      co.status === 'Active'
+                        ? 'opacity-40 cursor-not-allowed bg-teal/10 text-teal border border-teal/20'
+                        : 'bg-teal text-primary-foreground hover:bg-teal/90'
+                    }`}>
+                    <RefreshCw className="w-3 h-3" /> Renew
+                  </button>
+                )}
 
+                {/* Rotate */}
+                {(co.type === 'SSH Key' || co.type === 'Encryption Key' || co.type === 'AI Agent Token') && (
+                  <button onClick={() => toast.success(`Rotation initiated for ${co.name}`)}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold bg-teal text-primary-foreground hover:bg-teal/90 transition-colors">
+                    <RefreshCw className="w-3 h-3" /> Rotate
+                  </button>
+                )}
+
+                {/* Deploy — after renew */}
+                {(co.type === 'TLS Certificate' || co.type === 'K8s Workload Cert') && (
+                  <button
+                    onClick={() => co.status === 'Active' ? undefined : onDeploy()}
+                    disabled={co.status === 'Active'}
+                    title={co.status === 'Active' ? 'Deploy is available after renewal' : undefined}
+                    className={`px-2.5 py-1.5 rounded text-[10px] font-semibold border transition-colors ${
+                      co.status === 'Active'
+                        ? 'opacity-40 cursor-not-allowed border-border text-muted-foreground'
+                        : 'border-border text-foreground hover:bg-secondary/80'
+                    }`}>
+                    Deploy
+                  </button>
+                )}
+
+                {/* Assign Owner — only when unassigned */}
+                {co.owner === 'Unassigned' && (
+                  <button onClick={() => toast.success('Owner assignment opened')}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-amber/30 text-amber hover:bg-amber/10 transition-colors">
+                    <UserPlus className="w-3 h-3" /> Assign Owner
+                  </button>
+                )}
+
+                {/* Revoke */}
+                {!['AI Agent Token', 'API Key / Secret'].includes(co.type) && (
+                  <button onClick={() => toast.error(`Revoke ${co.name}?`, { action: { label: 'Confirm', onClick: () => toast.success('Revoked') } })}
+                    className="px-2.5 py-1.5 rounded text-[10px] font-semibold border border-coral/30 text-coral hover:bg-coral/10 transition-colors">
+                    Revoke
+                  </button>
+                )}
+
+                {/* PQC Migration Ticket — only when quantum-vulnerable */}
+                {isPqc && (
+                  <button onClick={() => onTicket('pqc')}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-purple/30 text-purple-light hover:bg-purple/10 transition-colors">
+                    <Atom className="w-3 h-3" /> PQC Migration Ticket
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -618,7 +646,7 @@ function DetailPanel({
             <TypeMetadata co={co} assoc={assoc} />
           </div>
 
-          {/* Linked infrastructure */}
+          {/* Linked infrastructure — clickable */}
           <div className="px-4 py-3">
             <p className="text-[10px] font-semibold text-foreground mb-1.5">
               Linked Infrastructure ({assoc.length})
@@ -627,48 +655,20 @@ function DetailPanel({
             {assoc.length > 0 ? (
               <div className="space-y-1">
                 {assoc.map(a => (
-                  <div key={a.id} className="flex items-center gap-2 text-[10px]">
-                    <span className="text-foreground font-medium flex-1 truncate">{a.name}</span>
+                  <button key={a.id}
+                    onClick={() => { setFilters({ tab: 'infrastructure', assetId: a.id }); setCurrentPage('inventory'); onClose(); }}
+                    className="w-full flex items-center gap-2 text-[10px] rounded px-1.5 py-1 hover:bg-secondary/50 transition-colors text-left group">
+                    <span className="text-foreground font-medium flex-1 truncate group-hover:text-teal transition-colors">{a.name}</span>
                     <span className="text-muted-foreground flex-shrink-0">{a.type}</span>
                     <EnvBadge env={a.environment} />
-                  </div>
+                    <ArrowRight className="w-3 h-3 text-muted-foreground/40 group-hover:text-teal transition-colors flex-shrink-0" />
+                  </button>
                 ))}
               </div>
             ) : (
               <p className="text-[10px] text-muted-foreground italic">No linked infrastructure</p>
             )}
           </div>
-
-          {/* Operational violations */}
-          {((co.daysToExpiry >= 0 && co.daysToExpiry <= 30) || co.owner === 'Unassigned' || co.policyViolations > 0) && (
-            <div className="px-4 py-3">
-              <p className="text-[10px] font-semibold text-coral mb-1.5 flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-coral inline-block" />
-                Operational Violations
-              </p>
-              {co.daysToExpiry >= 0 && co.daysToExpiry <= 30 && (
-                <div className="flex items-center gap-2 text-[10px] py-1 border-b border-border/30">
-                  <span className="w-1.5 h-1.5 rounded-full bg-coral flex-shrink-0" />
-                  <span className="text-foreground flex-1">Expires in {co.daysToExpiry} days</span>
-                  {!isSecret && <button onClick={() => onTicket('renew')} className="text-teal hover:underline text-[10px]">Renew</button>}
-                </div>
-              )}
-              {co.owner === 'Unassigned' && (
-                <div className="flex items-center gap-2 text-[10px] py-1 border-b border-border/30">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber flex-shrink-0" />
-                  <span className="text-foreground flex-1">No owner assigned</span>
-                  {!isSecret && <button onClick={() => onTicket('assign')} className="text-teal hover:underline text-[10px]">Assign</button>}
-                </div>
-              )}
-              {co.policyViolations > 0 && (
-                <div className="flex items-center gap-2 text-[10px] py-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber flex-shrink-0" />
-                  <span className="text-foreground flex-1">{co.policyViolations} policy violation{co.policyViolations !== 1 ? 's' : ''}</span>
-                  {!isSecret && <button onClick={() => onTicket('fix')} className="text-teal hover:underline text-[10px]">Fix</button>}
-                </div>
-              )}
-            </div>
-          )}
 
           {/* Quantum Risk */}
           {isPqc && (
@@ -839,7 +839,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
 
   const { manualIdentities }    = useInventoryRegistry();
   const { setSelectedEntity }   = useAgent();
-  const { filters: navFilters } = useNav();
+  const { filters: navFilters, setFilters, setCurrentPage } = useNav();
 
   const { type: navType, status: navStatus, algorithm: navAlg, owner: navOwner, pqcRisk: navPqc } = navFilters;
   useEffect(() => {
@@ -1018,7 +1018,6 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
               </thead>
               <tbody>
                 {filtered.map(co => {
-                  const primary = getPrimaryAction(co);
                   const isManual = manualIdentities.some(m => m.id === co.id);
                   return (
                     <tr key={co.id} onClick={() => setDetailAsset(co)}
@@ -1036,19 +1035,10 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                         </td>
                       ))}
                       <td className="py-2 px-2 text-right" onClick={e => e.stopPropagation()}>
-                        {primary ? (
-                          <button
-                            onClick={() => openTicket(co, primary.action)}
-                            className={`text-[9.5px] font-semibold px-2 py-1 rounded whitespace-nowrap ${primary.btnCls}`}
-                          >
-                            {primary.label}
-                          </button>
-                        ) : (
-                          <button onClick={() => setDetailAsset(co)}
-                            className="text-[9.5px] text-muted-foreground hover:text-foreground flex items-center gap-0.5 ml-auto">
-                            Details <ArrowRight className="w-3 h-3" />
-                          </button>
-                        )}
+                        <button onClick={() => setDetailAsset(co)}
+                          className="text-[9.5px] text-muted-foreground hover:text-foreground flex items-center gap-0.5 ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
+                          Details <ArrowRight className="w-3 h-3" />
+                        </button>
                       </td>
                     </tr>
                   );
@@ -1076,6 +1066,8 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
           assoc={getAssoc(detailAsset)}
           onOpenRiskDrawer={() => setRiskDrawer(detailAsset)}
           onDeploy={() => setDeployAsset(detailAsset)}
+          setFilters={setFilters}
+          setCurrentPage={setCurrentPage}
         />
       )}
 
