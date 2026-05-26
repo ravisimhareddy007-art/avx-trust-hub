@@ -97,7 +97,6 @@ export default function AppSidebar() {
       page: 'integrations-sources',
       children: [
         { id: 'integrations-sources', label: 'Sources', page: 'integrations-sources' },
-        { id: 'integrations-managed', label: 'Managed Systems', page: 'integrations-targets' },
       ],
     },
     { id: 'core-services', label: 'PLATFORM CORE', icon: Cog, page: 'core-services' },
