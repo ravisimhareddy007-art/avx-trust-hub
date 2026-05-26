@@ -104,7 +104,6 @@ export default function AppSidebar() {
 
   const [expandedGroups, setExpandedGroups] = useState<string[]>([
     'inventory-section',
-    'integrations',
     ...(remediationPages.includes(currentPage) ? ['remediation'] : []),
     ...(policyPages.includes(currentPage) ? ['policy-builder'] : []),
   ]);
