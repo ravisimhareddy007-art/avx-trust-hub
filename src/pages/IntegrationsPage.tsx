@@ -1182,7 +1182,7 @@ function AIBuilderView() {
   );
 
 }
-// ─── Integration Exchange ─────────────────────────────────────────────────────
+// ─── Integrations exchange ─────────────────────────────────────────────────────
 function ExchangeView({ onBack }: { onBack: () => void }) {
   const [activeSection, setActiveSection] = useState<'marketplace' | 'builder'>('marketplace');
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
@@ -1203,7 +1203,7 @@ function ExchangeView({ onBack }: { onBack: () => void }) {
             Back to Integrations
           </button>
           <span className="text-muted-foreground text-xs">·</span>
-          <h1 className="text-xl font-semibold text-foreground">Integration Exchange</h1>
+          <h1 className="text-xl font-semibold text-foreground">Integrations exchange</h1>
         </div>
         <div className="flex items-center gap-0.5 border border-border rounded-lg p-0.5 bg-muted/10">
           {(['marketplace', 'builder'] as const).map(s => (
@@ -1382,7 +1382,7 @@ export default function IntegrationsPage() {
           className="flex items-center gap-2 border border-border text-[11px] px-3 py-1.5 rounded-lg hover:bg-muted/30 text-foreground transition-colors"
         >
           <Package className="w-3.5 h-3.5" />
-          Integration Exchange
+          Integrations exchange
         </button>
       </div>
       {/* Tabs */}
