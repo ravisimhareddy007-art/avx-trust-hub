@@ -40,10 +40,70 @@ const INTEGRATIONS: {
   { id: 'jenkins', name: 'Jenkins', category: 'DevOps & CI/CD', description: 'Discover credentials and certificates used in pipelines.', connected: false, fields: [{ label: 'Jenkins URL', placeholder: 'https://jenkins.corp.local' }, { label: 'Username', placeholder: 'admin' }, { label: 'API Token', placeholder: '...', secret: true }] },
   { id: 'f5', name: 'F5 BIG-IP', category: 'Load Balancers & ADC', description: 'Discover and manage TLS certificates on F5 virtual servers.', connected: true, fields: [{ label: 'Host / IP', placeholder: '10.0.1.50' }, { label: 'Username', placeholder: 'admin' }, { label: 'Password', placeholder: '••••••••', secret: true }] },
   { id: 'citrix', name: 'Citrix ADC', category: 'Load Balancers & ADC', description: 'Discover SSL certificates on Citrix NetScaler.', connected: false, fields: [{ label: 'NSIP', placeholder: '10.0.1.100' }, { label: 'Username', placeholder: 'nsroot' }, { label: 'Password', placeholder: '••••••••', secret: true }] },
+  {
+    id: 'aws-bedrock',
+    name: 'AWS Bedrock',
+    category: 'AI & Agentic',
+    description: 'Discover AI agent identities, model API credentials, and IAM roles across Amazon Bedrock deployments.',
+    connected: true,
+    fields: [
+      { label: 'AWS Account ID', placeholder: '123456789012' },
+      { label: 'Access Key ID', placeholder: 'AKIA...', secret: true },
+      { label: 'Secret Access Key', placeholder: '••••••••', secret: true },
+      { label: 'Region', placeholder: 'us-east-1' },
+    ],
+  },
+  {
+    id: 'azure-openai',
+    name: 'Azure OpenAI',
+    category: 'AI & Agentic',
+    description: 'Inventory API keys and managed identity bindings across Azure OpenAI service deployments.',
+    connected: false,
+    fields: [
+      { label: 'Azure Tenant ID', placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' },
+      { label: 'Subscription ID', placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' },
+      { label: 'API Key', placeholder: '••••••••', secret: true },
+      { label: 'Endpoint URL', placeholder: 'https://acmecorp.openai.azure.com/' },
+    ],
+  },
+  {
+    id: 'langchain',
+    name: 'LangChain',
+    category: 'AI & Agentic',
+    description: 'Discover tool credentials, OAuth tokens, and API keys used by LangChain agent instances.',
+    connected: false,
+    fields: [
+      { label: 'LangSmith API Key', placeholder: 'ls__...', secret: true },
+      { label: 'Agent Endpoint', placeholder: 'https://agents.acmecorp.com' },
+    ],
+  },
+  {
+    id: 'openai',
+    name: 'OpenAI Assistants',
+    category: 'Agentic Frameworks',
+    description: 'Monitor API key usage, token issuance, and credential hygiene across OpenAI Assistants API deployments.',
+    connected: true,
+    fields: [
+      { label: 'API Key', placeholder: 'sk-...', secret: true },
+      { label: 'Organization ID', placeholder: 'org-...' },
+    ],
+  },
+  {
+    id: 'anthropic',
+    name: 'Anthropic Claude API',
+    category: 'Agentic Frameworks',
+    description: 'Discover and govern API credentials used by Claude-powered agents and automation pipelines.',
+    connected: false,
+    fields: [
+      { label: 'API Key', placeholder: 'sk-ant-...', secret: true },
+      { label: 'Workspace ID', placeholder: 'ws-...' },
+    ],
+  },
 ];
 const CATEGORIES = [
   'Certificate Authorities', 'Cloud Platforms', 'Secrets & Vaults', 'HSM',
   'ITSM & Ticketing', 'Notifications', 'DevOps & CI/CD', 'Load Balancers & ADC',
+  'AI & Agentic', 'Agentic Frameworks',
 ];
 const LAST_SYNC: Record<string, string> = {
   digicert: '15 min ago', entrust: '30 min ago', msca: '1 hour ago',
