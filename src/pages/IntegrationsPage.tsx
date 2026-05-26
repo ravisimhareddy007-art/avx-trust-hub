@@ -580,76 +580,547 @@ function InstancesTab({
 }
 // ─── AI Builder View ──────────────────────────────────────────────────────────
 function AIBuilderView() {
-  const steps = [
-    { n: 1, title: 'Describe', desc: 'Natural-language description + source material (API docs, OpenAPI, sample requests, partner SDKs).' },
-    { n: 2, title: 'Generate', desc: 'Builder produces an IDM-conformant draft -- connection, auth, capabilities, discovery, lifecycle.' },
-    { n: 3, title: 'Validate', desc: 'Same static + capability validation the distribution layer runs. Gaps surfaced, fixes suggested.' },
-    { n: 4, title: 'Refine', desc: 'Author iterates with the Builder. Adjusts capabilities, validates against a sample endpoint.' },
-    { n: 5, title: 'Publish', desc: 'Enters the same distribution pipeline as any other integration -- signing, validation, install verification.' },
-  ];
-  const strategic = [
-    { title: 'Removes the engineering bottleneck', desc: "Agent frameworks and PQC CAs emerge weekly. Hand-authored SDK integrations can't keep up. Non-engineers can produce validated drafts in hours." },
-    { title: 'Partner enablement tool', desc: 'Partners use it to author integrations without deep SDK expertise. Lowers activation energy for ecosystem participation.' },
-    { title: 'Platform AI used to grow the platform', desc: 'The product that helps customers govern agentic AI uses AI to grow itself -- a reinforcing loop.' },
-    { title: 'Bounded and safe', desc: 'Output is structured IDM, schema-constrained, validated by the same pipeline, signed, governed. Speed without bypassing governance.' },
-  ];
+
+  const [step, setStep] = useState<1|2|3|4|5>(1);
+
+  const [description, setDescription] = useState('');
+
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const [isValidating, setIsValidating] = useState(false);
+
+  const [isRefining, setIsRefining] = useState(false);
+
+  const [draft, setDraft] = useState<{name:string;category:string;description:string;authMethods:string[];connectionFields:{label:string;type:string;required:boolean;helpText:string}[];capabilities:string[];discoveryScope:string}|null>(null);
+
+  const [validationResults, setValidationResults] = useState<{passed:string[];warnings:string[];errors:string[]}|null>(null);
+
+  const [refinementInput, setRefinementInput] = useState('');
+
+  const [refinementHistory, setRefinementHistory] = useState<{role:'user'|'assistant';content:string}[]>([]);
+
+  const MOCK_DRAFT = {
+
+    name: 'Okta Identity Provider',
+
+    category: 'AI & Agentic',
+
+    description: 'Discover service account identities, machine-to-machine app tokens, and certificate bindings from Okta via OAuth2.',
+
+    authMethods: ['OAuth2 Client Credentials', 'API Token'],
+
+    connectionFields: [
+
+      { label: 'Okta Domain', type: 'url', required: true, helpText: 'Your Okta org URL, e.g. https://acmecorp.okta.com' },
+
+      { label: 'Client ID', type: 'text', required: true, helpText: 'OAuth2 client ID from your Okta app integration' },
+
+      { label: 'Client Secret', type: 'password', required: true, helpText: 'OAuth2 client secret — stored encrypted at rest' },
+
+      { label: 'API Token', type: 'password', required: false, helpText: 'Fallback API token for read-only discovery scans' },
+
+    ],
+
+    capabilities: ['discover_identities', 'discover_tokens', 'discover_certificates', 'flag_no_mfa', 'sync_service_accounts'],
+
+    discoveryScope: 'Service accounts, M2M app tokens, certificate bindings, MFA status',
+
+  };
+
+  const MOCK_VALIDATION = {
+
+    passed: [
+
+      'IDM schema version is compatible (v2.4)',
+
+      'All required connection fields declared',
+
+      'Auth method conforms to OAuth2 capability spec',
+
+      'Discovery scope is well-defined and bounded',
+
+      'Capability identifiers follow naming convention',
+
+    ],
+
+    warnings: [
+
+      'API Token auth is a fallback — recommend enforcing OAuth2 in production policies',
+
+      'flag_no_mfa capability may require elevated Okta admin scope',
+
+    ],
+
+    errors: [],
+
+  };
+
+  const MOCK_REFINEMENTS: Record<string, string> = {
+
+    default: 'Done — draft updated based on your input.',
+
+  };
+
+  const generate = async () => {
+
+    if (!description.trim()) return;
+
+    setIsGenerating(true);
+
+    await new Promise(r => setTimeout(r, 1800));
+
+    setDraft(MOCK_DRAFT);
+
+    setIsGenerating(false);
+
+    setStep(2);
+
+  };
+
+  const validate = async () => {
+
+    setIsValidating(true);
+
+    await new Promise(r => setTimeout(r, 1400));
+
+    setValidationResults(MOCK_VALIDATION);
+
+    setIsValidating(false);
+
+    setStep(3);
+
+  };
+
+  const refine = async () => {
+
+    if (!refinementInput.trim()) return;
+
+    const msg = refinementInput.trim();
+
+    setRefinementInput('');
+
+    setRefinementHistory(h => [...h, { role: 'user', content: msg }]);
+
+    setIsRefining(true);
+
+    await new Promise(r => setTimeout(r, 1200));
+
+    setRefinementHistory(h => [...h, { role: 'assistant', content: 'Done — draft updated.' }]);
+
+    setIsRefining(false);
+
+  };
+
+  const STEPS = ['Describe', 'Generate', 'Validate', 'Refine', 'Publish'];
+
   return (
+
     <div className="flex-1 overflow-y-auto pb-6">
-      <div className="mb-6">
-        <p className="text-[10px] font-semibold text-teal uppercase tracking-wider mb-1">HOW -- A NAMED CAPABILITY</p>
-        <h2 className="text-2xl font-bold text-foreground mb-3">The AI Integration Builder</h2>
-        <p className="text-[12px] text-muted-foreground max-w-2xl leading-relaxed">
-          Natural-language description in, validated IDM-conformant integration out. The capability that lets the framework absorb the long tail of agent frameworks and PQC-ready CAs at the rate the market produces them.
-        </p>
-        <button className="mt-4 bg-teal text-white text-[11px] px-4 py-2 rounded-lg hover:bg-teal/90 font-medium flex items-center gap-2">
-          <Bot className="w-4 h-4" />
-          Start Building with AI
-        </button>
-      </div>
-      <div className="grid grid-cols-2 gap-6 mb-6">
-        <div>
-          <p className="text-[10px] font-semibold text-foreground uppercase tracking-wider mb-4">HOW IT WORKS</p>
-          <div className="space-y-4">
-            {steps.map(step => (
-              <div key={step.n} className="flex gap-3">
-                <div className="w-7 h-7 rounded-full bg-teal text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0">
-                  {step.n}
+
+      {/* Step bar */}
+
+      <div className="flex items-center mb-6">
+
+        {STEPS.map((s, idx) => {
+
+          const n = idx + 1;
+
+          const done = step > n;
+
+          const active = step === n;
+
+          return (
+
+            <React.Fragment key={s}>
+
+              <div className="flex items-center gap-2">
+
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${done||active ? 'bg-teal text-white' : 'bg-muted text-muted-foreground'}`}>
+
+                  {done ? <Check className="w-3 h-3"/> : n}
+
                 </div>
-                <div>
-                  <p className="text-[12px] font-semibold text-teal mb-0.5">{step.title}</p>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">{step.desc}</p>
-                </div>
+
+                <span className={`text-[11px] font-medium ${active ? 'text-foreground' : 'text-muted-foreground'}`}>{s}</span>
+
               </div>
-            ))}
-          </div>
+
+              {idx < STEPS.length - 1 && <div className={`h-px w-8 mx-2 flex-shrink-0 ${done ? 'bg-teal' : 'bg-border'}`}/>}
+
+            </React.Fragment>
+
+          );
+
+        })}
+
+      </div>
+
+      {/* Step 1: Describe */}
+
+      {step === 1 && (
+
+        <div className="max-w-2xl">
+
+          <h2 className="text-lg font-semibold text-foreground mb-1">Describe your integration</h2>
+
+          <p className="text-[11px] text-muted-foreground mb-4">Tell the builder what system you want to connect. Mention the vendor, auth method, and what you want to discover or manage.</p>
+
+          <textarea
+
+            value={description}
+
+            onChange={e => setDescription(e.target.value)}
+
+            placeholder="e.g. Connect to Okta using OAuth2 to discover service account identities and machine-to-machine app tokens. Track certificate bindings and flag accounts with no MFA."
+
+            rows={5}
+
+            className="w-full border border-border rounded-xl px-4 py-3 text-[11px] bg-muted/30 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-teal/50 resize-none mb-3"
+
+          />
+
+          <label className="flex items-center gap-2 border border-dashed border-border rounded-xl px-4 py-3 text-[11px] bg-muted/10 text-muted-foreground cursor-pointer hover:bg-muted/20 mb-4">
+
+            <Upload className="w-3.5 h-3.5"/>
+
+            <span>{uploadedFile ? uploadedFile.name : 'Upload API docs, OpenAPI spec, or SDK (optional)'}</span>
+
+            <input type="file" className="hidden" accept=".json,.yaml,.yml,.pdf,.md" onChange={e => setUploadedFile(e.target.files?.[0] ?? null)}/>
+
+          </label>
+
+          <button onClick={generate} disabled={!description.trim() || isGenerating} className="bg-teal text-white text-[11px] px-5 py-2 rounded-lg hover:bg-teal/90 font-medium flex items-center gap-2 disabled:opacity-50">
+
+            {isGenerating ? <><Loader2 className="w-4 h-4 animate-spin"/>Generating...</> : <><Bot className="w-4 h-4"/>Generate Integration</>}
+
+          </button>
+
         </div>
-        <div className="bg-amber-50/30 dark:bg-amber-900/10 border border-amber-200/40 dark:border-amber-700/30 rounded-xl p-5">
-          <p className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-4">
-            WHY THE BUILDER IS STRATEGIC
-          </p>
-          <div className="space-y-4">
-            {strategic.map(item => (
-              <div key={item.title} className="flex gap-2.5">
-                <CheckCircle2 className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-[12px] font-semibold text-amber-700 dark:text-amber-300 mb-0.5">{item.title}</p>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">{item.desc}</p>
-                </div>
+
+      )}
+
+      {/* Step 2: Generated draft */}
+
+      {step === 2 && draft && (
+
+        <div className="max-w-2xl">
+
+          <h2 className="text-lg font-semibold text-foreground mb-1">Generated draft</h2>
+
+          <p className="text-[11px] text-muted-foreground mb-4">Review the draft. Validate it against IDM standards or go back to adjust your description.</p>
+
+          <div className="bg-card border border-border rounded-xl p-5 space-y-4 mb-4">
+
+            <div className="flex items-start justify-between">
+
+              <div>
+
+                <p className="text-[9px] text-teal font-medium mb-0.5">{draft.category}</p>
+
+                <p className="text-base font-semibold text-foreground">{draft.name}</p>
+
+                <p className="text-[11px] text-muted-foreground mt-1">{draft.description}</p>
+
               </div>
-            ))}
+
+              <span className="text-[9px] bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded-full border border-amber-500/20 flex-shrink-0">Draft</span>
+
+            </div>
+
+            <div className="border-t border-border pt-3">
+
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Connection Fields</p>
+
+              {draft.connectionFields.map((f, i) => (
+
+                <div key={i} className="flex items-start gap-3 text-[11px] mb-1.5">
+
+                  <span className="font-medium text-foreground w-32 flex-shrink-0">{f.label}</span>
+
+                  <span className="text-muted-foreground flex-1">{f.helpText}</span>
+
+                  {f.required && <span className="text-coral text-[9px] flex-shrink-0">Required</span>}
+
+                </div>
+
+              ))}
+
+            </div>
+
+            <div className="border-t border-border pt-3">
+
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Auth Methods</p>
+
+              <div className="flex flex-wrap gap-1.5">
+
+                {draft.authMethods.map((m, i) => <span key={i} className="text-[10px] bg-muted px-2 py-0.5 rounded-full text-muted-foreground">{m}</span>)}
+
+              </div>
+
+            </div>
+
+            <div className="border-t border-border pt-3">
+
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Capabilities</p>
+
+              <div className="flex flex-wrap gap-1.5">
+
+                {draft.capabilities.map((c, i) => <span key={i} className="text-[10px] bg-teal/10 text-teal px-2 py-0.5 rounded-full">{c}</span>)}
+
+              </div>
+
+            </div>
+
           </div>
+
+          <div className="flex gap-2">
+
+            <button onClick={() => setStep(1)} className="border border-border text-[11px] px-3 py-1.5 rounded-lg hover:bg-muted/30 text-foreground">Back</button>
+
+            <button onClick={validate} disabled={isValidating} className="bg-teal text-white text-[11px] px-4 py-1.5 rounded-lg hover:bg-teal/90 font-medium flex items-center gap-2 disabled:opacity-50">
+
+              {isValidating ? <><Loader2 className="w-3.5 h-3.5 animate-spin"/>Validating...</> : 'Validate →'}
+
+            </button>
+
+          </div>
+
         </div>
-      </div>
-      <div className="bg-teal rounded-xl px-5 py-3.5 flex items-center justify-between">
-        <p className="text-[12px] font-semibold text-white">
-          From API documentation to validated integration draft -- in hours, not weeks.
-        </p>
-        <button className="bg-white text-teal text-[11px] px-3 py-1.5 rounded-lg font-medium hover:bg-white/90 flex-shrink-0 ml-4">
-          Try the Builder →
-        </button>
-      </div>
+
+      )}
+
+      {/* Step 3: Validation */}
+
+      {step === 3 && validationResults && (
+
+        <div className="max-w-2xl">
+
+          <h2 className="text-lg font-semibold text-foreground mb-1">Validation results</h2>
+
+          <p className="text-[11px] text-muted-foreground mb-4">IDM schema validation complete. Address any errors before publishing.</p>
+
+          <div className="space-y-3 mb-4">
+
+            {validationResults.passed.length > 0 && (
+
+              <div className="bg-teal/5 border border-teal/20 rounded-xl p-4">
+
+                <p className="text-[10px] font-semibold text-teal uppercase tracking-wider mb-2">Passed</p>
+
+                {validationResults.passed.map((p, i) => (
+
+                  <div key={i} className="flex items-center gap-2 text-[11px] text-foreground mb-1">
+
+                    <Check className="w-3 h-3 text-teal flex-shrink-0"/>{p}
+
+                  </div>
+
+                ))}
+
+              </div>
+
+            )}
+
+            {validationResults.warnings.length > 0 && (
+
+              <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4">
+
+                <p className="text-[10px] font-semibold text-amber-500 uppercase tracking-wider mb-2">Warnings</p>
+
+                {validationResults.warnings.map((w, i) => (
+
+                  <div key={i} className="flex items-center gap-2 text-[11px] text-foreground mb-1">
+
+                    <AlertTriangle className="w-3 h-3 text-amber-500 flex-shrink-0"/>{w}
+
+                  </div>
+
+                ))}
+
+              </div>
+
+            )}
+
+            {validationResults.errors.length > 0 && (
+
+              <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-4">
+
+                <p className="text-[10px] font-semibold text-red-400 uppercase tracking-wider mb-2">Errors</p>
+
+                {validationResults.errors.map((e, i) => (
+
+                  <div key={i} className="flex items-center gap-2 text-[11px] text-foreground mb-1">
+
+                    <AlertCircle className="w-3 h-3 text-red-400 flex-shrink-0"/>{e}
+
+                  </div>
+
+                ))}
+
+              </div>
+
+            )}
+
+          </div>
+
+          <div className="flex gap-2">
+
+            <button onClick={() => setStep(2)} className="border border-border text-[11px] px-3 py-1.5 rounded-lg hover:bg-muted/30 text-foreground">Back</button>
+
+            <button onClick={() => setStep(4)} className="bg-teal text-white text-[11px] px-4 py-1.5 rounded-lg hover:bg-teal/90 font-medium">Refine →</button>
+
+            <button onClick={() => setStep(5)} className="border border-teal text-teal text-[11px] px-4 py-1.5 rounded-lg hover:bg-teal/10 font-medium">Skip to Publish →</button>
+
+          </div>
+
+        </div>
+
+      )}
+
+      {/* Step 4: Refine */}
+
+      {step === 4 && draft && (
+
+        <div className="max-w-2xl">
+
+          <h2 className="text-lg font-semibold text-foreground mb-1">Refine</h2>
+
+          <p className="text-[11px] text-muted-foreground mb-4">Tell the builder what to change. Each message updates the draft.</p>
+
+          <div className="bg-card border border-border rounded-xl p-4 mb-3 min-h-32 max-h-56 overflow-y-auto space-y-3">
+
+            {refinementHistory.length === 0 && (
+
+              <p className="text-[11px] text-muted-foreground">Describe what to adjust — auth methods, field names, capabilities, discovery scope.</p>
+
+            )}
+
+            {refinementHistory.map((msg, i) => (
+
+              <div key={i} className="text-[11px]">
+
+                <span className="text-[9px] text-muted-foreground mr-2 uppercase">{msg.role === 'user' ? 'You' : 'Builder'}</span>
+
+                <span className={msg.role === 'user' ? 'text-foreground' : 'text-teal'}>{msg.content}</span>
+
+              </div>
+
+            ))}
+
+            {isRefining && (
+
+              <div className="text-[11px] text-teal flex items-center gap-1.5">
+
+                <Loader2 className="w-3 h-3 animate-spin"/>Updating draft...
+
+              </div>
+
+            )}
+
+          </div>
+
+          <div className="flex gap-2 mb-4">
+
+            <input
+
+              value={refinementInput}
+
+              onChange={e => setRefinementInput(e.target.value)}
+
+              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && refine()}
+
+              placeholder="e.g. Add SAML support, remove the API Token fallback field"
+
+              className="flex-1 border border-border rounded-lg px-3 py-2 text-[11px] bg-muted/30 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-teal/50"
+
+            />
+
+            <button onClick={refine} disabled={!refinementInput.trim() || isRefining} className="bg-teal text-white text-[11px] px-3 py-1.5 rounded-lg hover:bg-teal/90 disabled:opacity-50">Send</button>
+
+          </div>
+
+          <div className="flex gap-2">
+
+            <button onClick={() => setStep(3)} className="border border-border text-[11px] px-3 py-1.5 rounded-lg hover:bg-muted/30 text-foreground">Back</button>
+
+            <button onClick={() => setStep(5)} className="bg-teal text-white text-[11px] px-4 py-1.5 rounded-lg hover:bg-teal/90 font-medium">Publish →</button>
+
+          </div>
+
+        </div>
+
+      )}
+
+      {/* Step 5: Publish */}
+
+      {step === 5 && draft && (
+
+        <div className="max-w-2xl">
+
+          <h2 className="text-lg font-semibold text-foreground mb-1">Publish</h2>
+
+          <p className="text-[11px] text-muted-foreground mb-4">Your integration enters the distribution pipeline — signing, validation, and install verification before it becomes available in the Exchange.</p>
+
+          <div className="bg-card border border-teal/30 rounded-xl p-5 mb-4">
+
+            <div className="flex items-center gap-2 mb-4">
+
+              <CheckCircle2 className="w-5 h-5 text-teal"/>
+
+              <p className="text-sm font-semibold text-foreground">{draft.name} is ready to publish</p>
+
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 text-[11px]">
+
+              <div><p className="text-muted-foreground mb-0.5">Category</p><p className="text-foreground font-medium">{draft.category}</p></div>
+
+              <div><p className="text-muted-foreground mb-0.5">Capabilities</p><p className="text-foreground font-medium">{draft.capabilities.length} defined</p></div>
+
+              <div><p className="text-muted-foreground mb-0.5">Auth methods</p><p className="text-foreground font-medium">{draft.authMethods.join(', ')}</p></div>
+
+              <div><p className="text-muted-foreground mb-0.5">Connection fields</p><p className="text-foreground font-medium">{draft.connectionFields.length} fields</p></div>
+
+            </div>
+
+          </div>
+
+          <div className="flex gap-2">
+
+            <button onClick={() => setStep(4)} className="border border-border text-[11px] px-3 py-1.5 rounded-lg hover:bg-muted/30 text-foreground">Back</button>
+
+            <button
+
+              onClick={() => {
+
+                toast.success(`${draft.name} submitted to the distribution pipeline.`);
+
+                setStep(1); setDraft(null); setValidationResults(null);
+
+                setRefinementHistory([]); setDescription(''); setUploadedFile(null);
+
+              }}
+
+              className="bg-teal text-white text-[11px] px-5 py-1.5 rounded-lg hover:bg-teal/90 font-medium"
+
+            >
+
+              Publish to Exchange
+
+            </button>
+
+          </div>
+
+        </div>
+
+      )}
+
     </div>
+
   );
+
 }
 // ─── Integration Exchange ─────────────────────────────────────────────────────
 function ExchangeView({ onBack }: { onBack: () => void }) {
