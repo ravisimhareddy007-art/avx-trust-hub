@@ -582,6 +582,7 @@ export default function MCPRuntimePage() {
         {tab === 'catalog'   && <CatalogTab />}
         {tab === 'accounts'  && <div className="h-full overflow-y-auto"><AccountsTab /></div>}
         {tab === 'audit'     && <AuditTab />}
+        {tab === 'sessions'  && <div className="h-full overflow-y-auto"><SessionsTab /></div>}
         {tab === 'admin'     && <div className="h-full overflow-y-auto"><AdminTab runtimeEnabled={runtimeEnabled} setRuntimeEnabled={setRuntimeEnabled} /></div>}
       </div>
     </div>
