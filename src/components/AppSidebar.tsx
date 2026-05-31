@@ -99,6 +99,7 @@ export default function AppSidebar() {
         { id: 'integrations-sources', label: 'Sources', page: 'integrations-sources' },
       ],
     },
+    { id: 'mcp-runtime', label: 'MCP RUNTIME', icon: Cpu, page: 'mcp-runtime' },
     { id: 'core-services', label: 'PLATFORM CORE', icon: Cog, page: 'core-services' },
   ];
 
