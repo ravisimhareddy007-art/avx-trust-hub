@@ -545,6 +545,379 @@ function AdminTab({ runtimeEnabled, setRuntimeEnabled }: { runtimeEnabled: boole
 }
 
 // Main
+// ── Session Data ──────────────────────────────────────────────────────────────
+const SESSION_DATA: {
+  id: string;
+  sessionId: string;
+  serviceAccount: string;
+  clientType: string;
+  startTime: string;
+  lastActivity: string;
+  duration: string;
+  status: 'active' | 'completed' | 'expired';
+  calls: {
+    seq: number;
+    tool: string;
+    tier: Tier;
+    outcome: AuditOutcome;
+    correlationId: string;
+    timestamp: string;
+    duration: string;
+  }[];
+  anomalies: {
+    type: string;
+    severity: 'low' | 'medium' | 'high';
+    detail: string;
+  }[];
+}[] = [
+  {
+    id: 's1',
+    sessionId: 'mcp-sess-8f2a1b3d',
+    serviceAccount: 'claude-ravi',
+    clientType: 'Claude',
+    startTime: '2026-05-31 11:28',
+    lastActivity: '2026-05-31 11:42',
+    duration: '14m 08s',
+    status: 'active',
+    calls: [
+      { seq: 1, tool: 'list_certificates', tier: 'T1', outcome: 'success', correlationId: 'crr-8f2a1b3d-4e5c', timestamp: '11:28:04', duration: '142ms' },
+      { seq: 2, tool: 'get_certificate_details', tier: 'T1', outcome: 'success', correlationId: 'crr-8f2a1b3d-4f1a', timestamp: '11:29:12', duration: '98ms' },
+      { seq: 3, tool: 'analyze_expiry_risk', tier: 'T2', outcome: 'success', correlationId: 'crr-7e9c2d1f-0b4a', timestamp: '11:38:21', duration: '318ms' },
+      { seq: 4, tool: 'create_renewal_request', tier: 'T3', outcome: 'pending_confirmation', correlationId: 'crr-3b8d2a5c-9e1f', timestamp: '11:42:08', duration: '204ms' },
+    ],
+    anomalies: [],
+  },
+  {
+    id: 's2',
+    sessionId: 'mcp-sess-3b8d2a5c',
+    serviceAccount: 'chatgpt-induja',
+    clientType: 'ChatGPT',
+    startTime: '2026-05-31 11:10',
+    lastActivity: '2026-05-31 11:30',
+    duration: '20m 22s',
+    status: 'completed',
+    calls: [
+      { seq: 1, tool: 'list_certificates', tier: 'T1', outcome: 'success', correlationId: 'crr-5d6e9f2a-1111', timestamp: '11:10:01', duration: '130ms' },
+      { seq: 2, tool: 'analyze_expiry_risk', tier: 'T2', outcome: 'success', correlationId: 'crr-5d6e9f2a-2222', timestamp: '11:14:30', duration: '290ms' },
+      { seq: 3, tool: 'create_renewal_request', tier: 'T3', outcome: 'abandoned', correlationId: 'crr-5d6e9f2a-1b3c', timestamp: '11:20:33', duration: '300001ms' },
+      { seq: 4, tool: 'create_renewal_request', tier: 'T3', outcome: 'success', correlationId: 'crr-3b8d2a5c-9e1f', timestamp: '11:26:05', duration: '204ms' },
+      { seq: 5, tool: 'execute_certificate_renewal', tier: 'T4', outcome: 'pending_approval', correlationId: 'crr-1a4b7c0d-3f2e', timestamp: '11:28:44', duration: '489ms' },
+    ],
+    anomalies: [],
+  },
+  {
+    id: 's3',
+    sessionId: 'mcp-sess-9f1a4b7c',
+    serviceAccount: 'automation-pipeline',
+    clientType: 'Custom',
+    startTime: '2026-05-31 08:00',
+    lastActivity: '2026-05-31 08:10',
+    duration: '10m 44s',
+    status: 'completed',
+    calls: [
+      { seq: 1, tool: 'list_certificates', tier: 'T1', outcome: 'success', correlationId: 'crr-0b1c2d3e-5f9a', timestamp: '08:00:01', duration: '110ms' },
+      { seq: 2, tool: 'list_certificates', tier: 'T1', outcome: 'success', correlationId: 'crr-0b1c2d3e-5f9b', timestamp: '08:01:02', duration: '108ms' },
+      { seq: 3, tool: 'list_certificates', tier: 'T1', outcome: 'success', correlationId: 'crr-0b1c2d3e-5f9c', timestamp: '08:02:04', duration: '112ms' },
+      { seq: 4, tool: 'list_certificates', tier: 'T1', outcome: 'success', correlationId: 'crr-0b1c2d3e-5f9d', timestamp: '08:03:05', duration: '109ms' },
+      { seq: 5, tool: 'list_certificates', tier: 'T1', outcome: 'success', correlationId: 'crr-0b1c2d3e-5f9e', timestamp: '08:04:06', duration: '115ms' },
+      { seq: 6, tool: 'list_certificates', tier: 'T1', outcome: 'success', correlationId: 'crr-0b1c2d3e-5f9f', timestamp: '08:05:07', duration: '111ms' },
+      { seq: 7, tool: 'analyze_expiry_risk', tier: 'T2', outcome: 'success', correlationId: 'crr-0b1c2d3e-5fa0', timestamp: '08:06:10', duration: '410ms' },
+      { seq: 8, tool: 'get_pqc_posture', tier: 'T2', outcome: 'success', correlationId: 'crr-0b1c2d3e-5fa1', timestamp: '08:08:22', duration: '398ms' },
+      { seq: 9, tool: 'check_request_status', tier: 'T1', outcome: 'success', correlationId: 'crr-0b1c2d3e-5fa2', timestamp: '08:09:30', duration: '88ms' },
+      { seq: 10, tool: 'check_request_status', tier: 'T1', outcome: 'success', correlationId: 'crr-0b1c2d3e-5fa3', timestamp: '08:10:44', duration: '91ms' },
+    ],
+    anomalies: [
+      { type: 'High invocation velocity', severity: 'medium', detail: '10 tool calls in a single session — 6 repeated list_certificates calls. Review for polling behaviour or automation misconfiguration.' },
+    ],
+  },
+  {
+    id: 's4',
+    sessionId: 'mcp-sess-e1a4b7c0',
+    serviceAccount: 'chatgpt-induja',
+    clientType: 'ChatGPT',
+    startTime: '2026-05-30 16:00',
+    lastActivity: '2026-05-30 16:05',
+    duration: '5m 12s',
+    status: 'expired',
+    calls: [
+      { seq: 1, tool: 'execute_certificate_renewal', tier: 'T4', outcome: 'rejected', correlationId: 'crr-e1a4b7c0-0001', timestamp: '16:00:04', duration: '489ms' },
+    ],
+    anomalies: [
+      { type: 'High-risk action without prior analysis', severity: 'high', detail: 'T4 tool invoked as the first and only call in this session — no preceding T1 or T2 analysis calls. Approval was rejected by the workflow approver.' },
+    ],
+  },
+  {
+    id: 's5',
+    sessionId: 'mcp-sess-6a7b1c4d',
+    serviceAccount: 'chatgpt-induja',
+    clientType: 'ChatGPT',
+    startTime: '2026-05-31 09:00',
+    lastActivity: '2026-05-31 09:22',
+    duration: '22m 07s',
+    status: 'completed',
+    calls: [
+      { seq: 1, tool: 'list_certificates', tier: 'T1', outcome: 'success', correlationId: 'crr-6a7b1c4d-0001', timestamp: '09:00:10', duration: '135ms' },
+      { seq: 2, tool: 'get_certificate_details', tier: 'T1', outcome: 'success', correlationId: 'crr-6a7b1c4d-0002', timestamp: '09:02:45', duration: '102ms' },
+      { seq: 3, tool: 'analyze_expiry_risk', tier: 'T2', outcome: 'success', correlationId: 'crr-6a7b1c4d-0003', timestamp: '09:08:14', duration: '344ms' },
+      { seq: 4, tool: 'create_renewal_request', tier: 'T3', outcome: 'success', correlationId: 'crr-6a7b1c4d-0004', timestamp: '09:14:22', duration: '198ms' },
+      { seq: 5, tool: 'execute_certificate_renewal', tier: 'T4', outcome: 'success', correlationId: 'crr-6a7b1c4d-0005', timestamp: '09:18:50', duration: '502ms' },
+      { seq: 6, tool: 'revoke_certificate', tier: 'T5', outcome: 'success', correlationId: 'crr-6a7b1c4d-3e8f', timestamp: '09:22:07', duration: '6240ms' },
+    ],
+    anomalies: [],
+  },
+];
+
+function deriveIntent(calls: typeof SESSION_DATA[0]['calls']): string {
+  const tools = calls.map(c => c.tool);
+  const readCount = calls.filter(c => c.tier === 'T1' || c.tier === 'T2').length;
+  if (tools.includes('revoke_certificate')) {
+    return `Agent traversed a full analysis-to-revocation workflow: scanned inventory, assessed risk, created a renewal request, executed renewal, and submitted a certificate revocation requiring pre- and post-execution approval.`;
+  }
+  if (tools.includes('execute_certificate_renewal') && tools.includes('analyze_expiry_risk')) {
+    return `Agent analyzed certificate expiry risk across ${readCount} read operations, confirmed the renewal workflow, and submitted an execution request pending pre-approval.`;
+  }
+  if (tools.includes('execute_certificate_renewal')) {
+    return `Agent submitted a certificate renewal execution request. No prior analysis calls detected in this session.`;
+  }
+  if (tools.includes('create_renewal_request') && tools.includes('analyze_expiry_risk')) {
+    return `Agent scanned the certificate inventory, analyzed expiry risk, and initiated a renewal request with in-session confirmation.`;
+  }
+  if (tools.includes('create_renewal_request')) {
+    return `Agent initiated a certificate renewal request after reviewing inventory data.`;
+  }
+  if (tools.includes('get_pqc_posture')) {
+    return `Agent performed a read-only compliance session — queried certificate inventory and assessed post-quantum cryptography posture.`;
+  }
+  if (tools.every(t => ['list_certificates', 'get_certificate_details', 'analyze_expiry_risk', 'check_request_status', 'get_pqc_posture'].includes(t))) {
+    return `Agent completed a read-only analysis session across ${tools.length} operations — no workflow actions taken.`;
+  }
+  return `Agent completed ${calls.length} tool invocations across ${new Set(tools).size} distinct operations.`;
+}
+
+function detectAnomalies(calls: typeof SESSION_DATA[0]['calls']): typeof SESSION_DATA[0]['anomalies'] {
+  const anomalies: typeof SESSION_DATA[0]['anomalies'] = [];
+  const tiers = calls.map(c => c.tier);
+  const hasHighRisk = tiers.some(t => t === 'T4' || t === 'T5');
+  const hasAnalysis = tiers.some(t => t === 'T1' || t === 'T2');
+  const t4Count = tiers.filter(t => t === 'T4').length;
+  const t5Count = tiers.filter(t => t === 'T5').length;
+  const toolCounts: Record<string, number> = {};
+  calls.forEach(c => { toolCounts[c.tool] = (toolCounts[c.tool] || 0) + 1; });
+  const repeatedTools = Object.entries(toolCounts).filter(([, n]) => n > 3);
+  if (hasHighRisk && !hasAnalysis) {
+    anomalies.push({ type: 'High-risk action without prior analysis', severity: 'high', detail: 'T4 or T5 tool invoked with no preceding T1/T2 read or analysis calls in this session.' });
+  }
+  if (calls.length >= 10) {
+    anomalies.push({ type: 'High invocation velocity', severity: 'medium', detail: `${calls.length} tool calls in a single session. Review for polling behaviour or automation misconfiguration.` });
+  }
+  if (t4Count > 1) {
+    anomalies.push({ type: 'Repeated T4 invocation', severity: 'high', detail: `T4 tool invoked ${t4Count} times in one session.` });
+  }
+  if (t5Count > 1) {
+    anomalies.push({ type: 'Repeated T5 invocation', severity: 'high', detail: `T5 destructive tool invoked ${t5Count} times in one session. Maximum 1 active T5 per service account.` });
+  }
+  repeatedTools.forEach(([tool, count]) => {
+    anomalies.push({ type: 'Repeated tool invocation', severity: 'low', detail: `${tool} called ${count} times in this session. May indicate polling or retry logic.` });
+  });
+  return anomalies;
+}
+
+function SessionsTab() {
+  const sessions = SESSION_DATA.map(s => ({
+    ...s,
+    anomalies: s.anomalies.length > 0 ? s.anomalies : detectAnomalies(s.calls),
+  }));
+  const [selected, setSelected] = useState<typeof sessions[0] | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'completed' | 'expired'>('all');
+  const filtered = sessions.filter(s => statusFilter === 'all' || s.status === statusFilter);
+
+  const STATUS_META: Record<string, { color: string; dot: string; label: string }> = {
+    active: { color: 'text-teal', dot: 'bg-teal', label: 'Active' },
+    completed: { color: 'text-muted-foreground', dot: 'bg-gray-400', label: 'Completed' },
+    expired: { color: 'text-muted-foreground', dot: 'bg-gray-600', label: 'Expired' },
+  };
+  const SEVERITY_META: Record<string, string> = {
+    high: 'text-red-400 bg-red-400/10 border-red-400/20',
+    medium: 'text-amber-400 bg-amber-400/10 border-amber-400/20',
+    low: 'text-gray-400 bg-gray-400/10 border-gray-400/20',
+  };
+  const OUTCOME_COLOR: Record<string, string> = {
+    success: 'text-teal',
+    rejected: 'text-red-400',
+    pending_approval: 'text-amber-400',
+    pending_confirmation: 'text-blue-400',
+    abandoned: 'text-gray-400',
+    failed: 'text-red-400',
+  };
+  const CLIENT_BADGE: Record<string, string> = {
+    Claude: 'bg-purple-400/10 text-purple-400',
+    ChatGPT: 'bg-green-400/10 text-green-400',
+    'GitHub Copilot': 'bg-blue-400/10 text-blue-400',
+    Cursor: 'bg-orange-400/10 text-orange-400',
+    Custom: 'bg-gray-400/10 text-gray-400',
+  };
+
+  const totalActive = sessions.filter(s => s.status === 'active').length;
+  const totalFlagged = sessions.filter(s => s.anomalies.length > 0).length;
+
+  return (
+    <div className="flex gap-4 h-full overflow-hidden">
+      <div className="flex-1 overflow-y-auto space-y-4">
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: 'Active Sessions', value: totalActive, color: 'text-teal' },
+            { label: 'Completed Today', value: sessions.filter(s => s.status === 'completed').length, color: 'text-muted-foreground' },
+            { label: 'Anomaly Flags', value: totalFlagged, color: totalFlagged > 0 ? 'text-red-400' : 'text-muted-foreground' },
+          ].map(m => (
+            <div key={m.label} className="bg-card border border-border rounded-xl px-4 py-3 flex items-center justify-between">
+              <span className="text-[11px] text-muted-foreground">{m.label}</span>
+              <span className={`text-xl font-bold ${m.color}`}>{m.value}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex gap-1 border border-border rounded-lg p-0.5 self-start w-fit">
+          {(['all', 'active', 'completed', 'expired'] as const).map(s => (
+            <button key={s} onClick={() => setStatusFilter(s)}
+              className={`text-[10px] px-3 py-1 rounded-md capitalize transition-colors ${statusFilter === s ? 'bg-teal text-white' : 'text-muted-foreground hover:text-foreground'}`}>
+              {s}
+            </button>
+          ))}
+        </div>
+
+        <div className="space-y-2">
+          {filtered.map(session => {
+            const sm = STATUS_META[session.status];
+            const hasAnomalies = session.anomalies.length > 0;
+            const highRisk = session.anomalies.some(a => a.severity === 'high');
+            return (
+              <div key={session.id} onClick={() => setSelected(selected?.id === session.id ? null : session)}
+                className={`bg-card border rounded-xl p-4 cursor-pointer transition-all ${selected?.id === session.id ? 'border-teal/40 bg-teal/5' : hasAnomalies ? (highRisk ? 'border-red-400/30 hover:border-red-400/50' : 'border-amber-400/30 hover:border-amber-400/50') : 'border-border hover:border-border/80'}`}>
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-1.5 h-1.5 rounded-full ${sm.dot} ${session.status === 'active' ? 'animate-pulse' : ''}`} />
+                    <span className="text-[12px] font-semibold text-foreground">{session.serviceAccount}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${CLIENT_BADGE[session.clientType] || CLIENT_BADGE['Custom']}`}>{session.clientType}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {hasAnomalies && (
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${highRisk ? 'text-red-400 bg-red-400/10 border-red-400/20' : 'text-amber-400 bg-amber-400/10 border-amber-400/20'}`}>
+                        {session.anomalies.length} flag{session.anomalies.length > 1 ? 's' : ''}
+                      </span>
+                    )}
+                    <span className="text-[10px] text-muted-foreground">{session.duration}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1 flex-wrap">
+                  {session.calls.map((call, i) => (
+                    <React.Fragment key={call.seq}>
+                      <div className="flex items-center gap-1">
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-mono ${TIER_META[call.tier].bg} ${TIER_META[call.tier].color}`}>{call.tier}</span>
+                        <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">{call.tool}</span>
+                        <span className={`text-[9px] ${OUTCOME_COLOR[call.outcome]}`}>
+                          {call.outcome === 'success' ? '✓' : call.outcome === 'rejected' ? '✗' : call.outcome === 'pending_approval' ? '⏳' : call.outcome === 'pending_confirmation' ? '?' : call.outcome === 'abandoned' ? '—' : '!'}
+                        </span>
+                      </div>
+                      {i < session.calls.length - 1 && <span className="text-muted-foreground text-[10px]">→</span>}
+                    </React.Fragment>
+                  ))}
+                </div>
+
+                <div className="flex items-center justify-between mt-2">
+                  <span className="font-mono text-[9px] text-muted-foreground">{session.sessionId}</span>
+                  <span className="text-[10px] text-muted-foreground">{session.startTime} — {session.lastActivity}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {selected && (
+        <div className="w-96 flex-shrink-0 border border-border rounded-xl bg-card overflow-y-auto p-4 space-y-4">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-[12px] font-semibold text-foreground">{selected.serviceAccount}</p>
+              <p className="font-mono text-[10px] text-muted-foreground mt-0.5">{selected.sessionId}</p>
+            </div>
+            <button onClick={() => setSelected(null)}><X className="w-3.5 h-3.5 text-muted-foreground" /></button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 text-[11px]">
+            {([
+              ['Client', selected.clientType],
+              ['Status', <span className={`capitalize ${STATUS_META[selected.status].color}`}>{selected.status}</span>],
+              ['Started', selected.startTime],
+              ['Duration', selected.duration],
+              ['Total calls', selected.calls.length],
+              ['Last activity', selected.lastActivity],
+            ] as [string, React.ReactNode][]).map(([label, val]) => (
+              <div key={label} className="bg-muted/20 rounded-lg px-3 py-2">
+                <p className="text-[9px] text-muted-foreground uppercase tracking-wider mb-0.5">{label}</p>
+                <p className="font-medium text-foreground">{val}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="bg-teal/5 border border-teal/20 rounded-xl p-3">
+            <p className="text-[9px] font-semibold text-teal uppercase tracking-wider mb-1.5">Session Intent</p>
+            <p className="text-[11px] text-foreground leading-relaxed">{deriveIntent(selected.calls)}</p>
+            <p className="text-[9px] text-muted-foreground mt-2">Derived from call sequence · not AI-generated</p>
+          </div>
+
+          {selected.anomalies.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Anomaly Flags</p>
+              {selected.anomalies.map((a, i) => (
+                <div key={i} className={`border rounded-lg p-3 ${SEVERITY_META[a.severity]}`}>
+                  <p className="text-[11px] font-semibold mb-0.5">{a.type}</p>
+                  <p className="text-[10px] opacity-80 leading-relaxed">{a.detail}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Call Chain</p>
+            <div className="space-y-2">
+              {selected.calls.map(call => (
+                <div key={call.seq} className={`rounded-lg border p-3 ${call.tier === 'T4' || call.tier === 'T5' ? 'border-orange-400/20 bg-orange-400/5' : 'border-border bg-muted/10'}`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[9px] text-muted-foreground font-mono">#{call.seq}</span>
+                      <TierBadge tier={call.tier} />
+                      <span className="font-mono text-[11px] text-foreground">{call.tool}</span>
+                    </div>
+                    <span className={`text-[10px] font-medium ${OUTCOME_COLOR[call.outcome]}`}>
+                      {call.outcome === 'success' ? '✓ Success'
+                        : call.outcome === 'pending_approval' ? '⏳ Pending Approval'
+                        : call.outcome === 'pending_confirmation' ? '? Pending Confirmation'
+                        : call.outcome === 'abandoned' ? '— Abandoned'
+                        : call.outcome === 'rejected' ? '✗ Rejected'
+                        : call.outcome}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[9px] text-muted-foreground">
+                    <span className="font-mono">{call.correlationId}</span>
+                    <span>{call.timestamp} · {call.duration}</span>
+                  </div>
+                  {(call.tier === 'T3' || call.tier === 'T4' || call.tier === 'T5') && (
+                    <div className="mt-2 pt-2 border-t border-border/50 text-[9px] text-muted-foreground">
+                      <p className="font-semibold text-foreground mb-0.5">Approval context sent to approver:</p>
+                      <p className="italic leading-relaxed">{deriveIntent(selected.calls.slice(0, call.seq))}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function MCPRuntimePage() {
   const [tab, setTab] = useState<Tab>('overview');
   const [runtimeEnabled, setRuntimeEnabled] = useState(true);
