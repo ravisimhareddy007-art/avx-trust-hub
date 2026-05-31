@@ -4,7 +4,7 @@ import { remediationPages, policyPages, useNav } from '@/context/NavigationConte
 import {
   LayoutDashboard, Search, Package,
   ChevronDown, ChevronRight, Users,
-  Link2, Lock, ScrollText, Cog, Wrench, Ticket, Atom
+  Link2, Lock, ScrollText, Cog, Wrench, Ticket, Atom, Cpu
 } from 'lucide-react';
 
 interface NavChild {
