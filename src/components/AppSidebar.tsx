@@ -4,7 +4,7 @@ import { remediationPages, policyPages, useNav } from '@/context/NavigationConte
 import {
   LayoutDashboard, Search, Package,
   ChevronDown, ChevronRight, Users,
-  Link2, Lock, ScrollText, Cog, Wrench, Ticket, Atom
+  Link2, Lock, ScrollText, Cog, Wrench, Ticket, Atom, Cpu
 } from 'lucide-react';
 
 interface NavChild {
@@ -99,6 +99,7 @@ export default function AppSidebar() {
         { id: 'integrations-sources', label: 'Sources', page: 'integrations-sources' },
       ],
     },
+    { id: 'mcp-runtime', label: 'MCP RUNTIME', icon: Cpu, page: 'mcp-runtime' },
     { id: 'core-services', label: 'PLATFORM CORE', icon: Cog, page: 'core-services' },
   ];
 

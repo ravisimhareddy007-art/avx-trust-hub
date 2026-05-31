@@ -29,6 +29,7 @@ import IntegrationsPage from '@/pages/IntegrationsPage';
 import ViolationsPage from '@/pages/ViolationsPage';
 import CertHolisticView from '@/pages/CertHolisticView';
 import WorkOrderStatus from '@/pages/WorkOrderStatus';
+import MCPRuntimePage from '@/pages/MCPRuntimePage';
 
 function DashboardPage() {
   const { persona } = usePersona();
@@ -62,6 +63,7 @@ function PageRouter() {
     integrations: <IntegrationsPage />,
     'integrations-sources': <IntegrationsPage />,
     'integrations-targets': <IntegrationsPage />,
+    'mcp-runtime': <MCPRuntimePage />,
     'core-services': <CoreServicesPage />,
     trustops: <TrustOpsPage />,
     quantum: <QuantumPosturePage />,
