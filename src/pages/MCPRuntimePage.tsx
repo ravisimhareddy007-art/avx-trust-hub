@@ -540,22 +540,6 @@ function AdminTab({ runtimeEnabled, setRuntimeEnabled }: { runtimeEnabled: boole
         <div className="flex gap-2"><input value={newEntry} onChange={e => setNewEntry(e.target.value)} placeholder="avx_client_id..." className="flex-1 border border-border rounded-lg px-3 py-2 text-[11px] bg-muted/20 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-teal/50 font-mono" /><button onClick={() => { if (newEntry.trim()) { setAllowlist(p => [...p, newEntry.trim()]); setNewEntry(''); toast.success('Added.'); }}} className="bg-teal text-white text-[11px] px-3 py-1.5 rounded-lg hover:bg-teal/90">Add</button></div>
       </div>
 
-      {/* Open decisions */}
-      <div className="bg-card border border-border rounded-xl p-5 space-y-1">
-        <p className="text-[12px] font-semibold text-foreground mb-3">Open Decisions</p>
-        {[
-          { id: 'OD-1', title: 'On-prem deployment model for Phase 2', owner: 'CPO', status: 'Open' },
-          { id: 'OD-2', title: 'OAuth 2.1 user delegation — Q3 2026 target, conditioned on marketplace consent requirements', owner: 'PM + Platform Eng', status: 'Resolved' },
-          { id: 'OD-3', title: 'Service account cap per tenant — default 10, confirm with Sales before GA', owner: 'PM + Sales', status: 'Open' },
-          { id: 'OD-4', title: 'T5 rollback requirement — hard block at registration', owner: 'PM', status: 'Resolved' },
-        ].map(od => (
-          <div key={od.id} className="flex items-start gap-3 py-2 border-b border-border last:border-0">
-            <span className="text-[10px] font-bold text-amber-400 font-mono flex-shrink-0 mt-0.5">{od.id}</span>
-            <div className="flex-1"><p className="text-[11px] text-foreground">{od.title}</p><p className="text-[10px] text-muted-foreground">Owner: {od.owner}</p></div>
-            <span className={`text-[10px] px-2 py-0.5 rounded-full flex-shrink-0 ${od.status === 'Open' ? 'bg-amber-400/10 text-amber-400' : 'bg-teal/10 text-teal'}`}>{od.status}</span>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
