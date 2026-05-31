@@ -546,7 +546,6 @@ function AdminTab({ runtimeEnabled, setRuntimeEnabled }: { runtimeEnabled: boole
         {[
           { id: 'OD-1', title: 'On-prem deployment model for Phase 2', owner: 'CPO', status: 'Open' },
           { id: 'OD-2', title: 'OAuth 2.1 user delegation — Q3 2026 target, conditioned on marketplace consent requirements', owner: 'PM + Platform Eng', status: 'Resolved' },
-          { id: 'OD-3', title: 'Service account cap per tenant — default 10, confirm with Sales before
           { id: 'OD-3', title: 'Service account cap per tenant — default 10, confirm with Sales before GA', owner: 'PM + Sales', status: 'Open' },
           { id: 'OD-4', title: 'T5 rollback requirement — hard block at registration', owner: 'PM', status: 'Resolved' },
         ].map(od => (
