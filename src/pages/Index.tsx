@@ -63,6 +63,7 @@ function PageRouter() {
     integrations: <IntegrationsPage />,
     'integrations-sources': <IntegrationsPage />,
     'integrations-targets': <IntegrationsPage />,
+    'mcp-runtime': <MCPRuntimePage />,
     'core-services': <CoreServicesPage />,
     trustops: <TrustOpsPage />,
     quantum: <QuantumPosturePage />,
