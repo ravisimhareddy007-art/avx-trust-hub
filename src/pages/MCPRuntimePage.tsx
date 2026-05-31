@@ -5,10 +5,10 @@ import {
   Trash2, Pause, Play, Shield, Zap, Activity, Globe,
   FileText, Settings, Lock, Cpu, CheckCircle2,
   ToggleLeft, ToggleRight, AlertTriangle, AlertCircle,
-  Download, ChevronDown, ChevronRight,
+  Download, ChevronDown, ChevronRight, GitBranch,
 } from 'lucide-react';
 
-type Tab = 'overview' | 'catalog' | 'accounts' | 'audit' | 'admin';
+type Tab = 'overview' | 'catalog' | 'accounts' | 'audit' | 'admin' | 'sessions';
 type Tier = 'T1' | 'T2' | 'T3' | 'T4' | 'T5';
 type ToolStatus = 'published' | 'pending_review' | 'deprecated' | 'degraded';
 type AccountStatus = 'active' | 'suspended';
