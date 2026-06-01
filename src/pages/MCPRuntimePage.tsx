@@ -929,6 +929,7 @@ export default function MCPRuntimePage() {
     { id: 'accounts', label: 'Service Accounts', icon: Lock },
     { id: 'audit', label: 'Audit Log', icon: Shield },
     { id: 'sessions', label: 'Sessions', icon: GitBranch },
+    { id: 'simulator', label: 'Claude Simulator', icon: Bot },
     { id: 'admin', label: 'Admin Controls', icon: Settings },
   ];
 
