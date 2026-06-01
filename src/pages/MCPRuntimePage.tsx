@@ -919,8 +919,20 @@ function SessionsTab() {
   );
 }
 
-function ClaudeSimulatorTab() {
-  type MsgType = 'user' | 'claude' | 'mcp_call' | 'mcp_result' | 'approval_gate' | 'post_approval_gate' | 'approved' | 'rejected' | 'error';
+function AIClientSimulatorTab() {
+  type MsgType =
+    | 'system'
+    | 'user'
+    | 'ai'
+    | 'mcp_call'
+    | 'mcp_result'
+    | 'discovery_result'
+    | 'approval_gate'
+    | 'post_approval_gate'
+    | 'approved'
+    | 'rejected'
+    | 'error'
+    | 'scope_denied';
 
   type Msg = {
     id: string;
@@ -930,17 +942,38 @@ function ClaudeSimulatorTab() {
     tier?: Tier;
     scope?: string;
     correlationId?: string;
-    certs?: { name: string; expiry: string; days: number; risk: string }[];
+    tools?: typeof TOOLS_DATA;
+    certs?: { name: string; expiry: string; days: number; risk: string; algo: string }[];
+    riskReport?: { window: string; total: number; critical: number; high: number; medium: number };
   };
 
-  type ScenarioKey = 't1' | 't4' | 't5' | 'denied';
+  type Phase =
+    | 'idle'
+    | 'ready'
+    | 't3_waiting'
+    | 't4_waiting'
+    | 't5_pre_waiting'
+    | 't5_post_waiting'
+    | 'done';
 
-  const [active, setActive] = useState<ScenarioKey | null>(null);
+  const AI_CLIENTS = [
+    { id: 'claude', label: 'Claude', color: 'bg-purple-500/20 text-purple-400', dot: 'bg-purple-400' },
+    { id: 'copilot', label: 'GitHub Copilot', color: 'bg-blue-500/20 text-blue-400', dot: 'bg-blue-400' },
+    { id: 'chatgpt', label: 'ChatGPT', color: 'bg-green-500/20 text-green-400', dot: 'bg-green-400' },
+    { id: 'cursor', label: 'Cursor', color: 'bg-orange-500/20 text-orange-400', dot: 'bg-orange-400' },
+  ];
+
+  const AVAILABLE_TOOLS = TOOLS_DATA.filter(t => t.status === 'published' || t.status === 'degraded');
+
+  const [selectedClient, setSelectedClient] = useState<string>('claude');
+  const [selectedAccount, setSelectedAccount] = useState<string>('sa2');
   const [messages, setMessages] = useState<Msg[]>([]);
+  const [phase, setPhase] = useState<Phase>('idle');
   const [isTyping, setIsTyping] = useState(false);
-  const [paused, setPaused] = useState(false);
-  const [t4Phase, setT4Phase] = useState<'idle' | 'waiting' | 'approved' | 'rejected'>('idle');
-  const [t5Phase, setT5Phase] = useState<'idle' | 'pre_wait' | 'pre_approved' | 'post_wait' | 'done' | 'rejected'>('idle');
+  const [discovered, setDiscovered] = useState<typeof TOOLS_DATA>([]);
+  const [selectedTool, setSelectedTool] = useState<typeof TOOLS_DATA[0] | null>(null);
+  const [sessionStarted, setSessionStarted] = useState(false);
+  const [pendingCorrelationId, setPendingCorrelationId] = useState('');
   const endRef = useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -951,145 +984,216 @@ function ClaudeSimulatorTab() {
   const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   const push = (msg: Omit<Msg, 'id'>) => setMessages(prev => [...prev, { ...msg, id: uid() }]);
 
-  const reset = () => {
-    setMessages([]);
-    setIsTyping(false);
-    setPaused(false);
-    setT4Phase('idle');
-    setT5Phase('idle');
+  const account = SA_DATA.find(a => a.id === selectedAccount);
+  const client = AI_CLIENTS.find(c => c.id === selectedClient);
+
+  const getVisibleTools = () => {
+    if (!account) return [];
+    return AVAILABLE_TOOLS.filter(tool => account.scopes.includes(tool.scope));
   };
 
-  const runScenario = async (key: ScenarioKey) => {
-    reset();
-    setActive(key);
-    await sleep(300);
+  const canInvoke = (tool: typeof TOOLS_DATA[0]) => {
+    if (!account) return false;
+    return account.scopes.includes(tool.scope);
+  };
 
-    if (key === 't1') {
-      push({ type: 'user', text: 'List my certificates expiring in the next 30 days' });
-      await sleep(600);
-      push({ type: 'mcp_call', tool: 'list_certificates', tier: 'T1', scope: 'avx:read' });
-      await sleep(700);
-      push({ type: 'mcp_result', text: '14 certificates returned · 142ms' });
-      setIsTyping(true);
-      await sleep(1000);
-      setIsTyping(false);
+  const resetSession = () => {
+    setSessionStarted(false);
+    setPhase('idle');
+    setMessages([]);
+    setDiscovered([]);
+    setSelectedTool(null);
+  };
+
+  const startSession = async () => {
+    setSessionStarted(true);
+    setPhase('ready');
+    setMessages([]);
+    setDiscovered([]);
+    setSelectedTool(null);
+    push({
+      type: 'system',
+      text: `Session established · ${account?.name} · ${client?.label} · mcp.appviewx.com/v1`,
+    });
+  };
+
+  const discoverTools = async () => {
+    const visible = getVisibleTools();
+    push({ type: 'mcp_call', tool: 'tools/list', scope: account?.scopes.join(', ') });
+    await sleep(600);
+    setDiscovered(visible);
+    push({ type: 'discovery_result', tools: visible, text: `${visible.length} tools returned based on granted scopes` });
+  };
+
+  const invokeTool = async (tool: typeof TOOLS_DATA[0]) => {
+    setSelectedTool(tool);
+
+    if (!canInvoke(tool)) {
+      push({ type: 'mcp_call', tool: tool.name, tier: tool.tier, scope: tool.scope });
+      await sleep(400);
       push({
-        type: 'claude',
-        text: 'Found 14 certificates expiring in the next 30 days. Here are the highest-risk ones:',
-        certs: [
-          { name: 'payments-api.acmecorp.com', expiry: 'Jun 15, 2026', days: 14, risk: 'Critical' },
-          { name: 'auth.acmecorp.com', expiry: 'Jun 22, 2026', days: 21, risk: 'High' },
-          { name: 'api.acmecorp.com', expiry: 'Jul 01, 2026', days: 30, risk: 'Medium' },
-        ],
+        type: 'scope_denied',
+        tool: tool.name,
+        scope: tool.scope,
+        text: `HTTP 403 · Scope required: ${tool.scope} · Account scopes: ${account?.scopes.join(', ')}`,
       });
+      return;
     }
 
-    if (key === 't4') {
-      push({ type: 'user', text: 'Renew the certificate for payments-api.acmecorp.com' });
-      await sleep(600);
-      push({ type: 'mcp_call', tool: 'execute_certificate_renewal', tier: 'T4', scope: 'avx:workflow:execute' });
-      await sleep(700);
-      setIsTyping(true);
-      await sleep(1000);
-      setIsTyping(false);
-      push({ type: 'claude', text: "I've submitted a renewal execution request for payments-api.acmecorp.com. This is a T4 operation — it requires pre-approval from your team before I can proceed. I've raised the request in your AppViewX workflow." });
-      await sleep(500);
-      push({ type: 'approval_gate', correlationId: 'crr-1a4b7c0d-3f2e', tool: 'execute_certificate_renewal', tier: 'T4' });
-      setPaused(true);
-      setT4Phase('waiting');
+    if (tool.status === 'degraded') {
+      push({ type: 'mcp_call', tool: tool.name, tier: tool.tier, scope: tool.scope });
+      await sleep(400);
+      push({ type: 'error', tool: tool.name, text: 'Tool degraded · Underlying API unreachable · Structured MCP error returned' });
+      return;
     }
 
-    if (key === 't5') {
-      push({ type: 'user', text: 'Revoke certificate cert-id-9921' });
-      await sleep(600);
-      push({ type: 'mcp_call', tool: 'revoke_certificate', tier: 'T5', scope: 'avx:workflow:execute' });
-      await sleep(700);
-      setIsTyping(true);
-      await sleep(1000);
-      setIsTyping(false);
-      push({ type: 'claude', text: "Revoking a certificate is a destructive action — it cannot be easily undone. This is a T5 operation requiring pre-approval before I execute, and post-execution approval to confirm the outcome. I've raised the pre-approval request." });
-      await sleep(500);
-      push({ type: 'approval_gate', correlationId: 'crr-9f1a4b7c-2d5e', tool: 'revoke_certificate', tier: 'T5' });
-      setPaused(true);
-      setT5Phase('pre_wait');
+    const corrId = `crr-${uid().slice(0, 8)}-${uid().slice(0, 4)}`;
+    setPendingCorrelationId(corrId);
+
+    push({ type: 'mcp_call', tool: tool.name, tier: tool.tier, scope: tool.scope });
+    await sleep(500);
+    setIsTyping(true);
+    await sleep(800);
+    setIsTyping(false);
+
+    if (tool.tier === 'T1') {
+      if (tool.name === 'list_certificates') {
+        push({
+          type: 'mcp_result',
+          tool: tool.name,
+          text: '14 certificates found · 142ms',
+          certs: [
+            { name: 'payments-api.acmecorp.com', expiry: 'Jun 15, 2026', days: 14, risk: 'Critical', algo: 'ECC P-256' },
+            { name: 'auth.acmecorp.com', expiry: 'Jun 22, 2026', days: 21, risk: 'High', algo: 'RSA-2048' },
+            { name: 'api.acmecorp.com', expiry: 'Jul 01, 2026', days: 30, risk: 'Medium', algo: 'RSA-2048' },
+            { name: 'cdn.acmecorp.com', expiry: 'Jul 08, 2026', days: 37, risk: 'Low', algo: 'ECC P-384' },
+          ],
+        });
+      } else if (tool.name === 'get_certificate_details') {
+        push({
+          type: 'mcp_result',
+          tool: tool.name,
+          text: 'Certificate details returned · 98ms',
+          certs: [{ name: 'payments-api.acmecorp.com', expiry: 'Jun 15, 2026', days: 14, risk: 'Critical', algo: 'ECC P-256' }],
+        });
+      } else {
+        push({ type: 'mcp_result', tool: tool.name, text: `Response returned · 200 OK · ${Math.floor(Math.random() * 200 + 80)}ms` });
+      }
     }
 
-    if (key === 'denied') {
-      push({ type: 'user', text: 'Show me all SSH keys' });
-      await sleep(600);
-      push({ type: 'error', tool: 'list_ssh_keys', text: 'Tool not available · SSH management is not enabled in this environment' });
-      setIsTyping(true);
-      await sleep(900);
-      setIsTyping(false);
-      push({ type: 'claude', text: "I don't have access to SSH key management. Only certificate lifecycle management tools are available in this environment. If you need SSH key visibility, ask your AppViewX administrator to enable it." });
+    if (tool.tier === 'T2') {
+      if (tool.name === 'analyze_expiry_risk') {
+        push({
+          type: 'mcp_result',
+          tool: tool.name,
+          text: 'Risk analysis complete · 318ms',
+          riskReport: { window: '30 days', total: 14, critical: 2, high: 5, medium: 7 },
+        });
+      } else {
+        push({ type: 'mcp_result', tool: tool.name, text: `Analysis returned · 200 OK · ${Math.floor(Math.random() * 300 + 200)}ms` });
+      }
     }
+
+    if (tool.tier === 'T3') {
+      push({ type: 'ai', text: `I need your confirmation before proceeding. I'm about to create a certificate renewal request. Please confirm to continue.` });
+      await sleep(400);
+      push({ type: 'approval_gate', tool: tool.name, tier: tool.tier, correlationId: corrId });
+      setPhase('t3_waiting');
+    }
+
+    if (tool.tier === 'T4') {
+      push({ type: 'ai', text: `I've submitted a renewal execution request. This is a T4 operation — it requires pre-approval from your team through AppViewX before I can execute. SNOW ticket INC00284820 has been raised.` });
+      await sleep(400);
+      push({ type: 'approval_gate', tool: tool.name, tier: tool.tier, correlationId: corrId });
+      setPhase('t4_waiting');
+    }
+
+    if (tool.tier === 'T5') {
+      push({ type: 'ai', text: `Revoking a certificate is a destructive T5 operation. I've submitted a pre-approval request — this must be approved before I execute. A rollback action is registered in case post-execution approval is rejected.` });
+      await sleep(400);
+      push({ type: 'approval_gate', tool: tool.name, tier: tool.tier, correlationId: corrId });
+      setPhase('t5_pre_waiting');
+    }
+  };
+
+  const handleT3Confirm = async () => {
+    push({ type: 'approved', text: 'Confirmed by user · in-session' });
+    setIsTyping(true);
+    await sleep(900);
+    setIsTyping(false);
+    push({ type: 'mcp_result', tool: selectedTool?.name, text: 'Renewal request created · AppViewX workflow record created · 204ms' });
+    push({ type: 'ai', text: 'Done. A certificate renewal request has been created and is now in your AppViewX workflow queue.' });
+    setPhase('ready');
+  };
+
+  const handleT3Abandon = async () => {
+    push({ type: 'rejected', text: 'Confirmation not received · request abandoned' });
+    setIsTyping(true);
+    await sleep(700);
+    setIsTyping(false);
+    push({ type: 'ai', text: 'No confirmation received. The request has been abandoned. No changes were made.' });
+    setPhase('ready');
   };
 
   const handleT4Approve = async () => {
-    setT4Phase('approved');
-    setPaused(false);
-    push({ type: 'approved', text: 'Pre-approval granted · john.doe@acmecorp.com' });
+    push({ type: 'approved', text: `Pre-approval granted · john.doe@acmecorp.com · ${pendingCorrelationId}` });
     setIsTyping(true);
-    await sleep(1200);
+    await sleep(1000);
     setIsTyping(false);
-    push({ type: 'claude', text: 'Approved. Certificate renewal executed successfully for payments-api.acmecorp.com. New certificate is valid until June 2027. Renewal confirmation logged with Correlation ID crr-1a4b7c0d-3f2e.' });
+    push({ type: 'mcp_result', tool: selectedTool?.name, text: 'Certificate renewal executed · New cert valid until Jun 2027 · 489ms' });
+    push({ type: 'ai', text: 'Approved and executed. The certificate for payments-api.acmecorp.com has been renewed and is now valid until June 2027.' });
+    setPhase('ready');
   };
 
   const handleT4Reject = async () => {
-    setT4Phase('rejected');
-    setPaused(false);
-    push({ type: 'rejected', text: 'Request rejected · john.doe@acmecorp.com' });
+    push({ type: 'rejected', text: `Request rejected · john.doe@acmecorp.com · ${pendingCorrelationId}` });
     setIsTyping(true);
-    await sleep(900);
+    await sleep(700);
     setIsTyping(false);
-    push({ type: 'claude', text: 'The renewal request was rejected by your team. No changes have been made to the certificate. You can try again or contact your administrator.' });
+    push({ type: 'ai', text: 'The renewal request was rejected. No changes have been made. You can try again or contact your administrator.' });
+    setPhase('ready');
   };
 
   const handleT5PreApprove = async () => {
-    setT5Phase('pre_approved');
-    push({ type: 'approved', text: 'Pre-approval granted · john.doe@acmecorp.com' });
+    push({ type: 'approved', text: `Pre-approval granted · john.doe@acmecorp.com` });
     setIsTyping(true);
-    await sleep(1400);
+    await sleep(1200);
     setIsTyping(false);
-    push({ type: 'claude', text: 'Pre-approval received. Executing certificate revocation for cert-id-9921...' });
-    await sleep(800);
-    push({ type: 'post_approval_gate', correlationId: 'crr-9f1a4b7c-2d5e', tool: 'revoke_certificate', tier: 'T5' });
-    setT5Phase('post_wait');
+    push({ type: 'ai', text: 'Pre-approval received. Executing certificate revocation...' });
+    await sleep(600);
+    push({ type: 'post_approval_gate', tool: selectedTool?.name, tier: 'T5', correlationId: pendingCorrelationId });
+    setPhase('t5_post_waiting');
   };
 
   const handleT5PreReject = async () => {
-    setT5Phase('rejected');
-    push({ type: 'rejected', text: 'Pre-approval rejected · john.doe@acmecorp.com' });
+    push({ type: 'rejected', text: `Pre-approval rejected · john.doe@acmecorp.com` });
     setIsTyping(true);
-    await sleep(900);
+    await sleep(700);
     setIsTyping(false);
-    push({ type: 'claude', text: 'The revocation request was rejected at pre-approval. Certificate cert-id-9921 remains active. No changes were made.' });
+    push({ type: 'ai', text: 'Pre-approval rejected. No changes have been made. The certificate remains active.' });
+    setPhase('ready');
   };
 
   const handleT5PostApprove = async () => {
-    setT5Phase('done');
-    push({ type: 'approved', text: 'Post-execution approved · john.doe@acmecorp.com' });
+    push({ type: 'approved', text: `Post-execution approved · john.doe@acmecorp.com` });
     setIsTyping(true);
-    await sleep(1000);
+    await sleep(900);
     setIsTyping(false);
-    push({ type: 'claude', text: 'Post-execution approval received. Certificate cert-id-9921 has been fully revoked. The full chain is recorded under Correlation ID crr-9f1a4b7c-2d5e.' });
+    push({ type: 'mcp_result', tool: selectedTool?.name, text: 'Certificate revoked · Full chain recorded · 6240ms' });
+    push({ type: 'ai', text: `Complete. The certificate has been fully revoked. The entire approval chain is recorded under Correlation ID ${pendingCorrelationId}` });
+    setPhase('ready');
   };
 
   const handleT5PostReject = async () => {
-    setT5Phase('rejected');
-    push({ type: 'rejected', text: 'Post-execution rejected — rollback triggered · john.doe@acmecorp.com' });
+    push({ type: 'rejected', text: `Post-execution rejected · Rollback triggered · john.doe@acmecorp.com` });
     setIsTyping(true);
-    await sleep(1000);
+    await sleep(900);
     setIsTyping(false);
-    push({ type: 'claude', text: 'Post-execution was rejected. The rollback action has been triggered to reinstate the certificate. Your AppViewX administrator has been notified.' });
+    push({ type: 'ai', text: 'Post-execution rejected. The rollback action has been triggered to reinstate the certificate. Your administrator has been notified.' });
+    setPhase('ready');
   };
 
-  const SCENARIOS: { key: ScenarioKey; label: string; sub: string; color: string; tierBadge?: Tier }[] = [
-    { key: 't1', label: 'List expiring certificates', sub: 'T1 — Read only, instant', color: 'border-gray-400/30 hover:border-gray-400/60', tierBadge: 'T1' },
-    { key: 't4', label: 'Renew a certificate', sub: 'T4 — Requires pre-approval', color: 'border-orange-400/30 hover:border-orange-400/60', tierBadge: 'T4' },
-    { key: 't5', label: 'Revoke a certificate', sub: 'T5 — Pre + post approval', color: 'border-red-400/30 hover:border-red-400/60', tierBadge: 'T5' },
-    { key: 'denied', label: 'Show all SSH keys', sub: 'Access denied — not in scope', color: 'border-gray-600/30 hover:border-gray-600/60' },
-  ];
+  const isWaiting = ['t3_waiting', 't4_waiting', 't5_pre_waiting', 't5_post_waiting'].includes(phase);
 
   const RISK_COLOR: Record<string, string> = {
     Critical: 'text-red-400', High: 'text-orange-400', Medium: 'text-amber-400', Low: 'text-teal',
@@ -1097,128 +1201,154 @@ function ClaudeSimulatorTab() {
 
   return (
     <div className="grid grid-cols-[320px_1fr] gap-4 p-4 h-full">
-      {/* Left — scenario picker */}
-      <div className="flex flex-col gap-3">
+      {/* LEFT PANEL */}
+      <div className="flex flex-col gap-3 overflow-y-auto pr-1">
         <div>
-          <h2 className="text-sm font-semibold text-foreground mb-1">Claude Simulator</h2>
+          <h2 className="text-sm font-semibold text-foreground mb-1">AI Client Simulator</h2>
           <p className="text-[11px] text-muted-foreground leading-relaxed">
-            See how Claude interacts with the MCP Runtime across different risk tiers. Select a scenario to begin.
+            Simulate any AI client connecting to the MCP Runtime. See real scope filtering, tier controls, and approval flows.
           </p>
         </div>
 
-        <div className="border border-amber-400/30 bg-amber-400/5 rounded-lg px-3 py-2">
-          <div className="text-[10px] font-bold text-amber-400 mb-0.5">Demo Mode</div>
-          <div className="text-[10px] text-muted-foreground">Not connected to real Claude. All responses are simulated.</div>
+        {/* Client selector */}
+        <div>
+          <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">AI Client</div>
+          <div className="flex flex-col gap-1.5">
+            {AI_CLIENTS.map(c => (
+              <button
+                key={c.id}
+                onClick={() => { setSelectedClient(c.id); resetSession(); }}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border transition-all text-left ${selectedClient === c.id ? 'border-teal/40 bg-teal/5' : 'border-border hover:border-border/80 bg-card'}`}
+              >
+                <span className={`w-2 h-2 rounded-full ${c.dot}`} />
+                <span className="text-xs text-foreground flex-1">{c.label}</span>
+                {selectedClient === c.id && <Check className="w-3 h-3 text-teal" />}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="flex flex-col gap-2">
-          {SCENARIOS.map(s => (
-            <button
-              key={s.key}
-              onClick={() => runScenario(s.key)}
-              className={`w-full text-left border rounded-xl px-3 py-3 transition-all ${s.color} ${active === s.key ? 'bg-teal/5 border-teal/40' : 'bg-card'}`}
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-medium text-foreground">{s.label}</span>
-                {s.tierBadge && <TierBadge tier={s.tierBadge} />}
-              </div>
-              <p className="text-[10px] text-muted-foreground">{s.sub}</p>
-            </button>
-          ))}
+        {/* Service account selector */}
+        <div>
+          <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Service Account</div>
+          <div className="flex flex-col gap-1.5">
+            {SA_DATA.filter(a => a.status === 'active').map(a => (
+              <button
+                key={a.id}
+                onClick={() => { setSelectedAccount(a.id); resetSession(); }}
+                className={`w-full text-left px-3 py-2.5 rounded-lg border transition-all ${selectedAccount === a.id ? 'border-teal/40 bg-teal/5' : 'border-border hover:border-border/80 bg-card'}`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-medium text-foreground">{a.name}</span>
+                  {selectedAccount === a.id && <Check className="w-3 h-3 text-teal" />}
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {a.scopes.map(s => <ScopeBadge key={s} scope={s} />)}
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
 
-        {messages.length > 0 && (
-          <button
-            onClick={reset}
-            className="mt-2 text-[10px] text-muted-foreground hover:text-foreground border border-border/50 rounded-md px-2 py-1.5 flex items-center justify-center gap-1.5"
-          >
-            <RefreshCw className="w-3 h-3" /> Reset
+        {/* Connect button */}
+        {!sessionStarted ? (
+          <button onClick={startSession} className="w-full text-xs font-medium bg-teal text-background rounded-md px-3 py-2 hover:opacity-90 flex items-center justify-center gap-1.5">
+            <Zap className="w-3.5 h-3.5" /> Connect
           </button>
+        ) : (
+          <button onClick={resetSession} className="w-full text-xs font-medium border border-border text-foreground rounded-md px-3 py-2 hover:bg-muted/30 flex items-center justify-center gap-1.5">
+            <X className="w-3.5 h-3.5" /> Disconnect
+          </button>
+        )}
+
+        {sessionStarted && phase === 'ready' && (
+          <div className="flex flex-col gap-2">
+            <button onClick={discoverTools} className="w-full text-[11px] font-medium border border-border text-foreground rounded-md px-3 py-1.5 hover:bg-muted/30 flex items-center justify-center gap-1.5">
+              <Search className="w-3 h-3" /> Run tools/list
+            </button>
+
+            {discovered.length > 0 && (
+              <div>
+                <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Invoke a Tool</div>
+                <div className="flex flex-col gap-1.5">
+                  {AVAILABLE_TOOLS.map(tool => {
+                    const allowed = canInvoke(tool);
+                    const degraded = tool.status === 'degraded';
+                    return (
+                      <button
+                        key={tool.id}
+                        onClick={() => !isWaiting && invokeTool(tool)}
+                        disabled={isWaiting}
+                        className={`w-full text-left px-3 py-2 rounded-lg border transition-all ${isWaiting ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'} ${!allowed ? 'border-border/40 bg-muted/5 opacity-50' : degraded ? 'border-red-400/20 bg-red-400/5' : 'border-border hover:border-teal/30 bg-card'}`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-mono text-[11px] text-foreground truncate">{tool.name}</span>
+                          <TierBadge tier={tool.tier} />
+                        </div>
+                        {!allowed && <div className="text-[9px] text-muted-foreground mt-0.5">Scope denied</div>}
+                        {degraded && allowed && <div className="text-[9px] text-red-400 mt-0.5">Degraded</div>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
-      {/* Right — chat */}
+      {/* RIGHT PANEL — CHAT */}
       <div className="flex flex-col border border-border/50 rounded-xl bg-card overflow-hidden min-h-0">
-        {/* Chat header */}
+        {/* Header */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-border/50 flex-shrink-0">
           <div className="w-8 h-8 rounded-full bg-teal/10 flex items-center justify-center">
             <Bot className="w-4 h-4 text-teal" />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-xs font-semibold text-foreground">Claude</div>
-            <div className="text-[10px] text-muted-foreground">Connected via AVX MCP Runtime · mcp.appviewx.com/v1</div>
+            <div className="text-xs font-semibold text-foreground">{client?.label}</div>
+            <div className="text-[10px] text-muted-foreground">
+              {sessionStarted ? `${account?.name} · mcp.appviewx.com/v1` : 'Not connected'}
+            </div>
           </div>
-          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${active ? 'bg-teal/10 text-teal' : 'bg-muted text-muted-foreground'}`}>
-            {active ? 'Session active' : 'Idle'}
-          </span>
+          <div className="flex items-center gap-1.5">
+            {sessionStarted && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal/10 text-teal">Session active</span>
+            )}
+            {isWaiting && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-400/10 text-amber-400">Awaiting action</span>
+            )}
+          </div>
         </div>
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 min-h-0">
-          {messages.length === 0 && !isTyping && (
+          {!sessionStarted && (
             <div className="h-full flex flex-col items-center justify-center text-center px-6">
               <div className="w-12 h-12 rounded-full bg-muted/30 flex items-center justify-center mb-3">
                 <MessageSquare className="w-5 h-5 text-muted-foreground" />
               </div>
-              <p className="text-xs font-medium text-foreground mb-1">Select a scenario on the left</p>
+              <p className="text-xs font-medium text-foreground mb-1">Select a client and service account</p>
               <p className="text-[11px] text-muted-foreground max-w-xs leading-relaxed">
-                Each scenario demonstrates how the MCP Runtime handles a different risk tier — from instant reads to destructive operations requiring approval.
+                The simulator shows exactly what that client with those scopes can discover and invoke — and what the runtime does at each tier.
               </p>
             </div>
           )}
 
           {messages.map(msg => (
             <div key={msg.id}>
-              {/* User message */}
-              {msg.type === 'user' && (
-                <div className="flex justify-end">
-                  <div className="max-w-[80%] bg-teal/10 border border-teal/20 rounded-2xl rounded-tr-sm px-3 py-2 text-xs text-foreground">
+              {msg.type === 'system' && (
+                <div className="flex justify-center">
+                  <div className="inline-flex items-center gap-1.5 text-[10px] text-muted-foreground bg-muted/20 border border-border/50 rounded-full px-3 py-1">
+                    <Zap className="w-3 h-3 text-teal" />
                     {msg.text}
                   </div>
                 </div>
               )}
 
-              {/* Claude message */}
-              {msg.type === 'claude' && (
-                <div className="flex gap-2">
-                  <div className="w-7 h-7 rounded-full bg-teal/10 flex items-center justify-center flex-shrink-0">
-                    <Bot className="w-3.5 h-3.5 text-teal" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-foreground leading-relaxed">{msg.text}</p>
-                    {msg.certs && (
-                      <div className="mt-2 border border-border/50 rounded-lg overflow-hidden">
-                        <table className="w-full text-[10px]">
-                          <thead>
-                            <tr className="bg-muted/30">
-                              {['Certificate', 'Expiry', 'Days', 'Risk'].map(h => (
-                                <th key={h} className="text-left px-2 py-1.5 font-medium text-muted-foreground">{h}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {msg.certs.map((c, i) => (
-                              <tr key={i} className="border-t border-border/30">
-                                <td className="px-2 py-1.5 font-mono text-foreground">{c.name}</td>
-                                <td className="px-2 py-1.5 text-muted-foreground">{c.expiry}</td>
-                                <td className="px-2 py-1.5 text-foreground">{c.days}d</td>
-                                <td className={`px-2 py-1.5 font-medium ${RISK_COLOR[c.risk]}`}>{c.risk}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* MCP tool call indicator */}
               {msg.type === 'mcp_call' && (
-                <div className="flex gap-2 pl-9">
-                  <div className="flex items-center gap-2 text-[10px] border border-border/50 rounded-md px-2 py-1 bg-muted/20">
-                    <Zap className="w-3 h-3 text-amber-400" />
-                    <span className="font-bold text-amber-400">MCP CALL</span>
+                <div className="pl-9">
+                  <div className="inline-flex items-center gap-2 text-[10px] border border-border/50 rounded-md px-2 py-1 bg-muted/20">
+                    <span className="font-bold text-amber-400">→ MCP</span>
                     <span className="font-mono text-foreground">{msg.tool}</span>
                     {msg.tier && <TierBadge tier={msg.tier} />}
                     {msg.scope && <span className="font-mono text-muted-foreground">{msg.scope}</span>}
@@ -1226,56 +1356,148 @@ function ClaudeSimulatorTab() {
                 </div>
               )}
 
-              {/* MCP result */}
+              {msg.type === 'discovery_result' && msg.tools && (
+                <div className="pl-9 border border-border/50 rounded-lg p-3 bg-muted/10">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-[11px] font-semibold text-foreground">tools/list response</div>
+                    <div className="text-[10px] text-muted-foreground">{msg.text}</div>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    {msg.tools.map(t => (
+                      <div key={t.id} className="flex items-center gap-2 text-[10px]">
+                        <TierBadge tier={t.tier} />
+                        <span className="font-mono text-foreground flex-1">{t.name}</span>
+                        <ScopeBadge scope={t.scope} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {msg.type === 'mcp_result' && (
-                <div className="flex gap-2 pl-9">
-                  <div className="flex items-center gap-1.5 text-[10px] text-teal">
+                <div className="pl-9">
+                  <div className="flex items-center gap-1.5 text-[10px] text-teal mb-1.5">
                     <CheckCircle2 className="w-3 h-3" />
                     {msg.text}
+                  </div>
+                  {msg.certs && (
+                    <div className="border border-border/50 rounded-lg overflow-hidden">
+                      <table className="w-full text-[10px]">
+                        <thead>
+                          <tr className="bg-muted/30">
+                            {['Certificate', 'Expiry', 'Days', 'Algorithm', 'Risk'].map(h => (
+                              <th key={h} className="text-left px-2 py-1.5 font-medium text-muted-foreground">{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {msg.certs.map((c, i) => (
+                            <tr key={i} className="border-t border-border/30">
+                              <td className="px-2 py-1.5 font-mono text-foreground">{c.name}</td>
+                              <td className="px-2 py-1.5 text-muted-foreground">{c.expiry}</td>
+                              <td className="px-2 py-1.5 text-foreground">{c.days}d</td>
+                              <td className="px-2 py-1.5 font-mono text-muted-foreground">{c.algo}</td>
+                              <td className={`px-2 py-1.5 font-medium ${RISK_COLOR[c.risk]}`}>{c.risk}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  {msg.riskReport && (
+                    <div className="grid grid-cols-4 gap-2">
+                      {[
+                        { label: 'Total', value: msg.riskReport.total, color: 'text-foreground' },
+                        { label: 'Critical', value: msg.riskReport.critical, color: 'text-red-400' },
+                        { label: 'High', value: msg.riskReport.high, color: 'text-orange-400' },
+                        { label: 'Medium', value: msg.riskReport.medium, color: 'text-amber-400' },
+                      ].map(s => (
+                        <div key={s.label} className="border border-border/50 rounded-md px-2 py-2 text-center bg-muted/10">
+                          <div className={`text-sm font-bold ${s.color}`}>{s.value}</div>
+                          <div className="text-[9px] text-muted-foreground uppercase tracking-wide">{s.label}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {msg.type === 'ai' && (
+                <div className="flex gap-2">
+                  <div className="w-7 h-7 rounded-full bg-teal/10 flex items-center justify-center flex-shrink-0">
+                    <Bot className="w-3.5 h-3.5 text-teal" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-foreground leading-relaxed">{msg.text}</p>
                   </div>
                 </div>
               )}
 
-              {/* Error */}
-              {msg.type === 'error' && (
-                <div className="flex gap-2 pl-9">
-                  <div className="flex items-center gap-2 text-[10px] border border-red-400/30 bg-red-400/5 rounded-md px-2 py-1">
+              {msg.type === 'scope_denied' && (
+                <div className="pl-9 border border-red-400/30 bg-red-400/5 rounded-md px-3 py-2">
+                  <div className="flex items-center gap-1.5 mb-1">
                     <AlertCircle className="w-3 h-3 text-red-400" />
-                    <span className="font-mono text-foreground">{msg.tool}</span>
-                    <span className="text-muted-foreground">{msg.text}</span>
+                    <span className="text-[11px] font-semibold text-red-400">Access Denied</span>
                   </div>
+                  <p className="text-[10px] text-muted-foreground font-mono">{msg.text}</p>
                 </div>
               )}
 
-              {/* Approved event */}
+              {msg.type === 'error' && (
+                <div className="pl-9 border border-red-400/30 bg-red-400/5 rounded-md px-3 py-2">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <AlertCircle className="w-3 h-3 text-red-400" />
+                    <span className="text-[11px] font-semibold text-red-400">Tool Degraded</span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">{msg.text}</p>
+                </div>
+              )}
+
               {msg.type === 'approved' && (
-                <div className="flex gap-2 pl-9">
-                  <div className="flex items-center gap-1.5 text-[10px] text-teal border border-teal/30 bg-teal/5 rounded-md px-2 py-1">
+                <div className="pl-9">
+                  <div className="inline-flex items-center gap-1.5 text-[10px] text-teal border border-teal/30 bg-teal/5 rounded-md px-2 py-1">
                     <CheckCircle2 className="w-3 h-3" />
                     {msg.text}
                   </div>
                 </div>
               )}
 
-              {/* Rejected event */}
               {msg.type === 'rejected' && (
-                <div className="flex gap-2 pl-9">
-                  <div className="flex items-center gap-1.5 text-[10px] text-red-400 border border-red-400/30 bg-red-400/5 rounded-md px-2 py-1">
+                <div className="pl-9">
+                  <div className="inline-flex items-center gap-1.5 text-[10px] text-red-400 border border-red-400/30 bg-red-400/5 rounded-md px-2 py-1">
                     <X className="w-3 h-3" />
                     {msg.text}
                   </div>
                 </div>
               )}
 
-              {/* T4 Pre-approval gate */}
-              {msg.type === 'approval_gate' && t4Phase === 'waiting' && (
+              {msg.type === 'approval_gate' && msg.tier === 'T3' && phase === 't3_waiting' && (
+                <div className="pl-9">
+                  <div className="border border-amber-400/40 bg-amber-400/5 rounded-xl p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Clock className="w-4 h-4 text-amber-400" />
+                      <div>
+                        <div className="text-xs font-semibold text-foreground">Confirmation Required</div>
+                        <div className="text-[10px] text-muted-foreground">T3 · In-session confirmation</div>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mb-3 italic">Expires in 5 minutes. No confirmation = request abandoned.</p>
+                    <div className="flex gap-2">
+                      <button onClick={handleT3Confirm} className="flex-1 text-[11px] font-medium bg-teal text-background rounded-md px-2 py-1.5 hover:opacity-90">Confirm</button>
+                      <button onClick={handleT3Abandon} className="flex-1 text-[11px] font-medium border border-border text-foreground rounded-md px-2 py-1.5 hover:bg-muted/30">Cancel</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {msg.type === 'approval_gate' && msg.tier === 'T4' && phase === 't4_waiting' && (
                 <div className="pl-9">
                   <div className="border border-orange-400/40 bg-orange-400/5 rounded-xl p-3">
                     <div className="flex items-center gap-2 mb-2">
                       <Clock className="w-4 h-4 text-orange-400" />
                       <div>
                         <div className="text-xs font-semibold text-foreground">Pre-Approval Required</div>
-                        <div className="text-[10px] text-muted-foreground">T4 — Workflow execute</div>
+                        <div className="text-[10px] text-muted-foreground">T4 · Workflow execute</div>
                       </div>
                     </div>
                     <div className="space-y-1 mb-3 text-[10px]">
@@ -1291,21 +1513,20 @@ function ClaudeSimulatorTab() {
                 </div>
               )}
 
-              {/* T5 Pre-approval gate */}
-              {msg.type === 'approval_gate' && t5Phase === 'pre_wait' && (
+              {msg.type === 'approval_gate' && msg.tier === 'T5' && phase === 't5_pre_waiting' && (
                 <div className="pl-9">
                   <div className="border border-red-400/40 bg-red-400/5 rounded-xl p-3">
                     <div className="flex items-center gap-2 mb-2">
                       <AlertTriangle className="w-4 h-4 text-red-400" />
                       <div>
                         <div className="text-xs font-semibold text-foreground">Pre-Approval Required</div>
-                        <div className="text-[10px] text-muted-foreground">T5 — Destructive operation</div>
+                        <div className="text-[10px] text-muted-foreground">T5 · Destructive operation</div>
                       </div>
                     </div>
                     <div className="space-y-1 mb-3 text-[10px]">
                       <div className="flex justify-between"><span className="text-muted-foreground">Tool</span><span className="font-mono text-foreground">{msg.tool}</span></div>
                       <div className="flex justify-between"><span className="text-muted-foreground">Correlation ID</span><span className="font-mono text-foreground">{msg.correlationId}</span></div>
-                      <div className="flex justify-between"><span className="text-muted-foreground">Rollback action</span><span className="font-mono text-foreground">rollback_certificate_reinstate_v1</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">Rollback</span><span className="font-mono text-foreground">rollback_certificate_reinstate_v1</span></div>
                     </div>
                     <div className="flex gap-2">
                       <button onClick={handleT5PreApprove} className="flex-1 text-[11px] font-medium bg-teal text-background rounded-md px-2 py-1.5 hover:opacity-90">Approve</button>
@@ -1315,23 +1536,17 @@ function ClaudeSimulatorTab() {
                 </div>
               )}
 
-              {/* T5 Post-approval gate */}
-              {msg.type === 'post_approval_gate' && t5Phase === 'post_wait' && (
+              {msg.type === 'post_approval_gate' && phase === 't5_post_waiting' && (
                 <div className="pl-9">
                   <div className="border border-red-400/40 bg-red-400/5 rounded-xl p-3">
                     <div className="flex items-center gap-2 mb-2">
                       <Shield className="w-4 h-4 text-red-400" />
                       <div>
-                        <div className="text-xs font-semibold text-foreground">Post-Execution Approval Required</div>
-                        <div className="text-[10px] text-muted-foreground">T5 — Verify the outcome</div>
+                        <div className="text-xs font-semibold text-foreground">Post-Execution Approval</div>
+                        <div className="text-[10px] text-muted-foreground">T5 · Verify the outcome</div>
                       </div>
                     </div>
-                    <div className="space-y-1 mb-2 text-[10px]">
-                      <div className="flex justify-between"><span className="text-muted-foreground">Execution status</span><span className="font-mono text-teal">Completed</span></div>
-                      <div className="flex justify-between"><span className="text-muted-foreground">Certificate</span><span className="font-mono text-foreground">cert-id-9921</span></div>
-                      <div className="flex justify-between"><span className="text-muted-foreground">Action</span><span className="font-mono text-foreground">Revoked</span></div>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground mb-3 italic leading-relaxed">Approve to confirm outcome. Reject to trigger the rollback action and reinstate the certificate.</p>
+                    <p className="text-[10px] text-muted-foreground mb-3 italic">Reject to trigger the rollback action and reinstate the certificate.</p>
                     <div className="flex gap-2">
                       <button onClick={handleT5PostApprove} className="flex-1 text-[11px] font-medium bg-teal text-background rounded-md px-2 py-1.5 hover:opacity-90">Approve Outcome</button>
                       <button onClick={handleT5PostReject} className="flex-1 text-[11px] font-medium border border-red-400/40 text-red-400 rounded-md px-2 py-1.5 hover:bg-red-400/10">Trigger Rollback</button>
@@ -1342,7 +1557,6 @@ function ClaudeSimulatorTab() {
             </div>
           ))}
 
-          {/* Typing indicator */}
           {isTyping && (
             <div className="flex gap-2">
               <div className="w-7 h-7 rounded-full bg-teal/10 flex items-center justify-center flex-shrink-0">
@@ -1364,8 +1578,16 @@ function ClaudeSimulatorTab() {
         {/* Bottom bar */}
         <div className="border-t border-border/50 px-4 py-2 flex-shrink-0 bg-muted/10">
           <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-            <span>Select a scenario above to simulate a conversation</span>
-            <span>Read-only demo</span>
+            <span>
+              {!sessionStarted
+                ? 'Connect a session to start simulating'
+                : isWaiting
+                ? 'Waiting for approval action above...'
+                : discovered.length === 0
+                ? 'Run tools/list to discover available tools'
+                : 'Select a tool on the left to invoke it'}
+            </span>
+            <span>Simulator</span>
           </div>
         </div>
       </div>
