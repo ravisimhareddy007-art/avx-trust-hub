@@ -1,14 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { toast } from 'sonner';
 import {
   Search, Plus, X, Check, Eye, EyeOff, Copy, RefreshCw,
   Trash2, Pause, Play, Shield, Zap, Activity, Globe,
   FileText, Settings, Lock, Cpu, CheckCircle2,
   ToggleLeft, ToggleRight, AlertTriangle, AlertCircle,
-  Download, ChevronDown, ChevronRight, GitBranch,
+  Download, ChevronDown, ChevronRight, GitBranch, Bot,
+  MessageSquare, Send, Clock,
 } from 'lucide-react';
 
-type Tab = 'overview' | 'catalog' | 'accounts' | 'audit' | 'admin' | 'sessions';
+type Tab = 'overview' | 'catalog' | 'accounts' | 'audit' | 'admin' | 'sessions' | 'simulator';
 type Tier = 'T1' | 'T2' | 'T3' | 'T4' | 'T5';
 type ToolStatus = 'published' | 'pending_review' | 'deprecated' | 'degraded';
 type AccountStatus = 'active' | 'suspended';
