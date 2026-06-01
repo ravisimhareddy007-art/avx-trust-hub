@@ -154,8 +154,8 @@ function OverviewTab({ runtimeEnabled, setRuntimeEnabled }: { runtimeEnabled: bo
 
       <div className="bg-card border border-border rounded-xl p-4">
         <p className="text-[11px] font-semibold text-foreground mb-3">Catalog Health</p>
-        <div className="grid grid-cols-4 gap-3 text-center">
-          {[{ label: 'Published', v: TOOLS_DATA.filter(t => t.status === 'published').length, c: 'text-teal' }, { label: 'Pending Review', v: TOOLS_DATA.filter(t => t.status === 'pending_review').length, c: 'text-amber-400' }, { label: 'Degraded', v: TOOLS_DATA.filter(t => t.status === 'degraded').length, c: 'text-red-400' }, { label: 'Deprecated', v: 0, c: 'text-gray-400' }].map(s => (
+        <div className="grid grid-cols-3 gap-3 text-center">
+          {[{ label: 'Available Tools', v: TOOLS_DATA.filter(t => t.status === 'published').length, c: 'text-teal' }, { label: 'Degraded', v: TOOLS_DATA.filter(t => t.status === 'degraded').length, c: 'text-red-400' }, { label: 'Deprecated', v: 0, c: 'text-gray-400' }].map(s => (
             <div key={s.label} className="bg-muted/20 rounded-lg p-3"><p className={`text-xl font-bold ${s.c}`}>{s.v}</p><p className="text-[10px] text-muted-foreground mt-0.5">{s.label}</p></div>
           ))}
         </div>
