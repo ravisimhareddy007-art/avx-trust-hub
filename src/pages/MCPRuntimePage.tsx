@@ -919,6 +919,462 @@ function SessionsTab() {
   );
 }
 
+function ClaudeSimulatorTab() {
+  type MsgType = 'user' | 'claude' | 'mcp_call' | 'mcp_result' | 'approval_gate' | 'post_approval_gate' | 'approved' | 'rejected' | 'error';
+
+  type Msg = {
+    id: string;
+    type: MsgType;
+    text?: string;
+    tool?: string;
+    tier?: Tier;
+    scope?: string;
+    correlationId?: string;
+    certs?: { name: string; expiry: string; days: number; risk: string }[];
+  };
+
+  type ScenarioKey = 't1' | 't4' | 't5' | 'denied';
+
+  const [active, setActive] = useState<ScenarioKey | null>(null);
+  const [messages, setMessages] = useState<Msg[]>([]);
+  const [isTyping, setIsTyping] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [t4Phase, setT4Phase] = useState<'idle' | 'waiting' | 'approved' | 'rejected'>('idle');
+  const [t5Phase, setT5Phase] = useState<'idle' | 'pre_wait' | 'pre_approved' | 'post_wait' | 'done' | 'rejected'>('idle');
+  const endRef = useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isTyping]);
+
+  const uid = () => Math.random().toString(36).slice(2);
+  const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+  const push = (msg: Omit<Msg, 'id'>) => setMessages(prev => [...prev, { ...msg, id: uid() }]);
+
+  const reset = () => {
+    setMessages([]);
+    setIsTyping(false);
+    setPaused(false);
+    setT4Phase('idle');
+    setT5Phase('idle');
+  };
+
+  const runScenario = async (key: ScenarioKey) => {
+    reset();
+    setActive(key);
+    await sleep(300);
+
+    if (key === 't1') {
+      push({ type: 'user', text: 'List my certificates expiring in the next 30 days' });
+      await sleep(600);
+      push({ type: 'mcp_call', tool: 'list_certificates', tier: 'T1', scope: 'avx:read' });
+      await sleep(700);
+      push({ type: 'mcp_result', text: '14 certificates returned · 142ms' });
+      setIsTyping(true);
+      await sleep(1000);
+      setIsTyping(false);
+      push({
+        type: 'claude',
+        text: 'Found 14 certificates expiring in the next 30 days. Here are the highest-risk ones:',
+        certs: [
+          { name: 'payments-api.acmecorp.com', expiry: 'Jun 15, 2026', days: 14, risk: 'Critical' },
+          { name: 'auth.acmecorp.com', expiry: 'Jun 22, 2026', days: 21, risk: 'High' },
+          { name: 'api.acmecorp.com', expiry: 'Jul 01, 2026', days: 30, risk: 'Medium' },
+        ],
+      });
+    }
+
+    if (key === 't4') {
+      push({ type: 'user', text: 'Renew the certificate for payments-api.acmecorp.com' });
+      await sleep(600);
+      push({ type: 'mcp_call', tool: 'execute_certificate_renewal', tier: 'T4', scope: 'avx:workflow:execute' });
+      await sleep(700);
+      setIsTyping(true);
+      await sleep(1000);
+      setIsTyping(false);
+      push({ type: 'claude', text: "I've submitted a renewal execution request for payments-api.acmecorp.com. This is a T4 operation — it requires pre-approval from your team before I can proceed. I've raised the request in your AppViewX workflow." });
+      await sleep(500);
+      push({ type: 'approval_gate', correlationId: 'crr-1a4b7c0d-3f2e', tool: 'execute_certificate_renewal', tier: 'T4' });
+      setPaused(true);
+      setT4Phase('waiting');
+    }
+
+    if (key === 't5') {
+      push({ type: 'user', text: 'Revoke certificate cert-id-9921' });
+      await sleep(600);
+      push({ type: 'mcp_call', tool: 'revoke_certificate', tier: 'T5', scope: 'avx:workflow:execute' });
+      await sleep(700);
+      setIsTyping(true);
+      await sleep(1000);
+      setIsTyping(false);
+      push({ type: 'claude', text: "Revoking a certificate is a destructive action — it cannot be easily undone. This is a T5 operation requiring pre-approval before I execute, and post-execution approval to confirm the outcome. I've raised the pre-approval request." });
+      await sleep(500);
+      push({ type: 'approval_gate', correlationId: 'crr-9f1a4b7c-2d5e', tool: 'revoke_certificate', tier: 'T5' });
+      setPaused(true);
+      setT5Phase('pre_wait');
+    }
+
+    if (key === 'denied') {
+      push({ type: 'user', text: 'Show me all SSH keys' });
+      await sleep(600);
+      push({ type: 'error', tool: 'list_ssh_keys', text: 'Tool not available · SSH management is not enabled in this environment' });
+      setIsTyping(true);
+      await sleep(900);
+      setIsTyping(false);
+      push({ type: 'claude', text: "I don't have access to SSH key management. Only certificate lifecycle management tools are available in this environment. If you need SSH key visibility, ask your AppViewX administrator to enable it." });
+    }
+  };
+
+  const handleT4Approve = async () => {
+    setT4Phase('approved');
+    setPaused(false);
+    push({ type: 'approved', text: 'Pre-approval granted · john.doe@acmecorp.com' });
+    setIsTyping(true);
+    await sleep(1200);
+    setIsTyping(false);
+    push({ type: 'claude', text: 'Approved. Certificate renewal executed successfully for payments-api.acmecorp.com. New certificate is valid until June 2027. Renewal confirmation logged with Correlation ID crr-1a4b7c0d-3f2e.' });
+  };
+
+  const handleT4Reject = async () => {
+    setT4Phase('rejected');
+    setPaused(false);
+    push({ type: 'rejected', text: 'Request rejected · john.doe@acmecorp.com' });
+    setIsTyping(true);
+    await sleep(900);
+    setIsTyping(false);
+    push({ type: 'claude', text: 'The renewal request was rejected by your team. No changes have been made to the certificate. You can try again or contact your administrator.' });
+  };
+
+  const handleT5PreApprove = async () => {
+    setT5Phase('pre_approved');
+    push({ type: 'approved', text: 'Pre-approval granted · john.doe@acmecorp.com' });
+    setIsTyping(true);
+    await sleep(1400);
+    setIsTyping(false);
+    push({ type: 'claude', text: 'Pre-approval received. Executing certificate revocation for cert-id-9921...' });
+    await sleep(800);
+    push({ type: 'post_approval_gate', correlationId: 'crr-9f1a4b7c-2d5e', tool: 'revoke_certificate', tier: 'T5' });
+    setT5Phase('post_wait');
+  };
+
+  const handleT5PreReject = async () => {
+    setT5Phase('rejected');
+    push({ type: 'rejected', text: 'Pre-approval rejected · john.doe@acmecorp.com' });
+    setIsTyping(true);
+    await sleep(900);
+    setIsTyping(false);
+    push({ type: 'claude', text: 'The revocation request was rejected at pre-approval. Certificate cert-id-9921 remains active. No changes were made.' });
+  };
+
+  const handleT5PostApprove = async () => {
+    setT5Phase('done');
+    push({ type: 'approved', text: 'Post-execution approved · john.doe@acmecorp.com' });
+    setIsTyping(true);
+    await sleep(1000);
+    setIsTyping(false);
+    push({ type: 'claude', text: 'Post-execution approval received. Certificate cert-id-9921 has been fully revoked. The full chain is recorded under Correlation ID crr-9f1a4b7c-2d5e.' });
+  };
+
+  const handleT5PostReject = async () => {
+    setT5Phase('rejected');
+    push({ type: 'rejected', text: 'Post-execution rejected — rollback triggered · john.doe@acmecorp.com' });
+    setIsTyping(true);
+    await sleep(1000);
+    setIsTyping(false);
+    push({ type: 'claude', text: 'Post-execution was rejected. The rollback action has been triggered to reinstate the certificate. Your AppViewX administrator has been notified.' });
+  };
+
+  const SCENARIOS: { key: ScenarioKey; label: string; sub: string; color: string; tierBadge?: Tier }[] = [
+    { key: 't1', label: 'List expiring certificates', sub: 'T1 — Read only, instant', color: 'border-gray-400/30 hover:border-gray-400/60', tierBadge: 'T1' },
+    { key: 't4', label: 'Renew a certificate', sub: 'T4 — Requires pre-approval', color: 'border-orange-400/30 hover:border-orange-400/60', tierBadge: 'T4' },
+    { key: 't5', label: 'Revoke a certificate', sub: 'T5 — Pre + post approval', color: 'border-red-400/30 hover:border-red-400/60', tierBadge: 'T5' },
+    { key: 'denied', label: 'Show all SSH keys', sub: 'Access denied — not in scope', color: 'border-gray-600/30 hover:border-gray-600/60' },
+  ];
+
+  const RISK_COLOR: Record<string, string> = {
+    Critical: 'text-red-400', High: 'text-orange-400', Medium: 'text-amber-400', Low: 'text-teal',
+  };
+
+  return (
+    <div className="grid grid-cols-[320px_1fr] gap-4 p-4 h-full">
+      {/* Left — scenario picker */}
+      <div className="flex flex-col gap-3">
+        <div>
+          <h2 className="text-sm font-semibold text-foreground mb-1">Claude Simulator</h2>
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            See how Claude interacts with the MCP Runtime across different risk tiers. Select a scenario to begin.
+          </p>
+        </div>
+
+        <div className="border border-amber-400/30 bg-amber-400/5 rounded-lg px-3 py-2">
+          <div className="text-[10px] font-bold text-amber-400 mb-0.5">Demo Mode</div>
+          <div className="text-[10px] text-muted-foreground">Not connected to real Claude. All responses are simulated.</div>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          {SCENARIOS.map(s => (
+            <button
+              key={s.key}
+              onClick={() => runScenario(s.key)}
+              className={`w-full text-left border rounded-xl px-3 py-3 transition-all ${s.color} ${active === s.key ? 'bg-teal/5 border-teal/40' : 'bg-card'}`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-medium text-foreground">{s.label}</span>
+                {s.tierBadge && <TierBadge tier={s.tierBadge} />}
+              </div>
+              <p className="text-[10px] text-muted-foreground">{s.sub}</p>
+            </button>
+          ))}
+        </div>
+
+        {messages.length > 0 && (
+          <button
+            onClick={reset}
+            className="mt-2 text-[10px] text-muted-foreground hover:text-foreground border border-border/50 rounded-md px-2 py-1.5 flex items-center justify-center gap-1.5"
+          >
+            <RefreshCw className="w-3 h-3" /> Reset
+          </button>
+        )}
+      </div>
+
+      {/* Right — chat */}
+      <div className="flex flex-col border border-border/50 rounded-xl bg-card overflow-hidden min-h-0">
+        {/* Chat header */}
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-border/50 flex-shrink-0">
+          <div className="w-8 h-8 rounded-full bg-teal/10 flex items-center justify-center">
+            <Bot className="w-4 h-4 text-teal" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-xs font-semibold text-foreground">Claude</div>
+            <div className="text-[10px] text-muted-foreground">Connected via AVX MCP Runtime · mcp.appviewx.com/v1</div>
+          </div>
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${active ? 'bg-teal/10 text-teal' : 'bg-muted text-muted-foreground'}`}>
+            {active ? 'Session active' : 'Idle'}
+          </span>
+        </div>
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 min-h-0">
+          {messages.length === 0 && !isTyping && (
+            <div className="h-full flex flex-col items-center justify-center text-center px-6">
+              <div className="w-12 h-12 rounded-full bg-muted/30 flex items-center justify-center mb-3">
+                <MessageSquare className="w-5 h-5 text-muted-foreground" />
+              </div>
+              <p className="text-xs font-medium text-foreground mb-1">Select a scenario on the left</p>
+              <p className="text-[11px] text-muted-foreground max-w-xs leading-relaxed">
+                Each scenario demonstrates how the MCP Runtime handles a different risk tier — from instant reads to destructive operations requiring approval.
+              </p>
+            </div>
+          )}
+
+          {messages.map(msg => (
+            <div key={msg.id}>
+              {/* User message */}
+              {msg.type === 'user' && (
+                <div className="flex justify-end">
+                  <div className="max-w-[80%] bg-teal/10 border border-teal/20 rounded-2xl rounded-tr-sm px-3 py-2 text-xs text-foreground">
+                    {msg.text}
+                  </div>
+                </div>
+              )}
+
+              {/* Claude message */}
+              {msg.type === 'claude' && (
+                <div className="flex gap-2">
+                  <div className="w-7 h-7 rounded-full bg-teal/10 flex items-center justify-center flex-shrink-0">
+                    <Bot className="w-3.5 h-3.5 text-teal" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-foreground leading-relaxed">{msg.text}</p>
+                    {msg.certs && (
+                      <div className="mt-2 border border-border/50 rounded-lg overflow-hidden">
+                        <table className="w-full text-[10px]">
+                          <thead>
+                            <tr className="bg-muted/30">
+                              {['Certificate', 'Expiry', 'Days', 'Risk'].map(h => (
+                                <th key={h} className="text-left px-2 py-1.5 font-medium text-muted-foreground">{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {msg.certs.map((c, i) => (
+                              <tr key={i} className="border-t border-border/30">
+                                <td className="px-2 py-1.5 font-mono text-foreground">{c.name}</td>
+                                <td className="px-2 py-1.5 text-muted-foreground">{c.expiry}</td>
+                                <td className="px-2 py-1.5 text-foreground">{c.days}d</td>
+                                <td className={`px-2 py-1.5 font-medium ${RISK_COLOR[c.risk]}`}>{c.risk}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* MCP tool call indicator */}
+              {msg.type === 'mcp_call' && (
+                <div className="flex gap-2 pl-9">
+                  <div className="flex items-center gap-2 text-[10px] border border-border/50 rounded-md px-2 py-1 bg-muted/20">
+                    <Zap className="w-3 h-3 text-amber-400" />
+                    <span className="font-bold text-amber-400">MCP CALL</span>
+                    <span className="font-mono text-foreground">{msg.tool}</span>
+                    {msg.tier && <TierBadge tier={msg.tier} />}
+                    {msg.scope && <span className="font-mono text-muted-foreground">{msg.scope}</span>}
+                  </div>
+                </div>
+              )}
+
+              {/* MCP result */}
+              {msg.type === 'mcp_result' && (
+                <div className="flex gap-2 pl-9">
+                  <div className="flex items-center gap-1.5 text-[10px] text-teal">
+                    <CheckCircle2 className="w-3 h-3" />
+                    {msg.text}
+                  </div>
+                </div>
+              )}
+
+              {/* Error */}
+              {msg.type === 'error' && (
+                <div className="flex gap-2 pl-9">
+                  <div className="flex items-center gap-2 text-[10px] border border-red-400/30 bg-red-400/5 rounded-md px-2 py-1">
+                    <AlertCircle className="w-3 h-3 text-red-400" />
+                    <span className="font-mono text-foreground">{msg.tool}</span>
+                    <span className="text-muted-foreground">{msg.text}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Approved event */}
+              {msg.type === 'approved' && (
+                <div className="flex gap-2 pl-9">
+                  <div className="flex items-center gap-1.5 text-[10px] text-teal border border-teal/30 bg-teal/5 rounded-md px-2 py-1">
+                    <CheckCircle2 className="w-3 h-3" />
+                    {msg.text}
+                  </div>
+                </div>
+              )}
+
+              {/* Rejected event */}
+              {msg.type === 'rejected' && (
+                <div className="flex gap-2 pl-9">
+                  <div className="flex items-center gap-1.5 text-[10px] text-red-400 border border-red-400/30 bg-red-400/5 rounded-md px-2 py-1">
+                    <X className="w-3 h-3" />
+                    {msg.text}
+                  </div>
+                </div>
+              )}
+
+              {/* T4 Pre-approval gate */}
+              {msg.type === 'approval_gate' && t4Phase === 'waiting' && (
+                <div className="pl-9">
+                  <div className="border border-orange-400/40 bg-orange-400/5 rounded-xl p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Clock className="w-4 h-4 text-orange-400" />
+                      <div>
+                        <div className="text-xs font-semibold text-foreground">Pre-Approval Required</div>
+                        <div className="text-[10px] text-muted-foreground">T4 — Workflow execute</div>
+                      </div>
+                    </div>
+                    <div className="space-y-1 mb-3 text-[10px]">
+                      <div className="flex justify-between"><span className="text-muted-foreground">Tool</span><span className="font-mono text-foreground">{msg.tool}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">Correlation ID</span><span className="font-mono text-foreground">{msg.correlationId}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">SNOW ticket</span><span className="font-mono text-foreground">INC00284820</span></div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={handleT4Approve} className="flex-1 text-[11px] font-medium bg-teal text-background rounded-md px-2 py-1.5 hover:opacity-90">Approve</button>
+                      <button onClick={handleT4Reject} className="flex-1 text-[11px] font-medium border border-red-400/40 text-red-400 rounded-md px-2 py-1.5 hover:bg-red-400/10">Reject</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* T5 Pre-approval gate */}
+              {msg.type === 'approval_gate' && t5Phase === 'pre_wait' && (
+                <div className="pl-9">
+                  <div className="border border-red-400/40 bg-red-400/5 rounded-xl p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertTriangle className="w-4 h-4 text-red-400" />
+                      <div>
+                        <div className="text-xs font-semibold text-foreground">Pre-Approval Required</div>
+                        <div className="text-[10px] text-muted-foreground">T5 — Destructive operation</div>
+                      </div>
+                    </div>
+                    <div className="space-y-1 mb-3 text-[10px]">
+                      <div className="flex justify-between"><span className="text-muted-foreground">Tool</span><span className="font-mono text-foreground">{msg.tool}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">Correlation ID</span><span className="font-mono text-foreground">{msg.correlationId}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">Rollback action</span><span className="font-mono text-foreground">rollback_certificate_reinstate_v1</span></div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={handleT5PreApprove} className="flex-1 text-[11px] font-medium bg-teal text-background rounded-md px-2 py-1.5 hover:opacity-90">Approve</button>
+                      <button onClick={handleT5PreReject} className="flex-1 text-[11px] font-medium border border-red-400/40 text-red-400 rounded-md px-2 py-1.5 hover:bg-red-400/10">Reject</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* T5 Post-approval gate */}
+              {msg.type === 'post_approval_gate' && t5Phase === 'post_wait' && (
+                <div className="pl-9">
+                  <div className="border border-red-400/40 bg-red-400/5 rounded-xl p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Shield className="w-4 h-4 text-red-400" />
+                      <div>
+                        <div className="text-xs font-semibold text-foreground">Post-Execution Approval Required</div>
+                        <div className="text-[10px] text-muted-foreground">T5 — Verify the outcome</div>
+                      </div>
+                    </div>
+                    <div className="space-y-1 mb-2 text-[10px]">
+                      <div className="flex justify-between"><span className="text-muted-foreground">Execution status</span><span className="font-mono text-teal">Completed</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">Certificate</span><span className="font-mono text-foreground">cert-id-9921</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">Action</span><span className="font-mono text-foreground">Revoked</span></div>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mb-3 italic leading-relaxed">Approve to confirm outcome. Reject to trigger the rollback action and reinstate the certificate.</p>
+                    <div className="flex gap-2">
+                      <button onClick={handleT5PostApprove} className="flex-1 text-[11px] font-medium bg-teal text-background rounded-md px-2 py-1.5 hover:opacity-90">Approve Outcome</button>
+                      <button onClick={handleT5PostReject} className="flex-1 text-[11px] font-medium border border-red-400/40 text-red-400 rounded-md px-2 py-1.5 hover:bg-red-400/10">Trigger Rollback</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+
+          {/* Typing indicator */}
+          {isTyping && (
+            <div className="flex gap-2">
+              <div className="w-7 h-7 rounded-full bg-teal/10 flex items-center justify-center flex-shrink-0">
+                <Bot className="w-3.5 h-3.5 text-teal" />
+              </div>
+              <div className="flex items-center bg-muted/30 rounded-2xl rounded-tl-sm px-3 py-2">
+                <div className="flex gap-1">
+                  {[0, 1, 2].map(i => (
+                    <span key={i} className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-pulse" style={{ animationDelay: `${i * 150}ms` }} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div ref={endRef} />
+        </div>
+
+        {/* Bottom bar */}
+        <div className="border-t border-border/50 px-4 py-2 flex-shrink-0 bg-muted/10">
+          <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+            <span>Select a scenario above to simulate a conversation</span>
+            <span>Read-only demo</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+
 export default function MCPRuntimePage() {
   const [tab, setTab] = useState<Tab>('overview');
   const [runtimeEnabled, setRuntimeEnabled] = useState(true);
