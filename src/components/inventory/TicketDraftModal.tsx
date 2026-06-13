@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, Sparkles, Check, AlertTriangle, Atom } from 'lucide-react';
+import { X, Sparkles, Check, AlertTriangle, Atom, ExternalLink } from 'lucide-react';
 import { CryptoAsset } from '@/data/mockData';
 import { toast } from 'sonner';
+import { addTicket, mockIncidentNumber } from '@/lib/ticketStore';
 
 // ── Ticket draft shape ────────────────────────────────────────────────────────
 
@@ -220,6 +221,10 @@ interface Props {
   action: string;
   onClose: () => void;
   onConfirm: (draft: TicketDraft) => void;
+  /** When 'servicenow', show ServiceNow destination treatment and a "Create in ServiceNow" button. */
+  destination?: 'default' | 'servicenow';
+  /** Default assignment group when destination is 'servicenow'. */
+  defaultAssignmentGroup?: string;
 }
 
 const PRIORITY_STYLE: Record<string, string> = {
@@ -239,10 +244,12 @@ const ACTION_ICON: Record<string, React.ReactNode> = {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function TicketDraftModal({ asset, action, onClose, onConfirm }: Props) {
+export default function TicketDraftModal({ asset, action, onClose, onConfirm, destination = 'default', defaultAssignmentGroup }: Props) {
   const [thinking, setThinking] = useState(true);
   const [draft, setDraft] = useState<TicketDraft | null>(null);
   const [editingStep, setEditingStep] = useState<number | null>(null);
+  const [assignmentGroup, setAssignmentGroup] = useState(defaultAssignmentGroup ?? 'PKI & Cryptography Team');
+  const [createdIncident, setCreatedIncident] = useState<string | null>(null);
 
   useEffect(() => {
     setThinking(true);
@@ -406,6 +413,35 @@ export default function TicketDraftModal({ asset, action, onClose, onConfirm }: 
                 <p className="text-[10px] text-muted-foreground">{draft.complianceImpact}</p>
               </div>
 
+              {/* ServiceNow destination treatment */}
+              {destination === 'servicenow' && (
+                <div className="p-3 rounded-lg bg-teal/5 border border-teal/20 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <ExternalLink className="w-3.5 h-3.5 text-teal" />
+                    <p className="text-[10px] font-semibold text-teal">Destination: ServiceNow ITSM</p>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1">Assignment Group</label>
+                    <input
+                      value={assignmentGroup}
+                      onChange={e => setAssignmentGroup(e.target.value)}
+                      disabled={!!createdIncident}
+                      className="w-full px-3 py-1.5 bg-secondary border border-border rounded text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal disabled:opacity-60"
+                    />
+                  </div>
+                  {createdIncident && (
+                    <div className="mt-2 p-2 rounded bg-teal/10 border border-teal/30 flex items-center gap-2">
+                      <Check className="w-3.5 h-3.5 text-teal" />
+                      <p className="text-[10.5px] text-foreground">
+                        Created in ServiceNow as <span className="font-mono font-semibold text-teal">{createdIncident}</span>
+                        <span className="text-muted-foreground"> · assigned to {assignmentGroup}</span>
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+
             </div>
           ) : null}
         </div>
@@ -414,27 +450,49 @@ export default function TicketDraftModal({ asset, action, onClose, onConfirm }: 
         {!thinking && draft && (
           <div className="flex items-center justify-between px-5 py-4 border-t border-border flex-shrink-0">
             <p className="text-[10px] text-muted-foreground">
-              Review and edit any field before confirming. Ticket will appear in Ticket Management.
+              {destination === 'servicenow'
+                ? 'Simulated handoff. No live ServiceNow call is made.'
+                : 'Review and edit any field before confirming. Ticket will appear in Ticket Management.'}
             </p>
             <div className="flex gap-2">
               <button onClick={onClose} className="px-4 py-2 text-xs rounded-lg border border-border hover:bg-secondary transition-colors">
-                Cancel
+                {createdIncident ? 'Close' : 'Cancel'}
               </button>
-              <button
-                onClick={() => {
-                  onConfirm(draft);
-                  toast.success('Ticket created', {
-                    description: `${draft.title} · ${draft.priority} · Assigned to ${draft.assignee}`,
-                  });
-                  onClose();
-                }}
-                className="px-4 py-2 text-xs rounded-lg bg-teal text-primary-foreground hover:bg-teal/90 font-semibold transition-colors flex items-center gap-1.5"
-              >
-                <Check className="w-3.5 h-3.5" /> Confirm & Create Ticket
-              </button>
+              {!createdIncident && destination === 'servicenow' && (
+                <button
+                  onClick={() => {
+                    const inc = mockIncidentNumber();
+                    setCreatedIncident(inc);
+                    addTicket(draft, { destination: 'servicenow', externalId: inc, reporter: 'Quantum Readiness' });
+                    onConfirm(draft);
+                    toast.success('Created in ServiceNow', {
+                      description: `${inc} · ${draft.priority} · ${assignmentGroup}`,
+                    });
+                  }}
+                  className="px-4 py-2 text-xs rounded-lg bg-teal text-primary-foreground hover:bg-teal/90 font-semibold transition-colors flex items-center gap-1.5"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" /> Create in ServiceNow
+                </button>
+              )}
+              {!createdIncident && destination !== 'servicenow' && (
+                <button
+                  onClick={() => {
+                    addTicket(draft);
+                    onConfirm(draft);
+                    toast.success('Ticket created', {
+                      description: `${draft.title} · ${draft.priority} · Assigned to ${draft.assignee}`,
+                    });
+                    onClose();
+                  }}
+                  className="px-4 py-2 text-xs rounded-lg bg-teal text-primary-foreground hover:bg-teal/90 font-semibold transition-colors flex items-center gap-1.5"
+                >
+                  <Check className="w-3.5 h-3.5" /> Confirm & Create Ticket
+                </button>
+              )}
             </div>
           </div>
         )}
+
       </div>
     </div>
   );

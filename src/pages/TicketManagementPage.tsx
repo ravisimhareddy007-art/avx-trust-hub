@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StatusBadge, SeverityBadge } from '@/components/shared/UIComponents';
 import { toast } from 'sonner';
 import {
   Ticket, Search, Plus, ExternalLink, ArrowUpDown, Clock, CheckCircle,
   AlertTriangle, MoreVertical, RefreshCw, MessageSquare
 } from 'lucide-react';
+import { listTickets } from '@/lib/ticketStore';
 
 interface TicketItem {
   id: string;
   summary: string;
-  type: 'License Request' | 'Remediation' | 'Provisioning' | 'Incident' | 'Change Request';
+  type: 'License Request' | 'Remediation' | 'Provisioning' | 'Incident' | 'Change Request' | 'PQC Migration';
   priority: 'Critical' | 'High' | 'Medium' | 'Low';
   status: 'Open' | 'In Progress' | 'Pending Approval' | 'Resolved' | 'Closed';
   assignee: string;
@@ -46,8 +47,15 @@ export default function TicketManagementPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [selectedTicket, setSelectedTicket] = useState<TicketItem | null>(null);
+  const [stored, setStored] = useState<TicketItem[]>([]);
 
-  const filtered = mockTickets.filter(t => {
+  useEffect(() => {
+    setStored(listTickets() as unknown as TicketItem[]);
+  }, []);
+
+  const allTickets = [...stored, ...mockTickets];
+
+  const filtered = allTickets.filter(t => {
     if (statusFilter !== 'all' && t.status !== statusFilter) return false;
     if (typeFilter !== 'all' && t.type !== typeFilter) return false;
     if (search && !t.summary.toLowerCase().includes(search.toLowerCase()) && !t.id.toLowerCase().includes(search.toLowerCase())) return false;
@@ -55,12 +63,12 @@ export default function TicketManagementPage() {
   });
 
   const statusCounts = {
-    all: mockTickets.length,
-    Open: mockTickets.filter(t => t.status === 'Open').length,
-    'In Progress': mockTickets.filter(t => t.status === 'In Progress').length,
-    'Pending Approval': mockTickets.filter(t => t.status === 'Pending Approval').length,
-    Resolved: mockTickets.filter(t => t.status === 'Resolved').length,
-    Closed: mockTickets.filter(t => t.status === 'Closed').length,
+    all: allTickets.length,
+    Open: allTickets.filter(t => t.status === 'Open').length,
+    'In Progress': allTickets.filter(t => t.status === 'In Progress').length,
+    'Pending Approval': allTickets.filter(t => t.status === 'Pending Approval').length,
+    Resolved: allTickets.filter(t => t.status === 'Resolved').length,
+    Closed: allTickets.filter(t => t.status === 'Closed').length,
   };
 
   return (
