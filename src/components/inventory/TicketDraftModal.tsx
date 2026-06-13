@@ -250,6 +250,8 @@ export default function TicketDraftModal({ asset, action, onClose, onConfirm, de
   const [editingStep, setEditingStep] = useState<number | null>(null);
   const [assignmentGroup, setAssignmentGroup] = useState(defaultAssignmentGroup ?? 'PKI & Cryptography Team');
   const [createdIncident, setCreatedIncident] = useState<string | null>(null);
+
+  useEffect(() => {
     setThinking(true);
     setDraft(null);
     const t = setTimeout(() => {
