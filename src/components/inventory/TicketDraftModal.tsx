@@ -413,6 +413,35 @@ export default function TicketDraftModal({ asset, action, onClose, onConfirm, de
                 <p className="text-[10px] text-muted-foreground">{draft.complianceImpact}</p>
               </div>
 
+              {/* ServiceNow destination treatment */}
+              {destination === 'servicenow' && (
+                <div className="p-3 rounded-lg bg-teal/5 border border-teal/20 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <ExternalLink className="w-3.5 h-3.5 text-teal" />
+                    <p className="text-[10px] font-semibold text-teal">Destination: ServiceNow ITSM</p>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1">Assignment Group</label>
+                    <input
+                      value={assignmentGroup}
+                      onChange={e => setAssignmentGroup(e.target.value)}
+                      disabled={!!createdIncident}
+                      className="w-full px-3 py-1.5 bg-secondary border border-border rounded text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal disabled:opacity-60"
+                    />
+                  </div>
+                  {createdIncident && (
+                    <div className="mt-2 p-2 rounded bg-teal/10 border border-teal/30 flex items-center gap-2">
+                      <Check className="w-3.5 h-3.5 text-teal" />
+                      <p className="text-[10.5px] text-foreground">
+                        Created in ServiceNow as <span className="font-mono font-semibold text-teal">{createdIncident}</span>
+                        <span className="text-muted-foreground"> · assigned to {assignmentGroup}</span>
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+
             </div>
           ) : null}
         </div>
