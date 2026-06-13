@@ -63,12 +63,12 @@ export default function TicketManagementPage() {
   });
 
   const statusCounts = {
-    all: mockTickets.length,
-    Open: mockTickets.filter(t => t.status === 'Open').length,
-    'In Progress': mockTickets.filter(t => t.status === 'In Progress').length,
-    'Pending Approval': mockTickets.filter(t => t.status === 'Pending Approval').length,
-    Resolved: mockTickets.filter(t => t.status === 'Resolved').length,
-    Closed: mockTickets.filter(t => t.status === 'Closed').length,
+    all: allTickets.length,
+    Open: allTickets.filter(t => t.status === 'Open').length,
+    'In Progress': allTickets.filter(t => t.status === 'In Progress').length,
+    'Pending Approval': allTickets.filter(t => t.status === 'Pending Approval').length,
+    Resolved: allTickets.filter(t => t.status === 'Resolved').length,
+    Closed: allTickets.filter(t => t.status === 'Closed').length,
   };
 
   return (
