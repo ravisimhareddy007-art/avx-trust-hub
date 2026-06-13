@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StatusBadge, SeverityBadge } from '@/components/shared/UIComponents';
 import { toast } from 'sonner';
 import {
   Ticket, Search, Plus, ExternalLink, ArrowUpDown, Clock, CheckCircle,
   AlertTriangle, MoreVertical, RefreshCw, MessageSquare
 } from 'lucide-react';
+import { listTickets } from '@/lib/ticketStore';
 
 interface TicketItem {
   id: string;
