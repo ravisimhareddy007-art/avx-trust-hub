@@ -10,7 +10,7 @@ import { listTickets } from '@/lib/ticketStore';
 interface TicketItem {
   id: string;
   summary: string;
-  type: 'License Request' | 'Remediation' | 'Provisioning' | 'Incident' | 'Change Request';
+  type: 'License Request' | 'Remediation' | 'Provisioning' | 'Incident' | 'Change Request' | 'PQC Migration';
   priority: 'Critical' | 'High' | 'Medium' | 'Low';
   status: 'Open' | 'In Progress' | 'Pending Approval' | 'Resolved' | 'Closed';
   assignee: string;
