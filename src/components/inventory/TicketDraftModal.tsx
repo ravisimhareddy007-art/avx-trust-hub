@@ -450,27 +450,49 @@ export default function TicketDraftModal({ asset, action, onClose, onConfirm, de
         {!thinking && draft && (
           <div className="flex items-center justify-between px-5 py-4 border-t border-border flex-shrink-0">
             <p className="text-[10px] text-muted-foreground">
-              Review and edit any field before confirming. Ticket will appear in Ticket Management.
+              {destination === 'servicenow'
+                ? 'Simulated handoff. No live ServiceNow call is made.'
+                : 'Review and edit any field before confirming. Ticket will appear in Ticket Management.'}
             </p>
             <div className="flex gap-2">
               <button onClick={onClose} className="px-4 py-2 text-xs rounded-lg border border-border hover:bg-secondary transition-colors">
-                Cancel
+                {createdIncident ? 'Close' : 'Cancel'}
               </button>
-              <button
-                onClick={() => {
-                  onConfirm(draft);
-                  toast.success('Ticket created', {
-                    description: `${draft.title} · ${draft.priority} · Assigned to ${draft.assignee}`,
-                  });
-                  onClose();
-                }}
-                className="px-4 py-2 text-xs rounded-lg bg-teal text-primary-foreground hover:bg-teal/90 font-semibold transition-colors flex items-center gap-1.5"
-              >
-                <Check className="w-3.5 h-3.5" /> Confirm & Create Ticket
-              </button>
+              {!createdIncident && destination === 'servicenow' && (
+                <button
+                  onClick={() => {
+                    const inc = mockIncidentNumber();
+                    setCreatedIncident(inc);
+                    addTicket(draft, { destination: 'servicenow', externalId: inc, reporter: 'Quantum Readiness' });
+                    onConfirm(draft);
+                    toast.success('Created in ServiceNow', {
+                      description: `${inc} · ${draft.priority} · ${assignmentGroup}`,
+                    });
+                  }}
+                  className="px-4 py-2 text-xs rounded-lg bg-teal text-primary-foreground hover:bg-teal/90 font-semibold transition-colors flex items-center gap-1.5"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" /> Create in ServiceNow
+                </button>
+              )}
+              {!createdIncident && destination !== 'servicenow' && (
+                <button
+                  onClick={() => {
+                    addTicket(draft);
+                    onConfirm(draft);
+                    toast.success('Ticket created', {
+                      description: `${draft.title} · ${draft.priority} · Assigned to ${draft.assignee}`,
+                    });
+                    onClose();
+                  }}
+                  className="px-4 py-2 text-xs rounded-lg bg-teal text-primary-foreground hover:bg-teal/90 font-semibold transition-colors flex items-center gap-1.5"
+                >
+                  <Check className="w-3.5 h-3.5" /> Confirm & Create Ticket
+                </button>
+              )}
             </div>
           </div>
         )}
+
       </div>
     </div>
   );
