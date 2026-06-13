@@ -101,7 +101,7 @@ function OverviewTab({ runtimeEnabled, setRuntimeEnabled }: { runtimeEnabled: bo
           </div>
           <div>
             <p className="text-[12px] font-semibold text-foreground">MCP Runtime — {runtimeEnabled ? 'Online' : 'Disabled'}</p>
-            <p className="text-[10px] text-muted-foreground">{runtimeEnabled ? 'Streamable HTTP · MCP 2025-11-25 · 2 active instances' : 'All AI client connections rejected. Sessions terminated.'}</p>
+            <p className="text-[10px] text-muted-foreground">{runtimeEnabled ? 'Streamable HTTP · 2 active instances' : 'All AI client connections rejected. Sessions terminated.'}</p>
           </div>
         </div>
         <button onClick={() => { setRuntimeEnabled(!runtimeEnabled); toast[runtimeEnabled ? 'error' : 'success'](runtimeEnabled ? 'Runtime disabled. Sessions terminated within 60s.' : 'Runtime enabled.'); }}
@@ -1620,7 +1620,7 @@ export default function MCPRuntimePage() {
             <h1 className="text-xl font-semibold text-foreground">MCP Runtime Service</h1>
             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${runtimeEnabled ? 'bg-teal/10 text-teal' : 'bg-red-400/10 text-red-400'}`}>{runtimeEnabled ? '● Online' : '● Disabled'}</span>
           </div>
-          <p className="text-[11px] text-muted-foreground">Governed MCP gateway · Phase 1 — CLM · SaaS · MCP spec 2025-11-25</p>
+          <p className="text-[11px] text-muted-foreground">Governed MCP gateway · Phase 1 — CLM · SaaS</p>
         </div>
         <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
           <span className="font-mono bg-muted/30 px-2 py-1 rounded">mcp.appviewx.com/v1</span>
