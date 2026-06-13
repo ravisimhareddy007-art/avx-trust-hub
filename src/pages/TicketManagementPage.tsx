@@ -47,8 +47,15 @@ export default function TicketManagementPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [selectedTicket, setSelectedTicket] = useState<TicketItem | null>(null);
+  const [stored, setStored] = useState<TicketItem[]>([]);
 
-  const filtered = mockTickets.filter(t => {
+  useEffect(() => {
+    setStored(listTickets() as unknown as TicketItem[]);
+  }, []);
+
+  const allTickets = [...stored, ...mockTickets];
+
+  const filtered = allTickets.filter(t => {
     if (statusFilter !== 'all' && t.status !== statusFilter) return false;
     if (typeFilter !== 'all' && t.type !== typeFilter) return false;
     if (search && !t.summary.toLowerCase().includes(search.toLowerCase()) && !t.id.toLowerCase().includes(search.toLowerCase())) return false;
