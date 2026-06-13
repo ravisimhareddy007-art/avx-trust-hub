@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, Sparkles, Check, AlertTriangle, Atom } from 'lucide-react';
+import { X, Sparkles, Check, AlertTriangle, Atom, ExternalLink } from 'lucide-react';
 import { CryptoAsset } from '@/data/mockData';
 import { toast } from 'sonner';
+import { addTicket, mockIncidentNumber } from '@/lib/ticketStore';
 
 // ── Ticket draft shape ────────────────────────────────────────────────────────
 
