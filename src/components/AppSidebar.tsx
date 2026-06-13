@@ -63,6 +63,9 @@ export default function AppSidebar() {
   const { persona, setPersona } = usePersona();
   const { currentPage, setCurrentPage, setFilters } = useNav();
 
+  // Hidden for MVP R1; will be enabled in R2
+  const SHOW_REMEDIATION = false;
+
   const navItems: NavItem[] = [
     { id: 'dashboard', label: 'DASHBOARD', icon: LayoutDashboard, page: 'dashboards' },
     { id: 'quantum', label: 'QUANTUM READINESS', icon: Atom, page: 'quantum-posture' },
@@ -77,7 +80,7 @@ export default function AppSidebar() {
         { id: 'violations', label: 'Violations', page: 'violations' },
       ] : undefined,
     },
-    {
+    ...(SHOW_REMEDIATION ? [{
       id: 'remediation',
       label: 'REMEDIATION',
       icon: Wrench,
@@ -88,7 +91,7 @@ export default function AppSidebar() {
         { id: 'remediation-ai', label: 'AI Agent Tokens', page: 'remediation-ai', count: 7 },
         { id: 'remediation-secrets', label: 'Secrets', page: 'remediation-secrets', count: 3, icon: Lock },
       ],
-    },
+    }] : []),
     { id: 'tickets', label: 'TICKETS', icon: Ticket, page: 'tickets' },
     {
       id: 'integrations',
