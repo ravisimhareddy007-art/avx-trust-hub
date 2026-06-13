@@ -244,12 +244,12 @@ const ACTION_ICON: Record<string, React.ReactNode> = {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function TicketDraftModal({ asset, action, onClose, onConfirm }: Props) {
+export default function TicketDraftModal({ asset, action, onClose, onConfirm, destination = 'default', defaultAssignmentGroup }: Props) {
   const [thinking, setThinking] = useState(true);
   const [draft, setDraft] = useState<TicketDraft | null>(null);
   const [editingStep, setEditingStep] = useState<number | null>(null);
-
-  useEffect(() => {
+  const [assignmentGroup, setAssignmentGroup] = useState(defaultAssignmentGroup ?? 'PKI & Cryptography Team');
+  const [createdIncident, setCreatedIncident] = useState<string | null>(null);
     setThinking(true);
     setDraft(null);
     const t = setTimeout(() => {
