@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import {
-  Atom, ArrowRight, Clock, ChevronRight, Info, Lock, Shield, FileText, ExternalLink,
+  Atom, ArrowRight, Clock, ChevronRight, Info, Lock, ExternalLink,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNav } from '@/context/NavigationContext';
