@@ -221,6 +221,10 @@ interface Props {
   action: string;
   onClose: () => void;
   onConfirm: (draft: TicketDraft) => void;
+  /** When 'servicenow', show ServiceNow destination treatment and a "Create in ServiceNow" button. */
+  destination?: 'default' | 'servicenow';
+  /** Default assignment group when destination is 'servicenow'. */
+  defaultAssignmentGroup?: string;
 }
 
 const PRIORITY_STYLE: Record<string, string> = {
