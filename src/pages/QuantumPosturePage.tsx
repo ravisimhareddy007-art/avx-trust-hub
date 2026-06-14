@@ -338,6 +338,9 @@ function StageAssess({ assets, nav }: { assets: CryptoAsset[]; nav: (f: Record<s
         </table>
       </div>
 
+      <MigrationReadinessStrip />
+      <MigrationPrepBacklog onRaiseTicket={(asset) => setModalAsset(asset)} />
+
       {modalAsset && (
         <TicketDraftModal
           asset={modalAsset}
