@@ -1431,7 +1431,7 @@ function RunsTab() {
         <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}
           className="px-2 py-1.5 bg-muted border border-border rounded text-xs text-foreground">
           <option>All categories</option>
-          {scanCategories.map(c => <option key={c.category}>{c.category}</option>)}
+          {visibleScanCategories.map(c => <option key={c.category}>{c.category}</option>)}
         </select>
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as typeof statusFilter)}
           className="px-2 py-1.5 bg-muted border border-border rounded text-xs text-foreground">
