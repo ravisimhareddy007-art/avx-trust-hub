@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { discoveryRuns } from '@/data/mockData';
+import { FEATURES } from '@/config/features';
 import { StatusBadge, Modal } from '@/components/shared/UIComponents';
 import { useNav } from '@/context/NavigationContext';
 import { useIntegrations } from '@/context/IntegrationsContext';
@@ -105,6 +106,15 @@ const scanCategories: ScanCategory[] = [
     ]
   },
 ];
+
+// Flag-gated view of discovery sources. When AI_IDENTITY is off, the AI Agent
+// Token Discovery source is hidden, and any category left empty is dropped.
+// The source definitions above are retained for re-enablement.
+const visibleScanCategories: ScanCategory[] = FEATURES.AI_IDENTITY
+  ? scanCategories
+  : scanCategories
+      .map(cat => ({ ...cat, types: cat.types.filter(t => t.config !== 'aiagent') }))
+      .filter(cat => cat.types.length > 0);
 
 // ============================================================================
 // MOCK PROFILES
@@ -321,8 +331,8 @@ function ProfilesTab({ onEdit, onNew }: { onEdit: (p: DiscoveryProfile) => void;
 // ============================================================================
 function NewScanTab({ existing, onSaved, goToTab }: { existing: DiscoveryProfile | null; onSaved: () => void; goToTab: (t: 'profiles' | 'new' | 'runs') => void }) {
   const initialCategory = existing
-    ? scanCategories.find(c => c.category === existing.category) ?? scanCategories[0]
-    : scanCategories[0];
+    ? visibleScanCategories.find(c => c.category === existing.category) ?? visibleScanCategories[0]
+    : visibleScanCategories[0];
   const [activeCategory, setActiveCategory] = useState<string>(initialCategory.category);
   const [selectedType, setSelectedType] = useState<ScanType>(initialCategory.types[0]);
   const [discoveryName, setDiscoveryName] = useState(existing?.name ?? '');
@@ -344,7 +354,7 @@ function NewScanTab({ existing, onSaved, goToTab }: { existing: DiscoveryProfile
   const { addProfile, updateProfile } = useProfiles();
   const { addRun, updateRun } = useRuns();
 
-  const currentCategory = scanCategories.find(c => c.category === activeCategory)!;
+  const currentCategory = visibleScanCategories.find(c => c.category === activeCategory)!;
   const isEditing = existing != null;
   const isVaultScan = selectedType.config === 'vault';
 
@@ -499,7 +509,7 @@ function NewScanTab({ existing, onSaved, goToTab }: { existing: DiscoveryProfile
         <div className="grid grid-cols-12 min-h-[280px]">
           {/* Left column: categories */}
           <div className="col-span-4 lg:col-span-3 border-r border-border bg-secondary/20">
-            {scanCategories.map(cat => {
+            {visibleScanCategories.map(cat => {
               const Icon = cat.icon;
               const isActive = activeCategory === cat.category;
               return (

@@ -1,3 +1,4 @@
+import { FEATURES } from '@/config/features';
 import React, { useState, useMemo } from 'react';
 import { Shield, Key, Bot, Lock, Fingerprint, Globe, AlertTriangle, Clock, Sparkles, Check, ChevronDown, ChevronUp, Layers, Ticket, Lock as LockIcon, Atom } from 'lucide-react';
 import { toast } from 'sonner';
@@ -183,7 +184,8 @@ const FILTER_MAP: Record<FilterKey, ActionItem['category'][] | null> = {
   'Quantum': ['PQC'],
 };
 
-const FILTERS: FilterKey[] = ['All', 'Certificates', 'Secrets', 'SSH Keys', 'AI Tokens', 'Infrastructure', 'Quantum'];
+const FILTERS: FilterKey[] = (['All', 'Certificates', 'Secrets', 'SSH Keys', 'AI Tokens', 'Infrastructure', 'Quantum'] as FilterKey[])
+  .filter(f => FEATURES.AI_IDENTITY || f !== 'AI Tokens');
 
 export default function CriticalActionFeed() {
   const { hoveredDriver, resolvedFeedItems, resolveFeedItem } = useDashboard();
@@ -207,7 +209,8 @@ export default function CriticalActionFeed() {
   // Apply filter, then sort: pending first, queued/resolved at bottom (preserving impact×urgency order within)
   const items = useMemo(() => {
     const cats = FILTER_MAP[filter];
-    const filtered = cats ? FEED.filter(i => cats.includes(i.category)) : FEED;
+    const base = FEATURES.AI_IDENTITY ? FEED : FEED.filter(i => i.category !== 'AI');
+    const filtered = cats ? base.filter(i => cats.includes(i.category)) : base;
     const decorated = filtered.map(item => ({
       ...item,
       highlighted: hoveredDriver != null && feedItemToDriver[item.id] === hoveredDriver,

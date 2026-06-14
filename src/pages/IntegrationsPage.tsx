@@ -1,3 +1,4 @@
+import { FEATURES } from '@/config/features';
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { useConnections } from '@/context/ConnectionsContext';
@@ -1348,6 +1349,8 @@ export default function IntegrationsPage() {
       return next;
     });
   const filtered = INTEGRATIONS.filter(i => {
+    // AI identity / Eos out of MVP scope: hide the agentic integration categories.
+    if (!FEATURES.AI_IDENTITY && (i.category === 'AI & Agentic' || i.category === 'Agentic Frameworks')) return false;
     const matchSearch =
       !search ||
       i.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -1427,7 +1430,7 @@ export default function IntegrationsPage() {
                 Hide
               </button>
             </div>
-            {SIDEBAR_GROUPS.map(group => {
+            {SIDEBAR_GROUPS.filter(g => FEATURES.AI_IDENTITY || g.label !== 'AI & AGENTIC').map(group => {
               const isCollapsed = collapsedGroups.has(group.label);
               return (
                 <div key={group.label} className="mb-3">

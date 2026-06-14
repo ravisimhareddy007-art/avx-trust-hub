@@ -1,3 +1,4 @@
+import { FEATURES } from '@/config/features';
 import React, { useMemo, useState } from 'react';
 import { Key, Lock, Bot, User } from 'lucide-react';
 import { mockAssets } from '@/data/mockData';
@@ -36,7 +37,7 @@ function buildItems(): TriageItem[] {
     if (a.owner === 'Unassigned' || a.status === 'Orphaned') {
       items.push({ type: 'orphaned', label: a.name, detail: `No owner · ${a.type}`, severity: 'High', action: 'Assign Owner', page: 'remediation' });
     }
-    if (a.type === 'AI Agent Token' && a.agentMeta?.permissionRisk === 'Over-privileged') {
+    if (FEATURES.AI_IDENTITY && a.type === 'AI Agent Token' && a.agentMeta?.permissionRisk === 'Over-privileged') {
       items.push({ type: 'overprivileged', label: a.name, detail: 'Over-privileged · unused scopes detected', severity: 'High', action: 'Review Scopes', page: 'remediation' });
     }
     if (a.type === 'API Key / Secret' && a.policyViolations > 0) {

@@ -1,3 +1,4 @@
+import { FEATURES } from '@/config/features';
 import React, { useState } from 'react';
 import { users, auditLog } from '@/data/mockData';
 import { StatusBadge } from '@/components/shared/UIComponents';
@@ -61,7 +62,7 @@ export default function SettingsPage({ initialTab = 'users' }: { initialTab?: 'u
                 { name: 'Kubernetes', status: 'Active', usage: 45 }, { name: 'Code Signing', status: 'Active', usage: 23 },
                 { name: 'QTH (Quantum Trust Hub)', status: 'In Development', usage: 0 },
                 { name: 'Eos (AI Identity)', status: 'Planned — Dec 2026', usage: 0 },
-              ].map(m => (
+              ].filter(m => FEATURES.AI_IDENTITY || !m.name.includes('Eos')).map(m => (
                 <div key={m.name} className="flex items-center justify-between py-2 border-b border-border last:border-0">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-medium">{m.name}</span>

@@ -1,3 +1,4 @@
+import { FEATURES } from '@/config/features';
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import {
@@ -86,7 +87,7 @@ function LicenseManagement() {
             {['Module', 'Status', 'Seats', 'Usage', 'Expiry', 'Actions'].map(h => <th key={h} className="text-left py-2 px-3 font-medium text-muted-foreground">{h}</th>)}
           </tr></thead>
           <tbody>
-            {modules.map((m, i) => (
+            {modules.filter(m => FEATURES.AI_IDENTITY || !m.name.includes('Eos')).map((m, i) => (
               <tr key={i} className="border-b border-border hover:bg-muted/30">
                 <td className="py-2 px-3 font-medium">{m.name}</td>
                 <td className="py-2 px-3"><StatusBadge status={m.status === 'Active' ? 'Active' : m.status === 'Trial' ? 'Warning' : 'Inactive'} /></td>
@@ -889,7 +890,8 @@ function MCPServerPanel() {
     ]},
   ];
 
-  const activeCat = categories.find(c => c.id === activeCategory)!;
+  const visibleCategories = categories.filter(c => FEATURES.AI_IDENTITY || c.id !== 'agents');
+  const activeCat = visibleCategories.find(c => c.id === activeCategory) ?? visibleCategories[0];
 
   const connectedAgents = [
     { name: 'Claude (Anthropic)', status: 'Connected', calls: '12,847', lastCall: '2m ago' },
@@ -940,7 +942,7 @@ function MCPServerPanel() {
         </div>
         <div className="flex">
           <div className="w-44 border-r border-border bg-secondary/30 py-1">
-            {categories.map(cat => (
+            {visibleCategories.map(cat => (
               <button key={cat.id} onClick={() => setActiveCategory(cat.id)}
                 className={`w-full text-left px-3 py-2 text-xs transition-colors ${activeCategory === cat.id ? 'bg-teal/10 text-teal font-medium border-r-2 border-teal' : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}>
                 {cat.label}
