@@ -1,3 +1,4 @@
+import { FEATURES } from '@/config/features';
 import React, { useState, useMemo, useEffect } from 'react';
 import { mockAssets, CryptoAsset } from '@/data/mockData';
 import { VIOLATION_FILTERS } from '@/lib/filters/cryptoFilters';
@@ -1041,6 +1042,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
 
   const filtered = useMemo(() => {
     let r = [...allAssets];
+    if (!FEATURES.AI_IDENTITY) r = r.filter(a => a.type !== 'AI Agent Token');
     if (typeFilter !== 'All') r = r.filter(a => a.type === typeFilter);
     if (search) {
       const q = search.toLowerCase();
@@ -1103,7 +1105,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
 
         {/* Type tabs */}
         <div className="flex items-center gap-1 border-b border-border pb-2 flex-shrink-0 overflow-x-auto">
-          {TYPE_FILTERS.map(t => {
+          {TYPE_FILTERS.filter(t => FEATURES.AI_IDENTITY || t.key !== 'AI Agent Token').map(t => {
             const cnt = t.key === 'All' ? allAssets.length : allAssets.filter(a => a.type === t.key).length;
             return (
               <button key={t.key} onClick={() => { setTypeFilter(t.key); }}

@@ -1,3 +1,4 @@
+import { FEATURES } from '@/config/features';
 import React from 'react';
 import { useNav } from '@/context/NavigationContext';
 import { ESTATE_SUMMARY, mockAssets } from '@/data/mockData';
@@ -133,7 +134,7 @@ export default function IdentityHealthBands() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-        {BANDS.map(b => {
+        {BANDS.filter(b => FEATURES.AI_IDENTITY || b.type !== 'AI Agent Token').map(b => {
           const Icon = b.icon;
           const trendValue = parseFloat(b.trend);
           const TrendIcon = trendValue >= 0 ? TrendingUp : TrendingDown;

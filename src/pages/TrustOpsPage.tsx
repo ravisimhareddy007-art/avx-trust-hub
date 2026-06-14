@@ -1,3 +1,4 @@
+import { FEATURES } from '@/config/features';
 import React, { useState } from 'react';
 import { useNav } from '@/context/NavigationContext';
 import { trustOpsActions, workflows } from '@/data/mockData';
@@ -43,7 +44,7 @@ export default function TrustOpsPage() {
 
       {/* Module filter chips */}
       <div className="flex gap-1.5">
-        {moduleChips.map(chip => (
+        {moduleChips.filter(chip => FEATURES.AI_IDENTITY || chip.id !== 'Eos').map(chip => (
           <button
             key={chip.id}
             onClick={() => chip.status ? toast.info(`${chip.label} — ${chip.status === 'dev' ? 'In development' : 'Planned Dec 2026'}`) : setModuleFilter(chip.id)}
@@ -66,6 +67,7 @@ export default function TrustOpsPage() {
           <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold">Action Queue</h2>
           {/* AI Anomaly Detection — contextual to TrustOps */}
+          {FEATURES.AI_IDENTITY && (
           <div className="bg-card rounded-lg border border-amber/20 p-3 mb-2">
             <div className="flex items-center gap-2 mb-2">
               <Sparkles className="w-3.5 h-3.5 text-amber" />
@@ -89,6 +91,7 @@ export default function TrustOpsPage() {
               ))}
             </div>
           </div>
+          )}
             <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground cursor-pointer">
               <Sparkles className="w-3 h-3 text-teal" />
               AI prioritized

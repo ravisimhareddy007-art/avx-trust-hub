@@ -1,3 +1,4 @@
+import { FEATURES } from '@/config/features';
 import React, { useState, useMemo } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -431,7 +432,9 @@ function FrameworkDrillModal({ framework, onClose, onViolationClick }: {
   onClose: () => void;
   onViolationClick: (v: Violation) => void;
 }) {
-  const violations = VIOLATIONS.filter(v => framework && v.framework.startsWith(framework.split(' ')[0]));
+  const violations = VIOLATIONS
+    .filter(v => FEATURES.AI_IDENTITY || v.id !== 'V-007')
+    .filter(v => framework && v.framework.startsWith(framework.split(' ')[0]));
   const fd = FRAMEWORK_POSTURE.find(f => f.framework === framework);
   return (
     <Modal open={!!framework} onClose={onClose} title={`${framework} — Violations`} wide>
@@ -799,7 +802,7 @@ export default function ComplianceDashboard() {
             <AIInsightCard>
               DORA RTS Art. 9 (90-day cert lifetime) is your most urgent gap — 5 violations open with 69 days to your audit.
               FIPS 140-2 shows weakest posture (68%) driven by 847 RSA-1024 SSH keys and AES-128 in Vault — both directly remediable via SSH + CLM workflows.
-              AI agent identity audit trail gap (38% of 472K tokens) creates a dual risk: NIS2 Art. 21 non-compliance plus a live Eos integration opportunity.
+              {FEATURES.AI_IDENTITY && 'AI agent identity audit trail gap (38% of 472K tokens) creates a dual risk: NIS2 Art. 21 non-compliance plus a live Eos integration opportunity.'}
               PQC compliance gap of 94% is a forward regulatory risk — NIST FIPS 203/204/205 adoption mandated by 2027.
             </AIInsightCard>
           </div>

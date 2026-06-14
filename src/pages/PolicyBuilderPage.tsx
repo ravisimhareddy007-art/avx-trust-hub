@@ -1,3 +1,4 @@
+import { FEATURES } from '@/config/features';
 import React, { useState } from 'react';
 import { useNav } from '@/context/NavigationContext';
 import { policyRules, customPolicies as initialCustomPolicies } from '@/data/mockData';
@@ -627,10 +628,12 @@ export default function PolicyBuilderPage() {
     setUserPolicies(prev => prev.map(p => p.id === id ? { ...p, status: p.status === 'Active' ? 'Draft' : 'Active' } : p));
   };
 
-  const filteredPolicies = policyRules.filter(p =>
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredPolicies = policyRules
+    .filter(p => FEATURES.AI_IDENTITY || !/\bAI\b|agent/i.test(`${p.name} ${p.description}`))
+    .filter(p =>
+      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.description.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
   return (
     <div className="space-y-4">

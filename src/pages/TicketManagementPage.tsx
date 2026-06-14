@@ -1,3 +1,4 @@
+import { FEATURES } from '@/config/features';
 import React, { useEffect, useState } from 'react';
 import { StatusBadge, SeverityBadge } from '@/components/shared/UIComponents';
 import { toast } from 'sonner';
@@ -53,7 +54,7 @@ export default function TicketManagementPage() {
     setStored(listTickets() as unknown as TicketItem[]);
   }, []);
 
-  const allTickets = [...stored, ...mockTickets];
+  const allTickets = [...stored, ...mockTickets].filter(t => FEATURES.AI_IDENTITY || t.module !== 'AI Agents');
 
   const filtered = allTickets.filter(t => {
     if (statusFilter !== 'all' && t.status !== statusFilter) return false;

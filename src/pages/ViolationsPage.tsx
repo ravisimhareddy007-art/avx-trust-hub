@@ -1,3 +1,4 @@
+import { FEATURES } from '@/config/features';
 import React, { useMemo, useState } from 'react';
 import {
   AlertTriangle,
@@ -180,7 +181,7 @@ export default function ViolationsPage() {
       });
     });
 
-    classic.push(
+    if (FEATURES.AI_IDENTITY) classic.push(
       {
         violationType: 'classic',
         type: 'expired-token',
