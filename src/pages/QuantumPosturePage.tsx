@@ -9,6 +9,8 @@ import { computeCRS, getRiskClass } from '@/lib/risk/crs';
 import { severityFor } from '@/lib/risk/types';
 import TicketDraftModal, { generateTicketDraft } from '@/components/inventory/TicketDraftModal';
 import { addTicket, mockIncidentNumber } from '@/lib/ticketStore';
+import MigrationReadinessStrip from '@/components/dashboards/quantum/MigrationReadinessStrip';
+import MigrationPrepBacklog from '@/components/dashboards/quantum/MigrationPrepBacklog';
 
 // ── Stages ────────────────────────────────────────────────────────────────────
 
