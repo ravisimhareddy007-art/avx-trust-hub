@@ -8,7 +8,6 @@ import { arsFor } from './ars';
 import { BI_MULTIPLIER, severityFor, type BusinessImpact, type Severity } from './types';
 import { DASHBOARD_FILTERS } from '@/lib/filters/cryptoFilters';
 
-// Weights used in the criticality-weighted average.
 const BI_WEIGHT: Record<BusinessImpact, number> = {
   Critical: 4,
   High:     3,
@@ -16,18 +15,13 @@ const BI_WEIGHT: Record<BusinessImpact, number> = {
   Low:      1,
 };
 
-function quantumWeight(): number {
-  const currentYear = new Date().getFullYear();
-  const deadlineYear = 2030;
-  const startYear = 2024;
-  const progress = Math.min(1, Math.max(0, (currentYear - startYear) / (deadlineYear - startYear)));
-  // Increases from 0.15 in 2024 to 0.35 in 2030
-  return 0.15 + progress * 0.20;
+function clampFloor(v: number): number {
+  return Math.min(0.90, Math.max(0.10, v));
 }
 
 export interface ErsBreakdown {
   ers: number;
-  weightedAvg: number;     // pre-floor weighted average
+  weightedAvg: number;
   floorApplied: boolean;
   floorAsset?: { id: string; name: string; ars: number; bi: BusinessImpact };
   severity: Severity;
@@ -62,7 +56,7 @@ function computeQuantumRiskComponent(scored: ScoredAsset[]): number {
   return totalW > 0 ? Math.round(quantumWeightedSum / totalW) : 0;
 }
 
-function buildDriverBuckets(scored: ScoredAsset[], weightedAvg: number): ErsBreakdown['driverBuckets'] {
+function buildDriverBuckets(_scored: ScoredAsset[], _weightedAvg: number): ErsBreakdown['driverBuckets'] {
   return Object.values(DASHBOARD_FILTERS)
     .map(f => ({
       id: f.id,
@@ -86,28 +80,25 @@ export function computeERS(
     bi: bi[a.id] ?? defaultBI(a),
   }));
 
-  // Criticality-weighted average.
   const totalW = scored.reduce((s, x) => s + BI_WEIGHT[x.bi], 0) || 1;
   const weightedAvg = Math.round(
     scored.reduce((s, x) => s + x.ars * BI_WEIGHT[x.bi], 0) / totalW
   );
 
-  // Floor rule: ERS cannot fall below 40% of the highest ARS among Critical
-  // production assets. Prevents a sea of low-impact green from masking one
-  // burning Critical asset.
   const criticalProd = scored.filter(
     x => x.bi === 'Critical' && x.asset.environment === 'Production'
   );
   const topCritical = criticalProd.sort((a, b) => b.ars - a.ars)[0];
-  const floor = topCritical ? Math.round(topCritical.ars * 0.85) : 0;
+  // Floor coefficient is a POLICY value (impact tolerance), not a NIST constant.
+  // Default 0.40; clamped to [0.10, 0.90] to prevent extreme dilution or over-weighting.
+  const FLOOR_COEFFICIENT = clampFloor(0.40);
+  const floor = topCritical ? Math.round(topCritical.ars * FLOOR_COEFFICIENT) : 0;
   const floorApplied = topCritical !== undefined && floor > weightedAvg;
-  const qWeight = quantumWeight();
-  const opsWeight = 1 - qWeight;
-  const quantumComponent = computeQuantumRiskComponent(scored);
-  const blended = Math.round(weightedAvg * opsWeight + quantumComponent * qWeight);
-  const ers = Math.min(100, Math.max(blended, floor));
+  // ERS is operational-only. Quantum exposure is reported separately via QES
+  // (see qes.ts); it is NOT blended here.
+  const quantumComponent = computeQuantumRiskComponent(scored); // retained for display only
+  const ers = Math.min(100, Math.max(weightedAvg, floor));
 
-  // Top contributing assets ranked by ERS-point contribution.
   const topAssets = [...scored]
     .map(x => ({
       id: x.asset.id,
@@ -129,17 +120,14 @@ export function computeERS(
       : undefined,
     severity: severityFor(ers),
     quantumComponent,
-    quantumWeight: qWeight,
+    quantumWeight: 0,
     topAssets,
     driverBuckets: buildDriverBuckets(scored, weightedAvg),
   };
 }
 
-// Default Business Impact heuristic: derived from environment + asset type until
-// the user overrides it via the inline editor or drawer.
 export function defaultBI(asset: ITAsset): BusinessImpact {
   if (asset.environment !== 'Production') return asset.environment === 'Staging' ? 'Moderate' : 'Low';
-  // Production: use the existing risk + type signal as a starting point.
   if (/Vault|HSM|Database|API Gateway/.test(asset.type)) return 'Critical';
   if (asset.criticalViolations >= 2 || asset.riskScore >= 80) return 'Critical';
   if (asset.riskScore >= 60) return 'High';
