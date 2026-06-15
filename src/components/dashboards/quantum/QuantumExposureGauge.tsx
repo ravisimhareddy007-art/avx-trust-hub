@@ -1,17 +1,23 @@
 import React from 'react';
 import { Atom } from 'lucide-react';
 import { computeQES, qesSeverity, explainQES } from '@/lib/risk/qes';
+import type { CryptoAsset } from '@/data/mockData';
 import ScoreExplainer from '@/components/risk/ScoreExplainer';
 
 const SEV_COLOR: Record<'Critical' | 'High' | 'Medium' | 'Low', string> = {
   Critical: 'text-coral', High: 'text-purple-light', Medium: 'text-amber', Low: 'text-teal',
 };
 
-export default function QuantumExposureGauge() {
-  const q = React.useMemo(() => computeQES(), []);
+interface Props {
+  objects?: CryptoAsset[];
+  vulnerableCount: number;
+  totalCount: number;
+}
+
+export default function QuantumExposureGauge({ objects, vulnerableCount, totalCount }: Props) {
+  const q = React.useMemo(() => computeQES(objects), [objects]);
   const sev = qesSeverity(q.qes);
   const distribution = 0.6 * q.p90 + 0.4 * q.p75;
-  const severityAnchor = 0.55 * q.maxQoe + 0.45 * distribution;
   const criticalFloor = q.criticalHNDLCount > 0 ? Math.min(100, 52 + 4.8 * Math.log(q.criticalHNDLCount)) : 0;
 
   return (
@@ -46,17 +52,17 @@ export default function QuantumExposureGauge() {
           <p className="text-[10px] text-muted-foreground leading-tight">HNDL-critical objects</p>
         </div>
         <div>
-          <p className="text-2xl font-bold tabular-nums text-amber">{q.vulnerableCount}</p>
+          <p className="text-2xl font-bold tabular-nums text-amber">{vulnerableCount}</p>
           <p className="text-[10px] text-muted-foreground leading-tight">quantum-vulnerable</p>
         </div>
         <div>
-          <p className="text-2xl font-bold tabular-nums text-foreground">{q.totalObjects}</p>
+          <p className="text-2xl font-bold tabular-nums text-foreground">{totalCount}</p>
           <p className="text-[10px] text-muted-foreground leading-tight">total objects</p>
         </div>
       </div>
 
       <p className="text-[10px] text-muted-foreground leading-relaxed">
-        Higher is worse, consistent with ERS. Concentration-anchored: a large clean estate cannot dilute a dangerous harvest-now-decrypt-later concentration.
+        Higher is worse. Concentration-anchored, so a large clean estate cannot dilute a dangerous harvest-now-decrypt-later concentration.
       </p>
     </div>
   );
