@@ -23,20 +23,19 @@ const statusColor: Record<string, string> = {
 const SENS_W: Record<string, number> = { Restricted: 100, Confidential: 75, Internal: 50, Public: 25 };
 
 interface Props {
+  objects?: CryptoAsset[];
   onRaiseTicket: (asset: CryptoAsset) => void;
+  onSelect?: (id: string) => void;
 }
 
-// Actionable migration prep-backlog: quantum-vulnerable objects ranked by
-// migration priority. Hands the object into the existing ServiceNow ticketing
-// flow. This is preparation and prioritisation, not migration execution.
-export default function MigrationPrepBacklog({ onRaiseTicket }: Props) {
+export default function MigrationPrepBacklog({ objects, onRaiseTicket, onSelect }: Props) {
   const [sortKey, setSortKey] = React.useState<SortKey>('priority');
 
   const items = React.useMemo(() => {
-    const list = qmBacklog();
+    const list = qmBacklog(objects);
     if (sortKey === 'priority') return list;
     return [...list].sort((a, b) => (b[sortKey] as number) - (a[sortKey] as number));
-  }, [sortKey]);
+  }, [objects, sortKey]);
 
   const top = items[0];
 
@@ -93,10 +92,14 @@ export default function MigrationPrepBacklog({ onRaiseTicket }: Props) {
             {items.slice(0, 12).map(it => (
               <tr key={it.asset.id} className="border-b border-border/40 last:border-0 hover:bg-secondary/20">
                 <td className="py-2 px-3">
-                  <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => onSelect?.(it.asset.id)}
+                    className="flex items-center gap-1.5 min-w-0 text-left hover:text-purple-light transition-colors"
+                  >
                     {it.agilityBlocked && <Lock className="w-2.5 h-2.5 text-amber" />}
-                    <span className="font-mono text-[11px] text-foreground truncate max-w-[220px]" title={it.asset.name}>{it.asset.name}</span>
-                  </div>
+                    <span className="font-mono text-[11px] truncate max-w-[220px]" title={it.asset.name}>{it.asset.name}</span>
+                  </button>
                 </td>
                 <td className="py-2 px-3 font-mono text-[11px] text-coral">{it.asset.algorithm}</td>
                 <td className="py-2 px-3 text-[10px] text-muted-foreground">{it.sensitivity} · {it.lifespanYears}y</td>
