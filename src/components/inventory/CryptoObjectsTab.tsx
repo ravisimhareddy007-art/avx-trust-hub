@@ -1,4 +1,5 @@
 import { FEATURES } from '@/config/features';
+import { algVuln } from '@/lib/risk/qes';
 import React, { useState, useMemo, useEffect } from 'react';
 import { mockAssets, CryptoAsset } from '@/data/mockData';
 import { VIOLATION_FILTERS } from '@/lib/filters/cryptoFilters';
@@ -1006,6 +1007,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   const [envFilter, setEnvFilter]       = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [pqcFilter, setPqcFilter]       = useState<string[]>([]);
+  const [qvOnly, setQvOnly]             = useState(false);
   const [ownerFilter, setOwnerFilter]   = useState<string[]>([]);
   const [filterIdActive, setFilterIdActive] = useState<string>('');
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
@@ -1021,16 +1023,20 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   const { setSelectedEntity }   = useAgent();
   const { filters: navFilters, setFilters, setCurrentPage } = useNav();
 
-  const { type: navType, status: navStatus, algorithm: navAlg, owner: navOwner, pqcRisk: navPqc, search: navSearch } = navFilters;
+  const { type: navType, status: navStatus, algorithm: navAlg, owner: navOwner, pqcRisk: navPqc, search: navSearch, quantumVulnerable: navQV } = navFilters;
   useEffect(() => {
-    if (navType)              setTypeFilter(navType);
-    if (navStatus)            setStatusFilter([navStatus]);
-    if (navAlg)               setAlgFilter([navAlg]);
-    if (navOwner)             setOwnerFilter([navOwner]);
-    if (navPqc)               setPqcFilter([navPqc]);
-    if (navSearch)            setSearch(navSearch);
-    if (navFilters.filterId)  setFilterIdActive(navFilters.filterId);
-  }, [navType, navStatus, navAlg, navOwner, navPqc, navSearch, navFilters.filterId]);
+    // Apply the incoming navigation filters authoritatively: set what is present
+    // and clear what is absent, so each navigation lands on exactly the intended
+    // view instead of stacking on top of a previous click's filters.
+    setTypeFilter(navType ?? 'All');
+    setStatusFilter(navStatus ? [navStatus] : []);
+    setAlgFilter(navAlg ? [navAlg] : []);
+    setOwnerFilter(navOwner ? [navOwner] : []);
+    setPqcFilter(navPqc ? [navPqc] : []);
+    setQvOnly(navQV === 'true');
+    setSearch(navSearch ?? '');
+    setFilterIdActive(navFilters.filterId ?? '');
+  }, [navType, navStatus, navAlg, navOwner, navPqc, navSearch, navQV, navFilters.filterId]);
 
   useEffect(() => {
     if (detailAsset) setSelectedEntity({ kind: 'identity', id: detailAsset.id, name: detailAsset.name });
@@ -1043,6 +1049,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   const filtered = useMemo(() => {
     let r = [...allAssets];
     if (!FEATURES.AI_IDENTITY) r = r.filter(a => a.type !== 'AI Agent Token');
+    if (qvOnly) r = r.filter(a => algVuln(a.algorithm) >= 90); // canonical quantum-vulnerable, matches Quantum Readiness
     if (typeFilter !== 'All') r = r.filter(a => a.type === typeFilter);
     if (search) {
       const q = search.toLowerCase();
@@ -1088,7 +1095,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
       r.sort((a, b) => (a.daysToExpiry - b.daysToExpiry) * dir);
     }
     return r;
-  }, [allAssets, typeFilter, search, algFilter, envFilter, statusFilter, pqcFilter, ownerFilter, sortKey, sortDir, filterIdActive]);
+  }, [allAssets, typeFilter, search, algFilter, envFilter, statusFilter, pqcFilter, ownerFilter, qvOnly, sortKey, sortDir, filterIdActive]);
 
   const getAssoc = (co: CryptoAsset) => mockITAssets.filter(a => a.cryptoObjectIds.includes(co.id));
   const cols = COLS[typeFilter] ?? COLS['All'];
