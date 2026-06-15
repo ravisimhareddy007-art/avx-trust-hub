@@ -1,5 +1,6 @@
 import { FEATURES } from '@/config/features';
 import { algVuln } from '@/lib/risk/qes';
+import { getCryptoViolations, cryptoViolationCount } from '@/lib/violations';
 import React, { useState, useMemo, useEffect } from 'react';
 import { mockAssets, CryptoAsset } from '@/data/mockData';
 import { VIOLATION_FILTERS } from '@/lib/filters/cryptoFilters';
@@ -233,7 +234,7 @@ function getPrimaryAction(co: CryptoAsset): InlineAction | null {
     return { label: 'Assign', action: 'assign', btnCls: 'bg-amber/15 text-amber hover:bg-amber/25 border border-amber/25' };
   if (co.pqcRisk === 'Critical')
     return { label: 'PQC Ticket', action: 'pqc', btnCls: 'bg-purple/15 text-purple-light hover:bg-purple/25 border border-purple/25' };
-  if (co.policyViolations > 0)
+  if (cryptoViolationCount(co) > 0)
     return { label: 'Fix →', action: 'fix', btnCls: 'bg-amber/10 text-amber hover:bg-amber/20 border border-amber/20' };
   return null;
 }
@@ -256,8 +257,8 @@ function CellValue({ col, co }: { col: ColDef; co: CryptoAsset }) {
     case 'autoRenewal':
       return <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${co.autoRenewal ? 'bg-teal/10 text-teal' : 'bg-muted text-muted-foreground'}`}>{co.autoRenewal ? 'Yes' : 'No'}</span>;
     case 'violations':
-      return co.policyViolations > 0
-        ? <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-coral/15 text-coral text-[10px] font-bold">{co.policyViolations}</span>
+      return cryptoViolationCount(co) > 0
+        ? <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-coral/15 text-coral text-[10px] font-bold">{cryptoViolationCount(co)}</span>
         : <span className="text-muted-foreground/40 text-[10px]">—</span>;
     case 'owner':
       return <span className={co.owner === 'Unassigned' ? 'text-coral font-medium' : 'text-muted-foreground'}>{co.owner}</span>;

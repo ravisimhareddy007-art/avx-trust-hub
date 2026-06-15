@@ -14,7 +14,8 @@ import {
   X,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { mockITAssets, getAssetViolations, type AssetViolation } from '@/data/inventoryMockData';
+import { type AssetViolation } from '@/data/inventoryMockData';
+import { getCryptoViolations } from '@/lib/violations';
 import { mockAssets } from '@/data/mockData';
 import { usePersona } from '@/context/PersonaContext';
 
@@ -135,46 +136,52 @@ export default function ViolationsPage() {
     const classic: ClassicRow[] = [];
     const pqc: PqcRow[] = [];
 
-    mockITAssets.forEach(asset => {
-      const vs = getAssetViolations(asset);
+    // Crypto-object violations come from the one canonical source, so the named
+    // violations and counts here match exactly what each object shows in the
+    // Inventory, the risk drawer, and the Quantum Readiness surface.
+    const objects = FEATURES.AI_IDENTITY ? mockAssets : mockAssets.filter(a => a.type !== 'AI Agent Token');
+    objects.forEach(co => {
+      const vs = getCryptoViolations(co);
       vs.forEach((v, idx) => {
-        const violationId = `${v.violationType === 'classic' ? 'OP' : 'QTH'}-${asset.id.slice(-3).toUpperCase()}-${String(idx + 1).padStart(2, '0')}`;
+        const violationId = `${v.kind === 'operational' ? 'OP' : 'QTH'}-${co.id.slice(-3).toUpperCase()}-${String(idx + 1).padStart(2, '0')}`;
         const common = {
-          ...v,
+          violationType: (v.kind === 'operational' ? 'classic' : 'pqc') as AssetViolation['violationType'],
+          type: v.title,
+          severity: v.severity,
+          objectId: co.id,
+          objectName: co.name,
           violationId,
-          assetId: asset.id,
-          assetName: asset.name,
-          environment: asset.environment,
-          status: governanceStatusFor(asset.id, idx),
-          ageDays: ageDaysFor(asset.id, idx),
+          assetId: co.id,
+          assetName: co.name,
+          environment: co.environment,
+          status: governanceStatusFor(co.id, idx),
+          ageDays: ageDaysFor(co.id, idx),
+          policyMapping: v.policyMapping,
+          recommendedRemediation: v.recommendation,
         };
 
-        if (v.violationType === 'classic') {
-          const co = mockAssets.find(a => a.id === v.objectId);
+        if (v.kind === 'operational') {
           classic.push({
             ...common,
-            framework: operationalFrameworkFor(v.type),
-            ownerTeam: asset.ownerTeam,
-            daysToFailure: co?.daysToExpiry ?? null,
-            policyMapping: operationalPolicyMapping(v.type),
-            recommendedRemediation: operationalRemediationText(v.type),
+            framework: operationalFrameworkFor(v.title),
+            ownerTeam: co.team,
+            daysToFailure: co.daysToExpiry >= 0 ? co.daysToExpiry : null,
             evidenceItems: [
-              `${asset.environment} asset scan snapshot`,
-              `${v.objectName} policy evaluation log`,
-              `${operationalFrameworkFor(v.type)} control evidence package`,
+              `${co.environment} object scan snapshot`,
+              `${co.name} policy evaluation log`,
+              `${operationalFrameworkFor(v.title)} control evidence package`,
             ],
           });
         } else {
           pqc.push({
             ...common,
+            algorithm: co.algorithm,
             framework: 'NIST 2030',
-            isProduction: asset.environment === 'Production',
-            policyMapping: pqcPolicyMapping(v.algorithm),
-            recommendedRemediation: pqcRemediationText(v),
+            isProduction: co.environment === 'Production',
             evidenceItems: [
-              `${v.algorithm || 'Algorithm'} inventory export`,
-              `${asset.environment} exposure and dependency graph`,
-              'QTH readiness assessment log',
+              `${co.algorithm} inventory export`,
+              `${co.environment} exposure and dependency graph`,
+              'Quantum readiness assessment log',
             ],
           });
         }
