@@ -471,10 +471,17 @@ export default function PolicyBuilderPage() {
   const [groupLogic, setGroupLogic] = useState<'AND' | 'OR'>('AND');
   const [preview, setPreview] = useState<PreviewResult | null>(null);
 
-  // AI assist (lives inside Conditions section)
+  // AI assist (lives at top of modal, drafts the whole form)
   const [aiInput, setAiInput] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResult, setAiResult] = useState<DraftResult | null>(null);
+  const [aiTouched, setAiTouched] = useState<Set<AIField>>(new Set());
+  const [manuallyEdited, setManuallyEdited] = useState<Set<AIField>>(new Set());
+
+  const markUserEdit = (field: AIField) => {
+    setManuallyEdited(prev => { const n = new Set(prev); n.add(field); return n; });
+    setAiTouched(prev => { if (!prev.has(field)) return prev; const n = new Set(prev); n.delete(field); return n; });
+  };
 
   const resetCreateForm = () => {
     setFormPolicyType('Certificate Policy');
@@ -486,6 +493,7 @@ export default function PolicyBuilderPage() {
     setConditionGroups([emptyGroup()]); setGroupLogic('AND');
     setPreview(null); setEditingPolicy(null);
     setAiInput(''); setAiResult(null); setAiLoading(false);
+    setAiTouched(new Set()); setManuallyEdited(new Set());
   };
 
   const closeCreateModal = () => { setCreateOpen(false); resetCreateForm(); };
