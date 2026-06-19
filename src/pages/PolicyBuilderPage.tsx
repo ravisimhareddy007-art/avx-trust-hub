@@ -1091,10 +1091,11 @@ export default function PolicyBuilderPage() {
 
               {/* 3. Scope */}
               <div className="border-t border-border pt-4">
-                <SectionHeading
-                  label="Scope"
-                  info="Optional. Narrow where this policy applies. Empty = evaluate all assets of this type. Groups are OR; attribute refinement is AND across dimensions, OR within a dimension."
-                />
+                <div className="flex items-center gap-1.5 mb-3">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Scope</p>
+                  <InfoIcon text="Optional. Narrow where this policy applies. Empty = evaluate all assets of this type. Groups are OR; attribute refinement is AND across dimensions, OR within a dimension." />
+                  <AIMarker show={aiTouched.has('environments')} />
+                </div>
                 <div className="space-y-3">
                   <div>
                     <label className="block text-[11px] font-medium mb-1.5">Asset Groups</label>
@@ -1123,7 +1124,7 @@ export default function PolicyBuilderPage() {
                   </button>
                   {showRefine && (
                     <div className="grid grid-cols-2 gap-4 pl-3 border-l-2 border-border">
-                      <ChipMulti label="Environment" options={ENV_OPTIONS} values={scope.environments} onChange={v => setScope(s => ({ ...s, environments: v }))} />
+                      <ChipMulti label="Environment" options={ENV_OPTIONS} values={scope.environments} onChange={v => { setScope(s => ({ ...s, environments: v })); markUserEdit('environments'); }} />
                       <ChipMulti label="Cloud Provider" options={CLOUD_OPTIONS} values={scope.providers} onChange={v => setScope(s => ({ ...s, providers: v }))} />
                     </div>
                   )}
@@ -1132,15 +1133,17 @@ export default function PolicyBuilderPage() {
 
               {/* 4. Severity */}
               <div className="border-t border-border pt-4">
-                <SectionHeading
-                  label="Severity"
-                  info="Sets risk weighting for this policy and, when a ticket is created, the default ticket priority."
-                />
+                <div className="flex items-center gap-1.5 mb-3">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Severity</p>
+                  <InfoIcon text="Sets risk weighting for this policy and, when a ticket is created, the default ticket priority." />
+                  <AIMarker show={aiTouched.has('severity')} />
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <select value={formSeverity} onChange={e => {
                     const v = e.target.value;
                     setFormSeverity(v);
                     setTicket(t => ({ ...t, snowPriority: severityToSnowPriority(v), jiraPriority: severityToJiraPriority(v) }));
+                    markUserEdit('severity');
                   }} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
                     {['Critical', 'High', 'Medium', 'Low'].map(o => <option key={o}>{o}</option>)}
                   </select>
