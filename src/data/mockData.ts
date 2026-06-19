@@ -306,17 +306,49 @@ export const discoveryRuns = [
 ];
 
 export const policyRules = [
-  { id: 'pol-001', name: 'Certificate Expiry Alert', description: 'Alert when certificates are approaching expiry (30d/14d/7d thresholds)', severity: 'High', affectedAssets: 284, enabled: true, lastTriggered: '1 hour ago' },
-  { id: 'pol-002', name: 'Weak Algorithm Detection', description: 'Flag assets using RSA < 2048, MD5, or SHA-1 algorithms', severity: 'Critical', affectedAssets: 47, enabled: true, lastTriggered: '3 hours ago' },
-  { id: 'pol-003', name: 'Wildcard in Production', description: 'Detect wildcard certificates deployed in production environments', severity: 'Medium', affectedAssets: 23, enabled: true, lastTriggered: '12 hours ago' },
-  { id: 'pol-004', name: 'Self-Signed in Production', description: 'Flag self-signed certificates in production infrastructure', severity: 'High', affectedAssets: 12, enabled: true, lastTriggered: '2 days ago' },
-  { id: 'pol-005', name: 'PQC-Vulnerable Asset', description: 'Identify assets using algorithms vulnerable to quantum computing attacks', severity: 'Critical', affectedAssets: 12847, enabled: true, lastTriggered: '30 min ago' },
-  { id: 'pol-006', name: 'Orphaned SSH Key', description: 'Detect SSH keys with no rotation in 90+ days and no assigned owner', severity: 'High', affectedAssets: 156, enabled: true, lastTriggered: '6 hours ago' },
-  { id: 'pol-007', name: 'Missing Auto-Renewal', description: 'Flag certificates and keys without automated renewal configured', severity: 'Medium', affectedAssets: 89, enabled: true, lastTriggered: '1 day ago' },
-  { id: 'pol-008', name: 'Unapproved CA', description: 'Detect certificates issued by CAs not in the approved issuer list', severity: 'High', affectedAssets: 8, enabled: true, lastTriggered: '4 days ago' },
-  { id: 'pol-009', name: 'AI Agent Token Age', description: 'Alert on AI agent tokens older than 24 hours', severity: 'Medium', affectedAssets: 34, enabled: true, lastTriggered: '2 hours ago' },
-  { id: 'pol-010', name: 'SSH Certificate Expired', description: 'Critical alert for expired SSH certificates still in use', severity: 'Critical', affectedAssets: 3, enabled: true, lastTriggered: '4 hours ago' },
-  { id: 'pol-011', name: 'K8s Cert Approaching Expiry', description: 'Alert on Kubernetes workload certificates within 24h of expiry', severity: 'High', affectedAssets: 17, enabled: true, lastTriggered: '1 hour ago' },
+  // CERTIFICATE
+  { id: 'pol-cert-001', name: 'Weak Signature Algorithm', description: 'Flag certificates signed with SHA-1 or MD5.', severity: 'Critical', policyType: 'Certificate', framework: 'NIST SP 800-131A Rev2 · FIPS 186-5', affectedAssets: 412, enabled: true, lastTriggered: '1 hour ago' },
+  { id: 'pol-cert-002', name: 'Weak RSA Key Length', description: 'Flag certificates using RSA keys shorter than 2048 bits.', severity: 'Critical', policyType: 'Certificate', framework: 'NIST SP 800-57 Pt1 Rev5 §5.6.3 · FIPS 186-5', affectedAssets: 287, enabled: true, lastTriggered: '2 hours ago' },
+  { id: 'pol-cert-003', name: 'Weak ECC Key Length', description: 'Flag certificates using ECC keys shorter than 256 bits.', severity: 'High', policyType: 'Certificate', framework: 'NIST SP 800-57 Pt1 Rev5', affectedAssets: 64, enabled: false, lastTriggered: '—' },
+  { id: 'pol-cert-004', name: 'Certificate Expiry — Critical', description: 'Certificate expires in less than 7 days.', severity: 'Critical', policyType: 'Certificate', framework: 'CLM best practice', affectedAssets: 38, enabled: true, lastTriggered: '20 min ago' },
+  { id: 'pol-cert-005', name: 'Certificate Expiry — Warning', description: 'Certificate expires in less than 30 days.', severity: 'High', policyType: 'Certificate', framework: 'CLM best practice', affectedAssets: 184, enabled: false, lastTriggered: '—' },
+  { id: 'pol-cert-006', name: 'Excessive Validity Period', description: 'Public certificate validity exceeds 398 days.', severity: 'High', policyType: 'Certificate', framework: 'CA/Browser Forum BR · NIST alignment', affectedAssets: 73, enabled: false, lastTriggered: '—' },
+  { id: 'pol-cert-007', name: 'Self-Signed in Production', description: 'Self-signed certificate deployed in production scope.', severity: 'Medium', policyType: 'Certificate', framework: 'Internal hardening', affectedAssets: 21, enabled: false, lastTriggered: '—' },
+  { id: 'pol-cert-008', name: 'Revoked Certificate Deployed', description: 'Revocation status is Revoked but the certificate is still deployed.', severity: 'Critical', policyType: 'Certificate', framework: 'RFC 5280 / CRL & OCSP', affectedAssets: 6, enabled: false, lastTriggered: '—' },
+
+  // SSH KEY
+  { id: 'pol-ssh-001', name: 'Weak SSH Key Type (DSA)', description: 'SSH host or user key uses DSA.', severity: 'Critical', policyType: 'SSH Key', framework: 'NIST SP 800-131A Rev2 · FIPS 186-5', affectedAssets: 47, enabled: true, lastTriggered: '5 hours ago' },
+  { id: 'pol-ssh-002', name: 'Weak SSH RSA Key Length', description: 'SSH RSA key shorter than 2048 bits.', severity: 'Critical', policyType: 'SSH Key', framework: 'NIST SP 800-57 Pt1 Rev5', affectedAssets: 119, enabled: false, lastTriggered: '—' },
+  { id: 'pol-ssh-003', name: 'SSH Key Not Rotated', description: 'Managed SSH key has not been rotated in over 365 days.', severity: 'Medium', policyType: 'SSH Key', framework: 'NIST SP 800-57 crypto-period', affectedAssets: 312, enabled: false, lastTriggered: '—' },
+  { id: 'pol-ssh-004', name: 'Deprecated SSH MAC', description: 'SSH session negotiates hmac-md5 or hmac-sha1.', severity: 'High', policyType: 'SSH Key', framework: 'NIST SP 800-131A Rev2', affectedAssets: 88, enabled: false, lastTriggered: '—' },
+
+  // SSH CERTIFICATE
+  { id: 'pol-sshc-001', name: 'SSH Certificate Expiry', description: 'SSH certificate has less than 7 days remaining.', severity: 'High', policyType: 'SSH Certificate', framework: 'Short-lived SSH cert best practice', affectedAssets: 11, enabled: false, lastTriggered: '—' },
+  { id: 'pol-sshc-002', name: 'Excessive SSH Cert Validity', description: 'SSH certificate validity exceeds 90 days.', severity: 'Medium', policyType: 'SSH Certificate', framework: 'Short-lived SSH cert best practice', affectedAssets: 29, enabled: false, lastTriggered: '—' },
+  { id: 'pol-sshc-003', name: 'Revoked SSH Certificate Active', description: 'SSH certificate is on the KRL but still in use.', severity: 'High', policyType: 'SSH Certificate', framework: 'OpenSSH KRL', affectedAssets: 4, enabled: false, lastTriggered: '—' },
+
+  // ENCRYPTION KEYS
+  { id: 'pol-key-001', name: 'Key Rotation Disabled', description: 'Automatic rotation is not enabled on a KMS or HSM key.', severity: 'High', policyType: 'Encryption Keys', framework: 'NIST SP 800-57 crypto-period · cloud KMS auto-rotation', affectedAssets: 142, enabled: true, lastTriggered: '4 hours ago' },
+  { id: 'pol-key-002', name: 'Encryption Key Not Rotated', description: 'Days since last rotation exceeds 365.', severity: 'High', policyType: 'Encryption Keys', framework: 'NIST SP 800-57 Pt1 Rev5', affectedAssets: 96, enabled: false, lastTriggered: '—' },
+  { id: 'pol-key-003', name: 'Weak Symmetric Key Length', description: 'AES key shorter than 128 bits.', severity: 'Critical', policyType: 'Encryption Keys', framework: 'NIST SP 800-57 Pt1 Rev5', affectedAssets: 8, enabled: false, lastTriggered: '—' },
+  { id: 'pol-key-004', name: 'Weak Asymmetric Key Length', description: 'Asymmetric key with RSA < 2048 or ECC < 256.', severity: 'Critical', policyType: 'Encryption Keys', framework: 'NIST SP 800-57 Pt1 Rev5', affectedAssets: 33, enabled: false, lastTriggered: '—' },
+  { id: 'pol-key-005', name: 'Software-Protected High-Value Key', description: 'Customer-managed key uses software protection instead of HSM.', severity: 'Medium', policyType: 'Encryption Keys', framework: 'HSM protection preference', affectedAssets: 57, enabled: false, lastTriggered: '—' },
+
+  // SECRETS & TOKENS
+  { id: 'pol-sec-001', name: 'Secret Without Expiry', description: 'Secret has no expiry configured.', severity: 'High', policyType: 'Secrets & Tokens', framework: 'NIST SP 800-57 · credential lifecycle', affectedAssets: 421, enabled: true, lastTriggered: '1 hour ago' },
+  { id: 'pol-sec-002', name: 'Secret Not Rotated', description: 'Days since last rotation exceeds 90.', severity: 'High', policyType: 'Secrets & Tokens', framework: 'NIST SP 800-57', affectedAssets: 263, enabled: false, lastTriggered: '—' },
+  { id: 'pol-sec-003', name: 'Privileged Secret Without Expiry', description: 'Privileged secret has no expiry configured.', severity: 'High', policyType: 'Secrets & Tokens', framework: 'NIST SP 800-57', affectedAssets: 74, enabled: false, lastTriggered: '—' },
+  { id: 'pol-sec-004', name: 'Stale Token', description: 'Token has not been used in over 90 days.', severity: 'Medium', policyType: 'Secrets & Tokens', framework: 'Credential hygiene', affectedAssets: 188, enabled: false, lastTriggered: '—' },
+
+  // PROTOCOL & CIPHER
+  { id: 'pol-prot-001', name: 'Deprecated TLS Version', description: 'Endpoint accepts TLS 1.0 or TLS 1.1.', severity: 'Critical', policyType: 'Protocol & Cipher', framework: 'NIST SP 800-52 Rev2 — TLS 1.2 minimum', affectedAssets: 56, enabled: true, lastTriggered: '30 min ago' },
+  { id: 'pol-prot-002', name: 'Weak / Prohibited Cipher', description: 'Endpoint accepts RC4, 3DES, NULL, or export-grade ciphers.', severity: 'Critical', policyType: 'Protocol & Cipher', framework: 'NIST SP 800-52 Rev2 · SP 800-131A Rev2', affectedAssets: 41, enabled: true, lastTriggered: '2 hours ago' },
+  { id: 'pol-prot-003', name: 'No Forward Secrecy', description: 'Endpoint does not negotiate ECDHE or DHE.', severity: 'Medium', policyType: 'Protocol & Cipher', framework: 'NIST SP 800-52 Rev2', affectedAssets: 102, enabled: false, lastTriggered: '—' },
+  { id: 'pol-prot-004', name: 'Deprecated SSH/IPSec MAC', description: 'Weak MAC negotiated on SSH or IPSec.', severity: 'High', policyType: 'Protocol & Cipher', framework: 'NIST SP 800-131A Rev2', affectedAssets: 67, enabled: false, lastTriggered: '—' },
+
+  // POST-QUANTUM
+  { id: 'pol-pqc-001', name: 'Quantum-Vulnerable Algorithm in Use', description: 'Asset uses RSA, ECC, or DH — vulnerable to quantum attack.', severity: 'Medium', policyType: 'Post-Quantum', framework: 'NIST IR 8413 · FIPS 203/204/205 · NSA CNSA 2.0', affectedAssets: 12847, enabled: false, lastTriggered: '—' },
+  { id: 'pol-pqc-002', name: 'Non-Approved PQC Algorithm', description: 'Asset uses a PQC algorithm not in the NIST-approved set (ML-KEM, ML-DSA, SLH-DSA).', severity: 'High', policyType: 'Post-Quantum', framework: 'FIPS 203/204/205', affectedAssets: 19, enabled: false, lastTriggered: '—' },
 ];
 
 export const customPolicies = [
