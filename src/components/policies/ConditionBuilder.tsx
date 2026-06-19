@@ -158,18 +158,18 @@ export default function ConditionBuilder({ policyType, groups, groupLogic, onCha
             </div>
           )}
 
-          <div className="border border-border rounded-lg p-3 bg-card/40 space-y-2">
+          <div className="border border-border border-l-2 border-l-teal rounded-lg p-3 bg-muted/30 space-y-2.5 shadow-sm">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+              <span className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.1em] font-semibold px-2 py-0.5 rounded-md bg-teal/15 text-teal border border-teal/25">
                 Group {gi + 1}
-                {group.rows.length > 1 && <span className="ml-1 text-muted-foreground/70">· match</span>}
+                {group.rows.length > 1 && <span className="text-teal/70 font-normal normal-case tracking-normal">· match</span>}
               </span>
               <div className="flex items-center gap-2">
                 {group.rows.length > 1 && (
                   <LogicPill value={group.innerLogic} onChange={l => setInnerLogic(gi, l)} />
                 )}
                 {groups.length > 1 && (
-                  <button type="button" onClick={() => removeGroup(gi)} className="text-muted-foreground hover:text-coral">
+                  <button type="button" onClick={() => removeGroup(gi)} className="text-muted-foreground hover:text-coral transition-colors">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 )}
@@ -179,17 +179,19 @@ export default function ConditionBuilder({ policyType, groups, groupLogic, onCha
             {group.rows.map((row, ri) => {
               const f = fields.find(x => x.id === row.field);
               const ops = operatorsForField(f);
+              const fieldEmpty = !row.field;
+              const opEmpty = !row.operator;
               return (
                 <div key={row.id} className="flex items-center gap-2">
                   {ri > 0 ? (
-                    <span className="text-[10px] font-medium text-muted-foreground w-10 shrink-0">{group.innerLogic}</span>
+                    <span className="inline-flex justify-center items-center text-[9px] font-bold tracking-wide text-teal bg-teal/10 border border-teal/20 rounded px-1.5 py-0.5 w-10 shrink-0">{group.innerLogic}</span>
                   ) : (
                     <span className="w-10 shrink-0" />
                   )}
                   <select
                     value={row.field}
                     onChange={e => onFieldChange(gi, ri, e.target.value)}
-                    className={`${selectCls} w-44 shrink-0`}
+                    className={`${fieldEmpty ? emptySelectCls : selectCls} w-44 shrink-0`}
                   >
                     <option value="">Field…</option>
                     {fields.map(fl => (
@@ -200,7 +202,7 @@ export default function ConditionBuilder({ policyType, groups, groupLogic, onCha
                     value={row.operator}
                     onChange={e => setRow(gi, ri, { operator: e.target.value, value: '' })}
                     disabled={!row.field}
-                    className={`${selectCls} w-40 shrink-0 disabled:opacity-40`}
+                    className={`${row.field && opEmpty ? emptySelectCls : selectCls} w-40 shrink-0 disabled:opacity-40`}
                   >
                     {!row.field && <option value="">Operator…</option>}
                     {ops.map(o => (
@@ -211,7 +213,7 @@ export default function ConditionBuilder({ policyType, groups, groupLogic, onCha
                   <button
                     type="button"
                     onClick={() => removeRow(gi, ri)}
-                    className="text-muted-foreground hover:text-coral shrink-0"
+                    className="text-muted-foreground hover:text-coral shrink-0 transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -222,7 +224,7 @@ export default function ConditionBuilder({ policyType, groups, groupLogic, onCha
             <button
               type="button"
               onClick={() => addRow(gi)}
-              className="inline-flex items-center gap-1 text-[10px] text-teal font-medium hover:underline"
+              className="inline-flex items-center gap-1 text-[10px] text-teal font-semibold px-2 py-1 -mx-1 rounded hover:bg-teal/10 transition-colors"
             >
               <Plus className="w-3 h-3" /> Add condition
             </button>
@@ -233,7 +235,7 @@ export default function ConditionBuilder({ policyType, groups, groupLogic, onCha
       <button
         type="button"
         onClick={addGroup}
-        className="inline-flex items-center gap-1 text-[10px] text-teal font-medium hover:underline"
+        className="inline-flex items-center gap-1 text-[10px] text-teal font-semibold px-2 py-1.5 -mx-1 rounded-md border border-dashed border-teal/30 hover:bg-teal/10 hover:border-teal/60 transition-colors"
       >
         <Plus className="w-3 h-3" /> Add condition group
       </button>
