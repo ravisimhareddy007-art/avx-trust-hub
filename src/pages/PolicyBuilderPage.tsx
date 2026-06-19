@@ -962,12 +962,91 @@ export default function PolicyBuilderPage() {
       {/* Create / Edit Policy modal */}
           <Modal open={createOpen} onClose={closeCreateModal} title={editingPolicy ? 'Edit Policy' : 'Create Policy'} wide>
             <div className="w-full max-w-2xl space-y-5 text-foreground">
+              {/* 0. AI authoring (top, above everything) */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-1.5">
+                  <label className="block text-[11px] font-medium">Describe this policy in plain English</label>
+                  <InfoIcon text="AI fills the form below from your description. Review and edit before saving. AI never activates a policy." />
+                </div>
+                <div className="flex items-center gap-2 border border-teal/30 rounded-lg p-2 bg-teal/5">
+                  <Sparkles className="w-3.5 h-3.5 text-teal shrink-0" />
+                  <input
+                    value={aiInput}
+                    onChange={e => setAiInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); runAIDraft(); } }}
+                    placeholder='e.g. "flag production RSA certificates under 2048 bits expiring in 30 days"'
+                    className="flex-1 min-w-0 bg-transparent text-[11px] outline-none text-foreground placeholder:text-muted-foreground"
+                  />
+                  <button
+                    type="button"
+                    onClick={runAIDraft}
+                    disabled={!aiInput.trim() || aiLoading}
+                    className="inline-flex items-center gap-1 text-[10px] px-2.5 py-1 rounded bg-teal text-primary-foreground font-medium disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                  >
+                    <Sparkles className={`w-3 h-3 ${aiLoading ? 'animate-spin' : ''}`} />
+                    {aiLoading ? 'Drafting…' : 'Generate'}
+                  </button>
+                </div>
+
+                {aiResult?.kind === 'unavailable' && (
+                  <div className="text-[10px] text-amber border border-amber/30 bg-amber/5 rounded px-2 py-1.5">
+                    AI assist temporarily unavailable. You can still fill in the form manually below.
+                  </div>
+                )}
+                {aiResult?.kind === 'unresolvable' && (
+                  <div className="text-[10px] border border-coral/30 bg-coral/5 rounded px-2 py-1.5 space-y-1">
+                    <div className="text-coral font-medium">{aiResult.reason}</div>
+                    <div className="text-muted-foreground">Try: {aiResult.suggestion}</div>
+                  </div>
+                )}
+                {aiResult?.kind === 'ok' && (
+                  <div className="space-y-1.5">
+                    <div className="text-[10px] text-muted-foreground">
+                      {aiResult.interpretations.length > 1
+                        ? 'Your description is ambiguous. Pick an interpretation to fill the form:'
+                        : 'Suggested fill — click to apply to the form:'}
+                    </div>
+                    {aiResult.interpretations.map(interp => {
+                      const f = interp.fills;
+                      const fillSummary: string[] = [];
+                      if (f.policyType) fillSummary.push(`Type: ${f.policyType}`);
+                      if (f.conditions) fillSummary.push(`Conditions: ${f.conditions.seeds.map(g => `(${g.map(r => describeCondition(f.policyType || formPolicyType, r)).join(' AND ')})`).join(` ${f.conditions.groupLogic} `)}`);
+                      if (f.environments) fillSummary.push(`Scope: ${f.environments.join(', ')}`);
+                      if (f.severity) fillSummary.push(`Severity: ${f.severity}`);
+                      return (
+                        <button key={interp.id} type="button" onClick={() => applyInterpretation(interp)}
+                          className="w-full text-left border border-border rounded-lg px-2.5 py-2 bg-card hover:border-teal/50 hover:bg-teal/5 transition-colors">
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <span className="text-[11px] font-medium text-foreground">{interp.label}</span>
+                            <ConfidenceChip level={interp.confidence} />
+                          </div>
+                          <div className="text-[10px] font-mono text-muted-foreground break-words">
+                            {fillSummary.join(' · ')}
+                          </div>
+                          {interp.notes.length > 0 && (
+                            <div className="text-[9px] text-muted-foreground/80 mt-1 italic">{interp.notes.join(' · ')}</div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                <div className="flex items-center gap-2 pt-1">
+                  <div className="flex-1 h-px bg-border" />
+                  <span className="text-[9px] uppercase tracking-wide text-muted-foreground">or fill in the form manually below</span>
+                  <div className="flex-1 h-px bg-border" />
+                </div>
+              </div>
+
               {/* 1. Identity */}
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[11px] font-medium mb-1">Policy Type*</label>
-                    <select value={formPolicyType} onChange={e => { setFormPolicyType(e.target.value); setConditionGroups([emptyGroup()]); }} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <label className="block text-[11px] font-medium">Policy Type*</label>
+                      <AIMarker show={aiTouched.has('policyType')} />
+                    </div>
+                    <select value={formPolicyType} onChange={e => { setFormPolicyType(e.target.value); setConditionGroups([emptyGroup()]); markUserEdit('policyType'); markUserEdit('conditions'); }} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
                       {POLICY_TYPES.map(o => <option key={o}>{o}</option>)}
                     </select>
                   </div>
