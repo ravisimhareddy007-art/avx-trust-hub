@@ -9,7 +9,6 @@ import { POLICY_TYPES, describeCondition, FIELDS_BY_POLICY_TYPE } from '@/compon
 import { toast } from 'sonner';
 import {
   Plus,
-  Download,
   Search,
   Sparkles,
   ChevronDown,
@@ -381,10 +380,13 @@ function ConfidenceChip({ level }: { level: Confidence }) {
 
 export default function PolicyBuilderPage() {
   const { setCurrentPage, setFilters } = useNav();
-  const [tab, setTab] = useState<'outofbox' | 'custom' | 'compliance'>('outofbox');
+  const [tab, setTab] = useState<'policies' | 'templates'>('policies');
   const [policyStates, setPolicyStates] = useState<Record<string, boolean>>(Object.fromEntries(policyRules.map(p => [p.id, p.enabled])));
   const [configModal, setConfigModal] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterSource, setFilterSource] = useState<'all' | 'Built-in' | 'Custom'>('all');
+  const [filterSeverity, setFilterSeverity] = useState<'all' | 'Critical' | 'High' | 'Medium' | 'Low'>('all');
+  const [filterPolicyType, setFilterPolicyType] = useState<string>('all');
   const [userPolicies, setUserPolicies] = useState<CustomPolicy[]>(initialCustomPolicies);
   const [expandedPolicy, setExpandedPolicy] = useState<string | null>(null);
   const [editingPolicy, setEditingPolicy] = useState<string | null>(null);
@@ -622,61 +624,242 @@ export default function PolicyBuilderPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">Policy Builder</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-xl font-bold">Policies</h1>
+        <button onClick={() => { resetCreateForm(); setCreateOpen(true); }} className="flex items-center gap-1 px-3 py-2 rounded-lg bg-teal text-primary-foreground text-xs hover:bg-teal-light">
+          <Plus className="w-3 h-3" /> Create Policy
+        </button>
       </div>
 
-      <div className="flex gap-1 border-b border-border overflow-x-auto">
-        {[
-          { id: 'outofbox' as const, label: 'Out-of-Box Policies' },
-          { id: 'custom' as const, label: 'Custom Policies' },
-          { id: 'compliance' as const, label: 'Compliance Frameworks' },
-        ].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} className={`px-4 py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${tab === t.id ? 'border-teal text-teal' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
-            {t.label}
+      <div className="inline-flex rounded-lg border border-border overflow-hidden bg-card">
+        {([
+          { id: 'policies', label: 'Policies' },
+          { id: 'templates', label: 'Templates' },
+        ] as const).map(s => (
+          <button key={s.id} onClick={() => setTab(s.id)}
+            className={`px-4 py-1.5 text-xs font-medium transition-colors ${tab === s.id ? 'bg-teal text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+            {s.label}
           </button>
         ))}
       </div>
 
-      {tab === 'outofbox' && (
-        <div>
-          <div className="flex gap-2 mb-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search policies..." className="w-full pl-9 pr-4 py-2 bg-card border border-border rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-teal" />
+      {tab === 'policies' && (() => {
+        const inferBuiltinType = (name: string, desc: string): string => {
+          const s = `${name} ${desc}`.toLowerCase();
+          if (s.includes('ssh certificate')) return 'SSH Certificate';
+          if (s.includes('ssh')) return 'SSH Key';
+          if (s.includes('secret') || s.includes('token') || s.includes('api key')) return 'Secrets & Tokens';
+          if (s.includes('encryption key') || s.includes('kms') || s.includes('hsm')) return 'Encryption Keys';
+          if (s.includes('protocol') || s.includes('cipher')) return 'Protocol & Cipher';
+          if (s.includes('cbom') || s.includes('code')) return 'Code / CBOM';
+          return 'Certificate';
+        };
+        const excludedBuiltins = new Set(['pol-007', 'pol-009', 'pol-011']);
+        const builtinRows = policyRules
+          .filter(p => !excludedBuiltins.has(p.id))
+          .filter(p => FEATURES.AI_IDENTITY || !/\bAI\b|agent/i.test(`${p.name} ${p.description}`))
+          .map(p => ({
+            source: 'Built-in' as const,
+            id: p.id,
+            name: p.name,
+            description: p.description,
+            policyType: inferBuiltinType(p.name, p.description),
+            severity: p.severity,
+            status: policyStates[p.id] ? 'Enabled' : 'Disabled',
+            violations: p.affectedAssets,
+          }));
+        const customRows = userPolicies.map(p => ({
+          source: 'Custom' as const,
+          id: p.id,
+          name: p.name,
+          description: p.description,
+          policyType: p.assetType || 'Certificate',
+          severity: p.severity || 'High',
+          status: p.status,
+          violations: p.violations,
+        }));
+        const allTypes = ['Certificate', 'SSH Key', 'SSH Certificate', 'Secrets & Tokens', 'Encryption Keys', 'Protocol & Cipher', 'Code / CBOM'];
+        const rows = [...builtinRows, ...customRows]
+          .filter(r => filterSource === 'all' || r.source === filterSource)
+          .filter(r => filterSeverity === 'all' || r.severity === filterSeverity)
+          .filter(r => filterPolicyType === 'all' || r.policyType === filterPolicyType)
+          .filter(r => {
+            const s = searchTerm.toLowerCase();
+            return !s || r.name.toLowerCase().includes(s) || r.description.toLowerCase().includes(s);
+          });
+
+        const statusClass = (status: string) =>
+          status === 'Active' || status === 'Enabled' ? 'bg-teal/10 text-teal'
+          : status === 'Disabled' || status === 'Inactive' ? 'bg-muted text-muted-foreground'
+          : 'bg-amber/10 text-amber';
+
+        const cloneBuiltinToCustom = (b: typeof builtinRows[number]) => {
+          resetCreateForm();
+          const pt = b.policyType === 'SSH Key' ? 'SSH Key Policy'
+            : b.policyType === 'SSH Certificate' ? 'SSH Certificate Policy'
+            : b.policyType === 'Secrets & Tokens' ? 'Secrets & Tokens Policy'
+            : b.policyType === 'Encryption Keys' ? 'Encryption Keys Policy'
+            : b.policyType === 'Protocol & Cipher' ? 'Protocol & Cipher Policy'
+            : b.policyType === 'Code / CBOM' ? 'Code / CBOM Policy'
+            : 'Certificate Policy';
+          setFormPolicyType(pt);
+          setFormName(`${b.name} (Custom)`);
+          setFormDescription(b.description);
+          setFormSeverity(b.severity);
+          setCreateOpen(true);
+        };
+
+        return (
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative flex-1 min-w-[220px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search policies..." className="w-full pl-9 pr-4 py-2 bg-card border border-border rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-teal" />
+              </div>
+              <select value={filterSource} onChange={e => setFilterSource(e.target.value as typeof filterSource)} className="border border-border rounded-lg px-2 py-2 text-xs bg-card">
+                <option value="all">Source: All</option>
+                <option value="Built-in">Built-in</option>
+                <option value="Custom">Custom</option>
+              </select>
+              <select value={filterSeverity} onChange={e => setFilterSeverity(e.target.value as typeof filterSeverity)} className="border border-border rounded-lg px-2 py-2 text-xs bg-card">
+                <option value="all">Severity: All</option>
+                {['Critical', 'High', 'Medium', 'Low'].map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <select value={filterPolicyType} onChange={e => setFilterPolicyType(e.target.value)} className="border border-border rounded-lg px-2 py-2 text-xs bg-card">
+                <option value="all">Policy Type: All</option>
+                {allTypes.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+
+            <div className="bg-card rounded-lg border border-border overflow-hidden">
+              <table className="w-full text-xs">
+                <thead className="bg-muted/50">
+                  <tr className="border-b border-border">
+                    {['Source', 'Policy', 'Type', 'Severity', 'Status', 'Violations', 'Actions'].map(h => (
+                      <th key={h} className="text-left py-2.5 px-3 font-medium text-muted-foreground">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.length === 0 && (
+                    <tr><td colSpan={7} className="py-6 px-3 text-center text-muted-foreground">No policies match the current filters.</td></tr>
+                  )}
+                  {rows.map(r => {
+                    const isCustom = r.source === 'Custom';
+                    const customPol = isCustom ? userPolicies.find(p => p.id === r.id) : undefined;
+                    const builtinPol = !isCustom ? policyRules.find(p => p.id === r.id) : undefined;
+                    const expanded = expandedPolicy === r.id;
+                    return (
+                      <React.Fragment key={`${r.source}-${r.id}`}>
+                        <tr className="border-b border-border hover:bg-muted/30">
+                          <td className="py-2.5 px-3">
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${r.source === 'Built-in' ? 'bg-purple/10 text-purple' : 'bg-teal/10 text-teal'}`}>{r.source}</span>
+                          </td>
+                          <td className="py-2.5 px-3 max-w-xs">
+                            <button onClick={() => isCustom && setExpandedPolicy(expanded ? null : r.id)} className={`text-left ${isCustom ? 'cursor-pointer hover:text-teal' : 'cursor-default'}`}>
+                              <div className="font-semibold flex items-center gap-1">{r.name}{isCustom && (expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}</div>
+                              <div className="text-[10px] text-muted-foreground line-clamp-1">{r.description}</div>
+                            </button>
+                          </td>
+                          <td className="py-2.5 px-3 text-muted-foreground">{r.policyType}</td>
+                          <td className="py-2.5 px-3"><SeverityBadge severity={r.severity} /></td>
+                          <td className="py-2.5 px-3">
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${statusClass(r.status)}`}>{r.status}</span>
+                          </td>
+                          <td className="py-2.5 px-3">
+                            {r.violations > 0 ? (
+                              <button onClick={() => { setFilters({ policy: r.name }); setCurrentPage('inventory'); }} className="text-coral font-medium hover:underline">
+                                {r.violations.toLocaleString()}
+                              </button>
+                            ) : <span className="text-muted-foreground">0</span>}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            {!isCustom && builtinPol && (
+                              <div className="flex items-center gap-1.5">
+                                <button onClick={() => { setPolicyStates(prev => ({ ...prev, [r.id]: !prev[r.id] })); toast.success(`Policy ${policyStates[r.id] ? 'disabled' : 'enabled'}`); }}
+                                  className={`w-8 h-4 rounded-full transition-colors relative ${policyStates[r.id] ? 'bg-teal' : 'bg-muted'}`} title={policyStates[r.id] ? 'Disable' : 'Enable'}>
+                                  <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-card shadow transition-transform ${policyStates[r.id] ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                                </button>
+                                <button onClick={() => setConfigModal(r.id)} className="text-[10px] px-2 py-1 rounded bg-muted text-muted-foreground hover:bg-muted/80">View</button>
+                                <button onClick={() => cloneBuiltinToCustom(r)} className="text-[10px] px-2 py-1 rounded bg-teal/10 text-teal hover:bg-teal/20">Clone to customize</button>
+                              </div>
+                            )}
+                            {isCustom && customPol && (
+                              <div className="flex items-center gap-1.5">
+                                <button onClick={() => loadPolicyForEdit(customPol)} className="text-[10px] px-2 py-1 rounded bg-muted text-foreground hover:bg-muted/80">Edit</button>
+                                <button onClick={() => { resetCreateForm(); const c = { ...customPol, id: `cpol-${Date.now()}`, name: `${customPol.name} (Copy)`, status: 'Draft', violations: 0 }; loadPolicyForEdit(c); }} className="text-[10px] px-2 py-1 rounded bg-muted text-foreground hover:bg-muted/80">Clone</button>
+                                <button onClick={() => togglePolicyStatus(r.id)} className={`text-[10px] px-2 py-1 rounded ${customPol.status === 'Active' ? 'bg-amber/10 text-amber hover:bg-amber/20' : 'bg-teal/10 text-teal hover:bg-teal/20'}`}>
+                                  {customPol.status === 'Active' ? 'Deactivate' : 'Activate'}
+                                </button>
+                                <button onClick={() => deletePolicy(r.id)} className="text-[10px] px-2 py-1 rounded bg-coral/10 text-coral hover:bg-coral/20">Delete</button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                        {isCustom && expanded && customPol && (
+                          <tr className="border-b border-border bg-muted/10">
+                            <td colSpan={7} className="px-4 py-3 space-y-3">
+                              <div className="grid grid-cols-4 gap-3 text-xs">
+                                <div><span className="text-muted-foreground block mb-0.5">Asset Type</span><span className="font-medium">{customPol.assetType || 'All'}</span></div>
+                                <div className="col-span-2"><span className="text-muted-foreground block mb-0.5">Scope</span><span className="font-medium">{scopeSummary(customPol.scope)}</span></div>
+                                <div><span className="text-muted-foreground block mb-0.5">Ticket</span><span className="font-medium">{ticketBadge(customPol)}</span></div>
+                              </div>
+                              {customPol.tags && customPol.tags.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5">
+                                  {customPol.tags.map(t => (
+                                    <span key={t} className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">{t}</span>
+                                  ))}
+                                </div>
+                              )}
+                              {customPol.effectiveFrom && (
+                                <div className="text-[10px]"><span className="text-muted-foreground">Effective from: </span><span className="font-medium">{customPol.effectiveFrom}</span></div>
+                              )}
+                              {customPol.conditionSummary && (
+                                <div>
+                                  <span className="text-[10px] text-muted-foreground block mb-1">Conditions</span>
+                                  <p className="text-[11px] font-mono bg-muted/40 border border-border rounded px-2 py-1.5">{customPol.conditionSummary}</p>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
+        );
+      })()}
+
+      {tab === 'templates' && (
+        <div className="space-y-2">
           <div className="bg-card rounded-lg border border-border overflow-hidden">
             <table className="w-full text-xs">
               <thead className="bg-muted/50">
                 <tr className="border-b border-border">
-                  {['Policy', 'Severity', 'Affected Assets', 'Last Triggered', 'Enabled', 'Actions'].map(h => (
+                  {['Template', 'Type', 'Description', 'Saved By', 'Times Used', 'Action'].map(h => (
                     <th key={h} className="text-left py-2.5 px-3 font-medium text-muted-foreground">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {filteredPolicies.map(policy => (
-                  <tr key={policy.id} className="border-b border-border hover:bg-muted/30">
-                    <td className="py-2.5 px-3 max-w-xs">
-                      <div className="font-semibold">{policy.name}</div>
-                      <div className="text-[10px] text-muted-foreground line-clamp-1">{policy.description}</div>
-                    </td>
-                    <td className="py-2.5 px-3"><SeverityBadge severity={policy.severity} /></td>
+                {([
+                  { key: 'pci-ssh' as const, name: 'PCI-DSS SSH Key Strength', type: 'SSH Key', desc: 'RSA keys under 2048 bits flagged as non-compliant per PCI-DSS.', author: 'platform-sec', uses: 42 },
+                  { key: 'nist-ssh' as const, name: 'NIST SSH Baseline', type: 'SSH Key', desc: 'Disallows DSA keys and legacy MAC algorithms (hmac-sha1, hmac-md5).', author: 'crypto-team', uses: 28 },
+                  { key: 'zero-trust-tls' as const, name: 'Zero-Trust TLS Validity', type: 'Certificate', desc: 'Production certificates must have validity ≤ 90 days.', author: 'identity-eng', uses: 67 },
+                  { key: 'secret-rotation' as const, name: 'Secret Rotation Baseline', type: 'Secrets & Tokens', desc: 'Flags any secret not rotated within the last 90 days.', author: 'platform-sec', uses: 31 },
+                  { key: 'untrusted-ca' as const, name: 'Untrusted Issuing CA', type: 'Certificate', desc: 'Flags certificates issued by CAs outside the approved issuer list.', author: 'crypto-team', uses: 19 },
+                ]).map(t => (
+                  <tr key={t.key} className="border-b border-border hover:bg-muted/30">
+                    <td className="py-2.5 px-3 font-semibold">{t.name}</td>
+                    <td className="py-2.5 px-3 text-muted-foreground">{t.type}</td>
+                    <td className="py-2.5 px-3 text-muted-foreground max-w-md">{t.desc}</td>
+                    <td className="py-2.5 px-3 text-muted-foreground">{t.author}</td>
+                    <td className="py-2.5 px-3 text-muted-foreground">{t.uses}</td>
                     <td className="py-2.5 px-3">
-                      <button onClick={() => { setFilters({ policy: policy.name }); setCurrentPage('inventory'); }} className="text-teal hover:underline">
-                        {policy.affectedAssets.toLocaleString()}
-                      </button>
-                    </td>
-                    <td className="py-2.5 px-3 text-muted-foreground">{policy.lastTriggered}</td>
-                    <td className="py-2.5 px-3">
-                      <button onClick={() => { setPolicyStates(prev => ({ ...prev, [policy.id]: !prev[policy.id] })); toast.success(`Policy ${policyStates[policy.id] ? 'disabled' : 'enabled'}`); }}
-                        className={`w-8 h-4 rounded-full transition-colors relative ${policyStates[policy.id] ? 'bg-teal' : 'bg-muted'}`}>
-                        <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-card shadow transition-transform ${policyStates[policy.id] ? 'translate-x-4' : 'translate-x-0.5'}`} />
-                      </button>
-                    </td>
-                    <td className="py-2.5 px-3">
-                      <button onClick={() => setConfigModal(policy.id)} className="text-[10px] px-2 py-1 rounded bg-muted text-muted-foreground hover:bg-muted/80">Configure</button>
+                      <button onClick={() => openTemplate(t.key)} className="text-[10px] px-2 py-1 rounded bg-teal/10 text-teal hover:bg-teal/20">Use template</button>
                     </td>
                   </tr>
                 ))}
@@ -686,98 +869,7 @@ export default function PolicyBuilderPage() {
         </div>
       )}
 
-      {tab === 'custom' && (
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <p className="text-[10px] text-muted-foreground">Quick start from a template:</p>
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px]">
-              <button onClick={() => openTemplate('pci-ssh')} className="text-teal hover:underline">PCI-DSS SSH</button>
-              <button onClick={() => openTemplate('nist-ssh')} className="text-teal hover:underline">NIST SSH</button>
-              <button onClick={() => openTemplate('zero-trust-tls')} className="text-teal hover:underline">Zero-Trust TLS</button>
-              <button onClick={() => openTemplate('dora-cert')} className="text-teal hover:underline">DORA Certs</button>
-              <button onClick={() => openTemplate('secret-rotation')} className="text-teal hover:underline">Secret Rotation</button>
-              <button onClick={() => openTemplate('untrusted-ca')} className="text-teal hover:underline">Untrusted Issuing CA</button>
-            </div>
-          </div>
-
-          <div className="flex justify-end mb-4">
-            <button onClick={() => { resetCreateForm(); setCreateOpen(true); }} className="flex items-center gap-1 px-3 py-2 rounded-lg bg-teal text-primary-foreground text-xs hover:bg-teal-light">
-              <Plus className="w-3 h-3" /> Create Policy
-            </button>
-          </div>
-
-          {userPolicies.length === 0 ? (
-            <div className="bg-card rounded-lg border border-border p-8 text-center">
-              <p className="text-sm text-muted-foreground mb-2">No custom policies yet</p>
-              <button onClick={() => { resetCreateForm(); setCreateOpen(true); }} className="text-xs text-teal hover:underline">Create your first policy</button>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {userPolicies.map(p => {
-                const typeBadge = getPolicyTypeBadgeFromAsset(p.assetType);
-                return (
-                  <div key={p.id} className="bg-card rounded-lg border border-border overflow-hidden">
-                    <div className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-muted/30" onClick={() => setExpandedPolicy(expandedPolicy === p.id ? null : p.id)}>
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${p.status === 'Active' ? 'bg-teal/10 text-teal' : 'bg-muted text-muted-foreground'}`}>{p.status}</span>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <p className="text-xs font-semibold truncate">{p.name}</p>
-                            {typeBadge && (
-                              <span className={`text-[9px] px-2 py-0.5 rounded-full border inline-flex items-center gap-1 ${typeBadge.cls}`}>
-                                <typeBadge.icon className="w-3 h-3" />
-                                {typeBadge.label}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[10px] text-muted-foreground truncate">{p.description}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        {p.violations > 0 && <span className="text-[10px] px-2 py-0.5 rounded-full bg-coral/10 text-coral font-medium">{p.violations} violations</span>}
-                        {p.severity && <span className="text-[10px] text-muted-foreground">{p.severity}</span>}
-                        {expandedPolicy === p.id ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
-                      </div>
-                    </div>
-                    {expandedPolicy === p.id && (
-                      <div className="px-4 pb-4 border-t border-border pt-3 space-y-3">
-                        <div className="grid grid-cols-4 gap-3 text-xs">
-                          <div><span className="text-muted-foreground block mb-0.5">Asset Type</span><span className="font-medium">{p.assetType || 'All'}</span></div>
-                          <div className="col-span-2"><span className="text-muted-foreground block mb-0.5">Scope</span><span className="font-medium">{scopeSummary(p.scope)}</span></div>
-                          <div><span className="text-muted-foreground block mb-0.5">Ticket</span><span className="font-medium">{ticketBadge(p)}</span></div>
-                        </div>
-                        {p.tags && p.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5">
-                            {p.tags.map(t => (
-                              <span key={t} className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">{t}</span>
-                            ))}
-                          </div>
-                        )}
-                        {p.effectiveFrom && (
-                          <div className="text-[10px]"><span className="text-muted-foreground">Effective from: </span><span className="font-medium">{p.effectiveFrom}</span></div>
-                        )}
-                        {p.conditionSummary && (
-                          <div>
-                            <span className="text-[10px] text-muted-foreground block mb-1">Conditions</span>
-                            <p className="text-[11px] font-mono bg-muted/40 border border-border rounded px-2 py-1.5">{p.conditionSummary}</p>
-                          </div>
-                        )}
-                        <div className="flex gap-2 pt-1">
-                          <button onClick={() => loadPolicyForEdit(p)} className="text-[10px] px-3 py-1.5 rounded bg-muted text-foreground hover:bg-muted/80">Edit</button>
-                          <button onClick={() => togglePolicyStatus(p.id)} className={`text-[10px] px-3 py-1.5 rounded ${p.status === 'Active' ? 'bg-amber/10 text-amber hover:bg-amber/20' : 'bg-teal/10 text-teal hover:bg-teal/20'}`}>
-                            {p.status === 'Active' ? 'Deactivate' : 'Activate'}
-                          </button>
-                          <button onClick={() => deletePolicy(p.id)} className="text-[10px] px-3 py-1.5 rounded bg-coral/10 text-coral hover:bg-coral/20">Delete</button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Create / Edit Policy modal */}
+      {/* Create / Edit Policy modal */}
           <Modal open={createOpen} onClose={closeCreateModal} title={editingPolicy ? 'Edit Policy' : 'Create Policy'} wide>
             <div className="w-full max-w-2xl space-y-5 text-foreground">
               {/* 1. Identity */}
@@ -1121,36 +1213,6 @@ export default function PolicyBuilderPage() {
               </div>
             </div>
           </Modal>
-        </div>
-      )}
-
-      {tab === 'compliance' && (
-        <div className="grid grid-cols-2 gap-4">
-          {[
-            { name: 'DORA', policies: 12, score: 78, violations: 42, lastAssessed: '2 days ago' },
-            { name: 'PCI-DSS v4.0', policies: 18, score: 85, violations: 31, lastAssessed: '1 day ago' },
-            { name: 'HIPAA', policies: 8, score: 92, violations: 8, lastAssessed: '3 days ago' },
-            { name: 'FIPS 140-2', policies: 15, score: 71, violations: 56, lastAssessed: '1 day ago' },
-          ].map(fw => (
-            <div key={fw.name} className="bg-card rounded-lg border border-border p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold">{fw.name}</h3>
-                <span className={`text-lg font-bold ${fw.score >= 90 ? 'text-teal' : fw.score >= 75 ? 'text-amber' : 'text-coral'}`}>{fw.score}%</span>
-              </div>
-              <div className="space-y-1 text-xs text-muted-foreground mb-3">
-                <p>Mapped policies: {fw.policies}</p>
-                <p>Open violations: <span className="text-coral">{fw.violations}</span></p>
-                <p>Last assessed: {fw.lastAssessed}</p>
-              </div>
-              <div className="flex gap-2">
-                <button onClick={() => toast.info(`Viewing ${fw.name} details`)} className="text-[10px] px-3 py-1.5 rounded bg-muted text-foreground hover:bg-muted/80">View Details</button>
-                <button onClick={() => toast.success(`Generating ${fw.name} report...`)} className="text-[10px] px-3 py-1.5 rounded bg-teal/10 text-teal hover:bg-teal/20 flex items-center gap-1"><Download className="w-3 h-3" /> Generate Report</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
       <Modal open={!!configModal} onClose={() => setConfigModal(null)} title="Configure Policy">
         <div className="space-y-4">
           <div>
