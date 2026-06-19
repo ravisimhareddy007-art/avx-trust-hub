@@ -336,7 +336,7 @@ function draftInterpretations(input: string, policyType: string): DraftResult {
       seeds.push([{ field: 'days_since_rotation', operator: 'gt', value: days }]);
     if (/(quantum.?vuln|quantum.?unsafe|not quantum.?safe)/.test(d) && hasField('quantum_vuln'))
       seeds.push([{ field: 'quantum_vuln', operator: 'eq', value: 'Quantum-Vulnerable' }]);
-  } else if (policyType === 'Secrets && Tokens Policy') {
+  } else if (policyType === 'Secrets & Tokens Policy') {
     if (/(no expiry|without expiry|missing expiry)/.test(d) && hasField('has_expiry'))
       seeds.push([{ field: 'has_expiry', operator: 'is_false', value: '' }]);
     if (/rotat/.test(d) && days && hasField('days_since_rotation'))
@@ -457,7 +457,7 @@ export default function PolicyBuilderPage() {
       setFormName('DORA Weak Algorithm'); setFormSeverity('High');
       setConditionGroups(seedGroups([[{ field: 'sig_algo', operator: 'in', value: 'SHA-1,MD5' }]]));
     } else if (template === 'secret-rotation') {
-      setFormPolicyType('Secrets && Tokens Policy');
+      setFormPolicyType('Secrets & Tokens Policy');
       setFormName('Secret Rotation Baseline'); setFormSeverity('High');
       setConditionGroups(seedGroups([[{ field: 'days_since_rotation', operator: 'gt', value: '90' }]]));
     } else if (template === 'untrusted-ca') {
@@ -574,7 +574,7 @@ export default function PolicyBuilderPage() {
     setFormSeverity(p.severity || 'High'); setFormTags(p.tags || []);
     if ((p.assetType || '').includes('SSH')) setFormPolicyType('SSH Key Policy');
     else if ((p.assetType || '').includes('Cryptographic Key')) setFormPolicyType('Encryption Keys Policy');
-    else if ((p.assetType || '').includes('Secret') || (p.assetType || '').includes('API')) setFormPolicyType('Secrets && Tokens Policy');
+    else if ((p.assetType || '').includes('Secret') || (p.assetType || '').includes('API')) setFormPolicyType('Secrets & Tokens Policy');
     else setFormPolicyType('Certificate Policy');
     setConditionGroups(p.conditionGroups?.length ? p.conditionGroups : [emptyGroup()]);
     setGroupLogic(p.groupLogic || 'AND');
