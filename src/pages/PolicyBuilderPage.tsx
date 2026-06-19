@@ -4,6 +4,8 @@ import { useNav } from '@/context/NavigationContext';
 import { policyRules, customPolicies as initialCustomPolicies } from '@/data/mockData';
 import { mockGroups } from '@/data/inventoryMockData';
 import { SeverityBadge, Modal } from '@/components/shared/UIComponents';
+import ConditionBuilder, { ConditionGroup, emptyGroup } from '@/components/policies/ConditionBuilder';
+import { POLICY_TYPES, describeCondition } from '@/components/policies/policyFields';
 import { toast } from 'sonner';
 import {
   Plus,
@@ -15,17 +17,6 @@ import {
   Shield,
   Key,
   Lock,
-  Bot,
-  CheckCircle2,
-  X,
-  Globe,
-  Server,
-  Layers,
-  Users,
-  ShieldCheck,
-  Bell,
-  Ticket,
-  Clock,
 } from 'lucide-react';
 
 interface CustomPolicy {
@@ -42,9 +33,12 @@ interface CustomPolicy {
   teams?: string;
   actions?: string[];
   groupIds?: string[];
+  conditionGroups?: ConditionGroup[];
+  groupLogic?: 'AND' | 'OR';
+  conditionSummary?: string;
 }
 
-type PolicyType = 'ssh-key' | 'certificates' | 'secrets' | 'ai-agents' | '';
+type PolicyType = 'ssh-key' | 'certificates' | 'secrets' | 'crypto-keys' | '';
 
 const getPolicyTypeMeta = (type: PolicyType) => {
   switch (type) {
@@ -54,8 +48,8 @@ const getPolicyTypeMeta = (type: PolicyType) => {
       return { label: 'Certificates', icon: Shield, cls: 'bg-teal/10 text-teal border-teal/20' };
     case 'secrets':
       return { label: 'Secrets & API Keys', icon: Lock, cls: 'bg-purple/10 text-purple border-purple/20' };
-    case 'ai-agents':
-      return { label: 'AI Agents', icon: Bot, cls: 'bg-teal/10 text-teal border-teal/20' };
+    case 'crypto-keys':
+      return { label: 'Cryptographic Keys', icon: Key, cls: 'bg-teal/10 text-teal border-teal/20' };
     default:
       return null;
   }
@@ -64,7 +58,7 @@ const getPolicyTypeMeta = (type: PolicyType) => {
 const getPolicyTypeFromAssetType = (assetType?: string): PolicyType => {
   const value = (assetType || '').toLowerCase();
   if (value.includes('ssh key')) return 'ssh-key';
-  if (value.includes('agent')) return 'ai-agents';
+  if (value.includes('cryptographic key')) return 'crypto-keys';
   if (value.includes('secret') || value.includes('api key') || value.includes('oauth')) return 'secrets';
   if (value.includes('certificate') || value.includes('tls') || value.includes('code-signing') || value.includes('workload') || value.includes('client auth') || value.includes('s/mime')) return 'certificates';
   return '';
@@ -90,30 +84,6 @@ export default function PolicyBuilderPage() {
   const [formEnvironment, setFormEnvironment] = useState('All');
   const [formTeam, setFormTeam] = useState('');
   const [formGroup, setFormGroup] = useState('');
-  const [formCertType, setFormCertType] = useState('TLS / SSL');
-  const [formCertAction, setFormCertAction] = useState('Alert Only');
-  const [formCA, setFormCA] = useState('Any');
-  const [formMaxValidity, setFormMaxValidity] = useState('365 days');
-  const [formMinKeyType, setFormMinKeyType] = useState('RSA-2048');
-  const [formAutoRenew, setFormAutoRenew] = useState(false);
-  const [formRenewBefore, setFormRenewBefore] = useState('30 days');
-  const [formAllowedAlgorithms, setFormAllowedAlgorithms] = useState('Ed25519, RSA-4096');
-  const [formMaxKeyAge, setFormMaxKeyAge] = useState('90 days');
-  const [formRotationPeriod, setFormRotationPeriod] = useState('90 days');
-  const [formAutoRotate, setFormAutoRotate] = useState(false);
-  const [formTargetAlgorithm, setFormTargetAlgorithm] = useState('Ed25519');
-  const [formSecretType, setFormSecretType] = useState('All');
-  const [formSecretMaxAge, setFormSecretMaxAge] = useState('90 days');
-  const [formSecretVault, setFormSecretVault] = useState('Any');
-  const [formSecretAutoRotate, setFormSecretAutoRotate] = useState(false);
-  const [formAgentMaxTTL, setFormAgentMaxTTL] = useState('24 hours');
-  const [formEnforceJIT, setFormEnforceJIT] = useState(false);
-  const [formEnforceRightSize, setFormEnforceRightSize] = useState(false);
-  const [formDeviceAction, setFormDeviceAction] = useState('Onboard Device');
-  const [formDeviceVendor, setFormDeviceVendor] = useState('Linux Server');
-  const [formDeviceApproval, setFormDeviceApproval] = useState('Auto-approve');
-  const [formK8sIssuer, setFormK8sIssuer] = useState('cert-manager');
-  const [formK8sNamespace, setFormK8sNamespace] = useState('');
   const [formSeverity, setFormSeverity] = useState('High');
   const [formAction, setFormAction] = useState('Alert only');
   const [formRequireApproval, setFormRequireApproval] = useState(false);
@@ -130,13 +100,11 @@ export default function PolicyBuilderPage() {
   const [showApproval, setShowApproval] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showItsm, setShowItsm] = useState(false);
-  const [sshFlagShared, setSshFlagShared] = useState(true);
-  const [sshFlagWeak, setSshFlagWeak] = useState(true);
-  const [sshFlagRogue, setSshFlagRogue] = useState(true);
-  const [sshFlagMisplaced, setSshFlagMisplaced] = useState(true);
-  const [sshFlagOrphaned, setSshFlagOrphaned] = useState(true);
-  const [formRequireHITL, setFormRequireHITL] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
+
+  // Condition builder state
+  const [conditionGroups, setConditionGroups] = useState<ConditionGroup[]>([emptyGroup()]);
+  const [groupLogic, setGroupLogic] = useState<'AND' | 'OR'>('AND');
 
   const resetCreateForm = () => {
     setFormPolicyType('Managed Certificate Policy');
@@ -146,30 +114,6 @@ export default function PolicyBuilderPage() {
     setFormEnvironment('All');
     setFormTeam('');
     setFormGroup('');
-    setFormCertType('TLS / SSL');
-    setFormCertAction('Alert Only');
-    setFormCA('Any');
-    setFormMaxValidity('365 days');
-    setFormMinKeyType('RSA-2048');
-    setFormAutoRenew(false);
-    setFormRenewBefore('30 days');
-    setFormAllowedAlgorithms('Ed25519, RSA-4096');
-    setFormMaxKeyAge('90 days');
-    setFormRotationPeriod('90 days');
-    setFormAutoRotate(false);
-    setFormTargetAlgorithm('Ed25519');
-    setFormSecretType('All');
-    setFormSecretMaxAge('90 days');
-    setFormSecretVault('Any');
-    setFormSecretAutoRotate(false);
-    setFormAgentMaxTTL('24 hours');
-    setFormEnforceJIT(false);
-    setFormEnforceRightSize(false);
-    setFormDeviceAction('Onboard Device');
-    setFormDeviceVendor('Linux Server');
-    setFormDeviceApproval('Auto-approve');
-    setFormK8sIssuer('cert-manager');
-    setFormK8sNamespace('');
     setFormSeverity('High');
     setFormAction('Alert only');
     setFormRequireApproval(false);
@@ -186,12 +130,8 @@ export default function PolicyBuilderPage() {
     setShowApproval(false);
     setShowNotifications(false);
     setShowItsm(false);
-    setSshFlagShared(true);
-    setSshFlagWeak(true);
-    setSshFlagRogue(true);
-    setSshFlagMisplaced(true);
-    setSshFlagOrphaned(true);
-    setFormRequireHITL(false);
+    setConditionGroups([emptyGroup()]);
+    setGroupLogic('AND');
     setEditingPolicy(null);
   };
 
@@ -200,366 +140,130 @@ export default function PolicyBuilderPage() {
     resetCreateForm();
   };
 
-  const setTemplatePolicyType = (type: PolicyType) => {
-    if (type === 'ssh-key') setFormPolicyType('SSH Key Policy');
-    else if (type === 'certificates') setFormPolicyType('Managed Certificate Policy');
-    else if (type === 'secrets') setFormPolicyType('Secrets & API Keys Policy');
-    else if (type === 'ai-agents') setFormPolicyType('AI Agent Token Policy');
-  };
+  // Condition seeds for quick-start templates
+  const seedGroups = (rows: { field: string; operator: string; value: string }[][]): ConditionGroup[] =>
+    rows.map(group => ({
+      id: `grp-${Math.random().toString(36).slice(2, 8)}`,
+      innerLogic: 'AND',
+      rows: group.map(r => ({ id: `row-${Math.random().toString(36).slice(2, 8)}`, ...r })),
+    }));
 
-  const openTemplate = (template: 'pci-ssh' | 'nist-ssh' | 'zero-trust-tls' | 'dora-cert' | 'secret-rotation' | 'agent-jit') => {
+  const openTemplate = (template: 'pci-ssh' | 'nist-ssh' | 'zero-trust-tls' | 'dora-cert' | 'secret-rotation') => {
     resetCreateForm();
     if (template === 'pci-ssh') {
       setFormPolicyType('SSH Key Policy');
       setFormTag('PCI-DSS');
-      setFormName('PCI-DSS SSH Rotation');
-      setFormAllowedAlgorithms('Ed25519, RSA-4096');
-      setFormAutoRotate(true);
-      setFormRotationPeriod('90 days');
+      setFormName('PCI-DSS SSH Key Strength');
       setFormSeverity('Critical');
-      setFormAction('Block action');
+      setConditionGroups(seedGroups([
+        [{ field: 'key_type', operator: 'eq', value: 'RSA' }, { field: 'key_bits', operator: 'lt', value: '2048' }],
+      ]));
     } else if (template === 'nist-ssh') {
       setFormPolicyType('SSH Key Policy');
       setFormTag('NIST');
       setFormName('NIST SSH Baseline');
-      setFormAllowedAlgorithms('Ed25519, RSA-4096');
-      setFormMaxKeyAge('365 days');
       setFormSeverity('High');
+      setConditionGroups(seedGroups([
+        [{ field: 'key_type', operator: 'eq', value: 'DSA' }],
+        [{ field: 'mac_algo', operator: 'in', value: 'hmac-sha1,hmac-md5' }],
+      ]));
+      setGroupLogic('OR');
     } else if (template === 'zero-trust-tls') {
       setFormPolicyType('Managed Certificate Policy');
       setFormTag('Zero-Trust');
-      setFormName('Zero-Trust TLS');
-      setFormCertAction('Auto-Renew');
-      setFormMaxValidity('90 days');
-      setFormAutoRenew(true);
-      setFormRenewBefore('30 days');
+      setFormName('Zero-Trust TLS Validity');
+      setFormSeverity('High');
+      setConditionGroups(seedGroups([
+        [{ field: 'validity_days', operator: 'gt', value: '90' }],
+      ]));
     } else if (template === 'dora-cert') {
       setFormPolicyType('Managed Certificate Policy');
       setFormTag('DORA');
-      setFormName('DORA Certificate Controls');
+      setFormName('DORA Weak Algorithm');
+      setFormSeverity('High');
       setFormAction('Create ticket');
-      setFormITSM(true);
-      setShowItsm(true);
+      setConditionGroups(seedGroups([
+        [{ field: 'sig_algo', operator: 'in', value: 'SHA-1,MD5' }],
+      ]));
     } else if (template === 'secret-rotation') {
       setFormPolicyType('Secrets & API Keys Policy');
       setFormName('Secret Rotation Baseline');
-      setFormSecretType('API Keys');
-      setFormSecretMaxAge('90 days');
-      setFormSecretVault('HashiCorp Vault');
-      setFormSecretAutoRotate(true);
-      setFormAction('Auto-remediate');
-    } else if (template === 'agent-jit') {
-      setFormPolicyType('AI Agent Token Policy');
-      setFormTag('Zero-Trust');
-      setFormName('AI Agent JIT');
-      setFormAgentMaxTTL('24 hours');
-      setFormEnforceJIT(true);
-      setFormAction('Block action');
-      setFormSeverity('Critical');
+      setFormSeverity('High');
+      setConditionGroups(seedGroups([
+        [{ field: 'days_since_rotation', operator: 'gt', value: '90' }],
+      ]));
     }
     setCreateOpen(true);
   };
 
-  const aiTemplates: Record<string, { name: string; assetType: string; condition: string; value: string; severity: string; envs: string[]; actions: string[]; groups: string[]; type?: PolicyType }> = {
-    expir: { name: '', assetType: 'TLS Certificate', condition: 'Expiry less than', value: '30 days', severity: 'High', envs: ['Production'], actions: ['Alert only', 'Create ticket'], groups: ['grp-002'], type: 'certificates' },
-    rsa: { name: '', assetType: 'TLS Certificate', condition: 'Algorithm equals', value: 'RSA-2048', severity: 'Critical', envs: ['All'], actions: ['Alert only', 'Block issuance'], groups: ['grp-001'], type: 'certificates' },
-    weak: { name: '', assetType: 'SSH Key', condition: 'Algorithm equals', value: 'RSA-1024', severity: 'Critical', envs: ['Production'], actions: ['Alert only', 'Block issuance'], groups: ['grp-003'], type: 'ssh-key' },
-    block: { name: '', assetType: 'TLS Certificate', condition: 'CA not in list', value: 'Approved CAs only', severity: 'Critical', envs: ['Production'], actions: ['Block issuance', 'Escalate to owner'], groups: ['grp-001'], type: 'certificates' },
-    rotat: { name: '', assetType: 'SSH Key', condition: 'No rotation in', value: '90 days', severity: 'High', envs: ['Production'], actions: ['Alert only', 'Auto-remediate'], groups: ['grp-003'], type: 'ssh-key' },
-    vault: { name: '', assetType: 'API Key / Secret', condition: 'Storage location', value: 'Approved vaults only', severity: 'High', envs: ['All'], actions: ['Alert only', 'Auto-remediate'], groups: ['grp-004'], type: 'secrets' },
-    secret: { name: '', assetType: 'API Key / Secret', condition: 'Age greater than', value: '90 days', severity: 'High', envs: ['All'], actions: ['Alert only', 'Auto-remediate'], groups: ['grp-004'], type: 'secrets' },
-    oauth: { name: '', assetType: 'API Key / Secret', condition: 'Age greater than', value: '30 days', severity: 'Medium', envs: ['Production'], actions: ['Alert only', 'Escalate to owner'], groups: ['grp-004'], type: 'secrets' },
-    agent: { name: '', assetType: 'AI Agent Token', condition: 'TTL greater than', value: '24 hours', severity: 'Critical', envs: ['Production'], actions: ['Alert only', 'Block issuance'], groups: ['grp-004'], type: 'ai-agents' },
-    jit: { name: '', assetType: 'AI Agent Token', condition: 'Static credentials detected', value: 'Not allowed', severity: 'Critical', envs: ['Production'], actions: ['Alert only', 'Block issuance'], groups: ['grp-004'], type: 'ai-agents' },
-    pci: { name: '', assetType: 'SSH Key', condition: 'Algorithm equals', value: 'Ed25519 only', severity: 'Critical', envs: ['Production'], actions: ['Alert only', 'Block issuance', 'Create ticket'], groups: ['grp-004'], type: 'ssh-key' },
-    dora: { name: '', assetType: 'TLS Certificate', condition: 'Expiry less than', value: '90 days', severity: 'High', envs: ['Production'], actions: ['Alert only', 'Create ticket'], groups: [], type: 'certificates' },
-    ssh: { name: '', assetType: 'SSH Key', condition: 'No rotation in', value: '60 days', severity: 'High', envs: ['All'], actions: ['Alert only', 'Auto-remediate'], groups: ['grp-003'], type: 'ssh-key' },
-  };
-
+  // AI assist: draft a starter condition set from a plain-English description.
   const handleAIDraft = () => {
     if (!formDescription || formDescription.trim().length < 10) {
-      toast.error('Enter a description first')
-      return
+      toast.error('Enter a description first');
+      return;
     }
-    setAiLoading(true)
+    setAiLoading(true);
     setTimeout(() => {
-      const d = formDescription.toLowerCase()
-      // ── SSH Key Policy ──
-      if (formPolicyType === 'SSH Key Policy') {
-        // Name
-        if (!formName) {
-          if (d.includes('pci')) setFormName('PCI-DSS SSH Key Rotation — Production')
-          else if (d.includes('nist')) setFormName('NIST 800-57 SSH Key Policy')
-          else setFormName('SSH Key Rotation Policy — ' + (d.includes('produc') ? 'Production' : 'All Environments'))
+      const d = formDescription.toLowerCase();
+      const dayMatch = d.match(/(\d+)\s*day/);
+      const days = dayMatch ? dayMatch[1] : '';
+      const seeds: { field: string; operator: string; value: string }[][] = [];
+
+      if (formPolicyType === 'Managed Certificate Policy') {
+        if (!formName) setFormName('Certificate Policy — Draft');
+        if (d.includes('sha-1') || d.includes('sha1') || d.includes('md5') || d.includes('weak'))
+          seeds.push([{ field: 'sig_algo', operator: 'in', value: 'SHA-1,MD5' }]);
+        if (d.includes('self-sign') || d.includes('self sign'))
+          seeds.push([{ field: 'is_self_signed', operator: 'is_true', value: '' }]);
+        if (d.includes('wildcard'))
+          seeds.push([{ field: 'is_wildcard', operator: 'is_true', value: '' }]);
+        if (d.includes('expir') && days)
+          seeds.push([{ field: 'expiry_days', operator: 'lt', value: days }]);
+        if ((d.includes('rsa') || d.includes('key')) && d.match(/\d{3,4}\s*bit/)) {
+          const b = d.match(/(\d{3,4})\s*bit/);
+          seeds.push([{ field: 'key_type', operator: 'eq', value: 'RSA' }, { field: 'key_bits', operator: 'lt', value: b ? b[1] : '2048' }]);
         }
-        // Algorithms
-        if (d.includes('ed25519') && d.includes('rsa-4096'))
-          setFormAllowedAlgorithms('Ed25519, RSA-4096')
-        else if (d.includes('ed25519'))
-          setFormAllowedAlgorithms('Ed25519')
-        else if (d.includes('rsa-4096') || d.includes('rsa 4096'))
-          setFormAllowedAlgorithms('RSA-4096, Ed25519')
-        else
-          setFormAllowedAlgorithms('Ed25519, RSA-4096')
-        // Max key age
-        const ageMatch = d.match(/(\d+)\s*day/)
-        if (ageMatch) {
-          const n = parseInt(ageMatch[1])
-          if (n <= 30) setFormMaxKeyAge('30 days')
-          else if (n <= 60) setFormMaxKeyAge('60 days')
-          else if (n <= 90) setFormMaxKeyAge('90 days')
-          else if (n <= 180) setFormMaxKeyAge('180 days')
-          else setFormMaxKeyAge('365 days')
-        } else {
-          setFormMaxKeyAge('90 days')
-        }
-        // Auto rotate
-        if (d.includes('auto') || d.includes('rotat') || d.includes('renew')) {
-          setFormAutoRotate(true)
-          const rMatch = d.match(/(\d+)\s*day/)
-          if (rMatch) {
-            const n = parseInt(rMatch[1])
-            if (n <= 30) setFormRotationPeriod('30 days')
-            else if (n <= 60) setFormRotationPeriod('60 days')
-            else if (n <= 90) setFormRotationPeriod('90 days')
-            else setFormRotationPeriod('180 days')
-          } else {
-            setFormRotationPeriod('90 days')
-          }
-          setFormTargetAlgorithm(
-            d.includes('ed25519') ? 'Ed25519' : 'RSA-4096'
-          )
-        }
-        // Action
-        if (d.includes('block') || d.includes('prevent') || d.includes('rsa-1024') || d.includes('rsa 1024'))
-          setFormAction('Block action')
-        else if (d.includes('auto-remediat') || d.includes('auto remediat') || d.includes('auto rotat'))
-          setFormAction('Auto-remediate')
-        else
-          setFormAction('Alert only')
-        // Severity
-        if (d.includes('pci') || d.includes('critical') || d.includes('rsa-1024'))
-          setFormSeverity('Critical')
-        else if (d.includes('high') || d.includes('produc'))
-          setFormSeverity('High')
-        else
-          setFormSeverity('High')
-        // Environment
-        if (d.includes('produc')) setFormEnvironment('Production')
-        else if (d.includes('staging')) setFormEnvironment('Staging')
-        else setFormEnvironment('All')
-        // Tag
-        if (d.includes('pci')) setFormTag('PCI-DSS')
-        else if (d.includes('nist')) setFormTag('NIST')
-        else if (d.includes('dora')) setFormTag('DORA')
-        else if (d.includes('zero')) setFormTag('Zero-Trust')
-        else setFormTag('Default')
-        // Notifications
-        if (d.includes('notif') || d.includes('alert') || d.includes('slack'))
-          setFormNotifyOnFail(true)
-        if (d.includes('slack')) setFormNotifyVia('Slack')
-        // ITSM
-        if (d.includes('servicenow') || d.includes('ticket') || d.includes('itsm'))
-          setFormITSM(true)
+        if (d.includes('tls 1.0') || d.includes('tls 1.1') || d.includes('deprecated tls'))
+          seeds.push([{ field: 'tls_version', operator: 'in', value: 'TLS 1.0,TLS 1.1' }]);
+      } else if (formPolicyType === 'SSH Key Policy') {
+        if (!formName) setFormName('SSH Key Policy — Draft');
+        if (d.includes('dsa')) seeds.push([{ field: 'key_type', operator: 'eq', value: 'DSA' }]);
+        if (d.includes('rsa') && (d.includes('1024') || d.includes('weak') || d.includes('2048')))
+          seeds.push([{ field: 'key_type', operator: 'eq', value: 'RSA' }, { field: 'key_bits', operator: 'lt', value: '2048' }]);
+        if (d.includes('rotat') && days)
+          seeds.push([{ field: 'days_since_rotation', operator: 'gt', value: days }]);
+        if (d.includes('age') && days)
+          seeds.push([{ field: 'key_age', operator: 'gt', value: days }]);
+      } else if (formPolicyType === 'Secrets & API Keys Policy') {
+        if (!formName) setFormName('Secret Policy — Draft');
+        if (d.includes('no expiry') || d.includes('without expiry') || d.includes('expiry date'))
+          seeds.push([{ field: 'has_expiry', operator: 'is_false', value: '' }]);
+        if (d.includes('rotat') && days)
+          seeds.push([{ field: 'days_since_rotation', operator: 'gt', value: days }]);
+        else if (d.includes('rotat'))
+          seeds.push([{ field: 'days_since_rotation', operator: 'gt', value: '90' }]);
+      } else if (formPolicyType === 'Cryptographic Key Policy') {
+        if (!formName) setFormName('Cryptographic Key Policy — Draft');
+        if (d.includes('rotation') && (d.includes('not enabled') || d.includes('disabled') || d.includes('no rotation')))
+          seeds.push([{ field: 'rotation_enabled', operator: 'is_false', value: '' }]);
+        if (d.includes('rsa') || d.includes('ecc') || d.includes('quantum') || d.includes('pqc'))
+          seeds.push([{ field: 'key_algorithm', operator: 'in', value: 'RSA,ECC,DH' }]);
       }
-      // ── Managed Certificate Policy ──
-      else if (formPolicyType === 'Managed Certificate Policy') {
-        if (!formName) {
-          if (d.includes('pci')) setFormName('PCI-DSS Certificate Policy — Production')
-          else if (d.includes('dora')) setFormName('DORA Operational Resilience — Certs')
-          else if (d.includes('zero') || d.includes('short')) setFormName('Zero-Trust TLS Policy')
-          else setFormName('Certificate Lifecycle Policy — ' + (d.includes('produc') ? 'Production' : 'All'))
-        }
-        // Cert action
-        if (d.includes('auto-renew') || d.includes('auto renew') || d.includes('renew'))
-          setFormCertAction('Auto-Renew')
-        else if (d.includes('enroll') || d.includes('issue'))
-          setFormCertAction('Enroll')
-        else
-          setFormCertAction('Alert Only')
-        // CA
-        if (d.includes('digicert')) setFormCA('DigiCert')
-        else if (d.includes('entrust')) setFormCA('Entrust')
-        else if (d.includes('vault') || d.includes('hashicorp')) setFormCA('HashiCorp Vault PKI')
-        else if (d.includes('letsencrypt') || d.includes('let\'s encrypt')) setFormCA("Let's Encrypt")
-        else if (d.includes('globalsign')) setFormCA('GlobalSign')
-        else setFormCA('Any')
-        // Max validity
-        const validMatch = d.match(/(\d+)\s*day/)
-        if (validMatch) {
-          const n = parseInt(validMatch[1])
-          if (n <= 30) setFormMaxValidity('30 days')
-          else if (n <= 60) setFormMaxValidity('60 days')
-          else if (n <= 90) setFormMaxValidity('90 days')
-          else if (n <= 180) setFormMaxValidity('180 days')
-          else setFormMaxValidity('365 days')
-        } else if (d.includes('1 year') || d.includes('one year')) {
-          setFormMaxValidity('365 days')
-        } else {
-          setFormMaxValidity('90 days')
-        }
-        // Auto renew
-        if (d.includes('auto') || d.includes('renew')) {
-          setFormAutoRenew(true)
-          if (d.includes('30 day') || d.includes('30d')) setFormRenewBefore('30 days')
-          else if (d.includes('14 day')) setFormRenewBefore('14 days')
-          else if (d.includes('60 day')) setFormRenewBefore('60 days')
-          else setFormRenewBefore('30 days')
-        }
-        // Min key strength
-        if (d.includes('rsa-4096') || d.includes('rsa 4096')) setFormMinKeyType('RSA-4096')
-        else if (d.includes('ed25519')) setFormMinKeyType('Ed25519')
-        else if (d.includes('ecdsa')) setFormMinKeyType('ECDSA-256')
-        else setFormMinKeyType('RSA-2048')
-        // Action
-        if (d.includes('block') || d.includes('self-sign') || d.includes('prevent'))
-          setFormAction('Block action')
-        else if (d.includes('auto-remediat') || d.includes('auto renew'))
-          setFormAction('Auto-remediate')
-        else if (d.includes('ticket'))
-          setFormAction('Create ticket')
-        else
-          setFormAction('Alert only')
-        // Severity + environment + tag
-        if (d.includes('pci') || d.includes('critical')) setFormSeverity('Critical')
-        else setFormSeverity('High')
-        if (d.includes('produc')) setFormEnvironment('Production')
-        if (d.includes('pci')) setFormTag('PCI-DSS')
-        else if (d.includes('dora')) { setFormTag('DORA'); setFormITSM(true) }
-        else if (d.includes('nist')) setFormTag('NIST')
-        else if (d.includes('zero') || d.includes('short')) setFormTag('Zero-Trust')
-        // ITSM
-        if (d.includes('servicenow') || d.includes('ticket') || d.includes('itsm') || d.includes('dora'))
-          setFormITSM(true)
+
+      if (seeds.length) {
+        setConditionGroups(seedGroups(seeds));
+        setGroupLogic(seeds.length > 1 ? 'OR' : 'AND');
+        if (d.includes('produc')) setFormEnvironment('Production');
+        if (d.includes('critical')) setFormSeverity('Critical');
+        toast.success('Conditions drafted from your description — review before saving');
+      } else {
+        toast.message('Could not map that to conditions', {
+          description: 'Try naming a field, e.g. "flag certificates using SHA-1" or "secrets not rotated in 90 days".',
+        });
       }
-      // ── Secrets & API Keys Policy ──
-      else if (formPolicyType === 'Secrets & API Keys Policy') {
-        if (!formName)
-          setFormName('Secret Rotation Policy — ' + (d.includes('produc') ? 'Production' : 'All'))
-        // Secret type
-        if (d.includes('api key') || d.includes('api-key')) setFormSecretType('API Keys')
-        else if (d.includes('oauth')) setFormSecretType('OAuth Tokens')
-        else if (d.includes('database') || d.includes('db cred')) setFormSecretType('Database Credentials')
-        else if (d.includes('service account')) setFormSecretType('Service Account Keys')
-        else setFormSecretType('All')
-        // Max age
-        const secretAge = d.match(/(\d+)\s*day/)
-        if (secretAge) {
-          const n = parseInt(secretAge[1])
-          if (n <= 30) setFormSecretMaxAge('30 days')
-          else if (n <= 60) setFormSecretMaxAge('60 days')
-          else if (n <= 90) setFormSecretMaxAge('90 days')
-          else setFormSecretMaxAge('180 days')
-        } else setFormSecretMaxAge('90 days')
-        // Vault
-        if (d.includes('hashicorp') || d.includes('vault')) setFormSecretVault('HashiCorp Vault')
-        else if (d.includes('aws')) setFormSecretVault('AWS Secrets Manager')
-        else if (d.includes('azure')) setFormSecretVault('Azure Key Vault')
-        else setFormSecretVault('Any')
-        // Auto rotate
-        if (d.includes('auto') || d.includes('rotat')) setFormSecretAutoRotate(true)
-        // Action + severity
-        if (d.includes('block')) setFormAction('Block action')
-        else if (d.includes('auto')) setFormAction('Auto-remediate')
-        else setFormAction('Alert only')
-        if (d.includes('critical')) setFormSeverity('Critical')
-        else setFormSeverity('High')
-        if (d.includes('produc')) setFormEnvironment('Production')
-      }
-      // ── AI Agent Token Policy ──
-      else if (formPolicyType === 'AI Agent Token Policy') {
-        if (!formName)
-          setFormName('AI Agent Token Policy — ' + (d.includes('produc') ? 'Production' : 'All'))
-        // TTL
-        if (d.includes('1 hour') || d.includes('1h')) setFormAgentMaxTTL('1 hour')
-        else if (d.includes('6 hour') || d.includes('6h')) setFormAgentMaxTTL('6 hours')
-        else if (d.includes('24') || d.includes('24h') || d.includes('24 hour')) setFormAgentMaxTTL('24 hours')
-        else if (d.includes('7 day')) setFormAgentMaxTTL('7 days')
-        else if (d.includes('30 day')) setFormAgentMaxTTL('30 days')
-        else setFormAgentMaxTTL('24 hours')
-        // JIT
-        if (d.includes('jit') || d.includes('just-in-time') || d.includes('dynamic') || d.includes('short-lived'))
-          setFormEnforceJIT(true)
-        // Right-size
-        if (d.includes('least') || d.includes('privilege') || d.includes('right-siz') || d.includes('over-priv'))
-          setFormEnforceRightSize(true)
-        // Action + severity
-        if (d.includes('block') || d.includes('static') || d.includes('prevent'))
-          setFormAction('Block action')
-        else setFormAction('Alert only')
-        if (d.includes('critical') || d.includes('jit')) setFormSeverity('Critical')
-        else setFormSeverity('High')
-        if (d.includes('produc')) setFormEnvironment('Production')
-        if (d.includes('zero')) setFormTag('Zero-Trust')
-      }
-      // ── Device Management Policy ──
-      else if (formPolicyType === 'Device Management Policy') {
-        if (!formName)
-          setFormName('Device Onboarding Policy — ' + (d.includes('linux') ? 'Linux' : 'All Vendors'))
-        if (d.includes('linux')) setFormDeviceVendor('Linux Server')
-        else if (d.includes('windows') || d.includes('microsoft')) setFormDeviceVendor('Microsoft Server')
-        else if (d.includes('nginx')) setFormDeviceVendor('Nginx')
-        else if (d.includes('apache')) setFormDeviceVendor('Apache')
-        else if (d.includes('f5')) setFormDeviceVendor('F5 (ADC)')
-        else setFormDeviceVendor('Linux Server')
-        if (d.includes('re-onboard') || d.includes('re onboard')) setFormDeviceAction('Re-Onboard')
-        else if (d.includes('update') || d.includes('config')) setFormDeviceAction('Update Config')
-        else setFormDeviceAction('Onboard Device')
-        if (d.includes('auto') || d.includes('no approval')) {
-          if (d.includes('notif')) setFormDeviceApproval('Auto-approve with notification')
-          else setFormDeviceApproval('Auto-approve')
-        } else if (d.includes('approv')) {
-          setFormDeviceApproval('Require approval')
-        } else {
-          setFormDeviceApproval('Auto-approve with notification')
-        }
-        if (d.includes('notif')) setFormNotifyOnComplete(true)
-        if (d.includes('slack')) setFormNotifyVia('Slack')
-        if (d.includes('servicenow') || d.includes('ticket')) setFormITSM(true)
-        setFormSeverity('Medium')
-      }
-      // ── Kubernetes Certificate Policy ──
-      else if (formPolicyType === 'Kubernetes Certificate Policy') {
-        if (!formName)
-          setFormName('Kubernetes Certificate Policy — ' + (d.includes('payment') ? 'Payments Namespace' : 'All Clusters'))
-        if (d.includes('vault')) setFormK8sIssuer('Vault PKI')
-        else if (d.includes('spiffe') || d.includes('spire')) setFormK8sIssuer('SPIFFE/SPIRE')
-        else if (d.includes('acme')) setFormK8sIssuer('ACME')
-        else setFormK8sIssuer('cert-manager')
-        const nsMatch = d.match(/namespace[s]?\s+([a-z0-9_\-*]+)/i)
-        if (nsMatch) setFormK8sNamespace(nsMatch[1])
-        else if (d.includes('payment')) setFormK8sNamespace('payments-*')
-        else if (d.includes('produc')) setFormK8sNamespace('production-*')
-        else setFormK8sNamespace('')
-        const k8sAge = d.match(/(\d+)\s*(hour|day)/)
-        if (k8sAge) {
-          const n = parseInt(k8sAge[1])
-          const unit = k8sAge[2]
-          if (unit === 'hour') {
-            if (n <= 1) setFormMaxValidity('1 hour')
-            else if (n <= 6) setFormMaxValidity('6 hours')
-            else setFormMaxValidity('24 hours')
-          } else {
-            if (n <= 7) setFormMaxValidity('7 days')
-            else if (n <= 30) setFormMaxValidity('30 days')
-            else setFormMaxValidity('90 days')
-          }
-        } else {
-          setFormMaxValidity('24 hours')
-        }
-        setFormMinKeyType('ECDSA-256')
-        setFormSeverity('High')
-        if (d.includes('produc')) setFormEnvironment('Production')
-      }
-      // ── Common across all types ──
-      if (d.includes('approv')) setFormRequireApproval(true)
-      if (d.includes('slack')) { setFormNotifyVia('Slack'); setFormNotifyOnFail(true) }
-      if (d.includes('email') && !d.includes('s/mime')) { setFormNotifyVia('Email'); setFormNotifyOnFail(true) }
-      if (d.includes('servicenow') || d.includes('snow')) setFormITSM(true)
-      setAiLoading(false)
-      toast.success('Policy generated from your description — review and save')
-    }, 700)
-  }
+      setAiLoading(false);
+    }, 700);
+  };
 
   const handleSave = (draft: boolean) => {
     if (!formName.trim()) {
@@ -567,27 +271,38 @@ export default function PolicyBuilderPage() {
       return;
     }
 
+    const summary = conditionGroups
+      .map(g => g.rows
+        .filter(r => r.field && r.operator)
+        .map(r => describeCondition(formPolicyType, r))
+        .filter(Boolean)
+        .join(` ${g.innerLogic} `))
+      .filter(Boolean)
+      .map(s => `(${s})`)
+      .join(` ${groupLogic} `);
+
     const newPolicy: CustomPolicy = {
       id: editingPolicy || `cpol-${Date.now()}`,
       name: formName,
       description: formDescription || `${formPolicyType} — ${formEnvironment}`,
       status: draft ? 'Draft' : 'Active',
       violations: 0,
-      assetType: formPolicyType.includes('Certificate')
-        ? 'TLS Certificate'
-        : formPolicyType.includes('SSH')
-          ? 'SSH Key'
-          : formPolicyType.includes('Secret')
-            ? 'API Key / Secret'
-            : formPolicyType.includes('AI')
-              ? 'AI Agent Token'
-              : 'Device',
+      assetType: formPolicyType.includes('Cryptographic Key')
+        ? 'Cryptographic Key'
+        : formPolicyType.includes('Certificate')
+          ? 'TLS Certificate'
+          : formPolicyType.includes('SSH')
+            ? 'SSH Key'
+            : 'API Key / Secret',
       condition: formAction,
       severity: formSeverity,
       environments: formEnvironment === 'All' ? ['All'] : [formEnvironment],
       teams: formTeam,
       actions: [formAction],
       groupIds: formGroup ? [formGroup] : [],
+      conditionGroups,
+      groupLogic,
+      conditionSummary: summary,
     };
 
     if (editingPolicy) {
@@ -612,10 +327,11 @@ export default function PolicyBuilderPage() {
     setFormGroup(p.groupIds?.[0] || '');
     setFormAction(p.actions?.[0] || p.condition || 'Alert only');
     if ((p.assetType || '').includes('SSH')) setFormPolicyType('SSH Key Policy');
+    else if ((p.assetType || '').includes('Cryptographic Key')) setFormPolicyType('Cryptographic Key Policy');
     else if ((p.assetType || '').includes('Secret') || (p.assetType || '').includes('API')) setFormPolicyType('Secrets & API Keys Policy');
-    else if ((p.assetType || '').includes('AI')) setFormPolicyType('AI Agent Token Policy');
-    else if ((p.assetType || '').includes('Device')) setFormPolicyType('Device Management Policy');
     else setFormPolicyType('Managed Certificate Policy');
+    setConditionGroups(p.conditionGroups && p.conditionGroups.length ? p.conditionGroups : [emptyGroup()]);
+    setGroupLogic(p.groupLogic || 'AND');
     setCreateOpen(true);
   };
 
@@ -711,7 +427,6 @@ export default function PolicyBuilderPage() {
               <button onClick={() => openTemplate('zero-trust-tls')} className="text-teal hover:underline">Zero-Trust TLS</button>
               <button onClick={() => openTemplate('dora-cert')} className="text-teal hover:underline">DORA Certs</button>
               <button onClick={() => openTemplate('secret-rotation')} className="text-teal hover:underline">Secret Rotation</button>
-              <button onClick={() => openTemplate('agent-jit')} className="text-teal hover:underline">Agent JIT</button>
             </div>
           </div>
 
@@ -759,9 +474,8 @@ export default function PolicyBuilderPage() {
                     </div>
                     {expandedPolicy === p.id && (
                       <div className="px-4 pb-4 border-t border-border pt-3 space-y-3">
-                        <div className="grid grid-cols-5 gap-3 text-xs">
+                        <div className="grid grid-cols-4 gap-3 text-xs">
                           <div><span className="text-muted-foreground block mb-0.5">Asset Type</span><span className="font-medium">{p.assetType || 'All'}</span></div>
-                          <div><span className="text-muted-foreground block mb-0.5">Condition</span><span className="font-medium">{p.condition || '—'} {p.value || ''}</span></div>
                           <div><span className="text-muted-foreground block mb-0.5">Environment</span><span className="font-medium">{p.environments?.join(', ') || 'All'}</span></div>
                           <div><span className="text-muted-foreground block mb-0.5">Teams</span><span className="font-medium">{p.teams || 'All'}</span></div>
                           <div>
@@ -773,6 +487,12 @@ export default function PolicyBuilderPage() {
                             </span>
                           </div>
                         </div>
+                        {p.conditionSummary && (
+                          <div>
+                            <span className="text-[10px] text-muted-foreground block mb-1">Conditions</span>
+                            <p className="text-[11px] font-mono bg-muted/40 border border-border rounded px-2 py-1.5">{p.conditionSummary}</p>
+                          </div>
+                        )}
                         {p.actions && p.actions.length > 0 && (
                           <div>
                             <span className="text-[10px] text-muted-foreground block mb-1">Actions on Violation</span>
@@ -802,8 +522,8 @@ export default function PolicyBuilderPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[11px] font-medium mb-1">Policy Type*</label>
-                    <select value={formPolicyType} onChange={e => setFormPolicyType(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
-                      {['Managed Certificate Policy', 'Kubernetes Certificate Policy', 'SSH Key Policy', 'Secrets & API Keys Policy', 'AI Agent Token Policy', 'Device Management Policy'].map(option => <option key={option}>{option}</option>)}
+                    <select value={formPolicyType} onChange={e => { setFormPolicyType(e.target.value); setConditionGroups([emptyGroup()]); }} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
+                      {POLICY_TYPES.map(option => <option key={option}>{option}</option>)}
                     </select>
                   </div>
                   <div>
@@ -816,7 +536,7 @@ export default function PolicyBuilderPage() {
 
                 <div className="mt-4">
                   <label className="block text-[11px] font-medium mb-1">Policy Name*</label>
-                  <input value={formName} onChange={e => setFormName(e.target.value)} placeholder="e.g. PCI-DSS SSH Rotation — Production" className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground" />
+                  <input value={formName} onChange={e => setFormName(e.target.value)} placeholder="e.g. PCI-DSS SSH Key Strength — Production" className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground" />
                 </div>
 
                 <div className="mt-4">
@@ -838,17 +558,13 @@ export default function PolicyBuilderPage() {
                     rows={2}
                     placeholder={
                       formPolicyType === 'SSH Key Policy'
-                        ? 'e.g. rotate all production SSH keys every 90 days and block RSA-1024 algorithms'
+                        ? 'e.g. flag SSH keys using DSA, or RSA below 2048 bits'
                       : formPolicyType === 'Managed Certificate Policy'
-                        ? 'e.g. auto-renew production TLS certs 30 days before expiry via DigiCert, block self-signed'
+                        ? 'e.g. flag certificates using SHA-1 or self-signed, or expiring in under 30 days'
                       : formPolicyType === 'Secrets & API Keys Policy'
-                        ? 'e.g. flag any API key older than 60 days and require rotation via HashiCorp Vault'
-                      : formPolicyType === 'AI Agent Token Policy'
-                        ? 'e.g. enforce 24-hour TTL for all AI agent tokens and require JIT issuance in production'
-                      : formPolicyType === 'Device Management Policy'
-                        ? 'e.g. auto-onboard all new Linux servers and notify the infra team on completion'
-                      : formPolicyType === 'Kubernetes Certificate Policy'
-                        ? 'e.g. issue short-lived certs for all pods in payments namespace via Vault PKI'
+                        ? 'e.g. flag secrets with no expiry date or not rotated in 90 days'
+                      : formPolicyType === 'Cryptographic Key Policy'
+                        ? 'e.g. flag KMS keys with rotation not enabled, or using RSA/ECC'
                       : 'Select a policy type above, then describe what you want in plain English'
                     }
                     className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground"
@@ -880,276 +596,17 @@ export default function PolicyBuilderPage() {
               </div>
 
               <div className="border-t border-border pt-4">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-3">Rules</p>
-
-                {formPolicyType === 'Managed Certificate Policy' && (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-[11px] font-medium mb-1">Certificate Type</label>
-                        <select value={formCertType} onChange={e => setFormCertType(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
-                          {['TLS / SSL', 'Code-Signing', 'S/MIME', 'Client Auth', 'SSH Certificate (Next Release)'].map(option => <option key={option}>{option}</option>)}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-medium mb-1">Action</label>
-                        <select value={formCertAction} onChange={e => setFormCertAction(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
-                          {['Alert Only', 'Enroll', 'Auto-Renew', 'Re-Enroll'].map(option => <option key={option}>{option}</option>)}
-                        </select>
-                      </div>
-                    </div>
-
-                    {formCertAction !== 'Alert Only' && (
-                      <div>
-                        <label className="block text-[11px] font-medium mb-1">Certificate Authority</label>
-                        <select value={formCA} onChange={e => setFormCA(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
-                          {['Any', 'DigiCert', 'GlobalSign', 'Entrust', "Let's Encrypt", 'Microsoft CA', 'Sectigo', 'HashiCorp Vault PKI'].map(option => <option key={option}>{option}</option>)}
-                        </select>
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-[11px] font-medium mb-1">Max Validity</label>
-                        <select value={formMaxValidity} onChange={e => setFormMaxValidity(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
-                          {['30 days', '60 days', '90 days', '180 days', '365 days', '2 years', '3 years', 'No limit'].map(option => <option key={option}>{option}</option>)}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-medium mb-1">Minimum Key Strength</label>
-                        <select value={formMinKeyType} onChange={e => setFormMinKeyType(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
-                          {['RSA-2048', 'RSA-4096', 'ECDSA-256', 'Ed25519'].map(option => <option key={option}>{option}</option>)}
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between py-2">
-                      <div>
-                        <p className="text-[11px] font-medium">Auto-renew before expiry?</p>
-                        <p className="text-[9px] text-muted-foreground">Automatically renew before expiry date</p>
-                      </div>
-                      <button onClick={() => setFormAutoRenew(prev => !prev)} className={`w-10 h-5 rounded-full relative transition-colors ${formAutoRenew ? 'bg-teal' : 'bg-muted'}`}>
-                        <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-card shadow transition-transform ${formAutoRenew ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                      </button>
-                    </div>
-
-                    {formAutoRenew && (
-                      <div>
-                        <label className="block text-[11px] font-medium mb-1">Renew before expiry</label>
-                        <select value={formRenewBefore} onChange={e => setFormRenewBefore(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
-                          {['7 days', '14 days', '30 days', '45 days', '60 days'].map(option => <option key={option}>{option}</option>)}
-                        </select>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {formPolicyType === 'Kubernetes Certificate Policy' && (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-[11px] font-medium mb-1">Issuer</label>
-                        <select value={formK8sIssuer} onChange={e => setFormK8sIssuer(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
-                          {['cert-manager', 'Vault PKI', 'SPIFFE/SPIRE', 'ACME', 'AWS PCA', 'Custom'].map(option => <option key={option}>{option}</option>)}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-medium mb-1">Certificate Authority</label>
-                        <select value={formCA} onChange={e => setFormCA(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
-                          {['Any', 'DigiCert', 'GlobalSign', 'Entrust', "Let's Encrypt", 'Microsoft CA', 'Sectigo', 'HashiCorp Vault PKI'].map(option => <option key={option}>{option}</option>)}
-                        </select>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-medium mb-1">Namespace scope</label>
-                      <input value={formK8sNamespace} onChange={e => setFormK8sNamespace(e.target.value)} placeholder="e.g. production-*, payments-namespace (leave blank for all)" className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-[11px] font-medium mb-1">Max Validity</label>
-                        <select value={formMaxValidity} onChange={e => setFormMaxValidity(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
-                          {['1 hour', '6 hours', '24 hours', '7 days', '30 days', '90 days', '365 days'].map(option => <option key={option}>{option}</option>)}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-medium mb-1">Min Key Strength</label>
-                        <select value={formMinKeyType} onChange={e => setFormMinKeyType(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
-                          {['RSA-2048', 'RSA-4096', 'ECDSA-256', 'Ed25519'].map(option => <option key={option}>{option}</option>)}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {formPolicyType === 'SSH Key Policy' && (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-[11px] font-medium mb-1">Allowed Algorithms</label>
-                        <input value={formAllowedAlgorithms} onChange={e => setFormAllowedAlgorithms(e.target.value)} placeholder="e.g. Ed25519, RSA-4096" className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground" />
-                        <p className="text-[9px] text-muted-foreground mt-1">Comma-separated. Keys using other algorithms will violate this policy.</p>
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-medium mb-1">Maximum Key Age</label>
-                        <select value={formMaxKeyAge} onChange={e => setFormMaxKeyAge(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
-                          {['30 days', '60 days', '90 days', '180 days', '365 days', 'No limit'].map(option => <option key={option}>{option}</option>)}
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between py-2">
-                      <div>
-                        <p className="text-[11px] font-medium">Auto-rotate?</p>
-                        <p className="text-[9px] text-muted-foreground">Rotate keys automatically on a schedule</p>
-                      </div>
-                      <button onClick={() => setFormAutoRotate(prev => !prev)} className={`w-10 h-5 rounded-full relative transition-colors ${formAutoRotate ? 'bg-teal' : 'bg-muted'}`}>
-                        <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-card shadow transition-transform ${formAutoRotate ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                      </button>
-                    </div>
-
-                    {formAutoRotate && (
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-[11px] font-medium mb-1">Rotation Period</label>
-                          <select value={formRotationPeriod} onChange={e => setFormRotationPeriod(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
-                            {['30 days', '60 days', '90 days', '180 days', '365 days', 'No limit'].map(option => <option key={option}>{option}</option>)}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-medium mb-1">Target Algorithm</label>
-                          <select value={formTargetAlgorithm} onChange={e => setFormTargetAlgorithm(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
-                            {['Ed25519', 'RSA-4096', 'ECDSA-256'].map(option => <option key={option}>{option}</option>)}
-                          </select>
-                        </div>
-                      </div>
-                    )}
-
-                    <div>
-                      <label className="block text-[11px] font-medium mb-2">Flag as violation if key is:</label>
-                      <div className="space-y-1">
-                        {[
-                          ['Shared keys', sshFlagShared, setSshFlagShared],
-                          ['Weak algorithms', sshFlagWeak, setSshFlagWeak],
-                          ['Rogue keys', sshFlagRogue, setSshFlagRogue],
-                          ['Misplaced keys', sshFlagMisplaced, setSshFlagMisplaced],
-                          ['Orphaned keys (no owner)', sshFlagOrphaned, setSshFlagOrphaned],
-                        ].map(([label, value, setter]) => (
-                          <div key={label as string} className="flex items-center justify-between py-1.5 text-[11px]">
-                            <span>{label as string}</span>
-                            <button onClick={() => (setter as React.Dispatch<React.SetStateAction<boolean>>)(prev => !prev)} className={`w-10 h-5 rounded-full relative transition-colors ${(value as boolean) ? 'bg-teal' : 'bg-muted'}`}>
-                              <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-card shadow transition-transform ${(value as boolean) ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {formPolicyType === 'Secrets & API Keys Policy' && (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-[11px] font-medium mb-1">Secret Type</label>
-                        <select value={formSecretType} onChange={e => setFormSecretType(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
-                          {['All', 'API Keys', 'OAuth Tokens', 'Database Credentials', 'Service Account Keys', 'Vault Secrets'].map(option => <option key={option}>{option}</option>)}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-medium mb-1">Maximum Age</label>
-                        <select value={formSecretMaxAge} onChange={e => setFormSecretMaxAge(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
-                          {['30 days', '60 days', '90 days', '180 days', '365 days'].map(option => <option key={option}>{option}</option>)}
-                        </select>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-medium mb-1">Approved Storage</label>
-                      <select value={formSecretVault} onChange={e => setFormSecretVault(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
-                        {['Any', 'HashiCorp Vault', 'AWS Secrets Manager', 'Azure Key Vault', 'CyberArk Conjur', 'GCP Secret Manager'].map(option => <option key={option}>{option}</option>)}
-                      </select>
-                      <p className="text-[9px] text-muted-foreground mt-1">Secrets outside approved storage will be flagged.</p>
-                    </div>
-
-                    <div className="flex items-center justify-between py-2">
-                      <div>
-                        <p className="text-[11px] font-medium">Auto-rotate?</p>
-                        <p className="text-[9px] text-muted-foreground">Trigger automated secret rotation</p>
-                      </div>
-                      <button onClick={() => setFormSecretAutoRotate(prev => !prev)} className={`w-10 h-5 rounded-full relative transition-colors ${formSecretAutoRotate ? 'bg-teal' : 'bg-muted'}`}>
-                        <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-card shadow transition-transform ${formSecretAutoRotate ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                      </button>
-                    </div>
-
-                    {formSecretAutoRotate && (
-                      <div>
-                        <label className="block text-[11px] font-medium mb-1">Rotation Period</label>
-                        <select value={formRotationPeriod} onChange={e => setFormRotationPeriod(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
-                          {['30 days', '60 days', '90 days', '180 days', '365 days'].map(option => <option key={option}>{option}</option>)}
-                        </select>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {formPolicyType === 'AI Agent Token Policy' && (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-[11px] font-medium mb-1">Maximum Token TTL</label>
-                        <select value={formAgentMaxTTL} onChange={e => setFormAgentMaxTTL(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
-                          {['1 hour', '6 hours', '24 hours', '7 days', '30 days', '90 days', 'No limit'].map(option => <option key={option}>{option}</option>)}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-medium mb-1">Allowed Algorithms</label>
-                        <input value={formAllowedAlgorithms} onChange={e => setFormAllowedAlgorithms(e.target.value)} placeholder="e.g. HMAC-SHA256, Ed25519" className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground" />
-                      </div>
-                    </div>
-
-                    {[
-                      ['Require just-in-time (JIT) issuance?', 'No static long-lived credentials permitted.', formEnforceJIT, setFormEnforceJIT],
-                      ['Enforce least-privilege?', 'Flag agents whose permissions exceed usage.', formEnforceRightSize, setFormEnforceRightSize],
-                      ['Require HITL approval for high-risk actions?', 'Pause agent actions touching PII, AD, or Firewall resources.', formRequireHITL, setFormRequireHITL],
-                    ].map(([label, desc, value, setter]) => (
-                      <div key={label as string} className="flex items-center justify-between py-2 border-b border-border last:border-0 text-[11px]">
-                        <div>
-                          <p className="font-medium">{label as string}</p>
-                          <p className="text-[9px] text-muted-foreground">{desc as string}</p>
-                        </div>
-                        <button onClick={() => (setter as React.Dispatch<React.SetStateAction<boolean>>)(prev => !prev)} className={`w-10 h-5 rounded-full relative transition-colors ${(value as boolean) ? 'bg-teal' : 'bg-muted'}`}>
-                          <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-card shadow transition-transform ${(value as boolean) ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {formPolicyType === 'Device Management Policy' && (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-[11px] font-medium mb-1">Action</label>
-                        <select value={formDeviceAction} onChange={e => setFormDeviceAction(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
-                          {['Onboard Device', 'Re-Onboard', 'Update Config'].map(option => <option key={option}>{option}</option>)}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-medium mb-1">Vendor / Platform</label>
-                        <select value={formDeviceVendor} onChange={e => setFormDeviceVendor(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
-                          {['Linux Server', 'Microsoft Server', 'IIS', 'Apache', 'Nginx', 'F5 (ADC)', 'MS SQL', 'Tomcat', 'Custom'].map(option => <option key={option}>{option}</option>)}
-                        </select>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-medium mb-1">Approval for onboarding</label>
-                      <select value={formDeviceApproval} onChange={e => setFormDeviceApproval(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
-                        {['Auto-approve', 'Require approval', 'Auto-approve with notification'].map(option => <option key={option}>{option}</option>)}
-                      </select>
-                    </div>
-                  </div>
-                )}
+                <div className="mb-3">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Conditions</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Flag an asset as Non-Compliant when these conditions match.</p>
+                </div>
+                <ConditionBuilder
+                  policyType={formPolicyType}
+                  groups={conditionGroups}
+                  groupLogic={groupLogic}
+                  onChange={setConditionGroups}
+                  onGroupLogicChange={setGroupLogic}
+                />
               </div>
 
               <div className="border-t border-border pt-4">
