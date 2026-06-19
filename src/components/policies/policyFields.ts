@@ -11,6 +11,7 @@ export interface FieldDef {
   unit?: string;
   options?: string[];
   computed?: boolean;
+  derived?: boolean;
   hint?: string;
 }
 
@@ -50,6 +51,7 @@ export const FIELDS_BY_POLICY_TYPE: Record<string, FieldDef[]> = {
     { id: 'tls_version', label: 'TLS Version Accepted', kind: 'enum', options: ['TLS 1.0', 'TLS 1.1', 'TLS 1.2', 'TLS 1.3'] },
     { id: 'cipher_suite', label: 'Cipher Suite', kind: 'enum', options: ['RC4', '3DES', 'NULL', 'Export-grade', 'AES-GCM', 'ChaCha20'] },
     { id: 'revocation_status', label: 'Revocation Status', kind: 'enum', options: ['Valid', 'Revoked', 'Unknown'] },
+    { id: 'quantum_vuln', label: 'Quantum Vulnerability', kind: 'enum', options: ['Quantum-Vulnerable', 'Quantum-Safe'], derived: true, hint: 'Derived from the algorithm. RSA/ECC/DH = Vulnerable; ML-KEM/ML-DSA/SLH-DSA = Safe.' },
     { id: 'deployment_scope', label: 'Deployment Scope', kind: 'enum', options: ['Production', 'Staging', 'Development'] },
   ],
   'SSH Key Policy': [
@@ -58,6 +60,7 @@ export const FIELDS_BY_POLICY_TYPE: Record<string, FieldDef[]> = {
     { id: 'mac_algo', label: 'MAC Algorithm', kind: 'enum', options: ['hmac-sha2-256', 'hmac-sha2-512', 'hmac-sha1', 'hmac-md5'] },
     { id: 'key_age', label: 'Key Age (days)', kind: 'number', unit: 'days', computed: true, hint: 'Requires managed SSH source' },
     { id: 'days_since_rotation', label: 'Days Since Last Rotation', kind: 'number', unit: 'days', computed: true, hint: 'Requires managed SSH source' },
+    { id: 'quantum_vuln', label: 'Quantum Vulnerability', kind: 'enum', options: ['Quantum-Vulnerable', 'Quantum-Safe'], derived: true, hint: 'Derived from the algorithm. RSA/ECC/DH = Vulnerable; ML-KEM/ML-DSA/SLH-DSA = Safe.' },
   ],
   'Secrets & API Keys Policy': [
     { id: 'has_expiry', label: 'Has Expiry Date', kind: 'boolean' },
@@ -71,6 +74,7 @@ export const FIELDS_BY_POLICY_TYPE: Record<string, FieldDef[]> = {
     { id: 'key_algorithm', label: 'Key Algorithm', kind: 'enum', options: ['RSA', 'ECC', 'AES', 'DH', 'ML-KEM', 'ML-DSA'] },
     { id: 'key_bits', label: 'Key Length (bits)', kind: 'number', unit: 'bits' },
     { id: 'key_source', label: 'Key Source', kind: 'enum', options: ['AWS KMS', 'Azure Key Vault', 'GCP KMS', 'Fortanix', 'Crypto4A'] },
+    { id: 'quantum_vuln', label: 'Quantum Vulnerability', kind: 'enum', options: ['Quantum-Vulnerable', 'Quantum-Safe'], derived: true, hint: 'Derived from the algorithm. RSA/ECC/DH = Vulnerable; ML-KEM/ML-DSA/SLH-DSA = Safe.' },
   ],
 };
 
