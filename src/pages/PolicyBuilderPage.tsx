@@ -376,6 +376,7 @@ export default function PolicyBuilderPage() {
       conditionSummary: summary,
       scope: { ...scope },
       tag: formTag,
+      subCategory: formSubCategory,
       responseProfileId: finalMode === 'Enforce' ? responseProfileId : null,
       mode: finalMode,
       effectiveFrom: effectiveFrom || null,
