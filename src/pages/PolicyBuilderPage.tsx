@@ -226,12 +226,22 @@ function ChipInput({ values, onChange, placeholder }: { values: string[]; onChan
 // AI assist — heuristic policy drafter (front-end only)
 
 type Confidence = 'High' | 'Medium' | 'Low';
+export type AIField = 'policyType' | 'conditions' | 'severity' | 'environments';
+
+interface Fills {
+  policyType?: string;
+  severity?: string;
+  environments?: string[];
+  conditions?: {
+    seeds: { field: string; operator: string; value: string }[][];
+    groupLogic: 'AND' | 'OR';
+  };
+}
 
 interface Interpretation {
   id: string;
   label: string;
-  seeds: { field: string; operator: string; value: string }[][];
-  groupLogic: 'AND' | 'OR';
+  fills: Fills;
   confidence: Confidence;
   notes: string[];
 }
@@ -241,90 +251,81 @@ type DraftResult =
   | { kind: 'unresolvable'; reason: string; suggestion: string }
   | { kind: 'unavailable' };
 
-function draftInterpretations(input: string, policyType: string): DraftResult {
-  // Simulated unavailability hook for demo/testing.
-  if (/\boffline\b|@@unavailable/.test(input)) return { kind: 'unavailable' };
+function detectPolicyType(d: string): string | undefined {
+  if (/\bssh\s*cert/.test(d)) return 'SSH Certificate Policy';
+  if (/\bssh\b/.test(d)) return 'SSH Key Policy';
+  if (/\b(secret|token|api\s*key)\b/.test(d)) return 'Secrets & Tokens Policy';
+  if (/(encryption\s*key|\bkms\b|hsm)/.test(d)) return 'Encryption Keys Policy';
+  if (/(protocol|cipher|tls\s*1\.[01])/.test(d)) return 'Protocol & Cipher Policy';
+  if (/(cbom|source\s*code|repo)/.test(d)) return 'Code / CBOM Policy';
+  if (/(certificate|\bcert\b|\btls\b|x\.?509)/.test(d)) return 'Certificate Policy';
+  return undefined;
+}
 
+function detectSeverity(d: string): string | undefined {
+  if (/\b(critical|urgent|severe)\b/.test(d)) return 'Critical';
+  if (/\bhigh\b/.test(d)) return 'High';
+  if (/\bmedium\b/.test(d)) return 'Medium';
+  if (/\blow\b/.test(d)) return 'Low';
+  return undefined;
+}
+
+function detectEnvironments(d: string): string[] | undefined {
+  const envs: string[] = [];
+  if (/\b(prod|production)\b/.test(d)) envs.push('Production');
+  if (/\bstag(ing)?\b/.test(d)) envs.push('Staging');
+  if (/\b(dev|development)\b/.test(d)) envs.push('Development');
+  return envs.length ? envs : undefined;
+}
+
+function buildConditionVariants(d: string, policyType: string): { seeds: { field: string; operator: string; value: string }[][]; groupLogic: 'AND' | 'OR'; label: string; confidence: Confidence; notes: string[] }[] {
   const fields = (FIELDS_BY_POLICY_TYPE as Record<string, { id: string }[]>)[policyType] || [];
   const hasField = (id: string) => fields.some(f => f.id === id);
-  const d = input.toLowerCase();
 
   const dayMatch = d.match(/(\d+)\s*day/);
   const days = dayMatch ? dayMatch[1] : null;
   const bitsMatch = d.match(/\b(1024|2048|3072|4096)\b/);
   const bits = bitsMatch ? bitsMatch[1] : null;
 
-  // ── Ambiguity: vague rotation threshold ─────────────────────────────────
-  const vagueTime = /(a while|recently|soon|stale|old\b|long time)/.test(d);
-  const rotationMention = /rotat/.test(d);
-  if (vagueTime && rotationMention && !days && hasField('days_since_rotation')) {
-    return {
-      kind: 'ok',
-      interpretations: [
-        { id: 'r90', label: 'Not rotated in over 90 days',
-          seeds: [[{ field: 'days_since_rotation', operator: 'gt', value: '90' }]],
-          groupLogic: 'AND', confidence: 'Medium', notes: ['Threshold inferred from vague time'] },
-        { id: 'r180', label: 'Not rotated in over 180 days',
-          seeds: [[{ field: 'days_since_rotation', operator: 'gt', value: '180' }]],
-          groupLogic: 'AND', confidence: 'Medium', notes: ['Threshold inferred from vague time'] },
-        { id: 'r365', label: 'Not rotated in over 365 days',
-          seeds: [[{ field: 'days_since_rotation', operator: 'gt', value: '365' }]],
-          groupLogic: 'AND', confidence: 'Low', notes: ['Threshold is a coarse guess'] },
-      ],
-    };
+  // Ambiguity: vague rotation
+  const vagueTime = /(a while|recently|stale|\bold\b|long time)/.test(d);
+  if (vagueTime && /rotat/.test(d) && !days && hasField('days_since_rotation')) {
+    return [
+      { seeds: [[{ field: 'days_since_rotation', operator: 'gt', value: '90' }]], groupLogic: 'AND', label: 'Not rotated in over 90 days', confidence: 'Medium', notes: ['Threshold inferred from vague time'] },
+      { seeds: [[{ field: 'days_since_rotation', operator: 'gt', value: '180' }]], groupLogic: 'AND', label: 'Not rotated in over 180 days', confidence: 'Medium', notes: [] },
+      { seeds: [[{ field: 'days_since_rotation', operator: 'gt', value: '365' }]], groupLogic: 'AND', label: 'Not rotated in over 365 days', confidence: 'Low', notes: ['Coarse guess'] },
+    ];
   }
 
-  // ── Ambiguity: "weak" without specifics ─────────────────────────────────
-  const weakOnly = /\bweak\b/.test(d) && !/sha|md5|rsa|dsa|bit|ecdsa|ed25519/.test(d);
-  if (weakOnly) {
+  // Ambiguity: "weak"
+  if (/\bweak\b/.test(d) && !/sha|md5|rsa|dsa|bit|ecdsa|ed25519/.test(d)) {
     if (policyType === 'Certificate Policy') {
-      return {
-        kind: 'ok',
-        interpretations: [
-          { id: 'algo', label: 'Weak signature algorithm (SHA-1 or MD5)',
-            seeds: [[{ field: 'sig_algo', operator: 'in', value: 'SHA-1,MD5' }]],
-            groupLogic: 'AND', confidence: 'Medium', notes: ['"Weak" mapped to signature algorithm'] },
-          { id: 'bits', label: 'RSA keys under 2048 bits',
-            seeds: [[{ field: 'key_type', operator: 'eq', value: 'RSA' }, { field: 'key_bits', operator: 'lt', value: '2048' }]],
-            groupLogic: 'AND', confidence: 'Medium', notes: ['"Weak" mapped to key length'] },
-          { id: 'qv', label: 'Quantum-vulnerable algorithms',
-            seeds: [[{ field: 'quantum_vuln', operator: 'eq', value: 'Quantum-Vulnerable' }]],
-            groupLogic: 'AND', confidence: 'Medium', notes: ['"Weak" mapped to quantum risk'] },
-        ],
-      };
+      return [
+        { seeds: [[{ field: 'sig_algo', operator: 'in', value: 'SHA-1,MD5' }]], groupLogic: 'AND', label: 'Weak signature algorithm (SHA-1 or MD5)', confidence: 'Medium', notes: [] },
+        { seeds: [[{ field: 'key_type', operator: 'eq', value: 'RSA' }, { field: 'key_bits', operator: 'lt', value: '2048' }]], groupLogic: 'AND', label: 'RSA keys under 2048 bits', confidence: 'Medium', notes: [] },
+        { seeds: [[{ field: 'quantum_vuln', operator: 'eq', value: 'Quantum-Vulnerable' }]], groupLogic: 'AND', label: 'Quantum-vulnerable algorithms', confidence: 'Medium', notes: [] },
+      ];
     }
     if (policyType === 'SSH Key Policy') {
-      return {
-        kind: 'ok',
-        interpretations: [
-          { id: 'dsa', label: 'DSA key type',
-            seeds: [[{ field: 'key_type', operator: 'eq', value: 'DSA' }]],
-            groupLogic: 'AND', confidence: 'Medium', notes: ['"Weak" mapped to algorithm'] },
-          { id: 'bits', label: 'RSA keys under 2048 bits',
-            seeds: [[{ field: 'key_type', operator: 'eq', value: 'RSA' }, { field: 'key_bits', operator: 'lt', value: '2048' }]],
-            groupLogic: 'AND', confidence: 'Medium', notes: ['"Weak" mapped to key length'] },
-          { id: 'mac', label: 'Legacy MAC algorithms (hmac-sha1, hmac-md5)',
-            seeds: [[{ field: 'mac_algo', operator: 'in', value: 'hmac-sha1,hmac-md5' }]],
-            groupLogic: 'AND', confidence: 'Medium', notes: ['"Weak" mapped to MAC algorithm'] },
-        ],
-      };
+      return [
+        { seeds: [[{ field: 'key_type', operator: 'eq', value: 'DSA' }]], groupLogic: 'AND', label: 'DSA key type', confidence: 'Medium', notes: [] },
+        { seeds: [[{ field: 'key_type', operator: 'eq', value: 'RSA' }, { field: 'key_bits', operator: 'lt', value: '2048' }]], groupLogic: 'AND', label: 'RSA keys under 2048 bits', confidence: 'Medium', notes: [] },
+        { seeds: [[{ field: 'mac_algo', operator: 'in', value: 'hmac-sha1,hmac-md5' }]], groupLogic: 'AND', label: 'Legacy MAC algorithms', confidence: 'Medium', notes: [] },
+      ];
     }
   }
 
-  // ── Direct mapping path ─────────────────────────────────────────────────
+  // Direct mapping
   const seeds: { field: string; operator: string; value: string }[][] = [];
-  const assumptions: string[] = [];
-  let confidence: Confidence = 'High';
+  const notes: string[] = [];
 
   if (policyType === 'Certificate Policy') {
     if (/sha-?1|md5/.test(d) && hasField('sig_algo')) seeds.push([{ field: 'sig_algo', operator: 'in', value: 'SHA-1,MD5' }]);
     if (/self.?sign/.test(d) && hasField('is_self_signed')) seeds.push([{ field: 'is_self_signed', operator: 'is_true', value: '' }]);
     if (/wildcard/.test(d) && hasField('is_wildcard')) seeds.push([{ field: 'is_wildcard', operator: 'is_true', value: '' }]);
     if (/expir/.test(d) && days && hasField('expiry_days')) seeds.push([{ field: 'expiry_days', operator: 'lt', value: days }]);
-    if (/(untrusted|unapproved|approved ca|not approved)/.test(d) && hasField('issuing_ca'))
-      seeds.push([{ field: 'issuing_ca', operator: 'nin', value: 'DigiCert,Sectigo,internal-Root-G2' }]);
-    if (/(quantum.?vuln|quantum.?unsafe|not quantum.?safe|pqc.?risk)/.test(d) && hasField('quantum_vuln'))
-      seeds.push([{ field: 'quantum_vuln', operator: 'eq', value: 'Quantum-Vulnerable' }]);
+    if (/(untrusted|unapproved|approved ca|not approved)/.test(d) && hasField('issuing_ca')) seeds.push([{ field: 'issuing_ca', operator: 'nin', value: 'DigiCert,Sectigo,internal-Root-G2' }]);
+    if (/(quantum.?vuln|quantum.?unsafe|not quantum.?safe|pqc.?risk)/.test(d) && hasField('quantum_vuln')) seeds.push([{ field: 'quantum_vuln', operator: 'eq', value: 'Quantum-Vulnerable' }]);
     if (/rsa/.test(d) && (bits || /\bweak\b/.test(d)) && hasField('key_bits'))
       seeds.push([{ field: 'key_type', operator: 'eq', value: 'RSA' }, { field: 'key_bits', operator: 'lt', value: bits || '2048' }]);
   } else if (policyType === 'SSH Key Policy') {
@@ -349,23 +350,75 @@ function draftInterpretations(input: string, policyType: string): DraftResult {
       seeds.push([{ field: 'quantum_vuln', operator: 'eq', value: 'Quantum-Vulnerable' }]);
   }
 
-  if (!seeds.length) {
-    return {
-      kind: 'unresolvable',
-      reason: `Couldn't map your description to any field on "${policyType}".`,
-      suggestion: 'Name a concrete field, e.g. "flag certificates using SHA-1", "secrets not rotated in 90 days", or "SSH RSA keys under 2048 bits".',
-    };
-  }
-
-  if (/produc|staging|develop/.test(d)) { confidence = 'Medium'; assumptions.push('Environment qualifier inferred (not added to conditions; set Scope > Environment).'); }
-  if (/\bweak\b/.test(d)) { confidence = confidence === 'High' ? 'Medium' : confidence; assumptions.push('"Weak" mapped to a default interpretation.'); }
+  if (!seeds.length) return [];
 
   const groupLogic: 'AND' | 'OR' = seeds.length > 1 ? 'OR' : 'AND';
   const label = seeds.length === 1
     ? seeds[0].map(r => describeCondition(policyType, r)).join(' AND ')
     : seeds.map(g => `(${g.map(r => describeCondition(policyType, r)).join(' AND ')})`).join(' OR ');
+  const confidence: Confidence = /\bweak\b/.test(d) ? 'Medium' : 'High';
+  return [{ seeds, groupLogic, label, confidence, notes }];
+}
 
-  return { kind: 'ok', interpretations: [{ id: 'main', label, seeds, groupLogic, confidence, notes: assumptions }] };
+function draftFromDescription(input: string, currentPolicyType: string): DraftResult {
+  if (/\boffline\b|@@unavailable/.test(input)) return { kind: 'unavailable' };
+
+  const d = input.toLowerCase().trim();
+  if (!d) return { kind: 'unresolvable', reason: 'Empty description.', suggestion: 'Describe what to flag, e.g. "flag SHA-1 certificates in production".' };
+
+  const detectedType = detectPolicyType(d);
+  const effectiveType = detectedType || currentPolicyType;
+  const severity = detectSeverity(d);
+  const environments = detectEnvironments(d);
+  const variants = buildConditionVariants(d, effectiveType);
+
+  // If nothing at all was inferred, unresolvable.
+  if (!detectedType && !severity && !environments && !variants.length) {
+    return {
+      kind: 'unresolvable',
+      reason: `Couldn't map your description to any policy field.`,
+      suggestion: 'Try naming an asset type, a concrete field, or an environment — e.g. "flag SHA-1 certificates in production".',
+    };
+  }
+
+  // Build interpretations. If condition variants are ambiguous (>1), branch per variant.
+  const baseFills = (cond?: { seeds: { field: string; operator: string; value: string }[][]; groupLogic: 'AND' | 'OR' }): Fills => ({
+    ...(detectedType ? { policyType: detectedType } : {}),
+    ...(severity ? { severity } : {}),
+    ...(environments ? { environments } : {}),
+    ...(cond ? { conditions: cond } : {}),
+  });
+
+  if (variants.length > 1) {
+    return {
+      kind: 'ok',
+      interpretations: variants.map((v, i) => ({
+        id: `v${i}`,
+        label: v.label,
+        fills: baseFills({ seeds: v.seeds, groupLogic: v.groupLogic }),
+        confidence: v.confidence,
+        notes: v.notes,
+      })),
+    };
+  }
+
+  const single = variants[0];
+  const partsLabel: string[] = [];
+  if (detectedType) partsLabel.push(detectedType);
+  if (single) partsLabel.push(single.label);
+  if (environments) partsLabel.push(`scope: ${environments.join(', ')}`);
+  if (severity) partsLabel.push(`severity: ${severity}`);
+
+  return {
+    kind: 'ok',
+    interpretations: [{
+      id: 'main',
+      label: partsLabel.join(' · ') || 'Suggested fill',
+      fills: baseFills(single ? { seeds: single.seeds, groupLogic: single.groupLogic } : undefined),
+      confidence: single ? single.confidence : 'Medium',
+      notes: single ? single.notes : [],
+    }],
+  };
 }
 
 function ConfidenceChip({ level }: { level: Confidence }) {
@@ -373,6 +426,15 @@ function ConfidenceChip({ level }: { level: Confidence }) {
     : level === 'Medium' ? 'bg-amber/15 text-amber border-amber/40'
     : 'bg-coral/15 text-coral border-coral/40';
   return <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-medium ${cls}`}>{level} confidence</span>;
+}
+
+function AIMarker({ show }: { show: boolean }) {
+  if (!show) return null;
+  return (
+    <span title="Filled by AI — review and edit before saving" className="inline-flex items-center gap-0.5 text-[8px] px-1 py-0.5 rounded-full bg-teal/15 text-teal border border-teal/40 font-semibold">
+      <Sparkles className="w-2 h-2" /> AI
+    </span>
+  );
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -409,10 +471,17 @@ export default function PolicyBuilderPage() {
   const [groupLogic, setGroupLogic] = useState<'AND' | 'OR'>('AND');
   const [preview, setPreview] = useState<PreviewResult | null>(null);
 
-  // AI assist (lives inside Conditions section)
+  // AI assist (lives at top of modal, drafts the whole form)
   const [aiInput, setAiInput] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResult, setAiResult] = useState<DraftResult | null>(null);
+  const [aiTouched, setAiTouched] = useState<Set<AIField>>(new Set());
+  const [manuallyEdited, setManuallyEdited] = useState<Set<AIField>>(new Set());
+
+  const markUserEdit = (field: AIField) => {
+    setManuallyEdited(prev => { const n = new Set(prev); n.add(field); return n; });
+    setAiTouched(prev => { if (!prev.has(field)) return prev; const n = new Set(prev); n.delete(field); return n; });
+  };
 
   const resetCreateForm = () => {
     setFormPolicyType('Certificate Policy');
@@ -424,6 +493,7 @@ export default function PolicyBuilderPage() {
     setConditionGroups([emptyGroup()]); setGroupLogic('AND');
     setPreview(null); setEditingPolicy(null);
     setAiInput(''); setAiResult(null); setAiLoading(false);
+    setAiTouched(new Set()); setManuallyEdited(new Set());
   };
 
   const closeCreateModal = () => { setCreateOpen(false); resetCreateForm(); };
@@ -477,7 +547,7 @@ export default function PolicyBuilderPage() {
     setAiResult(null);
     setTimeout(() => {
       try {
-        const result = draftInterpretations(text, formPolicyType);
+        const result = draftFromDescription(text, formPolicyType);
         setAiResult(result);
       } catch {
         setAiResult({ kind: 'unavailable' });
@@ -487,10 +557,30 @@ export default function PolicyBuilderPage() {
   };
 
   const applyInterpretation = (interp: Interpretation) => {
-    setConditionGroups(seedGroups(interp.seeds));
-    setGroupLogic(interp.groupLogic);
+    const touched = new Set<AIField>(aiTouched);
+    const f = interp.fills;
+    if (f.policyType && !manuallyEdited.has('policyType')) {
+      setFormPolicyType(f.policyType);
+      touched.add('policyType');
+    }
+    if (f.conditions && !manuallyEdited.has('conditions')) {
+      setConditionGroups(seedGroups(f.conditions.seeds));
+      setGroupLogic(f.conditions.groupLogic);
+      touched.add('conditions');
+    }
+    if (f.severity && !manuallyEdited.has('severity')) {
+      setFormSeverity(f.severity);
+      setTicket(t => ({ ...t, snowPriority: severityToSnowPriority(f.severity!), jiraPriority: severityToJiraPriority(f.severity!) }));
+      touched.add('severity');
+    }
+    if (f.environments && !manuallyEdited.has('environments')) {
+      setScope(s => ({ ...s, environments: f.environments! }));
+      setShowRefine(true);
+      touched.add('environments');
+    }
+    setAiTouched(touched);
     setAiResult(null);
-    toast.success('Conditions drafted — review and adjust before saving');
+    toast.success('Form drafted — review AI-filled fields before saving');
   };
 
   const hasAnyCondition = conditionGroups.some(g => g.rows.some(r => r.field && r.operator));
@@ -872,12 +962,91 @@ export default function PolicyBuilderPage() {
       {/* Create / Edit Policy modal */}
           <Modal open={createOpen} onClose={closeCreateModal} title={editingPolicy ? 'Edit Policy' : 'Create Policy'} wide>
             <div className="w-full max-w-2xl space-y-5 text-foreground">
+              {/* 0. AI authoring (top, above everything) */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-1.5">
+                  <label className="block text-[11px] font-medium">Describe this policy in plain English</label>
+                  <InfoIcon text="AI fills the form below from your description. Review and edit before saving. AI never activates a policy." />
+                </div>
+                <div className="flex items-center gap-2 border border-teal/30 rounded-lg p-2 bg-teal/5">
+                  <Sparkles className="w-3.5 h-3.5 text-teal shrink-0" />
+                  <input
+                    value={aiInput}
+                    onChange={e => setAiInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); runAIDraft(); } }}
+                    placeholder='e.g. "flag production RSA certificates under 2048 bits expiring in 30 days"'
+                    className="flex-1 min-w-0 bg-transparent text-[11px] outline-none text-foreground placeholder:text-muted-foreground"
+                  />
+                  <button
+                    type="button"
+                    onClick={runAIDraft}
+                    disabled={!aiInput.trim() || aiLoading}
+                    className="inline-flex items-center gap-1 text-[10px] px-2.5 py-1 rounded bg-teal text-primary-foreground font-medium disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                  >
+                    <Sparkles className={`w-3 h-3 ${aiLoading ? 'animate-spin' : ''}`} />
+                    {aiLoading ? 'Drafting…' : 'Generate'}
+                  </button>
+                </div>
+
+                {aiResult?.kind === 'unavailable' && (
+                  <div className="text-[10px] text-amber border border-amber/30 bg-amber/5 rounded px-2 py-1.5">
+                    AI assist temporarily unavailable. You can still fill in the form manually below.
+                  </div>
+                )}
+                {aiResult?.kind === 'unresolvable' && (
+                  <div className="text-[10px] border border-coral/30 bg-coral/5 rounded px-2 py-1.5 space-y-1">
+                    <div className="text-coral font-medium">{aiResult.reason}</div>
+                    <div className="text-muted-foreground">Try: {aiResult.suggestion}</div>
+                  </div>
+                )}
+                {aiResult?.kind === 'ok' && (
+                  <div className="space-y-1.5">
+                    <div className="text-[10px] text-muted-foreground">
+                      {aiResult.interpretations.length > 1
+                        ? 'Your description is ambiguous. Pick an interpretation to fill the form:'
+                        : 'Suggested fill — click to apply to the form:'}
+                    </div>
+                    {aiResult.interpretations.map(interp => {
+                      const f = interp.fills;
+                      const fillSummary: string[] = [];
+                      if (f.policyType) fillSummary.push(`Type: ${f.policyType}`);
+                      if (f.conditions) fillSummary.push(`Conditions: ${f.conditions.seeds.map(g => `(${g.map(r => describeCondition(f.policyType || formPolicyType, r)).join(' AND ')})`).join(` ${f.conditions.groupLogic} `)}`);
+                      if (f.environments) fillSummary.push(`Scope: ${f.environments.join(', ')}`);
+                      if (f.severity) fillSummary.push(`Severity: ${f.severity}`);
+                      return (
+                        <button key={interp.id} type="button" onClick={() => applyInterpretation(interp)}
+                          className="w-full text-left border border-border rounded-lg px-2.5 py-2 bg-card hover:border-teal/50 hover:bg-teal/5 transition-colors">
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <span className="text-[11px] font-medium text-foreground">{interp.label}</span>
+                            <ConfidenceChip level={interp.confidence} />
+                          </div>
+                          <div className="text-[10px] font-mono text-muted-foreground break-words">
+                            {fillSummary.join(' · ')}
+                          </div>
+                          {interp.notes.length > 0 && (
+                            <div className="text-[9px] text-muted-foreground/80 mt-1 italic">{interp.notes.join(' · ')}</div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                <div className="flex items-center gap-2 pt-1">
+                  <div className="flex-1 h-px bg-border" />
+                  <span className="text-[9px] uppercase tracking-wide text-muted-foreground">or fill in the form manually below</span>
+                  <div className="flex-1 h-px bg-border" />
+                </div>
+              </div>
+
               {/* 1. Identity */}
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[11px] font-medium mb-1">Policy Type*</label>
-                    <select value={formPolicyType} onChange={e => { setFormPolicyType(e.target.value); setConditionGroups([emptyGroup()]); }} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <label className="block text-[11px] font-medium">Policy Type*</label>
+                      <AIMarker show={aiTouched.has('policyType')} />
+                    </div>
+                    <select value={formPolicyType} onChange={e => { setFormPolicyType(e.target.value); setConditionGroups([emptyGroup()]); markUserEdit('policyType'); markUserEdit('conditions'); }} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
                       {POLICY_TYPES.map(o => <option key={o}>{o}</option>)}
                     </select>
                   </div>
@@ -905,96 +1074,28 @@ export default function PolicyBuilderPage() {
 
               {/* 2. Conditions */}
               <div className="border-t border-border pt-4">
-                <SectionHeading
-                  label="Conditions"
-                  info="Flag an asset as Non-Compliant when these conditions match. Combine rows inside a group with AND/OR, and combine groups with AND/OR."
-                />
-
-                {/* AI assist bar */}
-                <div className="mb-3 space-y-2">
-                  <div className="flex items-center gap-2 border border-teal/30 rounded-lg p-2 bg-teal/5">
-                    <Sparkles className="w-3.5 h-3.5 text-teal shrink-0" />
-                    <input
-                      value={aiInput}
-                      onChange={e => setAiInput(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); runAIDraft(); } }}
-                      placeholder='Describe the policy in plain English (e.g. "flag production RSA certificates under 2048 bits expiring in 30 days")'
-                      className="flex-1 min-w-0 bg-transparent text-[11px] outline-none text-foreground placeholder:text-muted-foreground"
-                    />
-                    <InfoIcon text="AI drafts editable conditions. You review and adjust before saving. AI never activates a policy." />
-                    <button
-                      type="button"
-                      onClick={runAIDraft}
-                      disabled={!aiInput.trim() || aiLoading}
-                      className="inline-flex items-center gap-1 text-[10px] px-2.5 py-1 rounded bg-teal text-primary-foreground font-medium disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-                    >
-                      <Sparkles className={`w-3 h-3 ${aiLoading ? 'animate-spin' : ''}`} />
-                      {aiLoading ? 'Drafting…' : 'Draft conditions'}
-                    </button>
-                  </div>
-
-                  {aiResult?.kind === 'unavailable' && (
-                    <div className="text-[10px] text-amber border border-amber/30 bg-amber/5 rounded px-2 py-1.5">
-                      AI assist temporarily unavailable. You can still build conditions manually below.
-                    </div>
-                  )}
-
-                  {aiResult?.kind === 'unresolvable' && (
-                    <div className="text-[10px] border border-coral/30 bg-coral/5 rounded px-2 py-1.5 space-y-1">
-                      <div className="text-coral font-medium">{aiResult.reason}</div>
-                      <div className="text-muted-foreground">Try: {aiResult.suggestion}</div>
-                    </div>
-                  )}
-
-                  {aiResult?.kind === 'ok' && (
-                    <div className="space-y-1.5">
-                      <div className="text-[10px] text-muted-foreground">
-                        {aiResult.interpretations.length > 1
-                          ? `Your description is ambiguous. Pick an interpretation to populate the builder:`
-                          : 'Suggested interpretation — click to populate the builder:'}
-                      </div>
-                      {aiResult.interpretations.map(interp => (
-                        <button
-                          key={interp.id}
-                          type="button"
-                          onClick={() => applyInterpretation(interp)}
-                          className="w-full text-left border border-border rounded-lg px-2.5 py-2 bg-card hover:border-teal/50 hover:bg-teal/5 transition-colors"
-                        >
-                          <div className="flex items-center justify-between gap-2 mb-1">
-                            <span className="text-[11px] font-medium text-foreground">{interp.label}</span>
-                            <ConfidenceChip level={interp.confidence} />
-                          </div>
-                          <div className="text-[10px] font-mono text-muted-foreground break-words">
-                            {interp.seeds
-                              .map(g => `(${g.map(r => describeCondition(formPolicyType, r)).join(' AND ')})`)
-                              .join(` ${interp.groupLogic} `)}
-                          </div>
-                          {interp.notes.length > 0 && (
-                            <div className="text-[9px] text-muted-foreground/80 mt-1 italic">
-                              {interp.notes.join(' · ')}
-                            </div>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                <div className="flex items-center gap-1.5 mb-3">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Conditions</p>
+                  <InfoIcon text="Flag an asset as Non-Compliant when these conditions match. Combine rows inside a group with AND/OR, and combine groups with AND/OR." />
+                  <AIMarker show={aiTouched.has('conditions')} />
                 </div>
 
                 <ConditionBuilder
                   policyType={formPolicyType}
                   groups={conditionGroups}
                   groupLogic={groupLogic}
-                  onChange={setConditionGroups}
-                  onGroupLogicChange={setGroupLogic}
+                  onChange={(g) => { setConditionGroups(g); markUserEdit('conditions'); }}
+                  onGroupLogicChange={(l) => { setGroupLogic(l); markUserEdit('conditions'); }}
                 />
               </div>
 
               {/* 3. Scope */}
               <div className="border-t border-border pt-4">
-                <SectionHeading
-                  label="Scope"
-                  info="Optional. Narrow where this policy applies. Empty = evaluate all assets of this type. Groups are OR; attribute refinement is AND across dimensions, OR within a dimension."
-                />
+                <div className="flex items-center gap-1.5 mb-3">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Scope</p>
+                  <InfoIcon text="Optional. Narrow where this policy applies. Empty = evaluate all assets of this type. Groups are OR; attribute refinement is AND across dimensions, OR within a dimension." />
+                  <AIMarker show={aiTouched.has('environments')} />
+                </div>
                 <div className="space-y-3">
                   <div>
                     <label className="block text-[11px] font-medium mb-1.5">Asset Groups</label>
@@ -1023,7 +1124,7 @@ export default function PolicyBuilderPage() {
                   </button>
                   {showRefine && (
                     <div className="grid grid-cols-2 gap-4 pl-3 border-l-2 border-border">
-                      <ChipMulti label="Environment" options={ENV_OPTIONS} values={scope.environments} onChange={v => setScope(s => ({ ...s, environments: v }))} />
+                      <ChipMulti label="Environment" options={ENV_OPTIONS} values={scope.environments} onChange={v => { setScope(s => ({ ...s, environments: v })); markUserEdit('environments'); }} />
                       <ChipMulti label="Cloud Provider" options={CLOUD_OPTIONS} values={scope.providers} onChange={v => setScope(s => ({ ...s, providers: v }))} />
                     </div>
                   )}
@@ -1032,15 +1133,17 @@ export default function PolicyBuilderPage() {
 
               {/* 4. Severity */}
               <div className="border-t border-border pt-4">
-                <SectionHeading
-                  label="Severity"
-                  info="Sets risk weighting for this policy and, when a ticket is created, the default ticket priority."
-                />
+                <div className="flex items-center gap-1.5 mb-3">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Severity</p>
+                  <InfoIcon text="Sets risk weighting for this policy and, when a ticket is created, the default ticket priority." />
+                  <AIMarker show={aiTouched.has('severity')} />
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <select value={formSeverity} onChange={e => {
                     const v = e.target.value;
                     setFormSeverity(v);
                     setTicket(t => ({ ...t, snowPriority: severityToSnowPriority(v), jiraPriority: severityToJiraPriority(v) }));
+                    markUserEdit('severity');
                   }} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
                     {['Critical', 'High', 'Medium', 'Low'].map(o => <option key={o}>{o}</option>)}
                   </select>
