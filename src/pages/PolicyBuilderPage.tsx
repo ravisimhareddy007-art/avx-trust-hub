@@ -304,48 +304,27 @@ export default function PolicyBuilderPage() {
     setCreateOpen(true);
   };
 
-  const handleAIDraft = () => {
-    if (!formDescription || formDescription.trim().length < 10) { toast.error('Enter a description first'); return; }
+  const runAIDraft = () => {
+    const text = aiInput.trim();
+    if (!text) return;
     setAiLoading(true);
+    setAiResult(null);
     setTimeout(() => {
-      const d = formDescription.toLowerCase();
-      const dayMatch = d.match(/(\d+)\s*day/);
-      const days = dayMatch ? dayMatch[1] : '';
-      const seeds: { field: string; operator: string; value: string }[][] = [];
-      if (formPolicyType === 'Managed Certificate Policy') {
-        if (!formName) setFormName('Certificate Policy — Draft');
-        if (d.includes('sha-1') || d.includes('sha1') || d.includes('md5') || d.includes('weak')) seeds.push([{ field: 'sig_algo', operator: 'in', value: 'SHA-1,MD5' }]);
-        if (d.includes('self-sign') || d.includes('self sign')) seeds.push([{ field: 'is_self_signed', operator: 'is_true', value: '' }]);
-        if (d.includes('wildcard')) seeds.push([{ field: 'is_wildcard', operator: 'is_true', value: '' }]);
-        if (d.includes('expir') && days) seeds.push([{ field: 'expiry_days', operator: 'lt', value: days }]);
-        if (d.includes('untrusted') || d.includes('approved ca')) seeds.push([{ field: 'issuing_ca', operator: 'nin', value: 'DigiCert,Sectigo,internal-Root-G2' }]);
-      } else if (formPolicyType === 'SSH Key Policy') {
-        if (!formName) setFormName('SSH Key Policy — Draft');
-        if (d.includes('dsa')) seeds.push([{ field: 'key_type', operator: 'eq', value: 'DSA' }]);
-        if (d.includes('rsa') && (d.includes('1024') || d.includes('weak') || d.includes('2048')))
-          seeds.push([{ field: 'key_type', operator: 'eq', value: 'RSA' }, { field: 'key_bits', operator: 'lt', value: '2048' }]);
-        if (d.includes('rotat') && days) seeds.push([{ field: 'days_since_rotation', operator: 'gt', value: days }]);
-      } else if (formPolicyType === 'Secrets & API Keys Policy') {
-        if (!formName) setFormName('Secret Policy — Draft');
-        if (d.includes('no expiry') || d.includes('without expiry')) seeds.push([{ field: 'has_expiry', operator: 'is_false', value: '' }]);
-        if (d.includes('rotat')) seeds.push([{ field: 'days_since_rotation', operator: 'gt', value: days || '90' }]);
-      } else if (formPolicyType === 'Cryptographic Key Policy') {
-        if (!formName) setFormName('Cryptographic Key Policy — Draft');
-        if (d.includes('no rotation') || d.includes('rotation disabled')) seeds.push([{ field: 'rotation_enabled', operator: 'is_false', value: '' }]);
-      }
-      if (seeds.length) {
-        setConditionGroups(seedGroups(seeds));
-        setGroupLogic(seeds.length > 1 ? 'OR' : 'AND');
-        if (d.includes('produc')) setScope(prev => ({ ...prev, environments: Array.from(new Set([...prev.environments, 'Production'])) }));
-        if (d.includes('critical')) setFormSeverity('Critical');
-        toast.success('Conditions drafted from your description — review before saving');
-      } else {
-        toast.message('Could not map that to conditions', {
-          description: 'Try naming a field, e.g. "flag certificates using SHA-1" or "secrets not rotated in 90 days".',
-        });
+      try {
+        const result = draftInterpretations(text, formPolicyType);
+        setAiResult(result);
+      } catch {
+        setAiResult({ kind: 'unavailable' });
       }
       setAiLoading(false);
-    }, 600);
+    }, 450);
+  };
+
+  const applyInterpretation = (interp: Interpretation) => {
+    setConditionGroups(seedGroups(interp.seeds));
+    setGroupLogic(interp.groupLogic);
+    setAiResult(null);
+    toast.success('Conditions drafted — review and adjust before saving');
   };
 
   const hasAnyCondition = conditionGroups.some(g => g.rows.some(r => r.field && r.operator));
