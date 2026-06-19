@@ -214,6 +214,160 @@ function ChipInput({ values, onChange, placeholder }: { values: string[]; onChan
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// AI assist — heuristic policy drafter (front-end only)
+
+type Confidence = 'High' | 'Medium' | 'Low';
+
+interface Interpretation {
+  id: string;
+  label: string;
+  seeds: { field: string; operator: string; value: string }[][];
+  groupLogic: 'AND' | 'OR';
+  confidence: Confidence;
+  notes: string[];
+}
+
+type DraftResult =
+  | { kind: 'ok'; interpretations: Interpretation[] }
+  | { kind: 'unresolvable'; reason: string; suggestion: string }
+  | { kind: 'unavailable' };
+
+function draftInterpretations(input: string, policyType: string): DraftResult {
+  // Simulated unavailability hook for demo/testing.
+  if (/\boffline\b|@@unavailable/.test(input)) return { kind: 'unavailable' };
+
+  const fields = (FIELDS_BY_POLICY_TYPE as Record<string, { id: string }[]>)[policyType] || [];
+  const hasField = (id: string) => fields.some(f => f.id === id);
+  const d = input.toLowerCase();
+
+  const dayMatch = d.match(/(\d+)\s*day/);
+  const days = dayMatch ? dayMatch[1] : null;
+  const bitsMatch = d.match(/\b(1024|2048|3072|4096)\b/);
+  const bits = bitsMatch ? bitsMatch[1] : null;
+
+  // ── Ambiguity: vague rotation threshold ─────────────────────────────────
+  const vagueTime = /(a while|recently|soon|stale|old\b|long time)/.test(d);
+  const rotationMention = /rotat/.test(d);
+  if (vagueTime && rotationMention && !days && hasField('days_since_rotation')) {
+    return {
+      kind: 'ok',
+      interpretations: [
+        { id: 'r90', label: 'Not rotated in over 90 days',
+          seeds: [[{ field: 'days_since_rotation', operator: 'gt', value: '90' }]],
+          groupLogic: 'AND', confidence: 'Medium', notes: ['Threshold inferred from vague time'] },
+        { id: 'r180', label: 'Not rotated in over 180 days',
+          seeds: [[{ field: 'days_since_rotation', operator: 'gt', value: '180' }]],
+          groupLogic: 'AND', confidence: 'Medium', notes: ['Threshold inferred from vague time'] },
+        { id: 'r365', label: 'Not rotated in over 365 days',
+          seeds: [[{ field: 'days_since_rotation', operator: 'gt', value: '365' }]],
+          groupLogic: 'AND', confidence: 'Low', notes: ['Threshold is a coarse guess'] },
+      ],
+    };
+  }
+
+  // ── Ambiguity: "weak" without specifics ─────────────────────────────────
+  const weakOnly = /\bweak\b/.test(d) && !/sha|md5|rsa|dsa|bit|ecdsa|ed25519/.test(d);
+  if (weakOnly) {
+    if (policyType === 'Managed Certificate Policy') {
+      return {
+        kind: 'ok',
+        interpretations: [
+          { id: 'algo', label: 'Weak signature algorithm (SHA-1 or MD5)',
+            seeds: [[{ field: 'sig_algo', operator: 'in', value: 'SHA-1,MD5' }]],
+            groupLogic: 'AND', confidence: 'Medium', notes: ['"Weak" mapped to signature algorithm'] },
+          { id: 'bits', label: 'RSA keys under 2048 bits',
+            seeds: [[{ field: 'key_type', operator: 'eq', value: 'RSA' }, { field: 'key_bits', operator: 'lt', value: '2048' }]],
+            groupLogic: 'AND', confidence: 'Medium', notes: ['"Weak" mapped to key length'] },
+          { id: 'qv', label: 'Quantum-vulnerable algorithms',
+            seeds: [[{ field: 'quantum_vuln', operator: 'eq', value: 'Quantum-Vulnerable' }]],
+            groupLogic: 'AND', confidence: 'Medium', notes: ['"Weak" mapped to quantum risk'] },
+        ],
+      };
+    }
+    if (policyType === 'SSH Key Policy') {
+      return {
+        kind: 'ok',
+        interpretations: [
+          { id: 'dsa', label: 'DSA key type',
+            seeds: [[{ field: 'key_type', operator: 'eq', value: 'DSA' }]],
+            groupLogic: 'AND', confidence: 'Medium', notes: ['"Weak" mapped to algorithm'] },
+          { id: 'bits', label: 'RSA keys under 2048 bits',
+            seeds: [[{ field: 'key_type', operator: 'eq', value: 'RSA' }, { field: 'key_bits', operator: 'lt', value: '2048' }]],
+            groupLogic: 'AND', confidence: 'Medium', notes: ['"Weak" mapped to key length'] },
+          { id: 'mac', label: 'Legacy MAC algorithms (hmac-sha1, hmac-md5)',
+            seeds: [[{ field: 'mac_algo', operator: 'in', value: 'hmac-sha1,hmac-md5' }]],
+            groupLogic: 'AND', confidence: 'Medium', notes: ['"Weak" mapped to MAC algorithm'] },
+        ],
+      };
+    }
+  }
+
+  // ── Direct mapping path ─────────────────────────────────────────────────
+  const seeds: { field: string; operator: string; value: string }[][] = [];
+  const assumptions: string[] = [];
+  let confidence: Confidence = 'High';
+
+  if (policyType === 'Managed Certificate Policy') {
+    if (/sha-?1|md5/.test(d) && hasField('sig_algo')) seeds.push([{ field: 'sig_algo', operator: 'in', value: 'SHA-1,MD5' }]);
+    if (/self.?sign/.test(d) && hasField('is_self_signed')) seeds.push([{ field: 'is_self_signed', operator: 'is_true', value: '' }]);
+    if (/wildcard/.test(d) && hasField('is_wildcard')) seeds.push([{ field: 'is_wildcard', operator: 'is_true', value: '' }]);
+    if (/expir/.test(d) && days && hasField('expiry_days')) seeds.push([{ field: 'expiry_days', operator: 'lt', value: days }]);
+    if (/(untrusted|unapproved|approved ca|not approved)/.test(d) && hasField('issuing_ca'))
+      seeds.push([{ field: 'issuing_ca', operator: 'nin', value: 'DigiCert,Sectigo,internal-Root-G2' }]);
+    if (/(quantum.?vuln|quantum.?unsafe|not quantum.?safe|pqc.?risk)/.test(d) && hasField('quantum_vuln'))
+      seeds.push([{ field: 'quantum_vuln', operator: 'eq', value: 'Quantum-Vulnerable' }]);
+    if (/rsa/.test(d) && (bits || /\bweak\b/.test(d)) && hasField('key_bits'))
+      seeds.push([{ field: 'key_type', operator: 'eq', value: 'RSA' }, { field: 'key_bits', operator: 'lt', value: bits || '2048' }]);
+  } else if (policyType === 'SSH Key Policy') {
+    if (/dsa/.test(d) && hasField('key_type')) seeds.push([{ field: 'key_type', operator: 'eq', value: 'DSA' }]);
+    if (/rsa/.test(d) && (bits || /\bweak\b/.test(d)) && hasField('key_bits'))
+      seeds.push([{ field: 'key_type', operator: 'eq', value: 'RSA' }, { field: 'key_bits', operator: 'lt', value: bits || '2048' }]);
+    if (/rotat/.test(d) && days && hasField('days_since_rotation'))
+      seeds.push([{ field: 'days_since_rotation', operator: 'gt', value: days }]);
+    if (/(quantum.?vuln|quantum.?unsafe|not quantum.?safe)/.test(d) && hasField('quantum_vuln'))
+      seeds.push([{ field: 'quantum_vuln', operator: 'eq', value: 'Quantum-Vulnerable' }]);
+  } else if (policyType === 'Secrets & API Keys Policy') {
+    if (/(no expiry|without expiry|missing expiry)/.test(d) && hasField('has_expiry'))
+      seeds.push([{ field: 'has_expiry', operator: 'is_false', value: '' }]);
+    if (/rotat/.test(d) && days && hasField('days_since_rotation'))
+      seeds.push([{ field: 'days_since_rotation', operator: 'gt', value: days }]);
+  } else if (policyType === 'Cryptographic Key Policy') {
+    if (/(no rotation|rotation disabled)/.test(d) && hasField('rotation_enabled'))
+      seeds.push([{ field: 'rotation_enabled', operator: 'is_false', value: '' }]);
+    if (/rotat/.test(d) && days && hasField('days_since_rotation'))
+      seeds.push([{ field: 'days_since_rotation', operator: 'gt', value: days }]);
+    if (/(quantum.?vuln|quantum.?unsafe|not quantum.?safe)/.test(d) && hasField('quantum_vuln'))
+      seeds.push([{ field: 'quantum_vuln', operator: 'eq', value: 'Quantum-Vulnerable' }]);
+  }
+
+  if (!seeds.length) {
+    return {
+      kind: 'unresolvable',
+      reason: `Couldn't map your description to any field on "${policyType}".`,
+      suggestion: 'Name a concrete field, e.g. "flag certificates using SHA-1", "secrets not rotated in 90 days", or "SSH RSA keys under 2048 bits".',
+    };
+  }
+
+  if (/produc|staging|develop/.test(d)) { confidence = 'Medium'; assumptions.push('Environment qualifier inferred (not added to conditions; set Scope > Environment).'); }
+  if (/\bweak\b/.test(d)) { confidence = confidence === 'High' ? 'Medium' : confidence; assumptions.push('"Weak" mapped to a default interpretation.'); }
+
+  const groupLogic: 'AND' | 'OR' = seeds.length > 1 ? 'OR' : 'AND';
+  const label = seeds.length === 1
+    ? seeds[0].map(r => describeCondition(policyType, r)).join(' AND ')
+    : seeds.map(g => `(${g.map(r => describeCondition(policyType, r)).join(' AND ')})`).join(' OR ');
+
+  return { kind: 'ok', interpretations: [{ id: 'main', label, seeds, groupLogic, confidence, notes: assumptions }] };
+}
+
+function ConfidenceChip({ level }: { level: Confidence }) {
+  const cls = level === 'High' ? 'bg-teal/15 text-teal border-teal/40'
+    : level === 'Medium' ? 'bg-amber/15 text-amber border-amber/40'
+    : 'bg-coral/15 text-coral border-coral/40';
+  return <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-medium ${cls}`}>{level} confidence</span>;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+
 
 export default function PolicyBuilderPage() {
   const { setCurrentPage, setFilters } = useNav();
