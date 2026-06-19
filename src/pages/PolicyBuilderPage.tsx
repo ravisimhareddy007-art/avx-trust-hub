@@ -60,6 +60,7 @@ interface CustomPolicy {
   conditionSummary?: string;
   scope?: ScopeConfig;
   tag?: string;
+  subCategory?: 'Classical' | 'PQC';
   responseProfileId?: string | null;
   mode?: Mode;
   effectiveFrom?: string | null;
