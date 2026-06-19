@@ -1044,43 +1044,50 @@ export default function PolicyBuilderPage() {
               </div>
 
               {/* 1. Identity */}
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <label className="block text-[11px] font-medium">Policy Type*</label>
-                      <AIMarker show={aiTouched.has('policyType')} />
-                    </div>
-                    <select value={formPolicyType} onChange={e => { setFormPolicyType(e.target.value); setConditionGroups([emptyGroup()]); markUserEdit('policyType'); markUserEdit('conditions'); }} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
-                      {POLICY_TYPES.map(o => <option key={o}>{o}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <label className="block text-[11px] font-medium">Tags (optional)</label>
-                      <InfoIcon text="Free-form key:value tags for categorization, e.g. framework:PCI-DSS, owner:platform-sec. Type and press Enter." />
-                    </div>
-                    <ChipInput values={formTags} onChange={setFormTags} placeholder="e.g. framework:PCI-DSS" />
-                  </div>
+              <div className={sectionCardCls}>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="w-1.5 h-1.5 rounded-full bg-teal shadow-[0_0_0_3px_hsl(var(--card))]" />
+                  <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-semibold">Policy Identity</p>
                 </div>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <label className="block text-[11px] font-medium">Policy Type*</label>
+                        <AIMarker show={aiTouched.has('policyType')} />
+                      </div>
+                      <select value={formPolicyType} onChange={e => { setFormPolicyType(e.target.value); setConditionGroups([emptyGroup()]); markUserEdit('policyType'); markUserEdit('conditions'); }} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal/40 transition-colors">
+                        {POLICY_TYPES.map(o => <option key={o}>{o}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <label className="block text-[11px] font-medium">Tags (optional)</label>
+                        <InfoIcon text="Free-form key:value tags for categorization, e.g. framework:PCI-DSS, owner:platform-sec. Type and press Enter." />
+                      </div>
+                      <ChipInput values={formTags} onChange={setFormTags} placeholder="e.g. framework:PCI-DSS" />
+                    </div>
+                  </div>
 
-                <div>
-                  <label className="block text-[11px] font-medium mb-1">Policy Name*</label>
-                  <input value={formName} onChange={e => setFormName(e.target.value)} placeholder="e.g. PCI-DSS SSH Key Strength — Production" className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground" />
-                </div>
+                  <div>
+                    <label className="block text-[11px] font-medium mb-1">Policy Name*</label>
+                    <input value={formName} onChange={e => setFormName(e.target.value)} placeholder="e.g. PCI-DSS SSH Key Strength — Production" className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal/40 transition-colors" />
+                  </div>
 
-                <div>
-                  <label className="block text-[11px] font-medium mb-1">Description (optional)</label>
-                  <textarea value={formDescription} onChange={e => setFormDescription(e.target.value)} rows={2}
-                    placeholder="Short description shown on the policy card"
-                    className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground" />
+                  <div>
+                    <label className="block text-[11px] font-medium mb-1">Description (optional)</label>
+                    <textarea value={formDescription} onChange={e => setFormDescription(e.target.value)} rows={2}
+                      placeholder="Short description shown on the policy card"
+                      className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal/40 transition-colors" />
+                  </div>
                 </div>
               </div>
 
               {/* 2. Conditions */}
-              <div className="border-t border-border pt-4">
-                <div className="flex items-center gap-1.5 mb-3">
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Conditions</p>
+              <div className={sectionCardCls}>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="w-1.5 h-1.5 rounded-full bg-teal shadow-[0_0_0_3px_hsl(var(--card))]" />
+                  <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-semibold">Conditions</p>
                   <InfoIcon text="Flag an asset as Non-Compliant when these conditions match. Combine rows inside a group with AND/OR, and combine groups with AND/OR." />
                   <AIMarker show={aiTouched.has('conditions')} />
                 </div>
