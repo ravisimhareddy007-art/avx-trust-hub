@@ -5,7 +5,7 @@ import { policyRules, customPolicies as initialCustomPolicies } from '@/data/moc
 import { mockGroups } from '@/data/inventoryMockData';
 import { SeverityBadge, Modal } from '@/components/shared/UIComponents';
 import ConditionBuilder, { ConditionGroup, emptyGroup } from '@/components/policies/ConditionBuilder';
-import { POLICY_TYPES, describeCondition } from '@/components/policies/policyFields';
+import { POLICY_TYPES, describeCondition, FIELDS_BY_POLICY_TYPE } from '@/components/policies/policyFields';
 import { toast } from 'sonner';
 import {
   Plus,
@@ -214,6 +214,160 @@ function ChipInput({ values, onChange, placeholder }: { values: string[]; onChan
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// AI assist — heuristic policy drafter (front-end only)
+
+type Confidence = 'High' | 'Medium' | 'Low';
+
+interface Interpretation {
+  id: string;
+  label: string;
+  seeds: { field: string; operator: string; value: string }[][];
+  groupLogic: 'AND' | 'OR';
+  confidence: Confidence;
+  notes: string[];
+}
+
+type DraftResult =
+  | { kind: 'ok'; interpretations: Interpretation[] }
+  | { kind: 'unresolvable'; reason: string; suggestion: string }
+  | { kind: 'unavailable' };
+
+function draftInterpretations(input: string, policyType: string): DraftResult {
+  // Simulated unavailability hook for demo/testing.
+  if (/\boffline\b|@@unavailable/.test(input)) return { kind: 'unavailable' };
+
+  const fields = (FIELDS_BY_POLICY_TYPE as Record<string, { id: string }[]>)[policyType] || [];
+  const hasField = (id: string) => fields.some(f => f.id === id);
+  const d = input.toLowerCase();
+
+  const dayMatch = d.match(/(\d+)\s*day/);
+  const days = dayMatch ? dayMatch[1] : null;
+  const bitsMatch = d.match(/\b(1024|2048|3072|4096)\b/);
+  const bits = bitsMatch ? bitsMatch[1] : null;
+
+  // ── Ambiguity: vague rotation threshold ─────────────────────────────────
+  const vagueTime = /(a while|recently|soon|stale|old\b|long time)/.test(d);
+  const rotationMention = /rotat/.test(d);
+  if (vagueTime && rotationMention && !days && hasField('days_since_rotation')) {
+    return {
+      kind: 'ok',
+      interpretations: [
+        { id: 'r90', label: 'Not rotated in over 90 days',
+          seeds: [[{ field: 'days_since_rotation', operator: 'gt', value: '90' }]],
+          groupLogic: 'AND', confidence: 'Medium', notes: ['Threshold inferred from vague time'] },
+        { id: 'r180', label: 'Not rotated in over 180 days',
+          seeds: [[{ field: 'days_since_rotation', operator: 'gt', value: '180' }]],
+          groupLogic: 'AND', confidence: 'Medium', notes: ['Threshold inferred from vague time'] },
+        { id: 'r365', label: 'Not rotated in over 365 days',
+          seeds: [[{ field: 'days_since_rotation', operator: 'gt', value: '365' }]],
+          groupLogic: 'AND', confidence: 'Low', notes: ['Threshold is a coarse guess'] },
+      ],
+    };
+  }
+
+  // ── Ambiguity: "weak" without specifics ─────────────────────────────────
+  const weakOnly = /\bweak\b/.test(d) && !/sha|md5|rsa|dsa|bit|ecdsa|ed25519/.test(d);
+  if (weakOnly) {
+    if (policyType === 'Managed Certificate Policy') {
+      return {
+        kind: 'ok',
+        interpretations: [
+          { id: 'algo', label: 'Weak signature algorithm (SHA-1 or MD5)',
+            seeds: [[{ field: 'sig_algo', operator: 'in', value: 'SHA-1,MD5' }]],
+            groupLogic: 'AND', confidence: 'Medium', notes: ['"Weak" mapped to signature algorithm'] },
+          { id: 'bits', label: 'RSA keys under 2048 bits',
+            seeds: [[{ field: 'key_type', operator: 'eq', value: 'RSA' }, { field: 'key_bits', operator: 'lt', value: '2048' }]],
+            groupLogic: 'AND', confidence: 'Medium', notes: ['"Weak" mapped to key length'] },
+          { id: 'qv', label: 'Quantum-vulnerable algorithms',
+            seeds: [[{ field: 'quantum_vuln', operator: 'eq', value: 'Quantum-Vulnerable' }]],
+            groupLogic: 'AND', confidence: 'Medium', notes: ['"Weak" mapped to quantum risk'] },
+        ],
+      };
+    }
+    if (policyType === 'SSH Key Policy') {
+      return {
+        kind: 'ok',
+        interpretations: [
+          { id: 'dsa', label: 'DSA key type',
+            seeds: [[{ field: 'key_type', operator: 'eq', value: 'DSA' }]],
+            groupLogic: 'AND', confidence: 'Medium', notes: ['"Weak" mapped to algorithm'] },
+          { id: 'bits', label: 'RSA keys under 2048 bits',
+            seeds: [[{ field: 'key_type', operator: 'eq', value: 'RSA' }, { field: 'key_bits', operator: 'lt', value: '2048' }]],
+            groupLogic: 'AND', confidence: 'Medium', notes: ['"Weak" mapped to key length'] },
+          { id: 'mac', label: 'Legacy MAC algorithms (hmac-sha1, hmac-md5)',
+            seeds: [[{ field: 'mac_algo', operator: 'in', value: 'hmac-sha1,hmac-md5' }]],
+            groupLogic: 'AND', confidence: 'Medium', notes: ['"Weak" mapped to MAC algorithm'] },
+        ],
+      };
+    }
+  }
+
+  // ── Direct mapping path ─────────────────────────────────────────────────
+  const seeds: { field: string; operator: string; value: string }[][] = [];
+  const assumptions: string[] = [];
+  let confidence: Confidence = 'High';
+
+  if (policyType === 'Managed Certificate Policy') {
+    if (/sha-?1|md5/.test(d) && hasField('sig_algo')) seeds.push([{ field: 'sig_algo', operator: 'in', value: 'SHA-1,MD5' }]);
+    if (/self.?sign/.test(d) && hasField('is_self_signed')) seeds.push([{ field: 'is_self_signed', operator: 'is_true', value: '' }]);
+    if (/wildcard/.test(d) && hasField('is_wildcard')) seeds.push([{ field: 'is_wildcard', operator: 'is_true', value: '' }]);
+    if (/expir/.test(d) && days && hasField('expiry_days')) seeds.push([{ field: 'expiry_days', operator: 'lt', value: days }]);
+    if (/(untrusted|unapproved|approved ca|not approved)/.test(d) && hasField('issuing_ca'))
+      seeds.push([{ field: 'issuing_ca', operator: 'nin', value: 'DigiCert,Sectigo,internal-Root-G2' }]);
+    if (/(quantum.?vuln|quantum.?unsafe|not quantum.?safe|pqc.?risk)/.test(d) && hasField('quantum_vuln'))
+      seeds.push([{ field: 'quantum_vuln', operator: 'eq', value: 'Quantum-Vulnerable' }]);
+    if (/rsa/.test(d) && (bits || /\bweak\b/.test(d)) && hasField('key_bits'))
+      seeds.push([{ field: 'key_type', operator: 'eq', value: 'RSA' }, { field: 'key_bits', operator: 'lt', value: bits || '2048' }]);
+  } else if (policyType === 'SSH Key Policy') {
+    if (/dsa/.test(d) && hasField('key_type')) seeds.push([{ field: 'key_type', operator: 'eq', value: 'DSA' }]);
+    if (/rsa/.test(d) && (bits || /\bweak\b/.test(d)) && hasField('key_bits'))
+      seeds.push([{ field: 'key_type', operator: 'eq', value: 'RSA' }, { field: 'key_bits', operator: 'lt', value: bits || '2048' }]);
+    if (/rotat/.test(d) && days && hasField('days_since_rotation'))
+      seeds.push([{ field: 'days_since_rotation', operator: 'gt', value: days }]);
+    if (/(quantum.?vuln|quantum.?unsafe|not quantum.?safe)/.test(d) && hasField('quantum_vuln'))
+      seeds.push([{ field: 'quantum_vuln', operator: 'eq', value: 'Quantum-Vulnerable' }]);
+  } else if (policyType === 'Secrets & API Keys Policy') {
+    if (/(no expiry|without expiry|missing expiry)/.test(d) && hasField('has_expiry'))
+      seeds.push([{ field: 'has_expiry', operator: 'is_false', value: '' }]);
+    if (/rotat/.test(d) && days && hasField('days_since_rotation'))
+      seeds.push([{ field: 'days_since_rotation', operator: 'gt', value: days }]);
+  } else if (policyType === 'Cryptographic Key Policy') {
+    if (/(no rotation|rotation disabled)/.test(d) && hasField('rotation_enabled'))
+      seeds.push([{ field: 'rotation_enabled', operator: 'is_false', value: '' }]);
+    if (/rotat/.test(d) && days && hasField('days_since_rotation'))
+      seeds.push([{ field: 'days_since_rotation', operator: 'gt', value: days }]);
+    if (/(quantum.?vuln|quantum.?unsafe|not quantum.?safe)/.test(d) && hasField('quantum_vuln'))
+      seeds.push([{ field: 'quantum_vuln', operator: 'eq', value: 'Quantum-Vulnerable' }]);
+  }
+
+  if (!seeds.length) {
+    return {
+      kind: 'unresolvable',
+      reason: `Couldn't map your description to any field on "${policyType}".`,
+      suggestion: 'Name a concrete field, e.g. "flag certificates using SHA-1", "secrets not rotated in 90 days", or "SSH RSA keys under 2048 bits".',
+    };
+  }
+
+  if (/produc|staging|develop/.test(d)) { confidence = 'Medium'; assumptions.push('Environment qualifier inferred (not added to conditions; set Scope > Environment).'); }
+  if (/\bweak\b/.test(d)) { confidence = confidence === 'High' ? 'Medium' : confidence; assumptions.push('"Weak" mapped to a default interpretation.'); }
+
+  const groupLogic: 'AND' | 'OR' = seeds.length > 1 ? 'OR' : 'AND';
+  const label = seeds.length === 1
+    ? seeds[0].map(r => describeCondition(policyType, r)).join(' AND ')
+    : seeds.map(g => `(${g.map(r => describeCondition(policyType, r)).join(' AND ')})`).join(' OR ');
+
+  return { kind: 'ok', interpretations: [{ id: 'main', label, seeds, groupLogic, confidence, notes: assumptions }] };
+}
+
+function ConfidenceChip({ level }: { level: Confidence }) {
+  const cls = level === 'High' ? 'bg-teal/15 text-teal border-teal/40'
+    : level === 'Medium' ? 'bg-amber/15 text-amber border-amber/40'
+    : 'bg-coral/15 text-coral border-coral/40';
+  return <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-medium ${cls}`}>{level} confidence</span>;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+
 
 export default function PolicyBuilderPage() {
   const { setCurrentPage, setFilters } = useNav();
@@ -242,7 +396,11 @@ export default function PolicyBuilderPage() {
   const [conditionGroups, setConditionGroups] = useState<ConditionGroup[]>([emptyGroup()]);
   const [groupLogic, setGroupLogic] = useState<'AND' | 'OR'>('AND');
   const [preview, setPreview] = useState<PreviewResult | null>(null);
+
+  // AI assist (lives inside Conditions section)
+  const [aiInput, setAiInput] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiResult, setAiResult] = useState<DraftResult | null>(null);
 
   const resetCreateForm = () => {
     setFormPolicyType('Managed Certificate Policy');
@@ -253,6 +411,7 @@ export default function PolicyBuilderPage() {
     setEffectiveFrom('');
     setConditionGroups([emptyGroup()]); setGroupLogic('AND');
     setPreview(null); setEditingPolicy(null);
+    setAiInput(''); setAiResult(null); setAiLoading(false);
   };
 
   const closeCreateModal = () => { setCreateOpen(false); resetCreateForm(); };
@@ -299,48 +458,27 @@ export default function PolicyBuilderPage() {
     setCreateOpen(true);
   };
 
-  const handleAIDraft = () => {
-    if (!formDescription || formDescription.trim().length < 10) { toast.error('Enter a description first'); return; }
+  const runAIDraft = () => {
+    const text = aiInput.trim();
+    if (!text) return;
     setAiLoading(true);
+    setAiResult(null);
     setTimeout(() => {
-      const d = formDescription.toLowerCase();
-      const dayMatch = d.match(/(\d+)\s*day/);
-      const days = dayMatch ? dayMatch[1] : '';
-      const seeds: { field: string; operator: string; value: string }[][] = [];
-      if (formPolicyType === 'Managed Certificate Policy') {
-        if (!formName) setFormName('Certificate Policy — Draft');
-        if (d.includes('sha-1') || d.includes('sha1') || d.includes('md5') || d.includes('weak')) seeds.push([{ field: 'sig_algo', operator: 'in', value: 'SHA-1,MD5' }]);
-        if (d.includes('self-sign') || d.includes('self sign')) seeds.push([{ field: 'is_self_signed', operator: 'is_true', value: '' }]);
-        if (d.includes('wildcard')) seeds.push([{ field: 'is_wildcard', operator: 'is_true', value: '' }]);
-        if (d.includes('expir') && days) seeds.push([{ field: 'expiry_days', operator: 'lt', value: days }]);
-        if (d.includes('untrusted') || d.includes('approved ca')) seeds.push([{ field: 'issuing_ca', operator: 'nin', value: 'DigiCert,Sectigo,internal-Root-G2' }]);
-      } else if (formPolicyType === 'SSH Key Policy') {
-        if (!formName) setFormName('SSH Key Policy — Draft');
-        if (d.includes('dsa')) seeds.push([{ field: 'key_type', operator: 'eq', value: 'DSA' }]);
-        if (d.includes('rsa') && (d.includes('1024') || d.includes('weak') || d.includes('2048')))
-          seeds.push([{ field: 'key_type', operator: 'eq', value: 'RSA' }, { field: 'key_bits', operator: 'lt', value: '2048' }]);
-        if (d.includes('rotat') && days) seeds.push([{ field: 'days_since_rotation', operator: 'gt', value: days }]);
-      } else if (formPolicyType === 'Secrets & API Keys Policy') {
-        if (!formName) setFormName('Secret Policy — Draft');
-        if (d.includes('no expiry') || d.includes('without expiry')) seeds.push([{ field: 'has_expiry', operator: 'is_false', value: '' }]);
-        if (d.includes('rotat')) seeds.push([{ field: 'days_since_rotation', operator: 'gt', value: days || '90' }]);
-      } else if (formPolicyType === 'Cryptographic Key Policy') {
-        if (!formName) setFormName('Cryptographic Key Policy — Draft');
-        if (d.includes('no rotation') || d.includes('rotation disabled')) seeds.push([{ field: 'rotation_enabled', operator: 'is_false', value: '' }]);
-      }
-      if (seeds.length) {
-        setConditionGroups(seedGroups(seeds));
-        setGroupLogic(seeds.length > 1 ? 'OR' : 'AND');
-        if (d.includes('produc')) setScope(prev => ({ ...prev, environments: Array.from(new Set([...prev.environments, 'Production'])) }));
-        if (d.includes('critical')) setFormSeverity('Critical');
-        toast.success('Conditions drafted from your description — review before saving');
-      } else {
-        toast.message('Could not map that to conditions', {
-          description: 'Try naming a field, e.g. "flag certificates using SHA-1" or "secrets not rotated in 90 days".',
-        });
+      try {
+        const result = draftInterpretations(text, formPolicyType);
+        setAiResult(result);
+      } catch {
+        setAiResult({ kind: 'unavailable' });
       }
       setAiLoading(false);
-    }, 600);
+    }, 450);
+  };
+
+  const applyInterpretation = (interp: Interpretation) => {
+    setConditionGroups(seedGroups(interp.seeds));
+    setGroupLogic(interp.groupLogic);
+    setAiResult(null);
+    toast.success('Conditions drafted — review and adjust before saving');
   };
 
   const hasAnyCondition = conditionGroups.some(g => g.rows.some(r => r.field && r.operator));
@@ -375,6 +513,7 @@ export default function PolicyBuilderPage() {
   };
 
   React.useEffect(() => { setPreview(null); }, [conditionGroups, groupLogic, scope, formPolicyType, effectiveFrom]);
+  React.useEffect(() => { setAiResult(null); }, [formPolicyType]);
 
   const handleSave = (draft: boolean) => {
     if (!formName.trim()) { toast.error('Policy name is required'); return; }
@@ -645,15 +784,9 @@ export default function PolicyBuilderPage() {
                 </div>
 
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-[11px] font-medium">Description</label>
-                    <button type="button" onClick={handleAIDraft} disabled={formDescription.trim().length < 10} className="inline-flex items-center gap-1 text-[10px] text-teal font-medium disabled:opacity-40 disabled:cursor-not-allowed">
-                      <Sparkles className={aiLoading ? 'w-3 h-3 animate-spin' : 'w-3 h-3'} />
-                      Generate from description
-                    </button>
-                  </div>
+                  <label className="block text-[11px] font-medium mb-1">Description (optional)</label>
                   <textarea value={formDescription} onChange={e => setFormDescription(e.target.value)} rows={2}
-                    placeholder="e.g. flag certs using SHA-1 or issued by an unapproved CA in Production"
+                    placeholder="Short description shown on the policy card"
                     className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground" />
                 </div>
               </div>
@@ -664,6 +797,77 @@ export default function PolicyBuilderPage() {
                   label="Conditions"
                   info="Flag an asset as Non-Compliant when these conditions match. Combine rows inside a group with AND/OR, and combine groups with AND/OR."
                 />
+
+                {/* AI assist bar */}
+                <div className="mb-3 space-y-2">
+                  <div className="flex items-center gap-2 border border-teal/30 rounded-lg p-2 bg-teal/5">
+                    <Sparkles className="w-3.5 h-3.5 text-teal shrink-0" />
+                    <input
+                      value={aiInput}
+                      onChange={e => setAiInput(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); runAIDraft(); } }}
+                      placeholder='Describe the policy in plain English (e.g. "flag production RSA certificates under 2048 bits expiring in 30 days")'
+                      className="flex-1 min-w-0 bg-transparent text-[11px] outline-none text-foreground placeholder:text-muted-foreground"
+                    />
+                    <InfoIcon text="AI drafts editable conditions. You review and adjust before saving. AI never activates a policy." />
+                    <button
+                      type="button"
+                      onClick={runAIDraft}
+                      disabled={!aiInput.trim() || aiLoading}
+                      className="inline-flex items-center gap-1 text-[10px] px-2.5 py-1 rounded bg-teal text-primary-foreground font-medium disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                    >
+                      <Sparkles className={`w-3 h-3 ${aiLoading ? 'animate-spin' : ''}`} />
+                      {aiLoading ? 'Drafting…' : 'Draft conditions'}
+                    </button>
+                  </div>
+
+                  {aiResult?.kind === 'unavailable' && (
+                    <div className="text-[10px] text-amber border border-amber/30 bg-amber/5 rounded px-2 py-1.5">
+                      AI assist temporarily unavailable. You can still build conditions manually below.
+                    </div>
+                  )}
+
+                  {aiResult?.kind === 'unresolvable' && (
+                    <div className="text-[10px] border border-coral/30 bg-coral/5 rounded px-2 py-1.5 space-y-1">
+                      <div className="text-coral font-medium">{aiResult.reason}</div>
+                      <div className="text-muted-foreground">Try: {aiResult.suggestion}</div>
+                    </div>
+                  )}
+
+                  {aiResult?.kind === 'ok' && (
+                    <div className="space-y-1.5">
+                      <div className="text-[10px] text-muted-foreground">
+                        {aiResult.interpretations.length > 1
+                          ? `Your description is ambiguous. Pick an interpretation to populate the builder:`
+                          : 'Suggested interpretation — click to populate the builder:'}
+                      </div>
+                      {aiResult.interpretations.map(interp => (
+                        <button
+                          key={interp.id}
+                          type="button"
+                          onClick={() => applyInterpretation(interp)}
+                          className="w-full text-left border border-border rounded-lg px-2.5 py-2 bg-card hover:border-teal/50 hover:bg-teal/5 transition-colors"
+                        >
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <span className="text-[11px] font-medium text-foreground">{interp.label}</span>
+                            <ConfidenceChip level={interp.confidence} />
+                          </div>
+                          <div className="text-[10px] font-mono text-muted-foreground break-words">
+                            {interp.seeds
+                              .map(g => `(${g.map(r => describeCondition(formPolicyType, r)).join(' AND ')})`)
+                              .join(` ${interp.groupLogic} `)}
+                          </div>
+                          {interp.notes.length > 0 && (
+                            <div className="text-[9px] text-muted-foreground/80 mt-1 italic">
+                              {interp.notes.join(' · ')}
+                            </div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 <ConditionBuilder
                   policyType={formPolicyType}
                   groups={conditionGroups}
