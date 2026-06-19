@@ -196,6 +196,7 @@ export default function PolicyBuilderPage() {
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formTag, setFormTag] = useState('Default');
+  const [formSubCategory, setFormSubCategory] = useState<'Classical' | 'PQC'>('Classical');
   const [formSeverity, setFormSeverity] = useState('High');
   const [scope, setScope] = useState<ScopeConfig>(emptyScope());
   const [showRefine, setShowRefine] = useState(false);
