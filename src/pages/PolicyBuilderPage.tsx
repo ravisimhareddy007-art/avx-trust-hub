@@ -152,14 +152,19 @@ function InfoIcon({ text }: { text: string }) {
   );
 }
 
-function SectionHeading({ label, info }: { label: string; info: string }) {
+type SectionAccent = 'teal' | 'purple' | 'amber' | 'coral';
+function SectionHeading({ label, info, accent = 'teal' }: { label: string; info: string; accent?: SectionAccent }) {
+  const dotCls = ({ teal: 'bg-teal', purple: 'bg-purple', amber: 'bg-amber', coral: 'bg-coral' } as const)[accent];
   return (
-    <div className="flex items-center gap-1.5 mb-3">
-      <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">{label}</p>
+    <div className="flex items-center gap-2 mb-3">
+      <span className={`w-1.5 h-1.5 rounded-full ${dotCls} shadow-[0_0_0_3px_hsl(var(--card))]`} />
+      <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-semibold">{label}</p>
       <InfoIcon text={info} />
     </div>
   );
 }
+
+const sectionCardCls = 'bg-card/60 border border-border/50 rounded-xl p-5 shadow-sm';
 
 function ChipMulti({ label, options, values, onChange }: {
   label: string; options: string[]; values: string[]; onChange: (v: string[]) => void;
