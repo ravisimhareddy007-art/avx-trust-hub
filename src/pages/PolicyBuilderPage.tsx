@@ -242,7 +242,11 @@ export default function PolicyBuilderPage() {
   const [conditionGroups, setConditionGroups] = useState<ConditionGroup[]>([emptyGroup()]);
   const [groupLogic, setGroupLogic] = useState<'AND' | 'OR'>('AND');
   const [preview, setPreview] = useState<PreviewResult | null>(null);
+
+  // AI assist (lives inside Conditions section)
+  const [aiInput, setAiInput] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiResult, setAiResult] = useState<DraftResult | null>(null);
 
   const resetCreateForm = () => {
     setFormPolicyType('Managed Certificate Policy');
@@ -253,6 +257,7 @@ export default function PolicyBuilderPage() {
     setEffectiveFrom('');
     setConditionGroups([emptyGroup()]); setGroupLogic('AND');
     setPreview(null); setEditingPolicy(null);
+    setAiInput(''); setAiResult(null); setAiLoading(false);
   };
 
   const closeCreateModal = () => { setCreateOpen(false); resetCreateForm(); };
