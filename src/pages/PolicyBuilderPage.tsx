@@ -496,7 +496,7 @@ export default function PolicyBuilderPage() {
   const runPreview = () => {
     if (!hasAnyCondition) { toast.error('Add at least one condition first'); return; }
     const at = assetTypeFor(formPolicyType);
-    const base = at === 'TLS Certificate' ? 18420 : at === 'SSH Key' ? 9650 : at === 'Cryptographic Key' ? 3120 : 4780;
+    const base = at === 'TLS Certificate' ? 18420 : at === 'SSH Key' ? 9650 : at === 'SSH Certificate' ? 2150 : at === 'Encryption Key' ? 3120 : at === 'Protocol / Cipher' ? 7800 : at === 'Code / CBOM' ? 5400 : 4780;
     const scopeFactor =
       (scope.groupIds.length === 0 ? 1 : 0.25 + scope.groupIds.length * 0.18) *
       (scope.environments.length === 0 ? 1 : scope.environments.length / 3) *
@@ -512,8 +512,14 @@ export default function PolicyBuilderPage() {
       ? ['*.payments.acmecorp.com', 'vault.internal.acmecorp.com', 'api.acmecorp.com', 'mail.acmecorp.com', 'edge-lb-01.acmecorp.com']
       : at === 'SSH Key'
       ? ['prod-db-01-authorized-key', 'jumpbox-east-1', 'bastion-aws-prod', 'ci-runner-key-22', 'k8s-node-ssh-cert']
-      : at === 'Cryptographic Key'
+      : at === 'SSH Certificate'
+      ? ['host-cert-prod-db-01', 'user-cert-deploy-bot', 'host-cert-bastion-eu', 'user-cert-sre-oncall', 'host-cert-k8s-ctrl-1']
+      : at === 'Encryption Key'
       ? ['kms-payments-master', 'aws-kms-prod-rds', 'azkv-prod-signer', 'fortanix-hsm-root', 'gcp-kms-data-eu']
+      : at === 'Protocol / Cipher'
+      ? ['edge-lb-01:443', 'api-gw-eu:443', 'legacy-app-07:443', 'bastion-aws-prod:22', 'vpn-gw-1:500']
+      : at === 'Code / CBOM'
+      ? ['payments-svc/crypto/legacy.go:42', 'auth-lib/jwt.ts:118', 'data-pipe/encrypt.py:87', 'mobile-app/keystore.kt:55', 'firmware/boot/sig.c:201']
       : ['stripe-api-key', 'okta-svc-token', 'github-deploy-key', 'snowflake-readonly', 'pagerduty-int'];
     const sample = sampleNames.slice(0, Math.min(5, nonCompliant)).map((name, i) => ({
       name,
