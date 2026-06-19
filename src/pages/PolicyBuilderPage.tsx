@@ -1213,36 +1213,6 @@ export default function PolicyBuilderPage() {
               </div>
             </div>
           </Modal>
-        </div>
-      )}
-
-      {tab === 'compliance' && (
-        <div className="grid grid-cols-2 gap-4">
-          {[
-            { name: 'DORA', policies: 12, score: 78, violations: 42, lastAssessed: '2 days ago' },
-            { name: 'PCI-DSS v4.0', policies: 18, score: 85, violations: 31, lastAssessed: '1 day ago' },
-            { name: 'HIPAA', policies: 8, score: 92, violations: 8, lastAssessed: '3 days ago' },
-            { name: 'FIPS 140-2', policies: 15, score: 71, violations: 56, lastAssessed: '1 day ago' },
-          ].map(fw => (
-            <div key={fw.name} className="bg-card rounded-lg border border-border p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold">{fw.name}</h3>
-                <span className={`text-lg font-bold ${fw.score >= 90 ? 'text-teal' : fw.score >= 75 ? 'text-amber' : 'text-coral'}`}>{fw.score}%</span>
-              </div>
-              <div className="space-y-1 text-xs text-muted-foreground mb-3">
-                <p>Mapped policies: {fw.policies}</p>
-                <p>Open violations: <span className="text-coral">{fw.violations}</span></p>
-                <p>Last assessed: {fw.lastAssessed}</p>
-              </div>
-              <div className="flex gap-2">
-                <button onClick={() => toast.info(`Viewing ${fw.name} details`)} className="text-[10px] px-3 py-1.5 rounded bg-muted text-foreground hover:bg-muted/80">View Details</button>
-                <button onClick={() => toast.success(`Generating ${fw.name} report...`)} className="text-[10px] px-3 py-1.5 rounded bg-teal/10 text-teal hover:bg-teal/20 flex items-center gap-1"><Download className="w-3 h-3" /> Generate Report</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
       <Modal open={!!configModal} onClose={() => setConfigModal(null)} title="Configure Policy">
         <div className="space-y-4">
           <div>
