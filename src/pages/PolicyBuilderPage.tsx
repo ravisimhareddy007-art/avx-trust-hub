@@ -572,9 +572,13 @@ export default function PolicyBuilderPage() {
     setEditingPolicy(p.id);
     setFormName(p.name); setFormDescription(p.description);
     setFormSeverity(p.severity || 'High'); setFormTags(p.tags || []);
-    if ((p.assetType || '').includes('SSH')) setFormPolicyType('SSH Key Policy');
-    else if ((p.assetType || '').includes('Cryptographic Key')) setFormPolicyType('Encryption Keys Policy');
-    else if ((p.assetType || '').includes('Secret') || (p.assetType || '').includes('API')) setFormPolicyType('Secrets & Tokens Policy');
+    const at = (p.assetType || '');
+    if (at.includes('SSH Certificate')) setFormPolicyType('SSH Certificate Policy');
+    else if (at.includes('SSH')) setFormPolicyType('SSH Key Policy');
+    else if (at.includes('Secret') || at.includes('Token') || at.includes('API')) setFormPolicyType('Secrets & Tokens Policy');
+    else if (at.includes('Encryption Key')) setFormPolicyType('Encryption Keys Policy');
+    else if (at.includes('Protocol') || at.includes('Cipher')) setFormPolicyType('Protocol & Cipher Policy');
+    else if (at.includes('CBOM') || at.includes('Code')) setFormPolicyType('Code / CBOM Policy');
     else setFormPolicyType('Certificate Policy');
     setConditionGroups(p.conditionGroups?.length ? p.conditionGroups : [emptyGroup()]);
     setGroupLogic(p.groupLogic || 'AND');
