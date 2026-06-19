@@ -1060,18 +1060,19 @@ export default function PolicyBuilderPage() {
           <Modal open={createOpen} onClose={closeCreateModal} title={editingPolicy ? 'Edit Policy' : 'Create Policy'} wide>
             <div className="w-full max-w-2xl space-y-5 text-foreground">
               {/* 0. AI authoring (top, above everything) */}
-              <div className="space-y-2">
+              <div className="space-y-2 rounded-xl border border-teal/40 bg-gradient-to-br from-teal/10 via-purple/5 to-transparent p-4 shadow-[0_0_24px_-12px_hsl(var(--teal)/0.4)]">
                 <div className="flex items-center gap-1.5">
-                  <label className="block text-[11px] font-medium">Describe this policy in plain English</label>
+                  <Sparkles className="w-3.5 h-3.5 text-teal" />
+                  <label className="block text-[11px] font-semibold text-foreground tracking-wide uppercase">AI policy author</label>
                   <InfoIcon text="AI fills the form below from your description. Review and edit before saving. AI never activates a policy." />
                 </div>
-                <div className="flex items-center gap-2 border border-teal/30 rounded-lg p-2 bg-teal/5">
+                <div className="flex items-center gap-2 border border-teal/40 rounded-lg p-2 bg-card/80 backdrop-blur">
                   <Sparkles className="w-3.5 h-3.5 text-teal shrink-0" />
                   <input
                     value={aiInput}
                     onChange={e => setAiInput(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); runAIDraft(); } }}
-                    placeholder='e.g. "flag production RSA certificates under 2048 bits expiring in 30 days"'
+                    placeholder='Describe in plain English — e.g. "flag production RSA certs under 2048 bits"'
                     className="flex-1 min-w-0 bg-transparent text-[11px] outline-none text-foreground placeholder:text-muted-foreground"
                   />
                   <button
