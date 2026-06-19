@@ -5,7 +5,7 @@ import { policyRules, customPolicies as initialCustomPolicies } from '@/data/moc
 import { mockGroups } from '@/data/inventoryMockData';
 import { SeverityBadge, Modal } from '@/components/shared/UIComponents';
 import ConditionBuilder, { ConditionGroup, emptyGroup } from '@/components/policies/ConditionBuilder';
-import { POLICY_TYPES, describeCondition } from '@/components/policies/policyFields';
+import { POLICY_TYPES, describeCondition, FIELDS_BY_POLICY_TYPE } from '@/components/policies/policyFields';
 import { toast } from 'sonner';
 import {
   Plus,
