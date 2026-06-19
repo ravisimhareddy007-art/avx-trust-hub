@@ -563,6 +563,11 @@ export default function PolicyBuilderPage() {
                                 {typeBadge.label}
                               </span>
                             )}
+                            {p.subCategory && (
+                              <span className={`text-[9px] px-2 py-0.5 rounded-full border font-medium ${p.subCategory === 'PQC' ? 'bg-purple/10 text-purple border-purple/20' : 'bg-muted text-muted-foreground border-border'}`}>
+                                {p.subCategory}
+                              </span>
+                            )}
                           </div>
                           <p className="text-[10px] text-muted-foreground truncate">{p.description}</p>
                         </div>
