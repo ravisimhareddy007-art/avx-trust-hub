@@ -609,11 +609,18 @@ export default function PolicyBuilderPage() {
             <div className="w-full max-w-2xl space-y-4 text-foreground">
               {/* 1. Identity */}
               <div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-[11px] font-medium mb-1">Policy Type*</label>
                     <select value={formPolicyType} onChange={e => { setFormPolicyType(e.target.value); setConditionGroups([emptyGroup()]); }} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
                       {POLICY_TYPES.map(o => <option key={o}>{o}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium mb-1">Sub-category</label>
+                    <select value={formSubCategory} onChange={e => setFormSubCategory(e.target.value as 'Classical' | 'PQC')} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
+                      <option value="Classical">Classical</option>
+                      <option value="PQC">PQC (Post-Quantum)</option>
                     </select>
                   </div>
                   <div>
