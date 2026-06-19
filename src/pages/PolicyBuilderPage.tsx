@@ -60,6 +60,7 @@ interface CustomPolicy {
   conditionSummary?: string;
   scope?: ScopeConfig;
   tag?: string;
+  subCategory?: 'Classical' | 'PQC';
   responseProfileId?: string | null;
   mode?: Mode;
   effectiveFrom?: string | null;
@@ -195,6 +196,7 @@ export default function PolicyBuilderPage() {
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formTag, setFormTag] = useState('Default');
+  const [formSubCategory, setFormSubCategory] = useState<'Classical' | 'PQC'>('Classical');
   const [formSeverity, setFormSeverity] = useState('High');
   const [scope, setScope] = useState<ScopeConfig>(emptyScope());
   const [showRefine, setShowRefine] = useState(false);
@@ -208,7 +210,7 @@ export default function PolicyBuilderPage() {
 
   const resetCreateForm = () => {
     setFormPolicyType('Managed Certificate Policy');
-    setFormName(''); setFormDescription(''); setFormTag('Default'); setFormSeverity('High');
+    setFormName(''); setFormDescription(''); setFormTag('Default'); setFormSeverity('High'); setFormSubCategory('Classical');
     setScope(emptyScope()); setShowRefine(false);
     setResponseProfileId(defaultProfileId); setMode('Monitor'); setEffectiveFrom('');
     setConditionGroups([emptyGroup()]); setGroupLogic('AND');
@@ -374,6 +376,7 @@ export default function PolicyBuilderPage() {
       conditionSummary: summary,
       scope: { ...scope },
       tag: formTag,
+      subCategory: formSubCategory,
       responseProfileId: finalMode === 'Enforce' ? responseProfileId : null,
       mode: finalMode,
       effectiveFrom: effectiveFrom || null,
@@ -391,7 +394,7 @@ export default function PolicyBuilderPage() {
     resetCreateForm();
     setEditingPolicy(p.id);
     setFormName(p.name); setFormDescription(p.description);
-    setFormSeverity(p.severity || 'High'); setFormTag(p.tag || 'Default');
+    setFormSeverity(p.severity || 'High'); setFormTag(p.tag || 'Default'); setFormSubCategory(p.subCategory || 'Classical');
     if ((p.assetType || '').includes('SSH')) setFormPolicyType('SSH Key Policy');
     else if ((p.assetType || '').includes('Cryptographic Key')) setFormPolicyType('Cryptographic Key Policy');
     else if ((p.assetType || '').includes('Secret') || (p.assetType || '').includes('API')) setFormPolicyType('Secrets & API Keys Policy');
@@ -560,6 +563,11 @@ export default function PolicyBuilderPage() {
                                 {typeBadge.label}
                               </span>
                             )}
+                            {p.subCategory && (
+                              <span className={`text-[9px] px-2 py-0.5 rounded-full border font-medium ${p.subCategory === 'PQC' ? 'bg-purple/10 text-purple border-purple/20' : 'bg-muted text-muted-foreground border-border'}`}>
+                                {p.subCategory}
+                              </span>
+                            )}
                           </div>
                           <p className="text-[10px] text-muted-foreground truncate">{p.description}</p>
                         </div>
@@ -606,11 +614,18 @@ export default function PolicyBuilderPage() {
             <div className="w-full max-w-2xl space-y-4 text-foreground">
               {/* 1. Identity */}
               <div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-[11px] font-medium mb-1">Policy Type*</label>
                     <select value={formPolicyType} onChange={e => { setFormPolicyType(e.target.value); setConditionGroups([emptyGroup()]); }} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
                       {POLICY_TYPES.map(o => <option key={o}>{o}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium mb-1">Sub-category</label>
+                    <select value={formSubCategory} onChange={e => setFormSubCategory(e.target.value as 'Classical' | 'PQC')} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
+                      <option value="Classical">Classical</option>
+                      <option value="PQC">PQC (Post-Quantum)</option>
                     </select>
                   </div>
                   <div>
