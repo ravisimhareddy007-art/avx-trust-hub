@@ -1,5 +1,6 @@
 import { Plus, Trash2 } from 'lucide-react';
-import { fieldsFor, operatorsForField, OPERATORS, FieldDef } from './policyFields';
+import { fieldsFor, operatorsForField, OPERATORS, FieldDef, isSetOperator } from './policyFields';
+import type { ValueSet } from '@/data/policyEngineData';
 
 export interface ConditionRow {
   id: string;
@@ -18,6 +19,7 @@ interface Props {
   policyType: string;
   groups: ConditionGroup[];
   groupLogic: 'AND' | 'OR';
+  valueSets: ValueSet[];
   onChange: (groups: ConditionGroup[]) => void;
   onGroupLogicChange: (logic: 'AND' | 'OR') => void;
 }
@@ -52,9 +54,28 @@ function LogicPill({ value, onChange }: { value: 'AND' | 'OR'; onChange: (v: 'AN
   );
 }
 
-function ValueInput({ field, row, onValue }: { field?: FieldDef; row: ConditionRow; onValue: (v: string) => void }) {
-  const op = OPERATORS.find(o => o.id === row.operator);
+function ValueInput({
+  field, row, valueSets, onValue,
+}: { field?: FieldDef; row: ConditionRow; valueSets: ValueSet[]; onValue: (v: string) => void }) {
+  const allOps = OPERATORS.concat([
+    { id: 'is_in_set', label: 'is in set', appliesTo: [], takesValue: true },
+    { id: 'is_not_in_set', label: 'is not in set', appliesTo: [], takesValue: true },
+  ]);
+  const op = allOps.find(o => o.id === row.operator);
   if (!field || !op || !op.takesValue) return <div className="flex-1 min-w-0" />;
+
+  if (isSetOperator(op.id)) {
+    const matching = valueSets.filter(v => v.type === field.valueSetType);
+    return (
+      <select value={row.value} onChange={e => onValue(e.target.value)} className={`${selectCls} flex-1 min-w-0`}>
+        <option value="">Select set…</option>
+        {matching.map(v => (
+          <option key={v.id} value={v.id}>{v.name} ({v.entries.length})</option>
+        ))}
+        {matching.length === 0 && <option value="" disabled>No matching value sets</option>}
+      </select>
+    );
+  }
 
   if (op.id === 'in' || op.id === 'nin') {
     return (
@@ -97,7 +118,7 @@ function ValueInput({ field, row, onValue }: { field?: FieldDef; row: ConditionR
   );
 }
 
-export default function ConditionBuilder({ policyType, groups, groupLogic, onChange, onGroupLogicChange }: Props) {
+export default function ConditionBuilder({ policyType, groups, groupLogic, valueSets, onChange, onGroupLogicChange }: Props) {
   const fields = fieldsFor(policyType);
 
   const update = (next: ConditionGroup[]) => onChange(next);
@@ -203,7 +224,7 @@ export default function ConditionBuilder({ policyType, groups, groupLogic, onCha
                       <option key={o.id} value={o.id}>{o.label}</option>
                     ))}
                   </select>
-                  <ValueInput field={f} row={row} onValue={v => setRow(gi, ri, { value: v })} />
+                  <ValueInput field={f} row={row} valueSets={valueSets} onValue={v => setRow(gi, ri, { value: v })} />
                   <button
                     type="button"
                     onClick={() => removeRow(gi, ri)}
