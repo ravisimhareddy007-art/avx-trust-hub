@@ -547,7 +547,7 @@ export default function PolicyBuilderPage() {
     setAiResult(null);
     setTimeout(() => {
       try {
-        const result = draftInterpretations(text, formPolicyType);
+        const result = draftFromDescription(text, formPolicyType);
         setAiResult(result);
       } catch {
         setAiResult({ kind: 'unavailable' });
@@ -557,10 +557,30 @@ export default function PolicyBuilderPage() {
   };
 
   const applyInterpretation = (interp: Interpretation) => {
-    setConditionGroups(seedGroups(interp.seeds));
-    setGroupLogic(interp.groupLogic);
+    const touched = new Set<AIField>(aiTouched);
+    const f = interp.fills;
+    if (f.policyType && !manuallyEdited.has('policyType')) {
+      setFormPolicyType(f.policyType);
+      touched.add('policyType');
+    }
+    if (f.conditions && !manuallyEdited.has('conditions')) {
+      setConditionGroups(seedGroups(f.conditions.seeds));
+      setGroupLogic(f.conditions.groupLogic);
+      touched.add('conditions');
+    }
+    if (f.severity && !manuallyEdited.has('severity')) {
+      setFormSeverity(f.severity);
+      setTicket(t => ({ ...t, snowPriority: severityToSnowPriority(f.severity!), jiraPriority: severityToJiraPriority(f.severity!) }));
+      touched.add('severity');
+    }
+    if (f.environments && !manuallyEdited.has('environments')) {
+      setScope(s => ({ ...s, environments: f.environments! }));
+      setShowRefine(true);
+      touched.add('environments');
+    }
+    setAiTouched(touched);
     setAiResult(null);
-    toast.success('Conditions drafted — review and adjust before saving');
+    toast.success('Form drafted — review AI-filled fields before saving');
   };
 
   const hasAnyCondition = conditionGroups.some(g => g.rows.some(r => r.field && r.operator));
