@@ -39,13 +39,13 @@ const emptySelectCls =
 
 function LogicPill({ value, onChange }: { value: 'AND' | 'OR'; onChange: (v: 'AND' | 'OR') => void }) {
   return (
-    <div className="inline-flex rounded-md border border-border overflow-hidden text-[10px] font-medium">
+    <div className="inline-flex rounded-md border border-border overflow-hidden text-[10px] font-semibold">
       {(['AND', 'OR'] as const).map(opt => (
         <button
           key={opt}
           type="button"
           onClick={() => onChange(opt)}
-          className={`px-2 py-0.5 transition-colors ${value === opt ? 'bg-teal text-primary-foreground' : 'bg-card text-muted-foreground hover:bg-muted'}`}
+          className={`px-2 py-0.5 transition-colors ${value === opt ? 'bg-teal text-primary-foreground' : 'bg-card text-muted-foreground hover:bg-muted hover:text-foreground'}`}
         >
           {opt}
         </button>
