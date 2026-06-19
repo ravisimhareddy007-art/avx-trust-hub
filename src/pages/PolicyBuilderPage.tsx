@@ -9,7 +9,6 @@ import { POLICY_TYPES, describeCondition, FIELDS_BY_POLICY_TYPE } from '@/compon
 import { toast } from 'sonner';
 import {
   Plus,
-  Download,
   Search,
   Sparkles,
   ChevronDown,
