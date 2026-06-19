@@ -450,6 +450,39 @@ function AIMarker({ show }: { show: boolean }) {
 
 // ──────────────────────────────────────────────────────────────────────────────
 
+interface OverflowItem { label: string; onClick: () => void; tone?: 'default' | 'danger' }
+function OverflowMenu({ items }: { items: OverflowItem[] }) {
+  const [open, setOpen] = useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [open]);
+  return (
+    <div ref={ref} className="relative inline-block">
+      <button onClick={(e) => { e.stopPropagation(); setOpen(v => !v); }}
+        className="p-1 rounded hover:bg-navy-lighter text-muted-foreground hover:text-foreground transition-colors"
+        aria-label="Row actions">
+        <MoreHorizontal className="w-4 h-4" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-30 min-w-[160px] rounded-lg border border-border bg-popover shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+          {items.map((it, i) => (
+            <button key={i}
+              onClick={(e) => { e.stopPropagation(); setOpen(false); it.onClick(); }}
+              className={`block w-full text-left text-[11px] px-3 py-1.5 hover:bg-muted transition-colors ${it.tone === 'danger' ? 'text-coral hover:bg-coral/10' : 'text-foreground'}`}>
+              {it.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 
 export default function PolicyBuilderPage() {
   const { setCurrentPage, setFilters } = useNav();
