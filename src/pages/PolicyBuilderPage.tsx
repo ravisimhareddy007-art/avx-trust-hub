@@ -75,27 +75,34 @@ interface CustomPolicy {
   effectiveFrom?: string | null;
 }
 
-type PolicyType = 'ssh-key' | 'certificates' | 'secrets' | 'crypto-keys' | '';
+type PolicyType = 'ssh-key' | 'ssh-cert' | 'certificates' | 'secrets' | 'encryption-keys' | 'protocol-cipher' | 'cbom' | '';
 
 const getPolicyTypeMeta = (type: PolicyType) => {
   switch (type) {
-    case 'ssh-key':      return { label: 'SSH Keys', icon: Key, cls: 'bg-amber/10 text-amber border-amber/20' };
-    case 'certificates': return { label: 'Certificates', icon: Shield, cls: 'bg-teal/10 text-teal border-teal/20' };
-    case 'secrets':      return { label: 'Secrets & API Keys', icon: Lock, cls: 'bg-purple/10 text-purple border-purple/20' };
-    case 'crypto-keys':  return { label: 'Cryptographic Keys', icon: Key, cls: 'bg-teal/10 text-teal border-teal/20' };
+    case 'ssh-key':         return { label: 'SSH Keys', icon: Key, cls: 'bg-amber/10 text-amber border-amber/20' };
+    case 'ssh-cert':        return { label: 'SSH Certificates', icon: Shield, cls: 'bg-amber/10 text-amber border-amber/20' };
+    case 'certificates':    return { label: 'Certificates', icon: Shield, cls: 'bg-teal/10 text-teal border-teal/20' };
+    case 'secrets':         return { label: 'Secrets & Tokens', icon: Lock, cls: 'bg-purple/10 text-purple border-purple/20' };
+    case 'encryption-keys': return { label: 'Encryption Keys', icon: Key, cls: 'bg-teal/10 text-teal border-teal/20' };
+    case 'protocol-cipher': return { label: 'Protocol & Cipher', icon: Shield, cls: 'bg-purple/10 text-purple border-purple/20' };
+    case 'cbom':            return { label: 'Code / CBOM', icon: Lock, cls: 'bg-purple/10 text-purple border-purple/20' };
     default: return null;
   }
 };
 
 const getPolicyTypeFromAssetType = (assetType?: string): PolicyType => {
   const v = (assetType || '').toLowerCase();
-  if (v.includes('ssh key')) return 'ssh-key';
-  if (v.includes('cryptographic key')) return 'crypto-keys';
-  if (v.includes('secret') || v.includes('api key')) return 'secrets';
+  if (v.includes('ssh certificate')) return 'ssh-cert';
+  if (v.includes('ssh')) return 'ssh-key';
+  if (v.includes('encryption key')) return 'encryption-keys';
+  if (v.includes('protocol') || v.includes('cipher')) return 'protocol-cipher';
+  if (v.includes('cbom') || v.includes('code')) return 'cbom';
+  if (v.includes('secret') || v.includes('token') || v.includes('api')) return 'secrets';
   if (v.includes('certificate') || v.includes('tls')) return 'certificates';
   return '';
 };
 const getPolicyTypeBadgeFromAsset = (assetType?: string) => getPolicyTypeMeta(getPolicyTypeFromAssetType(assetType));
+
 
 const ENV_OPTIONS = ['Production', 'Staging', 'Development'];
 const CLOUD_OPTIONS = ['AWS', 'Azure', 'GCP'];
