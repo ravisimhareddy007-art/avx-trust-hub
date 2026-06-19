@@ -2,6 +2,8 @@
 // Scope: supported cryptographic objects only (certificates, SSH keys,
 // secrets / vault entries, cryptographic keys in KMS/HSM).
 
+import type { ValueSet, ValueSetType } from '@/data/policyEngineData';
+
 export type FieldKind = 'number' | 'enum' | 'boolean' | 'text';
 
 export interface FieldDef {
@@ -12,6 +14,7 @@ export interface FieldDef {
   options?: string[];
   computed?: boolean;
   hint?: string;
+  valueSetType?: ValueSetType;
 }
 
 export interface OperatorDef {
@@ -19,6 +22,7 @@ export interface OperatorDef {
   label: string;
   appliesTo: FieldKind[];
   takesValue: boolean;
+  kind?: 'normal' | 'set';
 }
 
 export const OPERATORS: OperatorDef[] = [
@@ -36,26 +40,31 @@ export const OPERATORS: OperatorDef[] = [
   { id: 'nin', label: 'is not in list', appliesTo: ['enum', 'text'], takesValue: true },
 ];
 
+const SET_OPERATORS: OperatorDef[] = [
+  { id: 'is_in_set', label: 'is in set', appliesTo: [], takesValue: true, kind: 'set' },
+  { id: 'is_not_in_set', label: 'is not in set', appliesTo: [], takesValue: true, kind: 'set' },
+];
+
 export const FIELDS_BY_POLICY_TYPE: Record<string, FieldDef[]> = {
   'Managed Certificate Policy': [
     { id: 'expiry_days', label: 'Expiry Days Remaining', kind: 'number', unit: 'days', computed: true },
-    { id: 'sig_algo', label: 'Signature Algorithm', kind: 'enum', options: ['SHA-1', 'SHA-256', 'SHA-384', 'SHA-512', 'MD5'] },
+    { id: 'sig_algo', label: 'Signature Algorithm', kind: 'enum', options: ['SHA-1', 'SHA-256', 'SHA-384', 'SHA-512', 'MD5'], valueSetType: 'algorithm' },
     { id: 'key_type', label: 'Key Type', kind: 'enum', options: ['RSA', 'ECDSA', 'Ed25519', 'DSA'] },
     { id: 'key_bits', label: 'Key Length (bits)', kind: 'number', unit: 'bits' },
-    { id: 'issuing_ca', label: 'Issuing CA', kind: 'text', hint: 'e.g. DigiCert, Sectigo, internal CA' },
+    { id: 'issuing_ca', label: 'Issuing CA', kind: 'text', hint: 'e.g. DigiCert, Sectigo, internal CA', valueSetType: 'ca-list' },
     { id: 'is_self_signed', label: 'Is Self-Signed', kind: 'boolean' },
     { id: 'is_wildcard', label: 'Is Wildcard', kind: 'boolean' },
     { id: 'validity_days', label: 'Validity Period (days)', kind: 'number', unit: 'days' },
     { id: 'chain_complete', label: 'Chain Complete', kind: 'boolean' },
-    { id: 'tls_version', label: 'TLS Version Accepted', kind: 'enum', options: ['TLS 1.0', 'TLS 1.1', 'TLS 1.2', 'TLS 1.3'] },
-    { id: 'cipher_suite', label: 'Cipher Suite', kind: 'enum', options: ['RC4', '3DES', 'NULL', 'Export-grade', 'AES-GCM', 'ChaCha20'] },
+    { id: 'tls_version', label: 'TLS Version Accepted', kind: 'enum', options: ['TLS 1.0', 'TLS 1.1', 'TLS 1.2', 'TLS 1.3'], valueSetType: 'tls-version' },
+    { id: 'cipher_suite', label: 'Cipher Suite', kind: 'enum', options: ['RC4', '3DES', 'NULL', 'Export-grade', 'AES-GCM', 'ChaCha20'], valueSetType: 'cipher' },
     { id: 'revocation_status', label: 'Revocation Status', kind: 'enum', options: ['Valid', 'Revoked', 'Unknown'] },
     { id: 'deployment_scope', label: 'Deployment Scope', kind: 'enum', options: ['Production', 'Staging', 'Development'] },
   ],
   'SSH Key Policy': [
     { id: 'key_type', label: 'Key Type', kind: 'enum', options: ['RSA', 'ECDSA', 'Ed25519', 'DSA'] },
     { id: 'key_bits', label: 'Key Length (bits)', kind: 'number', unit: 'bits' },
-    { id: 'mac_algo', label: 'MAC Algorithm', kind: 'enum', options: ['hmac-sha2-256', 'hmac-sha2-512', 'hmac-sha1', 'hmac-md5'] },
+    { id: 'mac_algo', label: 'MAC Algorithm', kind: 'enum', options: ['hmac-sha2-256', 'hmac-sha2-512', 'hmac-sha1', 'hmac-md5'], valueSetType: 'algorithm' },
     { id: 'key_age', label: 'Key Age (days)', kind: 'number', unit: 'days', computed: true, hint: 'Requires managed SSH source' },
     { id: 'days_since_rotation', label: 'Days Since Last Rotation', kind: 'number', unit: 'days', computed: true, hint: 'Requires managed SSH source' },
   ],
@@ -63,14 +72,14 @@ export const FIELDS_BY_POLICY_TYPE: Record<string, FieldDef[]> = {
     { id: 'has_expiry', label: 'Has Expiry Date', kind: 'boolean' },
     { id: 'days_since_rotation', label: 'Days Since Last Rotation', kind: 'number', unit: 'days', computed: true },
     { id: 'secret_type', label: 'Secret Type', kind: 'enum', options: ['Certificate', 'Encryption Key', 'API Key', 'SSH Key', 'Database Credential'] },
-    { id: 'vault_source', label: 'Vault Source', kind: 'enum', options: ['HashiCorp Vault', 'CyberArk Conjur', 'AWS Secrets Manager', 'Azure Key Vault', 'Thales CipherTrust'] },
+    { id: 'vault_source', label: 'Vault Source', kind: 'enum', options: ['HashiCorp Vault', 'CyberArk Conjur', 'AWS Secrets Manager', 'Azure Key Vault', 'Thales CipherTrust'], valueSetType: 'key-source' },
   ],
   'Cryptographic Key Policy': [
     { id: 'rotation_enabled', label: 'Rotation Enabled', kind: 'boolean' },
     { id: 'days_since_rotation', label: 'Days Since Last Rotation', kind: 'number', unit: 'days', computed: true },
-    { id: 'key_algorithm', label: 'Key Algorithm', kind: 'enum', options: ['RSA', 'ECC', 'AES', 'DH', 'ML-KEM', 'ML-DSA'] },
+    { id: 'key_algorithm', label: 'Key Algorithm', kind: 'enum', options: ['RSA', 'ECC', 'AES', 'DH', 'ML-KEM', 'ML-DSA'], valueSetType: 'algorithm' },
     { id: 'key_bits', label: 'Key Length (bits)', kind: 'number', unit: 'bits' },
-    { id: 'key_source', label: 'Key Source', kind: 'enum', options: ['AWS KMS', 'Azure Key Vault', 'GCP KMS', 'Fortanix', 'Crypto4A'] },
+    { id: 'key_source', label: 'Key Source', kind: 'enum', options: ['AWS KMS', 'Azure Key Vault', 'GCP KMS', 'Fortanix', 'Crypto4A'], valueSetType: 'key-source' },
   ],
 };
 
@@ -82,14 +91,27 @@ export function fieldsFor(policyType: string): FieldDef[] {
 
 export function operatorsForField(field?: FieldDef): OperatorDef[] {
   if (!field) return [];
-  return OPERATORS.filter(o => o.appliesTo.includes(field.kind));
+  const base = OPERATORS.filter(o => o.appliesTo.includes(field.kind));
+  return field.valueSetType ? [...base, ...SET_OPERATORS] : base;
 }
 
-export function describeCondition(policyType: string, row: { field: string; operator: string; value: string }): string {
+export function isSetOperator(opId: string): boolean {
+  return opId === 'is_in_set' || opId === 'is_not_in_set';
+}
+
+export function describeCondition(
+  policyType: string,
+  row: { field: string; operator: string; value: string },
+  valueSets?: ValueSet[],
+): string {
   const f = fieldsFor(policyType).find(x => x.id === row.field);
-  const o = OPERATORS.find(x => x.id === row.operator);
+  const o = OPERATORS.concat(SET_OPERATORS).find(x => x.id === row.operator);
   if (!f || !o) return '';
   if (!o.takesValue) return `${f.label} ${o.label}`;
+  if (isSetOperator(o.id)) {
+    const vs = valueSets?.find(v => v.id === row.value);
+    return `${f.label} ${o.label} ${vs?.name || row.value || '—'}`;
+  }
   const unit = f.unit ? ` ${f.unit}` : '';
   return `${f.label} ${o.label} ${row.value}${unit}`;
 }
