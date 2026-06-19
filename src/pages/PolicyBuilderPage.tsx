@@ -278,7 +278,7 @@ function draftInterpretations(input: string, policyType: string): DraftResult {
   // ── Ambiguity: "weak" without specifics ─────────────────────────────────
   const weakOnly = /\bweak\b/.test(d) && !/sha|md5|rsa|dsa|bit|ecdsa|ed25519/.test(d);
   if (weakOnly) {
-    if (policyType === 'Managed Certificate Policy') {
+    if (policyType === 'Certificate Policy') {
       return {
         kind: 'ok',
         interpretations: [
@@ -317,7 +317,7 @@ function draftInterpretations(input: string, policyType: string): DraftResult {
   const assumptions: string[] = [];
   let confidence: Confidence = 'High';
 
-  if (policyType === 'Managed Certificate Policy') {
+  if (policyType === 'Certificate Policy') {
     if (/sha-?1|md5/.test(d) && hasField('sig_algo')) seeds.push([{ field: 'sig_algo', operator: 'in', value: 'SHA-1,MD5' }]);
     if (/self.?sign/.test(d) && hasField('is_self_signed')) seeds.push([{ field: 'is_self_signed', operator: 'is_true', value: '' }]);
     if (/wildcard/.test(d) && hasField('is_wildcard')) seeds.push([{ field: 'is_wildcard', operator: 'is_true', value: '' }]);
@@ -336,12 +336,12 @@ function draftInterpretations(input: string, policyType: string): DraftResult {
       seeds.push([{ field: 'days_since_rotation', operator: 'gt', value: days }]);
     if (/(quantum.?vuln|quantum.?unsafe|not quantum.?safe)/.test(d) && hasField('quantum_vuln'))
       seeds.push([{ field: 'quantum_vuln', operator: 'eq', value: 'Quantum-Vulnerable' }]);
-  } else if (policyType === 'Secrets & API Keys Policy') {
+  } else if (policyType === 'Secrets && Tokens Policy') {
     if (/(no expiry|without expiry|missing expiry)/.test(d) && hasField('has_expiry'))
       seeds.push([{ field: 'has_expiry', operator: 'is_false', value: '' }]);
     if (/rotat/.test(d) && days && hasField('days_since_rotation'))
       seeds.push([{ field: 'days_since_rotation', operator: 'gt', value: days }]);
-  } else if (policyType === 'Cryptographic Key Policy') {
+  } else if (policyType === 'Encryption Keys Policy') {
     if (/(no rotation|rotation disabled)/.test(d) && hasField('rotation_enabled'))
       seeds.push([{ field: 'rotation_enabled', operator: 'is_false', value: '' }]);
     if (/rotat/.test(d) && days && hasField('days_since_rotation'))
@@ -391,7 +391,7 @@ export default function PolicyBuilderPage() {
 
   // Create-policy modal state
   const [createOpen, setCreateOpen] = useState(false);
-  const [formPolicyType, setFormPolicyType] = useState('Managed Certificate Policy');
+  const [formPolicyType, setFormPolicyType] = useState('Certificate Policy');
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formTags, setFormTags] = useState<string[]>([]);
@@ -413,7 +413,7 @@ export default function PolicyBuilderPage() {
   const [aiResult, setAiResult] = useState<DraftResult | null>(null);
 
   const resetCreateForm = () => {
-    setFormPolicyType('Managed Certificate Policy');
+    setFormPolicyType('Certificate Policy');
     setFormName(''); setFormDescription(''); setFormTags([]); setFormSeverity('High');
     setScope(emptyScope()); setShowRefine(false);
     setNotify(emptyNotify()); setTicket(emptyTicket());
@@ -449,19 +449,19 @@ export default function PolicyBuilderPage() {
       ]));
       setGroupLogic('OR');
     } else if (template === 'zero-trust-tls') {
-      setFormPolicyType('Managed Certificate Policy'); setFormTags(['framework:Zero-Trust']);
+      setFormPolicyType('Certificate Policy'); setFormTags(['framework:Zero-Trust']);
       setFormName('Zero-Trust TLS Validity'); setFormSeverity('High');
       setConditionGroups(seedGroups([[{ field: 'validity_days', operator: 'gt', value: '90' }]]));
     } else if (template === 'dora-cert') {
-      setFormPolicyType('Managed Certificate Policy'); setFormTags(['framework:DORA']);
+      setFormPolicyType('Certificate Policy'); setFormTags(['framework:DORA']);
       setFormName('DORA Weak Algorithm'); setFormSeverity('High');
       setConditionGroups(seedGroups([[{ field: 'sig_algo', operator: 'in', value: 'SHA-1,MD5' }]]));
     } else if (template === 'secret-rotation') {
-      setFormPolicyType('Secrets & API Keys Policy');
+      setFormPolicyType('Secrets && Tokens Policy');
       setFormName('Secret Rotation Baseline'); setFormSeverity('High');
       setConditionGroups(seedGroups([[{ field: 'days_since_rotation', operator: 'gt', value: '90' }]]));
     } else if (template === 'untrusted-ca') {
-      setFormPolicyType('Managed Certificate Policy'); setFormTags(['scope:internal']);
+      setFormPolicyType('Certificate Policy'); setFormTags(['scope:internal']);
       setFormName('Untrusted Issuing CA'); setFormSeverity('High');
       setConditionGroups(seedGroups([[{ field: 'issuing_ca', operator: 'nin', value: 'DigiCert,Sectigo,internal-Root-G2' }]]));
     }
@@ -573,9 +573,9 @@ export default function PolicyBuilderPage() {
     setFormName(p.name); setFormDescription(p.description);
     setFormSeverity(p.severity || 'High'); setFormTags(p.tags || []);
     if ((p.assetType || '').includes('SSH')) setFormPolicyType('SSH Key Policy');
-    else if ((p.assetType || '').includes('Cryptographic Key')) setFormPolicyType('Cryptographic Key Policy');
-    else if ((p.assetType || '').includes('Secret') || (p.assetType || '').includes('API')) setFormPolicyType('Secrets & API Keys Policy');
-    else setFormPolicyType('Managed Certificate Policy');
+    else if ((p.assetType || '').includes('Cryptographic Key')) setFormPolicyType('Encryption Keys Policy');
+    else if ((p.assetType || '').includes('Secret') || (p.assetType || '').includes('API')) setFormPolicyType('Secrets && Tokens Policy');
+    else setFormPolicyType('Certificate Policy');
     setConditionGroups(p.conditionGroups?.length ? p.conditionGroups : [emptyGroup()]);
     setGroupLogic(p.groupLogic || 'AND');
     setScope(p.scope ? { ...emptyScope(), ...p.scope } : emptyScope());
