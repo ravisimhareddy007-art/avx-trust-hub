@@ -1,5 +1,5 @@
 import { FEATURES } from '@/config/features';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNav } from '@/context/NavigationContext';
 import { policyRules, customPolicies as initialCustomPolicies } from '@/data/mockData';
 import { mockGroups } from '@/data/inventoryMockData';
@@ -17,7 +17,32 @@ import {
   Shield,
   Key,
   Lock,
+  X,
 } from 'lucide-react';
+
+interface ScopeConfig {
+  environment: string[];
+  businessUnit: string[];
+  discoverySource: string[];
+  cloudProvider: string[];
+  assetGroupIds: string[];
+}
+
+interface NotifyConfig {
+  via: 'Email' | 'Slack';
+  recipient: string;
+  onNewViolation: boolean;
+}
+
+interface TicketConfig {
+  enabled: boolean;
+  system: 'servicenow' | 'jira';
+  snowAssignmentGroup: string;
+  snowPriority: string;
+  jiraProject: string;
+  jiraIssueType: string;
+  jiraPriority: string;
+}
 
 interface CustomPolicy {
   id: string;
@@ -26,16 +51,14 @@ interface CustomPolicy {
   status: string;
   violations: number;
   assetType?: string;
-  condition?: string;
-  value?: string;
   severity?: string;
-  environments?: string[];
-  teams?: string;
-  actions?: string[];
-  groupIds?: string[];
   conditionGroups?: ConditionGroup[];
   groupLogic?: 'AND' | 'OR';
   conditionSummary?: string;
+  scope?: ScopeConfig;
+  notify?: NotifyConfig;
+  ticket?: TicketConfig;
+  tag?: string;
 }
 
 type PolicyType = 'ssh-key' | 'certificates' | 'secrets' | 'crypto-keys' | '';
@@ -66,6 +89,98 @@ const getPolicyTypeFromAssetType = (assetType?: string): PolicyType => {
 
 const getPolicyTypeBadgeFromAsset = (assetType?: string) => getPolicyTypeMeta(getPolicyTypeFromAssetType(assetType));
 
+const ENV_OPTIONS = ['Production', 'Staging', 'Development'];
+const DISCOVERY_OPTIONS = ['Network Probe', 'CA Scan', 'Cloud Crypto Posture Scan', 'Secrets & Key Store Discovery', 'CBOM Ingestion'];
+const CLOUD_OPTIONS = ['AWS', 'Azure', 'GCP'];
+const BU_SUGGESTIONS = ['Payments', 'Retail', 'Infra', 'Identity', 'Data Platform'];
+
+const severityToSnowPriority = (s: string) =>
+  s === 'Critical' ? '1-Critical' : s === 'High' ? '2-High' : s === 'Medium' ? '3-Moderate' : '4-Low';
+const severityToJiraPriority = (s: string) =>
+  s === 'Critical' ? 'Highest' : s === 'High' ? 'High' : s === 'Medium' ? 'Medium' : 'Low';
+
+function emptyScope(): ScopeConfig {
+  return { environment: [], businessUnit: [], discoverySource: [], cloudProvider: [], assetGroupIds: [] };
+}
+
+interface ChipMultiProps {
+  label: string;
+  options: string[];
+  values: string[];
+  onChange: (v: string[]) => void;
+}
+function ChipMulti({ label, options, values, onChange }: ChipMultiProps) {
+  const toggle = (opt: string) => {
+    onChange(values.includes(opt) ? values.filter(v => v !== opt) : [...values, opt]);
+  };
+  return (
+    <div>
+      <label className="block text-[11px] font-medium mb-1.5">{label}</label>
+      <div className="flex flex-wrap gap-1.5">
+        {options.map(opt => {
+          const active = values.includes(opt);
+          return (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => toggle(opt)}
+              className={`text-[10px] px-2 py-1 rounded-full border transition-colors ${active ? 'bg-teal/15 text-teal border-teal/40' : 'bg-card text-muted-foreground border-border hover:border-foreground/30'}`}
+            >
+              {opt}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+interface TagInputProps {
+  label: string;
+  values: string[];
+  suggestions: string[];
+  onChange: (v: string[]) => void;
+  placeholder?: string;
+}
+function TagInput({ label, values, suggestions, onChange, placeholder }: TagInputProps) {
+  const [draft, setDraft] = useState('');
+  const add = (v: string) => {
+    const t = v.trim();
+    if (!t || values.includes(t)) { setDraft(''); return; }
+    onChange([...values, t]);
+    setDraft('');
+  };
+  const remove = (v: string) => onChange(values.filter(x => x !== v));
+  return (
+    <div>
+      <label className="block text-[11px] font-medium mb-1.5">{label}</label>
+      <div className="flex flex-wrap items-center gap-1.5 border border-border rounded-lg px-2 py-1.5 bg-card min-h-[34px]">
+        {values.map(v => (
+          <span key={v} className="text-[10px] px-2 py-0.5 rounded-full bg-teal/15 text-teal border border-teal/40 inline-flex items-center gap-1">
+            {v}
+            <button type="button" onClick={() => remove(v)} className="hover:text-coral"><X className="w-2.5 h-2.5" /></button>
+          </span>
+        ))}
+        <input
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); add(draft); } }}
+          onBlur={() => draft && add(draft)}
+          placeholder={values.length ? '' : (placeholder || 'Type and press Enter')}
+          className="flex-1 min-w-[120px] bg-transparent text-[11px] outline-none text-foreground"
+        />
+      </div>
+      {suggestions.length > 0 && (
+        <div className="flex flex-wrap gap-1 mt-1">
+          {suggestions.filter(s => !values.includes(s)).map(s => (
+            <button key={s} type="button" onClick={() => add(s)} className="text-[9px] px-1.5 py-0.5 rounded text-muted-foreground hover:text-teal hover:bg-teal/10">+ {s}</button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function PolicyBuilderPage() {
   const { setCurrentPage, setFilters } = useNav();
   const [tab, setTab] = useState<'outofbox' | 'custom' | 'compliance'>('outofbox');
@@ -81,25 +196,27 @@ export default function PolicyBuilderPage() {
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formTag, setFormTag] = useState('Default');
-  const [formEnvironment, setFormEnvironment] = useState('All');
-  const [formTeam, setFormTeam] = useState('');
-  const [formGroup, setFormGroup] = useState('');
   const [formSeverity, setFormSeverity] = useState('High');
-  const [formAction, setFormAction] = useState('Alert only');
-  const [formRequireApproval, setFormRequireApproval] = useState(false);
-  const [formApprovalType, setFormApprovalType] = useState('User Group');
-  const [formApprovalTarget, setFormApprovalTarget] = useState('');
-  const [formNotifyVia, setFormNotifyVia] = useState('Email');
-  const [formNotifyRecipient, setFormNotifyRecipient] = useState('');
-  const [formNotifyOnStart, setFormNotifyOnStart] = useState(false);
-  const [formNotifyOnFail, setFormNotifyOnFail] = useState(true);
-  const [formNotifyOnComplete, setFormNotifyOnComplete] = useState(false);
-  const [formITSM, setFormITSM] = useState(false);
-  const [formItsmPriority, setFormItsmPriority] = useState('2-High');
-  const [formItsmType, setFormItsmType] = useState('Normal');
-  const [showApproval, setShowApproval] = useState(false);
+
+  // Scope (after Conditions)
+  const [scope, setScope] = useState<ScopeConfig>(emptyScope());
+
+  // Notifications
   const [showNotifications, setShowNotifications] = useState(false);
-  const [showItsm, setShowItsm] = useState(false);
+  const [formNotifyVia, setFormNotifyVia] = useState<'Email' | 'Slack'>('Email');
+  const [formNotifyRecipient, setFormNotifyRecipient] = useState('');
+  const [formNotifyOnNewViolation, setFormNotifyOnNewViolation] = useState(true);
+
+  // Ticket
+  const [showTicket, setShowTicket] = useState(false);
+  const [formTicketEnabled, setFormTicketEnabled] = useState(false);
+  const [formTicketSystem, setFormTicketSystem] = useState<'servicenow' | 'jira'>('servicenow');
+  const [formSnowAssignmentGroup, setFormSnowAssignmentGroup] = useState('');
+  const [formSnowPriority, setFormSnowPriority] = useState('2-High');
+  const [formJiraProject, setFormJiraProject] = useState('');
+  const [formJiraIssueType, setFormJiraIssueType] = useState('Task');
+  const [formJiraPriority, setFormJiraPriority] = useState('High');
+
   const [aiLoading, setAiLoading] = useState(false);
 
   // Condition builder state
@@ -111,29 +228,30 @@ export default function PolicyBuilderPage() {
     setFormName('');
     setFormDescription('');
     setFormTag('Default');
-    setFormEnvironment('All');
-    setFormTeam('');
-    setFormGroup('');
     setFormSeverity('High');
-    setFormAction('Alert only');
-    setFormRequireApproval(false);
-    setFormApprovalType('User Group');
-    setFormApprovalTarget('');
+    setScope(emptyScope());
+    setShowNotifications(false);
     setFormNotifyVia('Email');
     setFormNotifyRecipient('');
-    setFormNotifyOnStart(false);
-    setFormNotifyOnFail(true);
-    setFormNotifyOnComplete(false);
-    setFormITSM(false);
-    setFormItsmPriority('2-High');
-    setFormItsmType('Normal');
-    setShowApproval(false);
-    setShowNotifications(false);
-    setShowItsm(false);
+    setFormNotifyOnNewViolation(true);
+    setShowTicket(false);
+    setFormTicketEnabled(false);
+    setFormTicketSystem('servicenow');
+    setFormSnowAssignmentGroup('');
+    setFormSnowPriority('2-High');
+    setFormJiraProject('');
+    setFormJiraIssueType('Task');
+    setFormJiraPriority('High');
     setConditionGroups([emptyGroup()]);
     setGroupLogic('AND');
     setEditingPolicy(null);
   };
+
+  // Keep ticket priority defaults synced with severity unless user has edited
+  React.useEffect(() => {
+    setFormSnowPriority(severityToSnowPriority(formSeverity));
+    setFormJiraPriority(severityToJiraPriority(formSeverity));
+  }, [formSeverity]);
 
   const closeCreateModal = () => {
     setCreateOpen(false);
@@ -181,7 +299,6 @@ export default function PolicyBuilderPage() {
       setFormTag('DORA');
       setFormName('DORA Weak Algorithm');
       setFormSeverity('High');
-      setFormAction('Create ticket');
       setConditionGroups(seedGroups([
         [{ field: 'sig_algo', operator: 'in', value: 'SHA-1,MD5' }],
       ]));
@@ -196,7 +313,7 @@ export default function PolicyBuilderPage() {
     setCreateOpen(true);
   };
 
-  // AI assist: draft a starter condition set from a plain-English description.
+  // AI assist
   const handleAIDraft = () => {
     if (!formDescription || formDescription.trim().length < 10) {
       toast.error('Enter a description first');
@@ -253,7 +370,7 @@ export default function PolicyBuilderPage() {
       if (seeds.length) {
         setConditionGroups(seedGroups(seeds));
         setGroupLogic(seeds.length > 1 ? 'OR' : 'AND');
-        if (d.includes('produc')) setFormEnvironment('Production');
+        if (d.includes('produc')) setScope(prev => ({ ...prev, environment: Array.from(new Set([...prev.environment, 'Production'])) }));
         if (d.includes('critical')) setFormSeverity('Critical');
         toast.success('Conditions drafted from your description — review before saving');
       } else {
@@ -264,6 +381,36 @@ export default function PolicyBuilderPage() {
       setAiLoading(false);
     }, 700);
   };
+
+  const assetTypeFor = (policyType: string) =>
+    policyType.includes('Cryptographic Key') ? 'Cryptographic Key'
+      : policyType.includes('Certificate') ? 'TLS Certificate'
+        : policyType.includes('SSH') ? 'SSH Key'
+          : 'API Key / Secret';
+
+  // Hash-based estimator so the number is stable per inputs.
+  const hashStr = (s: string) => {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = ((h << 5) - h) + s.charCodeAt(i);
+    return Math.abs(h);
+  };
+  const hasAnyCondition = conditionGroups.some(g => g.rows.some(r => r.field && r.operator));
+  const affectedEstimate = useMemo(() => {
+    if (!hasAnyCondition) return null;
+    const at = assetTypeFor(formPolicyType);
+    const base = at === 'TLS Certificate' ? 18420 : at === 'SSH Key' ? 9650 : at === 'Cryptographic Key' ? 3120 : 4780;
+    const scopeFactor =
+      (scope.environment.length === 0 ? 1 : scope.environment.length / 3) *
+      (scope.cloudProvider.length === 0 ? 1 : 0.45 + scope.cloudProvider.length * 0.15) *
+      (scope.businessUnit.length === 0 ? 1 : 0.35 + scope.businessUnit.length * 0.18) *
+      (scope.discoverySource.length === 0 ? 1 : 0.5 + scope.discoverySource.length * 0.12) *
+      (scope.assetGroupIds.length === 0 ? 1 : 0.4 + scope.assetGroupIds.length * 0.2);
+    const seed = hashStr(JSON.stringify({ at, scope, conditionGroups, groupLogic })) % 1000;
+    const evaluated = Math.max(12, Math.round(base * Math.min(1, scopeFactor) * (0.75 + (seed / 1000) * 0.4)));
+    const nonCompliantPct = 0.06 + ((seed % 17) / 100);
+    const nonCompliant = Math.max(1, Math.round(evaluated * nonCompliantPct));
+    return { evaluated, nonCompliant };
+  }, [formPolicyType, scope, conditionGroups, groupLogic, hasAnyCondition]);
 
   const handleSave = (draft: boolean) => {
     if (!formName.trim()) {
@@ -284,25 +431,30 @@ export default function PolicyBuilderPage() {
     const newPolicy: CustomPolicy = {
       id: editingPolicy || `cpol-${Date.now()}`,
       name: formName,
-      description: formDescription || `${formPolicyType} — ${formEnvironment}`,
+      description: formDescription || `${formPolicyType}`,
       status: draft ? 'Draft' : 'Active',
       violations: 0,
-      assetType: formPolicyType.includes('Cryptographic Key')
-        ? 'Cryptographic Key'
-        : formPolicyType.includes('Certificate')
-          ? 'TLS Certificate'
-          : formPolicyType.includes('SSH')
-            ? 'SSH Key'
-            : 'API Key / Secret',
-      condition: formAction,
+      assetType: assetTypeFor(formPolicyType),
       severity: formSeverity,
-      environments: formEnvironment === 'All' ? ['All'] : [formEnvironment],
-      teams: formTeam,
-      actions: [formAction],
-      groupIds: formGroup ? [formGroup] : [],
       conditionGroups,
       groupLogic,
       conditionSummary: summary,
+      scope: { ...scope },
+      tag: formTag,
+      notify: {
+        via: formNotifyVia,
+        recipient: formNotifyRecipient,
+        onNewViolation: formNotifyOnNewViolation,
+      },
+      ticket: {
+        enabled: formTicketEnabled,
+        system: formTicketSystem,
+        snowAssignmentGroup: formSnowAssignmentGroup,
+        snowPriority: formSnowPriority,
+        jiraProject: formJiraProject,
+        jiraIssueType: formJiraIssueType,
+        jiraPriority: formJiraPriority,
+      },
     };
 
     if (editingPolicy) {
@@ -322,16 +474,30 @@ export default function PolicyBuilderPage() {
     setFormName(p.name);
     setFormDescription(p.description);
     setFormSeverity(p.severity || 'High');
-    setFormEnvironment(p.environments?.[0] || 'All');
-    setFormTeam(p.teams || '');
-    setFormGroup(p.groupIds?.[0] || '');
-    setFormAction(p.actions?.[0] || p.condition || 'Alert only');
+    setFormTag(p.tag || 'Default');
     if ((p.assetType || '').includes('SSH')) setFormPolicyType('SSH Key Policy');
     else if ((p.assetType || '').includes('Cryptographic Key')) setFormPolicyType('Cryptographic Key Policy');
     else if ((p.assetType || '').includes('Secret') || (p.assetType || '').includes('API')) setFormPolicyType('Secrets & API Keys Policy');
     else setFormPolicyType('Managed Certificate Policy');
     setConditionGroups(p.conditionGroups && p.conditionGroups.length ? p.conditionGroups : [emptyGroup()]);
     setGroupLogic(p.groupLogic || 'AND');
+    setScope(p.scope ? { ...emptyScope(), ...p.scope } : emptyScope());
+    if (p.notify) {
+      setFormNotifyVia(p.notify.via);
+      setFormNotifyRecipient(p.notify.recipient);
+      setFormNotifyOnNewViolation(p.notify.onNewViolation);
+      setShowNotifications(true);
+    }
+    if (p.ticket) {
+      setFormTicketEnabled(p.ticket.enabled);
+      setFormTicketSystem(p.ticket.system);
+      setFormSnowAssignmentGroup(p.ticket.snowAssignmentGroup);
+      setFormSnowPriority(p.ticket.snowPriority);
+      setFormJiraProject(p.ticket.jiraProject);
+      setFormJiraIssueType(p.ticket.jiraIssueType);
+      setFormJiraPriority(p.ticket.jiraPriority);
+      if (p.ticket.enabled) setShowTicket(true);
+    }
     setCreateOpen(true);
   };
 
@@ -350,6 +516,23 @@ export default function PolicyBuilderPage() {
       p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.description.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+  const scopeSummary = (s?: ScopeConfig) => {
+    if (!s) return 'All assets';
+    const parts = [
+      ...s.environment,
+      ...s.businessUnit,
+      ...s.cloudProvider,
+      ...s.discoverySource,
+      ...s.assetGroupIds.map(gid => mockGroups.find(g => g.id === gid)?.name || gid),
+    ];
+    return parts.length ? parts.join(' · ') : 'All assets';
+  };
+
+  const ticketBadge = (t?: TicketConfig) => {
+    if (!t || !t.enabled) return 'No ticket';
+    return t.system === 'servicenow' ? 'ServiceNow: Incident' : `Jira: ${t.jiraProject || t.jiraIssueType}`;
+  };
 
   return (
     <div className="space-y-4">
@@ -464,9 +647,6 @@ export default function PolicyBuilderPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        {p.groupIds && p.groupIds.length > 0 && (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-muted-foreground">{p.groupIds.length} group{p.groupIds.length > 1 ? 's' : ''}</span>
-                        )}
                         {p.violations > 0 && <span className="text-[10px] px-2 py-0.5 rounded-full bg-coral/10 text-coral font-medium">{p.violations} violations</span>}
                         {p.severity && <span className="text-[10px] text-muted-foreground">{p.severity}</span>}
                         {expandedPolicy === p.id ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
@@ -476,29 +656,16 @@ export default function PolicyBuilderPage() {
                       <div className="px-4 pb-4 border-t border-border pt-3 space-y-3">
                         <div className="grid grid-cols-4 gap-3 text-xs">
                           <div><span className="text-muted-foreground block mb-0.5">Asset Type</span><span className="font-medium">{p.assetType || 'All'}</span></div>
-                          <div><span className="text-muted-foreground block mb-0.5">Environment</span><span className="font-medium">{p.environments?.join(', ') || 'All'}</span></div>
-                          <div><span className="text-muted-foreground block mb-0.5">Teams</span><span className="font-medium">{p.teams || 'All'}</span></div>
-                          <div>
-                            <span className="text-muted-foreground block mb-0.5">Groups</span>
-                            <span className="font-medium">
-                              {p.groupIds && p.groupIds.length > 0
-                                ? p.groupIds.map(gid => mockGroups.find(g => g.id === gid)?.name || gid).join(', ')
-                                : 'None'}
-                            </span>
-                          </div>
+                          <div className="col-span-2"><span className="text-muted-foreground block mb-0.5">Scope</span><span className="font-medium">{scopeSummary(p.scope)}</span></div>
+                          <div><span className="text-muted-foreground block mb-0.5">Ticketing</span><span className="font-medium">{ticketBadge(p.ticket)}</span></div>
                         </div>
+                        {p.scope?.businessUnit && p.scope.businessUnit.length > 0 && (
+                          <div className="text-[10px]"><span className="text-muted-foreground">Business Unit: </span><span className="font-medium">{p.scope.businessUnit.join(', ')}</span></div>
+                        )}
                         {p.conditionSummary && (
                           <div>
                             <span className="text-[10px] text-muted-foreground block mb-1">Conditions</span>
                             <p className="text-[11px] font-mono bg-muted/40 border border-border rounded px-2 py-1.5">{p.conditionSummary}</p>
-                          </div>
-                        )}
-                        {p.actions && p.actions.length > 0 && (
-                          <div>
-                            <span className="text-[10px] text-muted-foreground block mb-1">Actions on Violation</span>
-                            <div className="flex gap-1.5 flex-wrap">
-                              {p.actions.map(a => <span key={a} className="text-[10px] px-2 py-0.5 rounded bg-muted text-foreground">{a}</span>)}
-                            </div>
                           </div>
                         )}
                         <div className="flex gap-2 pt-1">
@@ -518,6 +685,7 @@ export default function PolicyBuilderPage() {
 
           <Modal open={createOpen} onClose={closeCreateModal} title="Create Policy" wide>
             <div className="w-full max-w-2xl space-y-4 text-foreground">
+              {/* 1. Identity */}
               <div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -572,29 +740,7 @@ export default function PolicyBuilderPage() {
                 </div>
               </div>
 
-              <div className="border-t border-border pt-4">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-3">Scope</p>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-[11px] font-medium mb-1">Environment</label>
-                    <select value={formEnvironment} onChange={e => setFormEnvironment(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
-                      {['All', 'Production', 'Staging', 'Development'].map(option => <option key={option}>{option}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-medium mb-1">Team</label>
-                    <input value={formTeam} onChange={e => setFormTeam(e.target.value)} placeholder="e.g. Payments Engineering" className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground" />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-medium mb-1">Compliance Group</label>
-                    <select value={formGroup} onChange={e => setFormGroup(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
-                      <option>All</option>
-                      {mockGroups.map(group => <option key={group.id}>{group.name}</option>)}
-                    </select>
-                  </div>
-                </div>
-              </div>
-
+              {/* 2. Conditions */}
               <div className="border-t border-border pt-4">
                 <div className="mb-3">
                   <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Conditions</p>
@@ -609,123 +755,187 @@ export default function PolicyBuilderPage() {
                 />
               </div>
 
+              {/* 3. Scope */}
               <div className="border-t border-border pt-4">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-3">On Violation</p>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[11px] font-medium mb-1">Action</label>
-                    <select value={formAction} onChange={e => setFormAction(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
-                      {['Alert only', 'Block action', 'Auto-remediate', 'Create ticket', 'Escalate to owner'].map(option => <option key={option}>{option}</option>)}
-                    </select>
-                    <p className="text-[9px] text-muted-foreground mt-1">Alert only is always applied in addition to other actions.</p>
+                <div className="mb-3">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Scope</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Optional. Narrow where this policy applies. Leave empty to evaluate all assets of this type.</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5 italic">Multiple values in one dimension match ANY of them (OR). Different dimensions must ALL match (AND).</p>
+                </div>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-4">
+                    <ChipMulti label="Environment" options={ENV_OPTIONS} values={scope.environment} onChange={v => setScope(s => ({ ...s, environment: v }))} />
+                    <ChipMulti label="Cloud Provider" options={CLOUD_OPTIONS} values={scope.cloudProvider} onChange={v => setScope(s => ({ ...s, cloudProvider: v }))} />
                   </div>
+                  <ChipMulti label="Discovery Source" options={DISCOVERY_OPTIONS} values={scope.discoverySource} onChange={v => setScope(s => ({ ...s, discoverySource: v }))} />
+                  <TagInput label="Business Unit" values={scope.businessUnit} suggestions={BU_SUGGESTIONS} onChange={v => setScope(s => ({ ...s, businessUnit: v }))} placeholder="e.g. Payments" />
                   <div>
-                    <label className="block text-[11px] font-medium mb-1">Severity</label>
-                    <select value={formSeverity} onChange={e => setFormSeverity(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
-                      {['Low', 'Medium', 'High', 'Critical'].map(option => <option key={option}>{option}</option>)}
-                    </select>
+                    <label className="block text-[11px] font-medium mb-1.5">Asset Group</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {mockGroups.map(g => {
+                        const active = scope.assetGroupIds.includes(g.id);
+                        return (
+                          <button
+                            key={g.id}
+                            type="button"
+                            onClick={() => setScope(s => ({ ...s, assetGroupIds: active ? s.assetGroupIds.filter(id => id !== g.id) : [...s.assetGroupIds, g.id] }))}
+                            className={`text-[10px] px-2 py-1 rounded-full border transition-colors ${active ? 'bg-teal/15 text-teal border-teal/40' : 'bg-card text-muted-foreground border-border hover:border-foreground/30'}`}
+                          >
+                            {g.name}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               </div>
 
+              {/* 4. Severity */}
               <div className="border-t border-border pt-4">
-                <button onClick={() => setShowApproval(prev => !prev)} className="w-full flex items-center justify-between cursor-pointer py-2">
-                  <span className="text-[11px] font-medium">Approval & Workflow</span>
-                  {showApproval ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-                </button>
-                {showApproval && (
-                  <div className="space-y-4 pt-2">
-                    <div className="flex items-center justify-between py-2">
-                      <p className="text-[11px] font-medium">Require approval before action?</p>
-                      <button onClick={() => setFormRequireApproval(prev => !prev)} className={`w-10 h-5 rounded-full relative transition-colors ${formRequireApproval ? 'bg-teal' : 'bg-muted'}`}>
-                        <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-card shadow transition-transform ${formRequireApproval ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                      </button>
-                    </div>
-                    {formRequireApproval && (
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-3">Severity</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <select value={formSeverity} onChange={e => setFormSeverity(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
+                      {['Critical', 'High', 'Medium', 'Low'].map(option => <option key={option}>{option}</option>)}
+                    </select>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground self-center">Severity sets risk weighting and ticket priority.</p>
+                </div>
+              </div>
+
+              {/* 5. On Violation */}
+              <div className="border-t border-border pt-4">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-1">On Violation</p>
+                <p className="text-[10px] text-muted-foreground mb-3">Matched assets are flagged Non-Compliant. Optionally notify and open a ticket.</p>
+
+                {/* Notifications */}
+                <div className="border border-border rounded-lg">
+                  <button onClick={() => setShowNotifications(p => !p)} className="w-full flex items-center justify-between cursor-pointer px-3 py-2">
+                    <span className="text-[11px] font-medium">Notifications</span>
+                    {showNotifications ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                  </button>
+                  {showNotifications && (
+                    <div className="px-3 pb-3 space-y-3">
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-[11px] font-medium mb-1">Approval type</label>
-                          <select value={formApprovalType} onChange={e => setFormApprovalType(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
-                            {['User Group', 'Specific User', 'Email', 'LDAP Manager'].map(option => <option key={option}>{option}</option>)}
+                          <label className="block text-[11px] font-medium mb-1">Notify via</label>
+                          <select value={formNotifyVia} onChange={e => setFormNotifyVia(e.target.value as 'Email' | 'Slack')} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
+                            {['Email', 'Slack'].map(option => <option key={option}>{option}</option>)}
                           </select>
                         </div>
                         <div>
-                          <label className="block text-[11px] font-medium mb-1">Approver</label>
-                          <input value={formApprovalTarget} onChange={e => setFormApprovalTarget(e.target.value)} placeholder={formApprovalType === 'User Group' ? 'e.g. Security-Ops-Group' : formApprovalType === 'Specific User' ? 'e.g. john@acme.com' : formApprovalType === 'Email' ? 'e.g. security@acme.com' : 'Fetched from LDAP directory'} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground" />
+                          <label className="block text-[11px] font-medium mb-1">Recipient</label>
+                          <input value={formNotifyRecipient} onChange={e => setFormNotifyRecipient(e.target.value)} placeholder={formNotifyVia === 'Email' ? 'security@acme.com' : '#security-alerts'} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground" />
                         </div>
                       </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="border-t border-border pt-4">
-                <button onClick={() => setShowNotifications(prev => !prev)} className="w-full flex items-center justify-between cursor-pointer py-2">
-                  <span className="text-[11px] font-medium">Notifications</span>
-                  {showNotifications ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-                </button>
-                {showNotifications && (
-                  <div className="space-y-4 pt-2">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-[11px] font-medium mb-1">Notify via</label>
-                        <select value={formNotifyVia} onChange={e => setFormNotifyVia(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
-                          {['Email', 'Slack'].map(option => <option key={option}>{option}</option>)}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-medium mb-1">Recipient</label>
-                        <input value={formNotifyRecipient} onChange={e => setFormNotifyRecipient(e.target.value)} placeholder={formNotifyVia === 'Email' ? 'Recipient email address' : 'Slack channel e.g. #security-alerts'} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground" />
-                      </div>
-                    </div>
-                    {[
-                      ['On action start', formNotifyOnStart, setFormNotifyOnStart],
-                      ['On completion', formNotifyOnComplete, setFormNotifyOnComplete],
-                      ['On failure', formNotifyOnFail, setFormNotifyOnFail],
-                    ].map(([label, value, setter]) => (
-                      <div key={label as string} className="flex items-center justify-between py-2 text-[11px]">
-                        <span>{label as string}</span>
-                        <button onClick={() => (setter as React.Dispatch<React.SetStateAction<boolean>>)(prev => !prev)} className={`w-10 h-5 rounded-full relative transition-colors ${(value as boolean) ? 'bg-teal' : 'bg-muted'}`}>
-                          <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-card shadow transition-transform ${(value as boolean) ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                      <div className="flex items-center justify-between py-1 text-[11px]">
+                        <span>On new violation</span>
+                        <button onClick={() => setFormNotifyOnNewViolation(p => !p)} className={`w-10 h-5 rounded-full relative transition-colors ${formNotifyOnNewViolation ? 'bg-teal' : 'bg-muted'}`}>
+                          <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-card shadow transition-transform ${formNotifyOnNewViolation ? 'translate-x-5' : 'translate-x-0.5'}`} />
                         </button>
                       </div>
-                    ))}
-                  </div>
-                )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Ticket */}
+                <div className="border border-border rounded-lg mt-3">
+                  <button onClick={() => setShowTicket(p => !p)} className="w-full flex items-center justify-between cursor-pointer px-3 py-2">
+                    <span className="text-[11px] font-medium">Create a ticket</span>
+                    {showTicket ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                  </button>
+                  {showTicket && (
+                    <div className="px-3 pb-3 space-y-3">
+                      <div className="flex items-center justify-between py-1">
+                        <p className="text-[11px] font-medium">Open a ticket when this policy is violated</p>
+                        <button onClick={() => setFormTicketEnabled(p => !p)} className={`w-10 h-5 rounded-full relative transition-colors ${formTicketEnabled ? 'bg-teal' : 'bg-muted'}`}>
+                          <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-card shadow transition-transform ${formTicketEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                        </button>
+                      </div>
+
+                      {formTicketEnabled && (
+                        <>
+                          <div>
+                            <label className="block text-[11px] font-medium mb-1.5">Ticketing system</label>
+                            <div className="flex gap-2">
+                              {([
+                                { id: 'servicenow' as const, label: 'ServiceNow' },
+                                { id: 'jira' as const, label: 'Jira' },
+                              ]).map(opt => {
+                                const active = formTicketSystem === opt.id;
+                                return (
+                                  <button
+                                    key={opt.id}
+                                    type="button"
+                                    onClick={() => setFormTicketSystem(opt.id)}
+                                    className={`flex-1 px-3 py-2 rounded-lg border text-[11px] transition-colors ${active ? 'bg-teal/15 text-teal border-teal/40' : 'bg-card text-muted-foreground border-border hover:border-foreground/30'}`}
+                                  >
+                                    <div className="font-medium">{opt.label}</div>
+                                    <div className="text-[9px] text-teal mt-0.5">Connected</div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {formTicketSystem === 'servicenow' ? (
+                            <div className="grid grid-cols-3 gap-3">
+                              <div>
+                                <label className="block text-[11px] font-medium mb-1">Record type</label>
+                                <input value="Incident" disabled className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-muted/40 text-muted-foreground" />
+                              </div>
+                              <div>
+                                <label className="block text-[11px] font-medium mb-1">Assignment group</label>
+                                <input value={formSnowAssignmentGroup} onChange={e => setFormSnowAssignmentGroup(e.target.value)} placeholder="e.g. Crypto-Security" className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground" />
+                              </div>
+                              <div>
+                                <label className="block text-[11px] font-medium mb-1">Priority</label>
+                                <select value={formSnowPriority} onChange={e => setFormSnowPriority(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
+                                  {['1-Critical', '2-High', '3-Moderate', '4-Low'].map(o => <option key={o}>{o}</option>)}
+                                </select>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-3 gap-3">
+                              <div>
+                                <label className="block text-[11px] font-medium mb-1">Project key</label>
+                                <input value={formJiraProject} onChange={e => setFormJiraProject(e.target.value)} placeholder="e.g. SEC" className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground" />
+                              </div>
+                              <div>
+                                <label className="block text-[11px] font-medium mb-1">Issue type</label>
+                                <select value={formJiraIssueType} onChange={e => setFormJiraIssueType(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
+                                  {['Task', 'Bug'].map(o => <option key={o}>{o}</option>)}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-[11px] font-medium mb-1">Priority</label>
+                                <select value={formJiraPriority} onChange={e => setFormJiraPriority(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
+                                  {['Highest', 'High', 'Medium', 'Low'].map(o => <option key={o}>{o}</option>)}
+                                </select>
+                              </div>
+                            </div>
+                          )}
+                          <p className="text-[9px] text-muted-foreground">Ticket summary is auto-generated from the policy name and the matched condition. One ticket per violated asset.</p>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
+              {/* 6. Affected assets preview */}
               <div className="border-t border-border pt-4">
-                <button onClick={() => setShowItsm(prev => !prev)} className="w-full flex items-center justify-between cursor-pointer py-2">
-                  <span className="text-[11px] font-medium">ITSM / ServiceNow <span className="text-[9px] text-teal">(ServiceNow connected)</span></span>
-                  {showItsm ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-                </button>
-                {showItsm && (
-                  <div className="space-y-4 pt-2">
-                    <div className="flex items-center justify-between py-2">
-                      <p className="text-[11px] font-medium">Create a ServiceNow change request?</p>
-                      <button onClick={() => setFormITSM(prev => !prev)} className={`w-10 h-5 rounded-full relative transition-colors ${formITSM ? 'bg-teal' : 'bg-muted'}`}>
-                        <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-card shadow transition-transform ${formITSM ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                      </button>
-                    </div>
-                    {formITSM && (
-                      <>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-[11px] font-medium mb-1">Request Type</label>
-                            <select value={formItsmType} onChange={e => setFormItsmType(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
-                              {['Normal', 'Standard', 'Emergency'].map(option => <option key={option}>{option}</option>)}
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-medium mb-1">Priority</label>
-                            <select value={formItsmPriority} onChange={e => setFormItsmPriority(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
-                              {['1-Critical', '2-High', '3-Moderate', '4-Low'].map(option => <option key={option}>{option}</option>)}
-                            </select>
-                          </div>
-                        </div>
-                        <p className="text-[9px] text-muted-foreground">Short description auto-populated from policy name. Assignment group from owner.</p>
-                      </>
-                    )}
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-2">Affected assets</p>
+                {!hasAnyCondition ? (
+                  <p className="text-[11px] text-muted-foreground">Add a condition to preview impact.</p>
+                ) : (
+                  <div>
+                    <p className="text-[11px]">
+                      <span className="font-semibold text-foreground">Affected assets: {affectedEstimate!.evaluated.toLocaleString()}</span>
+                      <span className="mx-2 text-muted-foreground">·</span>
+                      <span className="text-coral font-medium">Non-compliant (estimated): {affectedEstimate!.nonCompliant.toLocaleString()}</span>
+                    </p>
+                    <p className="text-[9px] text-muted-foreground mt-1">Estimated from current Inventory. Final verdicts are produced on the next evaluation cycle.</p>
                   </div>
                 )}
               </div>
