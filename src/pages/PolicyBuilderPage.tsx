@@ -18,6 +18,12 @@ import {
   Lock,
   X,
   Info,
+  FileBadge,
+  KeyRound,
+  Network,
+  Code2,
+  Atom,
+  MoreHorizontal,
 } from 'lucide-react';
 
 // ──────────────────────────────────────────────────────────────────────────────
