@@ -1102,9 +1102,10 @@ export default function PolicyBuilderPage() {
               </div>
 
               {/* 3. Scope */}
-              <div className="border-t border-border pt-4">
-                <div className="flex items-center gap-1.5 mb-3">
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Scope</p>
+              <div className={sectionCardCls}>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="w-1.5 h-1.5 rounded-full bg-purple shadow-[0_0_0_3px_hsl(var(--card))]" />
+                  <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-semibold">Scope</p>
                   <InfoIcon text="Optional. Narrow where this policy applies. Empty = evaluate all assets of this type. Groups are OR; attribute refinement is AND across dimensions, OR within a dimension." />
                   <AIMarker show={aiTouched.has('environments')} />
                 </div>
@@ -1117,7 +1118,7 @@ export default function PolicyBuilderPage() {
                         if (v && !scope.groupIds.includes(v)) setScope(s => ({ ...s, groupIds: [...s.groupIds, v] }));
                         e.target.value = '';
                       }}
-                      className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground"
+                      className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal/40 transition-colors"
                     >
                       <option value="">Add an Asset Group…</option>
                       {mockGroups.filter(g => !scope.groupIds.includes(g.id)).map(g => (
@@ -1130,12 +1131,12 @@ export default function PolicyBuilderPage() {
                     />
                   </div>
 
-                  <button type="button" onClick={() => setShowRefine(v => !v)} className="inline-flex items-center gap-1 text-[10px] text-teal font-medium hover:underline">
+                  <button type="button" onClick={() => setShowRefine(v => !v)} className="inline-flex items-center gap-1 text-[10px] text-teal font-medium px-2 py-1 -mx-2 rounded hover:bg-teal/10 transition-colors">
                     {showRefine ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                     Refine by attribute
                   </button>
                   {showRefine && (
-                    <div className="grid grid-cols-2 gap-4 pl-3 border-l-2 border-border">
+                    <div className="grid grid-cols-2 gap-4 pl-3 border-l-2 border-purple/40">
                       <ChipMulti label="Environment" options={ENV_OPTIONS} values={scope.environments} onChange={v => { setScope(s => ({ ...s, environments: v })); markUserEdit('environments'); }} />
                       <ChipMulti label="Cloud Provider" options={CLOUD_OPTIONS} values={scope.providers} onChange={v => setScope(s => ({ ...s, providers: v }))} />
                     </div>
@@ -1144,9 +1145,10 @@ export default function PolicyBuilderPage() {
               </div>
 
               {/* 4. Severity */}
-              <div className="border-t border-border pt-4">
-                <div className="flex items-center gap-1.5 mb-3">
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Severity</p>
+              <div className={sectionCardCls}>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber shadow-[0_0_0_3px_hsl(var(--card))]" />
+                  <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-semibold">Severity</p>
                   <InfoIcon text="Sets risk weighting for this policy and, when a ticket is created, the default ticket priority." />
                   <AIMarker show={aiTouched.has('severity')} />
                 </div>
@@ -1156,17 +1158,18 @@ export default function PolicyBuilderPage() {
                     setFormSeverity(v);
                     setTicket(t => ({ ...t, snowPriority: severityToSnowPriority(v), jiraPriority: severityToJiraPriority(v) }));
                     markUserEdit('severity');
-                  }} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground">
+                  }} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal/40 transition-colors">
                     {['Critical', 'High', 'Medium', 'Low'].map(o => <option key={o}>{o}</option>)}
                   </select>
                 </div>
               </div>
 
               {/* 5. On Violation */}
-              <div className="border-t border-border pt-4">
+              <div className={sectionCardCls}>
                 <SectionHeading
                   label="On Violation"
                   info="Matched assets are flagged Non-Compliant. Optionally notify by email and/or open a ticket. Custom policies never block or remediate."
+                  accent="coral"
                 />
 
                 {/* Notification */}
