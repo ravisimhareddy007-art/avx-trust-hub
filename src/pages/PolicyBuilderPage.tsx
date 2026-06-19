@@ -75,27 +75,34 @@ interface CustomPolicy {
   effectiveFrom?: string | null;
 }
 
-type PolicyType = 'ssh-key' | 'certificates' | 'secrets' | 'crypto-keys' | '';
+type PolicyType = 'ssh-key' | 'ssh-cert' | 'certificates' | 'secrets' | 'encryption-keys' | 'protocol-cipher' | 'cbom' | '';
 
 const getPolicyTypeMeta = (type: PolicyType) => {
   switch (type) {
-    case 'ssh-key':      return { label: 'SSH Keys', icon: Key, cls: 'bg-amber/10 text-amber border-amber/20' };
-    case 'certificates': return { label: 'Certificates', icon: Shield, cls: 'bg-teal/10 text-teal border-teal/20' };
-    case 'secrets':      return { label: 'Secrets & API Keys', icon: Lock, cls: 'bg-purple/10 text-purple border-purple/20' };
-    case 'crypto-keys':  return { label: 'Cryptographic Keys', icon: Key, cls: 'bg-teal/10 text-teal border-teal/20' };
+    case 'ssh-key':         return { label: 'SSH Keys', icon: Key, cls: 'bg-amber/10 text-amber border-amber/20' };
+    case 'ssh-cert':        return { label: 'SSH Certificates', icon: Shield, cls: 'bg-amber/10 text-amber border-amber/20' };
+    case 'certificates':    return { label: 'Certificates', icon: Shield, cls: 'bg-teal/10 text-teal border-teal/20' };
+    case 'secrets':         return { label: 'Secrets & Tokens', icon: Lock, cls: 'bg-purple/10 text-purple border-purple/20' };
+    case 'encryption-keys': return { label: 'Encryption Keys', icon: Key, cls: 'bg-teal/10 text-teal border-teal/20' };
+    case 'protocol-cipher': return { label: 'Protocol & Cipher', icon: Shield, cls: 'bg-purple/10 text-purple border-purple/20' };
+    case 'cbom':            return { label: 'Code / CBOM', icon: Lock, cls: 'bg-purple/10 text-purple border-purple/20' };
     default: return null;
   }
 };
 
 const getPolicyTypeFromAssetType = (assetType?: string): PolicyType => {
   const v = (assetType || '').toLowerCase();
-  if (v.includes('ssh key')) return 'ssh-key';
-  if (v.includes('cryptographic key')) return 'crypto-keys';
-  if (v.includes('secret') || v.includes('api key')) return 'secrets';
+  if (v.includes('ssh certificate')) return 'ssh-cert';
+  if (v.includes('ssh')) return 'ssh-key';
+  if (v.includes('encryption key')) return 'encryption-keys';
+  if (v.includes('protocol') || v.includes('cipher')) return 'protocol-cipher';
+  if (v.includes('cbom') || v.includes('code')) return 'cbom';
+  if (v.includes('secret') || v.includes('token') || v.includes('api')) return 'secrets';
   if (v.includes('certificate') || v.includes('tls')) return 'certificates';
   return '';
 };
 const getPolicyTypeBadgeFromAsset = (assetType?: string) => getPolicyTypeMeta(getPolicyTypeFromAssetType(assetType));
+
 
 const ENV_OPTIONS = ['Production', 'Staging', 'Development'];
 const CLOUD_OPTIONS = ['AWS', 'Azure', 'GCP'];
@@ -113,10 +120,13 @@ function emptyTicket(): TicketConfig {
 }
 
 function assetTypeFor(policyType: string) {
-  return policyType.includes('Cryptographic Key') ? 'Cryptographic Key'
-    : policyType.includes('Certificate') ? 'TLS Certificate'
-    : policyType.includes('SSH') ? 'SSH Key'
-    : 'API Key / Secret';
+  if (policyType.includes('SSH Certificate')) return 'SSH Certificate';
+  if (policyType.includes('Certificate')) return 'TLS Certificate';
+  if (policyType.includes('SSH')) return 'SSH Key';
+  if (policyType.includes('Encryption Keys')) return 'Encryption Key';
+  if (policyType.includes('Protocol')) return 'Protocol / Cipher';
+  if (policyType.includes('CBOM')) return 'Code / CBOM';
+  return 'Secret / Token';
 }
 
 function severityToSnowPriority(sev: string): TicketConfig['snowPriority'] {
@@ -268,7 +278,7 @@ function draftInterpretations(input: string, policyType: string): DraftResult {
   // ── Ambiguity: "weak" without specifics ─────────────────────────────────
   const weakOnly = /\bweak\b/.test(d) && !/sha|md5|rsa|dsa|bit|ecdsa|ed25519/.test(d);
   if (weakOnly) {
-    if (policyType === 'Managed Certificate Policy') {
+    if (policyType === 'Certificate Policy') {
       return {
         kind: 'ok',
         interpretations: [
@@ -307,7 +317,7 @@ function draftInterpretations(input: string, policyType: string): DraftResult {
   const assumptions: string[] = [];
   let confidence: Confidence = 'High';
 
-  if (policyType === 'Managed Certificate Policy') {
+  if (policyType === 'Certificate Policy') {
     if (/sha-?1|md5/.test(d) && hasField('sig_algo')) seeds.push([{ field: 'sig_algo', operator: 'in', value: 'SHA-1,MD5' }]);
     if (/self.?sign/.test(d) && hasField('is_self_signed')) seeds.push([{ field: 'is_self_signed', operator: 'is_true', value: '' }]);
     if (/wildcard/.test(d) && hasField('is_wildcard')) seeds.push([{ field: 'is_wildcard', operator: 'is_true', value: '' }]);
@@ -326,12 +336,12 @@ function draftInterpretations(input: string, policyType: string): DraftResult {
       seeds.push([{ field: 'days_since_rotation', operator: 'gt', value: days }]);
     if (/(quantum.?vuln|quantum.?unsafe|not quantum.?safe)/.test(d) && hasField('quantum_vuln'))
       seeds.push([{ field: 'quantum_vuln', operator: 'eq', value: 'Quantum-Vulnerable' }]);
-  } else if (policyType === 'Secrets & API Keys Policy') {
+  } else if (policyType === 'Secrets & Tokens Policy') {
     if (/(no expiry|without expiry|missing expiry)/.test(d) && hasField('has_expiry'))
       seeds.push([{ field: 'has_expiry', operator: 'is_false', value: '' }]);
     if (/rotat/.test(d) && days && hasField('days_since_rotation'))
       seeds.push([{ field: 'days_since_rotation', operator: 'gt', value: days }]);
-  } else if (policyType === 'Cryptographic Key Policy') {
+  } else if (policyType === 'Encryption Keys Policy') {
     if (/(no rotation|rotation disabled)/.test(d) && hasField('rotation_enabled'))
       seeds.push([{ field: 'rotation_enabled', operator: 'is_false', value: '' }]);
     if (/rotat/.test(d) && days && hasField('days_since_rotation'))
@@ -381,7 +391,7 @@ export default function PolicyBuilderPage() {
 
   // Create-policy modal state
   const [createOpen, setCreateOpen] = useState(false);
-  const [formPolicyType, setFormPolicyType] = useState('Managed Certificate Policy');
+  const [formPolicyType, setFormPolicyType] = useState('Certificate Policy');
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formTags, setFormTags] = useState<string[]>([]);
@@ -403,7 +413,7 @@ export default function PolicyBuilderPage() {
   const [aiResult, setAiResult] = useState<DraftResult | null>(null);
 
   const resetCreateForm = () => {
-    setFormPolicyType('Managed Certificate Policy');
+    setFormPolicyType('Certificate Policy');
     setFormName(''); setFormDescription(''); setFormTags([]); setFormSeverity('High');
     setScope(emptyScope()); setShowRefine(false);
     setNotify(emptyNotify()); setTicket(emptyTicket());
@@ -439,19 +449,19 @@ export default function PolicyBuilderPage() {
       ]));
       setGroupLogic('OR');
     } else if (template === 'zero-trust-tls') {
-      setFormPolicyType('Managed Certificate Policy'); setFormTags(['framework:Zero-Trust']);
+      setFormPolicyType('Certificate Policy'); setFormTags(['framework:Zero-Trust']);
       setFormName('Zero-Trust TLS Validity'); setFormSeverity('High');
       setConditionGroups(seedGroups([[{ field: 'validity_days', operator: 'gt', value: '90' }]]));
     } else if (template === 'dora-cert') {
-      setFormPolicyType('Managed Certificate Policy'); setFormTags(['framework:DORA']);
+      setFormPolicyType('Certificate Policy'); setFormTags(['framework:DORA']);
       setFormName('DORA Weak Algorithm'); setFormSeverity('High');
       setConditionGroups(seedGroups([[{ field: 'sig_algo', operator: 'in', value: 'SHA-1,MD5' }]]));
     } else if (template === 'secret-rotation') {
-      setFormPolicyType('Secrets & API Keys Policy');
+      setFormPolicyType('Secrets & Tokens Policy');
       setFormName('Secret Rotation Baseline'); setFormSeverity('High');
       setConditionGroups(seedGroups([[{ field: 'days_since_rotation', operator: 'gt', value: '90' }]]));
     } else if (template === 'untrusted-ca') {
-      setFormPolicyType('Managed Certificate Policy'); setFormTags(['scope:internal']);
+      setFormPolicyType('Certificate Policy'); setFormTags(['scope:internal']);
       setFormName('Untrusted Issuing CA'); setFormSeverity('High');
       setConditionGroups(seedGroups([[{ field: 'issuing_ca', operator: 'nin', value: 'DigiCert,Sectigo,internal-Root-G2' }]]));
     }
@@ -486,7 +496,7 @@ export default function PolicyBuilderPage() {
   const runPreview = () => {
     if (!hasAnyCondition) { toast.error('Add at least one condition first'); return; }
     const at = assetTypeFor(formPolicyType);
-    const base = at === 'TLS Certificate' ? 18420 : at === 'SSH Key' ? 9650 : at === 'Cryptographic Key' ? 3120 : 4780;
+    const base = at === 'TLS Certificate' ? 18420 : at === 'SSH Key' ? 9650 : at === 'SSH Certificate' ? 2150 : at === 'Encryption Key' ? 3120 : at === 'Protocol / Cipher' ? 7800 : at === 'Code / CBOM' ? 5400 : 4780;
     const scopeFactor =
       (scope.groupIds.length === 0 ? 1 : 0.25 + scope.groupIds.length * 0.18) *
       (scope.environments.length === 0 ? 1 : scope.environments.length / 3) *
@@ -502,8 +512,14 @@ export default function PolicyBuilderPage() {
       ? ['*.payments.acmecorp.com', 'vault.internal.acmecorp.com', 'api.acmecorp.com', 'mail.acmecorp.com', 'edge-lb-01.acmecorp.com']
       : at === 'SSH Key'
       ? ['prod-db-01-authorized-key', 'jumpbox-east-1', 'bastion-aws-prod', 'ci-runner-key-22', 'k8s-node-ssh-cert']
-      : at === 'Cryptographic Key'
+      : at === 'SSH Certificate'
+      ? ['host-cert-prod-db-01', 'user-cert-deploy-bot', 'host-cert-bastion-eu', 'user-cert-sre-oncall', 'host-cert-k8s-ctrl-1']
+      : at === 'Encryption Key'
       ? ['kms-payments-master', 'aws-kms-prod-rds', 'azkv-prod-signer', 'fortanix-hsm-root', 'gcp-kms-data-eu']
+      : at === 'Protocol / Cipher'
+      ? ['edge-lb-01:443', 'api-gw-eu:443', 'legacy-app-07:443', 'bastion-aws-prod:22', 'vpn-gw-1:500']
+      : at === 'Code / CBOM'
+      ? ['payments-svc/crypto/legacy.go:42', 'auth-lib/jwt.ts:118', 'data-pipe/encrypt.py:87', 'mobile-app/keystore.kt:55', 'firmware/boot/sig.c:201']
       : ['stripe-api-key', 'okta-svc-token', 'github-deploy-key', 'snowflake-readonly', 'pagerduty-int'];
     const sample = sampleNames.slice(0, Math.min(5, nonCompliant)).map((name, i) => ({
       name,
@@ -556,10 +572,14 @@ export default function PolicyBuilderPage() {
     setEditingPolicy(p.id);
     setFormName(p.name); setFormDescription(p.description);
     setFormSeverity(p.severity || 'High'); setFormTags(p.tags || []);
-    if ((p.assetType || '').includes('SSH')) setFormPolicyType('SSH Key Policy');
-    else if ((p.assetType || '').includes('Cryptographic Key')) setFormPolicyType('Cryptographic Key Policy');
-    else if ((p.assetType || '').includes('Secret') || (p.assetType || '').includes('API')) setFormPolicyType('Secrets & API Keys Policy');
-    else setFormPolicyType('Managed Certificate Policy');
+    const at = (p.assetType || '');
+    if (at.includes('SSH Certificate')) setFormPolicyType('SSH Certificate Policy');
+    else if (at.includes('SSH')) setFormPolicyType('SSH Key Policy');
+    else if (at.includes('Secret') || at.includes('Token') || at.includes('API')) setFormPolicyType('Secrets & Tokens Policy');
+    else if (at.includes('Encryption Key')) setFormPolicyType('Encryption Keys Policy');
+    else if (at.includes('Protocol') || at.includes('Cipher')) setFormPolicyType('Protocol & Cipher Policy');
+    else if (at.includes('CBOM') || at.includes('Code')) setFormPolicyType('Code / CBOM Policy');
+    else setFormPolicyType('Certificate Policy');
     setConditionGroups(p.conditionGroups?.length ? p.conditionGroups : [emptyGroup()]);
     setGroupLogic(p.groupLogic || 'AND');
     setScope(p.scope ? { ...emptyScope(), ...p.scope } : emptyScope());
