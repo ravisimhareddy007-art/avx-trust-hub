@@ -210,7 +210,7 @@ export default function PolicyBuilderPage() {
 
   const resetCreateForm = () => {
     setFormPolicyType('Managed Certificate Policy');
-    setFormName(''); setFormDescription(''); setFormTag('Default'); setFormSeverity('High');
+    setFormName(''); setFormDescription(''); setFormTag('Default'); setFormSeverity('High'); setFormSubCategory('Classical');
     setScope(emptyScope()); setShowRefine(false);
     setResponseProfileId(defaultProfileId); setMode('Monitor'); setEffectiveFrom('');
     setConditionGroups([emptyGroup()]); setGroupLogic('AND');
