@@ -783,15 +783,9 @@ export default function PolicyBuilderPage() {
                 </div>
 
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-[11px] font-medium">Description</label>
-                    <button type="button" onClick={handleAIDraft} disabled={formDescription.trim().length < 10} className="inline-flex items-center gap-1 text-[10px] text-teal font-medium disabled:opacity-40 disabled:cursor-not-allowed">
-                      <Sparkles className={aiLoading ? 'w-3 h-3 animate-spin' : 'w-3 h-3'} />
-                      Generate from description
-                    </button>
-                  </div>
+                  <label className="block text-[11px] font-medium mb-1">Description (optional)</label>
                   <textarea value={formDescription} onChange={e => setFormDescription(e.target.value)} rows={2}
-                    placeholder="e.g. flag certs using SHA-1 or issued by an unapproved CA in Production"
+                    placeholder="Short description shown on the policy card"
                     className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground" />
                 </div>
               </div>
@@ -802,6 +796,77 @@ export default function PolicyBuilderPage() {
                   label="Conditions"
                   info="Flag an asset as Non-Compliant when these conditions match. Combine rows inside a group with AND/OR, and combine groups with AND/OR."
                 />
+
+                {/* AI assist bar */}
+                <div className="mb-3 space-y-2">
+                  <div className="flex items-center gap-2 border border-teal/30 rounded-lg p-2 bg-teal/5">
+                    <Sparkles className="w-3.5 h-3.5 text-teal shrink-0" />
+                    <input
+                      value={aiInput}
+                      onChange={e => setAiInput(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); runAIDraft(); } }}
+                      placeholder='Describe the policy in plain English (e.g. "flag production RSA certificates under 2048 bits expiring in 30 days")'
+                      className="flex-1 min-w-0 bg-transparent text-[11px] outline-none text-foreground placeholder:text-muted-foreground"
+                    />
+                    <InfoIcon text="AI drafts editable conditions. You review and adjust before saving. AI never activates a policy." />
+                    <button
+                      type="button"
+                      onClick={runAIDraft}
+                      disabled={!aiInput.trim() || aiLoading}
+                      className="inline-flex items-center gap-1 text-[10px] px-2.5 py-1 rounded bg-teal text-primary-foreground font-medium disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                    >
+                      <Sparkles className={`w-3 h-3 ${aiLoading ? 'animate-spin' : ''}`} />
+                      {aiLoading ? 'Drafting…' : 'Draft conditions'}
+                    </button>
+                  </div>
+
+                  {aiResult?.kind === 'unavailable' && (
+                    <div className="text-[10px] text-amber border border-amber/30 bg-amber/5 rounded px-2 py-1.5">
+                      AI assist temporarily unavailable. You can still build conditions manually below.
+                    </div>
+                  )}
+
+                  {aiResult?.kind === 'unresolvable' && (
+                    <div className="text-[10px] border border-coral/30 bg-coral/5 rounded px-2 py-1.5 space-y-1">
+                      <div className="text-coral font-medium">{aiResult.reason}</div>
+                      <div className="text-muted-foreground">Try: {aiResult.suggestion}</div>
+                    </div>
+                  )}
+
+                  {aiResult?.kind === 'ok' && (
+                    <div className="space-y-1.5">
+                      <div className="text-[10px] text-muted-foreground">
+                        {aiResult.interpretations.length > 1
+                          ? `Your description is ambiguous. Pick an interpretation to populate the builder:`
+                          : 'Suggested interpretation — click to populate the builder:'}
+                      </div>
+                      {aiResult.interpretations.map(interp => (
+                        <button
+                          key={interp.id}
+                          type="button"
+                          onClick={() => applyInterpretation(interp)}
+                          className="w-full text-left border border-border rounded-lg px-2.5 py-2 bg-card hover:border-teal/50 hover:bg-teal/5 transition-colors"
+                        >
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <span className="text-[11px] font-medium text-foreground">{interp.label}</span>
+                            <ConfidenceChip level={interp.confidence} />
+                          </div>
+                          <div className="text-[10px] font-mono text-muted-foreground break-words">
+                            {interp.seeds
+                              .map(g => `(${g.map(r => describeCondition(formPolicyType, r)).join(' AND ')})`)
+                              .join(` ${interp.groupLogic} `)}
+                          </div>
+                          {interp.notes.length > 0 && (
+                            <div className="text-[9px] text-muted-foreground/80 mt-1 italic">
+                              {interp.notes.join(' · ')}
+                            </div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 <ConditionBuilder
                   policyType={formPolicyType}
                   groups={conditionGroups}
