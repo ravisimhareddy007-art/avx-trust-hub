@@ -394,7 +394,7 @@ export default function PolicyBuilderPage() {
     resetCreateForm();
     setEditingPolicy(p.id);
     setFormName(p.name); setFormDescription(p.description);
-    setFormSeverity(p.severity || 'High'); setFormTag(p.tag || 'Default');
+    setFormSeverity(p.severity || 'High'); setFormTag(p.tag || 'Default'); setFormSubCategory(p.subCategory || 'Classical');
     if ((p.assetType || '').includes('SSH')) setFormPolicyType('SSH Key Policy');
     else if ((p.assetType || '').includes('Cryptographic Key')) setFormPolicyType('Cryptographic Key Policy');
     else if ((p.assetType || '').includes('Secret') || (p.assetType || '').includes('API')) setFormPolicyType('Secrets & API Keys Policy');
