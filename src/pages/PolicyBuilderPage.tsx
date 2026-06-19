@@ -120,10 +120,13 @@ function emptyTicket(): TicketConfig {
 }
 
 function assetTypeFor(policyType: string) {
-  return policyType.includes('Cryptographic Key') ? 'Cryptographic Key'
-    : policyType.includes('Certificate') ? 'TLS Certificate'
-    : policyType.includes('SSH') ? 'SSH Key'
-    : 'API Key / Secret';
+  if (policyType.includes('SSH Certificate')) return 'SSH Certificate';
+  if (policyType.includes('Certificate')) return 'TLS Certificate';
+  if (policyType.includes('SSH')) return 'SSH Key';
+  if (policyType.includes('Encryption Keys')) return 'Encryption Key';
+  if (policyType.includes('Protocol')) return 'Protocol / Cipher';
+  if (policyType.includes('CBOM')) return 'Code / CBOM';
+  return 'Secret / Token';
 }
 
 function severityToSnowPriority(sev: string): TicketConfig['snowPriority'] {
