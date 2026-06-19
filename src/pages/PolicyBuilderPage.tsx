@@ -513,6 +513,7 @@ export default function PolicyBuilderPage() {
   };
 
   React.useEffect(() => { setPreview(null); }, [conditionGroups, groupLogic, scope, formPolicyType, effectiveFrom]);
+  React.useEffect(() => { setAiResult(null); }, [formPolicyType]);
 
   const handleSave = (draft: boolean) => {
     if (!formName.trim()) { toast.error('Policy name is required'); return; }
