@@ -1276,24 +1276,26 @@ export default function PolicyBuilderPage() {
               </div>
 
               {/* 6. Effective from */}
-              <div className="border-t border-border pt-4">
+              <div className={sectionCardCls}>
                 <SectionHeading
                   label="Effective from"
                   info="Optional. Empty = evaluate all existing assets immediately (may flag many legacy assets). Set a date to only evaluate assets created or changed on or after that date."
+                  accent="purple"
                 />
                 <input type="date" value={effectiveFrom} onChange={e => setEffectiveFrom(e.target.value)}
-                  className="border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground" />
+                  className="border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal/40 transition-colors" />
               </div>
 
               {/* 7. Preview */}
-              <div className="border-t border-border pt-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-1.5">
-                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Impact Preview</p>
+              <div className={sectionCardCls}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-teal shadow-[0_0_0_3px_hsl(var(--card))]" />
+                    <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-semibold">Impact Preview</p>
                     <InfoIcon text="Dry-run against Inventory. Writes nothing, sends nothing." />
                   </div>
                   <button type="button" onClick={runPreview} disabled={!hasAnyCondition}
-                    className="text-[10px] px-3 py-1.5 rounded bg-teal/10 text-teal hover:bg-teal/20 disabled:opacity-40 disabled:cursor-not-allowed">
+                    className="text-[10px] px-3 py-1.5 rounded-md bg-teal/10 text-teal hover:bg-teal/20 border border-teal/20 font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                     Run preview
                   </button>
                 </div>
@@ -1303,15 +1305,15 @@ export default function PolicyBuilderPage() {
                 {preview && (
                   <div className="space-y-2">
                     <div className="grid grid-cols-4 gap-2 text-[11px]">
-                      <div className="border border-border rounded p-2"><div className="text-muted-foreground text-[9px] uppercase tracking-wide">In Scope</div><div className="font-semibold mt-0.5">{preview.inScope.toLocaleString()}</div></div>
-                      <div className="border border-border rounded p-2"><div className="text-muted-foreground text-[9px] uppercase tracking-wide">Compliant</div><div className="font-semibold mt-0.5 text-teal">{preview.compliant.toLocaleString()}</div></div>
-                      <div className="border border-border rounded p-2"><div className="text-muted-foreground text-[9px] uppercase tracking-wide">Non-Compliant</div><div className="font-semibold mt-0.5 text-coral">{preview.nonCompliant.toLocaleString()}</div></div>
-                      <div className="border border-border rounded p-2"><div className="text-muted-foreground text-[9px] uppercase tracking-wide">Excepted</div><div className="font-semibold mt-0.5 text-muted-foreground">{preview.excepted.toLocaleString()}</div></div>
+                      <div className="border border-border rounded-lg p-2 bg-card"><div className="text-muted-foreground text-[9px] uppercase tracking-wide">In Scope</div><div className="font-semibold mt-0.5">{preview.inScope.toLocaleString()}</div></div>
+                      <div className="border border-border rounded-lg p-2 bg-card"><div className="text-muted-foreground text-[9px] uppercase tracking-wide">Compliant</div><div className="font-semibold mt-0.5 text-teal">{preview.compliant.toLocaleString()}</div></div>
+                      <div className="border border-border rounded-lg p-2 bg-card"><div className="text-muted-foreground text-[9px] uppercase tracking-wide">Non-Compliant</div><div className="font-semibold mt-0.5 text-coral">{preview.nonCompliant.toLocaleString()}</div></div>
+                      <div className="border border-border rounded-lg p-2 bg-card"><div className="text-muted-foreground text-[9px] uppercase tracking-wide">Excepted</div><div className="font-semibold mt-0.5 text-muted-foreground">{preview.excepted.toLocaleString()}</div></div>
                     </div>
                     {preview.sample.length > 0 && (
                       <div>
                         <p className="text-[10px] text-muted-foreground mb-1">Sample of assets that would be flagged:</p>
-                        <ul className="text-[10px] font-mono bg-muted/40 border border-border rounded px-2 py-1.5 space-y-0.5">
+                        <ul className="text-[10px] font-mono bg-muted/40 border border-border rounded-lg px-2 py-1.5 space-y-0.5">
                           {preview.sample.map((s, i) => (
                             <li key={i}><span className="text-foreground">{s.name}</span> <span className="text-muted-foreground">— {s.failing}</span></li>
                           ))}
@@ -1322,10 +1324,10 @@ export default function PolicyBuilderPage() {
                 )}
               </div>
 
-              <div className="sticky bottom-0 -mx-6 -mb-6 mt-6 border-t border-border bg-card px-4 py-3 flex justify-end gap-2">
-                <button onClick={closeCreateModal} className="px-4 py-2 text-xs rounded-lg hover:bg-muted">Cancel</button>
-                <button onClick={() => handleSave(true)} className="px-4 py-2 text-xs rounded-lg border border-border hover:bg-muted">Save as Draft</button>
-                <button onClick={() => handleSave(false)} className="px-4 py-2 text-xs rounded-lg bg-teal text-primary-foreground hover:bg-teal-light">
+              <div className="sticky bottom-0 -mx-6 -mb-6 mt-6 border-t border-border bg-card/95 backdrop-blur px-4 py-3 flex justify-end gap-2">
+                <button onClick={closeCreateModal} className="px-4 py-2 text-xs rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">Cancel</button>
+                <button onClick={() => handleSave(true)} className="px-4 py-2 text-xs rounded-lg border border-border bg-card text-foreground hover:bg-muted hover:border-foreground/30 transition-colors">Save as Draft</button>
+                <button onClick={() => handleSave(false)} className="px-5 py-2 text-xs font-semibold rounded-lg bg-teal text-primary-foreground hover:bg-teal-light shadow-[0_4px_14px_-4px_hsl(var(--teal)/0.5)] transition-colors">
                   Save &amp; Activate
                 </button>
               </div>
