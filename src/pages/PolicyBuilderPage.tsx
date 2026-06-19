@@ -835,7 +835,7 @@ export default function PolicyBuilderPage() {
           : status === 'Disabled' || status === 'Inactive' ? 'bg-muted text-muted-foreground border border-border'
           : 'bg-amber/20 text-amber border border-amber/30';
 
-        const cloneBuiltinToCustom = (b: typeof builtinRows[number]) => {
+        const cloneBuiltinToCustom = (b: { name: string; description: string; severity: string; policyType: string }) => {
           resetCreateForm();
           const pt = b.policyType === 'SSH Key' ? 'SSH Key Policy'
             : b.policyType === 'SSH Certificate' ? 'SSH Certificate Policy'
