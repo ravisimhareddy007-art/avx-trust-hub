@@ -33,7 +33,9 @@ export function emptyGroup(): ConditionGroup {
 }
 
 const selectCls =
-  'border border-border rounded-lg px-2.5 py-1.5 text-[11px] bg-card text-foreground focus:outline-none focus:ring-1 focus:ring-teal';
+  'border border-border rounded-lg px-2.5 py-1.5 text-[11px] bg-card text-foreground focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal/40 transition-colors';
+const emptySelectCls =
+  'border border-teal/30 rounded-lg px-2.5 py-1.5 text-[11px] bg-teal/5 text-foreground hover:border-teal/60 focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal/40 transition-colors';
 
 function LogicPill({ value, onChange }: { value: 'AND' | 'OR'; onChange: (v: 'AND' | 'OR') => void }) {
   return (
