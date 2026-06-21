@@ -60,19 +60,22 @@ function ValueInput({
   const op = OPERATORS.find(o => o.id === row.operator);
   if (!field || !op || !op.takesValue) return <div className="flex-1 min-w-0" />;
 
+  const isEmpty = !String(row.value ?? '').trim();
+  const errCls = isEmpty ? 'border-coral ring-1 ring-coral/40' : '';
+
   if (op.id === 'in' || op.id === 'nin') {
     return (
       <input
         value={row.value}
         onChange={e => onValue(e.target.value)}
         placeholder="comma,separated,values"
-        className={`${selectCls} flex-1 min-w-0`}
+        className={`${selectCls} ${errCls} flex-1 min-w-0`}
       />
     );
   }
   if (field.kind === 'enum') {
     return (
-      <select value={row.value} onChange={e => onValue(e.target.value)} className={`${selectCls} flex-1 min-w-0`}>
+      <select value={row.value} onChange={e => onValue(e.target.value)} className={`${selectCls} ${errCls} flex-1 min-w-0`}>
         <option value="">Select…</option>
         {field.options?.map(o => (
           <option key={o} value={o}>{o}</option>
@@ -87,7 +90,7 @@ function ValueInput({
         value={row.value}
         onChange={e => onValue(e.target.value)}
         placeholder={field.unit || 'value'}
-        className={`${selectCls} flex-1 min-w-0`}
+        className={`${selectCls} ${errCls} flex-1 min-w-0`}
       />
     );
   }
@@ -96,7 +99,7 @@ function ValueInput({
       value={row.value}
       onChange={e => onValue(e.target.value)}
       placeholder={field.hint || 'value'}
-      className={`${selectCls} flex-1 min-w-0`}
+      className={`${selectCls} ${errCls} flex-1 min-w-0`}
     />
   );
 }

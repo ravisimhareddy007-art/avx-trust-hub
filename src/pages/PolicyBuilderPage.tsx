@@ -717,7 +717,19 @@ export default function PolicyBuilderPage() {
 
   const handleSave = (draft: boolean) => {
     if (!formName.trim()) { toast.error('Policy name is required'); return; }
+    const nameLc = formName.trim().toLowerCase();
+    const clash =
+      userPolicies.some(p => p.id !== editingPolicy && (p.name || '').trim().toLowerCase() === nameLc)
+      || policyRules.some(p => (p.name || '').trim().toLowerCase() === nameLc);
+    if (clash) { toast.error('A policy with this name already exists'); return; }
     if (!draft && !hasAnyCondition) { toast.error('Add at least one condition before activating'); return; }
+    if (hasAnyCondition) {
+      const NO_VALUE_OPS = ['is_true', 'is_false'];
+      const invalidRow = conditionGroups
+        .flatMap(g => g.rows)
+        .find(r => r.field && r.operator && !NO_VALUE_OPS.includes(r.operator) && !String(r.value ?? '').trim());
+      if (invalidRow) { toast.error('Every condition needs a value. Complete or remove the empty condition.'); return; }
+    }
     const summary = conditionGroups
       .map(g => g.rows
         .filter(r => r.field && r.operator)
