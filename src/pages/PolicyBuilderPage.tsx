@@ -1,7 +1,7 @@
 import { FEATURES } from '@/config/features';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNav } from '@/context/NavigationContext';
-import { policyRules, customPolicies as initialCustomPolicies } from '@/data/mockData';
+import { policyRules, customPolicies as initialCustomPolicies, recomputePolicyViolations } from '@/data/mockData';
 import { POLICY_PACKS, packTypeToAssetType, type PolicyPack } from '@/data/policyPacks';
 import { mockGroups } from '@/data/inventoryMockData';
 import { SeverityBadge, Modal } from '@/components/shared/UIComponents';
@@ -588,6 +588,16 @@ export default function PolicyBuilderPage() {
   const [aiResult, setAiResult] = useState<DraftResult | null>(null);
   const [aiTouched, setAiTouched] = useState<Set<AIField>>(new Set());
   const [manuallyEdited, setManuallyEdited] = useState<Set<AIField>>(new Set());
+
+  // Re-derive policy verdicts across the estate whenever the active set changes.
+  useEffect(() => {
+    const extras = userPolicies.map(p => ({
+      id: p.id, name: p.name, assetType: p.assetType, severity: p.severity,
+      conditionGroups: p.conditionGroups as unknown as never,
+      groupLogic: p.groupLogic, scope: p.scope, status: p.status, ticket: p.ticket,
+    }));
+    recomputePolicyViolations(extras as never[], policyStates);
+  }, [userPolicies, policyStates]);
 
   const markUserEdit = (field: AIField) => {
     setManuallyEdited(prev => { const n = new Set(prev); n.add(field); return n; });

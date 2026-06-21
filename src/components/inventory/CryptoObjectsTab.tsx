@@ -2,7 +2,7 @@ import { FEATURES } from '@/config/features';
 import { algVuln } from '@/lib/risk/qes';
 import { getCryptoViolations, cryptoViolationCount } from '@/lib/violations';
 import React, { useState, useMemo, useEffect } from 'react';
-import { mockAssets, CryptoAsset } from '@/data/mockData';
+import { mockAssets, CryptoAsset, violatedPoliciesForObject } from '@/data/mockData';
 import { VIOLATION_FILTERS } from '@/lib/filters/cryptoFilters';
 import { mockITAssets } from '@/data/inventoryMockData';
 import { useInventoryRegistry } from '@/context/InventoryRegistryContext';
@@ -838,6 +838,42 @@ function DetailPanel({
               )}
             </div>
           )}
+
+          {/* Ticketing (inherited from violated policies) */}
+          {totalViolations > 0 && (() => {
+            const vps = violatedPoliciesForObject(co.id);
+            if (!vps.length) return null;
+            return (
+              <div className="px-4 py-3">
+                <SectionHeading label="Ticketing" count={vps.length} />
+                <p className="text-[10px] text-muted-foreground mb-2">Configuration inherited from the violating policy. Set on the policy, not the asset.</p>
+                <div className="space-y-1.5">
+                  {vps.map(p => {
+                    const t: any = (p as any).ticket;
+                    const enabled = t && t.enabled;
+                    return (
+                      <div key={p.id} className="flex items-start gap-2 py-1.5 border-b border-border/30 last:border-0">
+                        <Ticket className="w-3 h-3 mt-0.5 text-muted-foreground flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] text-foreground truncate">{p.name || p.id}</p>
+                          {enabled ? (
+                            t.system === 'jira' ? (
+                              <p className="text-[10px] text-muted-foreground">Jira {t.projectKey || '—'} · {t.issueType || 'Task'} · Priority {t.jiraPriority || '—'}</p>
+                            ) : (
+                              <p className="text-[10px] text-muted-foreground">ServiceNow Incident → {t.assignmentGroup || '—'} · Priority {t.snowPriority || '—'}</p>
+                            )
+                          ) : (
+                            <p className="text-[10px] text-muted-foreground italic">No ticket configured</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
 
           {/* Linked infrastructure */}
           <div className="px-4 py-3">

@@ -1,3 +1,6 @@
+import { mockGroups } from './inventoryMockData';
+import { objectViolatesPolicy, type EvalGroup } from '@/lib/policyEval';
+
 export interface SSHEndpoint {
   host: string;
   ip: string;
@@ -45,6 +48,16 @@ export interface CryptoAsset {
   tags: string[];
   sshEndpoints?: SSHEndpoint[];
   agentMeta?: AgentMeta;
+  // ── Policy-evaluation enrichment (optional; populated for some objects) ──
+  signatureAlgorithm?: 'SHA-1' | 'SHA-256' | 'SHA-384' | 'SHA-512' | 'MD5';
+  isSelfSigned?: boolean;
+  revocationStatus?: 'Valid' | 'Revoked' | 'Unknown';
+  protocolVersion?: 'TLS 1.0' | 'TLS 1.1' | 'TLS 1.2' | 'TLS 1.3';
+  cipherSuite?: string;
+  protectionLevel?: 'HSM-Protected' | 'Software-Protected';
+  // ── Asset ↔ Group membership & derived policy verdicts ──
+  groupIds?: string[];
+  violatedPolicyIds?: string[];
 }
 
 export const ESTATE_SUMMARY = {
@@ -480,3 +493,138 @@ export const users = [
   { name: 'Emily Davis', email: 'emily.davis@acmecorp.com', role: 'Read Only', lastLogin: '1 day ago', status: 'Active' },
   { name: 'Robert Kim', email: 'robert.kim@acmecorp.com', role: 'Security Admin', lastLogin: '3 days ago', status: 'Inactive' },
 ];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Policy-evaluation enrichment + group seeding + initial verdict derivation
+// (Wires the OOB NIST policies to real evaluation against the mock estate.)
+// ─────────────────────────────────────────────────────────────────────────────
+// (imports hoisted to top of file)
+
+type _Enrich = Partial<Pick<CryptoAsset,
+  'signatureAlgorithm' | 'isSelfSigned' | 'revocationStatus' |
+  'protocolVersion' | 'cipherSuite' | 'protectionLevel'>>;
+
+const _ENRICH: Record<string, _Enrich> = {
+  // Weak signature (SHA-1) — feeds OOB-001
+  'cert-013': { signatureAlgorithm: 'SHA-1', protocolVersion: 'TLS 1.0', cipherSuite: '3DES' },
+  'cert-017': { signatureAlgorithm: 'SHA-1', protocolVersion: 'TLS 1.1', cipherSuite: 'RC4' },
+  'cert-007': { signatureAlgorithm: 'SHA-1' },
+  // Self-signed — feeds OOB-003
+  'cert-010': { isSelfSigned: true, protocolVersion: 'TLS 1.1' },
+  // Revoked deployed — feeds OOB-004
+  'cert-016': { revocationStatus: 'Revoked' },
+  // Deprecated TLS / weak ciphers — feed OOB-008 / OOB-009
+  'cert-008': { protocolVersion: 'TLS 1.1', cipherSuite: '3DES' },
+  'cert-009': { protocolVersion: 'TLS 1.0', cipherSuite: 'RC4' },
+  'cert-015': { protocolVersion: 'TLS 1.1' },
+  'cert-001': { protocolVersion: 'TLS 1.2', cipherSuite: 'AES-GCM' },
+  'cert-002': { protocolVersion: 'TLS 1.3', cipherSuite: 'AES-GCM' },
+  // Encryption-key protection level
+  'enc-001': { protectionLevel: 'HSM-Protected' },
+  'enc-002': { protectionLevel: 'Software-Protected' },
+  'enc-003': { protectionLevel: 'HSM-Protected' },
+};
+
+for (const a of mockAssets) {
+  const e = _ENRICH[a.id];
+  if (e) Object.assign(a, e);
+}
+
+// ── Seed groupIds from mockGroups[].objectIds (reverse map) ──
+{
+  const map: Record<string, string[]> = {};
+  for (const g of mockGroups) {
+    for (const oid of g.objectIds) {
+      (map[oid] ||= []).push(g.id);
+    }
+  }
+  for (const a of mockAssets) {
+    a.groupIds = map[a.id] || [];
+  }
+}
+
+// ── Applicability: policy type → asset type ──
+function policyTypeMatchesAsset(polType: string, aType: CryptoAsset['type']): boolean {
+  if (!polType) return true;
+  const t = polType.toLowerCase();
+  if (t.startsWith('ssh certificate')) return aType === 'SSH Certificate';
+  if (t.startsWith('ssh')) return aType === 'SSH Key';
+  if (t.startsWith('encryption')) return aType === 'Encryption Key';
+  if (t.startsWith('protocol')) return aType === 'TLS Certificate' || aType === 'K8s Workload Cert';
+  if (t.startsWith('certificate')) return aType === 'TLS Certificate' || aType === 'K8s Workload Cert' || aType === 'Code-Signing Certificate';
+  if (t.startsWith('secret')) return aType === 'API Key / Secret' || aType === 'AI Agent Token';
+  if (t.startsWith('cbom') || t.startsWith('code')) return false;
+  return true;
+}
+
+export interface AppliedPolicy {
+  id: string;
+  name?: string;
+  type?: string;
+  assetType?: string;
+  severity?: string;
+  conditionGroups?: EvalGroup[];
+  groupLogic?: 'AND' | 'OR';
+  scope?: { groupIds?: string[] };
+  enabled?: boolean;
+  status?: string;
+  ticket?: unknown;
+  source?: string;
+}
+
+function policyAppliesTo(p: AppliedPolicy, a: CryptoAsset): boolean {
+  const polType = (p.type || p.assetType || '').toString();
+  if (!policyTypeMatchesAsset(polType, a.type)) return false;
+  const scoped = p.scope?.groupIds;
+  if (scoped && scoped.length > 0) {
+    const ids = a.groupIds || [];
+    if (!scoped.some(g => ids.includes(g))) return false;
+  }
+  return true;
+}
+
+/**
+ * Re-evaluate policyViolations + violatedPolicyIds for every asset using the
+ * provided active policies plus all enabled built-in policyRules. Called once
+ * at module load and again from PolicyBuilderPage on edits.
+ */
+export function recomputePolicyViolations(
+  extras: AppliedPolicy[] = [],
+  builtinEnabled?: Record<string, boolean>,
+): void {
+  const all: AppliedPolicy[] = [
+    ...((policyRules as unknown as AppliedPolicy[]).filter(p =>
+      builtinEnabled ? builtinEnabled[p.id] !== false : p.enabled !== false)),
+    ...extras.filter(p => (p.status ?? 'Active') === 'Active'),
+  ];
+  for (const a of mockAssets) {
+    let count = 0;
+    const ids: string[] = [];
+    for (const p of all) {
+      if (!p.conditionGroups || !p.conditionGroups.length) continue;
+      if (!policyAppliesTo(p, a)) continue;
+      if (objectViolatesPolicy(a, p.conditionGroups, p.groupLogic || 'AND')) {
+        count++;
+        ids.push(p.id);
+      }
+    }
+    a.policyViolations = count;
+    a.violatedPolicyIds = ids;
+  }
+}
+
+/** Groups this object belongs to (read from seeded asset.groupIds). */
+export function groupsForObject(objId: string) {
+  return mockGroups.filter(g => g.objectIds.includes(objId));
+}
+
+/** Resolve violated policy records for an object (built-ins + provided extras). */
+export function violatedPoliciesForObject(objId: string, extras: AppliedPolicy[] = []): AppliedPolicy[] {
+  const a = mockAssets.find(x => x.id === objId);
+  if (!a || !a.violatedPolicyIds?.length) return [];
+  const pool: AppliedPolicy[] = [...(policyRules as unknown as AppliedPolicy[]), ...extras];
+  return a.violatedPolicyIds.map(id => pool.find(p => p.id === id)).filter(Boolean) as AppliedPolicy[];
+}
+
+// Run once at module load with built-ins only.
+recomputePolicyViolations();
