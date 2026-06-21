@@ -1561,11 +1561,27 @@ export default function PolicyBuilderPage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-1.5 mb-1">
-                        <label className="block text-[11px] font-medium">Tags (optional)</label>
-                        <InfoIcon text="Free-form key:value tags for categorization, e.g. framework:PCI-DSS, owner:platform-sec. Type and press Enter." />
+                        <label className="block text-[11px] font-medium">Severity*</label>
+                        <InfoIcon text="Sets risk weighting for this policy and, when a ticket is created, the default ticket priority." />
+                        <AIMarker show={aiTouched.has('severity')} />
                       </div>
-                      <ChipInput values={formTags} onChange={setFormTags} placeholder="e.g. framework:PCI-DSS" />
+                      <select value={formSeverity} onChange={e => {
+                        const v = e.target.value;
+                        setFormSeverity(v);
+                        setTicket(t => ({ ...t, snowPriority: severityToSnowPriority(v), jiraPriority: severityToJiraPriority(v) }));
+                        markUserEdit('severity');
+                      }} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal/40 transition-colors">
+                        {['Critical', 'High', 'Medium', 'Low'].map(o => <option key={o}>{o}</option>)}
+                      </select>
                     </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <label className="block text-[11px] font-medium">Tags (optional)</label>
+                      <InfoIcon text="Free-form key:value tags for categorization, e.g. framework:PCI-DSS, owner:platform-sec. Type and press Enter." />
+                    </div>
+                    <ChipInput values={formTags} onChange={setFormTags} placeholder="e.g. framework:PCI-DSS" />
                   </div>
 
                   <div>
