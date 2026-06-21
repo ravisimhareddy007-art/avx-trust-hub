@@ -45,6 +45,16 @@ export interface CryptoAsset {
   tags: string[];
   sshEndpoints?: SSHEndpoint[];
   agentMeta?: AgentMeta;
+  // ── Policy-evaluation enrichment (optional; populated for some objects) ──
+  signatureAlgorithm?: 'SHA-1' | 'SHA-256' | 'SHA-384' | 'SHA-512' | 'MD5';
+  isSelfSigned?: boolean;
+  revocationStatus?: 'Valid' | 'Revoked' | 'Unknown';
+  protocolVersion?: 'TLS 1.0' | 'TLS 1.1' | 'TLS 1.2' | 'TLS 1.3';
+  cipherSuite?: string;
+  protectionLevel?: 'HSM-Protected' | 'Software-Protected';
+  // ── Asset ↔ Group membership & derived policy verdicts ──
+  groupIds?: string[];
+  violatedPolicyIds?: string[];
 }
 
 export const ESTATE_SUMMARY = {
