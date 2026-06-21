@@ -2,7 +2,7 @@ import { FEATURES } from '@/config/features';
 import { algVuln } from '@/lib/risk/qes';
 import { getCryptoViolations, cryptoViolationCount } from '@/lib/violations';
 import React, { useState, useMemo, useEffect } from 'react';
-import { mockAssets, CryptoAsset } from '@/data/mockData';
+import { mockAssets, CryptoAsset, violatedPoliciesForObject } from '@/data/mockData';
 import { VIOLATION_FILTERS } from '@/lib/filters/cryptoFilters';
 import { mockITAssets } from '@/data/inventoryMockData';
 import { useInventoryRegistry } from '@/context/InventoryRegistryContext';
