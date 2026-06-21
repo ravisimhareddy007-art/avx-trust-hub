@@ -996,6 +996,12 @@ export default function PolicyBuilderPage() {
                 <option value="all">Policy Type: All</option>
                 {allTypes.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
+              <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as typeof filterStatus)} className="border border-border rounded-lg px-2 py-2 text-xs bg-card">
+                <option value="all">Status: All</option>
+                <option value="Active">Active</option>
+                <option value="Draft">Draft</option>
+                <option value="Disabled">Disabled</option>
+              </select>
               {hasActiveFilter && (
                 <button onClick={resetFilters} className="text-[10px] px-2 py-1.5 rounded border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30">
                   Reset filters
