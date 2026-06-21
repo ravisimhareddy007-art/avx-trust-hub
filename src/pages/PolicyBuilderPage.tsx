@@ -1825,6 +1825,17 @@ export default function PolicyBuilderPage() {
 
               <div className="sticky bottom-0 -mx-6 -mb-6 mt-6 border-t border-border bg-card/95 backdrop-blur px-4 py-3 flex justify-end gap-2">
                 <button onClick={closeCreateModal} className="px-4 py-2 text-xs rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">Cancel</button>
+                <button
+                  onClick={() => {
+                    if (!hasAnyCondition) { toast.error('Add at least one condition before saving as template'); return; }
+                    setTemplateNameInput(formName || 'Untitled template');
+                    setTemplateDescInput(formDescription || '');
+                    setSaveTemplateOpen(true);
+                  }}
+                  className="px-4 py-2 text-xs rounded-lg border border-border bg-card text-foreground hover:bg-muted hover:border-foreground/30 transition-colors"
+                >
+                  Save as Template
+                </button>
                 <button onClick={() => handleSave(true)} className="px-4 py-2 text-xs rounded-lg border border-border bg-card text-foreground hover:bg-muted hover:border-foreground/30 transition-colors">Save as Draft</button>
                 <button onClick={() => handleSave(false)} className="px-5 py-2 text-xs font-semibold rounded-lg bg-teal text-primary-foreground hover:bg-teal-light shadow-[0_4px_14px_-4px_hsl(var(--teal)/0.5)] transition-colors">
                   Save &amp; Activate
