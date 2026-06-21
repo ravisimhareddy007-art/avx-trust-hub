@@ -717,6 +717,7 @@ export default function PolicyBuilderPage() {
 
   const handleSave = (draft: boolean) => {
     if (!formName.trim()) { toast.error('Policy name is required'); return; }
+    if (!draft && !hasAnyCondition) { toast.error('Add at least one condition before activating'); return; }
     const summary = conditionGroups
       .map(g => g.rows
         .filter(r => r.field && r.operator)
