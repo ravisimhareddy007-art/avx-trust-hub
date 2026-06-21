@@ -617,39 +617,20 @@ export default function PolicyBuilderPage() {
       rows: group.map(r => ({ id: `row-${Math.random().toString(36).slice(2, 8)}`, ...r })),
     }));
 
-  const openTemplate = (template: 'pci-ssh' | 'nist-ssh' | 'zero-trust-tls' | 'dora-cert' | 'secret-rotation' | 'untrusted-ca') => {
+  const useTemplate = (tpl: PolicyTemplate) => {
     resetCreateForm();
-    if (template === 'pci-ssh') {
-      setFormPolicyType('SSH Key Policy'); setFormTags(['framework:PCI-DSS']);
-      setFormName('PCI-DSS SSH Key Strength'); setFormSeverity('Critical');
-      setConditionGroups(seedGroups([[{ field: 'key_type', operator: 'eq', value: 'RSA' }, { field: 'key_bits', operator: 'lt', value: '2048' }]]));
-    } else if (template === 'nist-ssh') {
-      setFormPolicyType('SSH Key Policy'); setFormTags(['framework:NIST']);
-      setFormName('NIST SSH Baseline'); setFormSeverity('High');
-      setConditionGroups(seedGroups([
-        [{ field: 'key_type', operator: 'eq', value: 'DSA' }],
-        [{ field: 'mac_algo', operator: 'in', value: 'hmac-sha1,hmac-md5' }],
-      ]));
-      setGroupLogic('OR');
-    } else if (template === 'zero-trust-tls') {
-      setFormPolicyType('Certificate Policy'); setFormTags(['framework:Zero-Trust']);
-      setFormName('Zero-Trust TLS Validity'); setFormSeverity('High');
-      setConditionGroups(seedGroups([[{ field: 'validity_days', operator: 'gt', value: '90' }]]));
-    } else if (template === 'dora-cert') {
-      setFormPolicyType('Certificate Policy'); setFormTags(['framework:DORA']);
-      setFormName('DORA Weak Algorithm'); setFormSeverity('High');
-      setConditionGroups(seedGroups([[{ field: 'sig_algo', operator: 'in', value: 'SHA-1,MD5' }]]));
-    } else if (template === 'secret-rotation') {
-      setFormPolicyType('Secrets & Tokens Policy');
-      setFormName('Secret Rotation Baseline'); setFormSeverity('High');
-      setConditionGroups(seedGroups([[{ field: 'days_since_rotation', operator: 'gt', value: '90' }]]));
-    } else if (template === 'untrusted-ca') {
-      setFormPolicyType('Certificate Policy'); setFormTags(['scope:internal']);
-      setFormName('Untrusted Issuing CA'); setFormSeverity('High');
-      setConditionGroups(seedGroups([[{ field: 'issuing_ca', operator: 'nin', value: 'DigiCert,Sectigo,internal-Root-G2' }]]));
-    }
+    setFormPolicyType(tpl.type);
+    setFormName(tpl.name);
+    setFormDescription(tpl.description);
+    setFormSeverity(tpl.severity);
+    setFormTags([...tpl.tags]);
+    setConditionGroups(deepCloneGroups(tpl.conditionGroups));
+    setGroupLogic(tpl.groupLogic);
+    setScope({ ...tpl.scope, groupIds: [...tpl.scope.groupIds], environments: [...tpl.scope.environments], providers: [...tpl.scope.providers] });
     setCreateOpen(true);
+    setTemplates(prev => prev.map(t => t.id === tpl.id ? { ...t, uses: t.uses + 1 } : t));
   };
+
 
   const runAIDraft = () => {
     const text = aiInput.trim();
