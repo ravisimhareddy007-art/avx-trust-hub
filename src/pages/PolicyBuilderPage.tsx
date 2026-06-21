@@ -838,6 +838,8 @@ export default function PolicyBuilderPage() {
             policyType: (p as { type?: string }).type || 'Certificate',
             framework: (p as { framework?: string }).framework || '',
             conditionText: (p as { conditionText?: string }).conditionText || '',
+            conditionGroups: (p as { conditionGroups?: ConditionGroup[] }).conditionGroups,
+            groupLogic: ((p as { groupLogic?: 'AND' | 'OR' }).groupLogic || 'AND') as 'AND' | 'OR',
             severity: p.severity,
             status: policyStates[p.id] ? 'Enabled' : 'Disabled',
             violations: p.affectedAssets,
@@ -850,19 +852,27 @@ export default function PolicyBuilderPage() {
           policyType: p.assetType || 'Certificate',
           framework: p.clauseMapping || '',
           conditionText: p.conditionSummary || '',
+          conditionGroups: p.conditionGroups,
+          groupLogic: (p.groupLogic || 'AND') as 'AND' | 'OR',
           severity: p.severity || 'High',
           status: p.status,
           violations: p.violations,
         }));
         const allTypes = ['Certificate', 'SSH Key', 'SSH Certificate', 'Secrets & Tokens', 'Encryption Keys', 'Protocol & Cipher', 'Code / CBOM', 'Post-Quantum'];
+        const statusOf = (r: { source: string; status: string }) => {
+          if (r.source === 'Built-in') return r.status === 'Enabled' ? 'Active' : 'Disabled';
+          return r.status; // Custom: Active / Draft / Disabled
+        };
         const rows = [...builtinRows, ...customRows]
           .filter(r => filterSource === 'all' || r.source === filterSource)
           .filter(r => filterSeverity === 'all' || r.severity === filterSeverity)
           .filter(r => filterPolicyType === 'all' || r.policyType === filterPolicyType)
+          .filter(r => filterStatus === 'all' || statusOf(r) === filterStatus)
           .filter(r => {
             const s = searchTerm.toLowerCase();
             return !s || r.name.toLowerCase().includes(s) || r.description.toLowerCase().includes(s);
           });
+
 
         // ── visual helpers (severity color language + type icon/tint) ──
         const sevAccent: Record<string, { border: string; chip: string; text: string }> = {
