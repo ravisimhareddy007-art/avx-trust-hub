@@ -897,7 +897,7 @@ export default function PolicyBuilderPage() {
           : status === 'Disabled' || status === 'Inactive' ? 'bg-muted text-muted-foreground border border-border'
           : 'bg-amber/20 text-amber border border-amber/30';
 
-        const cloneBuiltinToCustom = (b: { name: string; description: string; severity: string; policyType: string }) => {
+        const cloneBuiltinToCustom = (b: { name: string; description: string; severity: string; policyType: string; conditionGroups?: ConditionGroup[]; groupLogic?: 'AND' | 'OR' }) => {
           resetCreateForm();
           const pt = b.policyType === 'SSH Key' ? 'SSH Key Policy'
             : b.policyType === 'SSH Certificate' ? 'SSH Certificate Policy'
@@ -910,13 +910,68 @@ export default function PolicyBuilderPage() {
           setFormName(`${b.name} (Custom)`);
           setFormDescription(b.description);
           setFormSeverity(b.severity);
+          setConditionGroups(b.conditionGroups?.length ? deepCloneGroups(b.conditionGroups) : [emptyGroup()]);
+          setGroupLogic(b.groupLogic || 'AND');
           setCreateOpen(true);
         };
 
-        const resetFilters = () => {
-          setSearchTerm(''); setFilterSource('all'); setFilterSeverity('all'); setFilterPolicyType('all');
+        const cloneCustom = (src: CustomPolicy) => {
+          resetCreateForm();
+          const at = (src.assetType || '');
+          const pt = at.includes('SSH Certificate') ? 'SSH Certificate Policy'
+            : at.includes('SSH') ? 'SSH Key Policy'
+            : at.includes('Encryption Key') ? 'Encryption Keys Policy'
+            : at.includes('Protocol') || at.includes('Cipher') ? 'Protocol & Cipher Policy'
+            : at.includes('CBOM') || at.includes('Code') ? 'Code / CBOM Policy'
+            : at.includes('Secret') || at.includes('Token') || at.includes('API') ? 'Secrets & Tokens Policy'
+            : 'Certificate Policy';
+          setFormPolicyType(pt);
+          setFormName(`${src.name} (Copy)`);
+          setFormDescription(src.description);
+          setFormSeverity(src.severity || 'High');
+          setFormTags([...(src.tags || [])]);
+          setConditionGroups(src.conditionGroups?.length ? deepCloneGroups(src.conditionGroups) : [emptyGroup()]);
+          setGroupLogic(src.groupLogic || 'AND');
+          setScope(src.scope ? { groupIds: [...src.scope.groupIds], environments: [...src.scope.environments], providers: [...src.scope.providers] } : emptyScope());
+          setNotify(src.notify ? { ...src.notify } : emptyNotify());
+          setTicket(src.ticket ? { ...src.ticket } : emptyTicket());
+          setShowNotify(!!(src.notify && src.notify.email));
+          setShowTicket(!!(src.ticket && src.ticket.enabled));
+          setCreateOpen(true);
         };
-        const hasActiveFilter = !!searchTerm || filterSource !== 'all' || filterSeverity !== 'all' || filterPolicyType !== 'all';
+
+        const saveCustomAsTemplate = (src: CustomPolicy) => {
+          const at = (src.assetType || 'Certificate');
+          const pt = at.includes('SSH Certificate') ? 'SSH Certificate Policy'
+            : at.includes('SSH') ? 'SSH Key Policy'
+            : at.includes('Encryption Key') ? 'Encryption Keys Policy'
+            : at.includes('Protocol') || at.includes('Cipher') ? 'Protocol & Cipher Policy'
+            : at.includes('CBOM') || at.includes('Code') ? 'Code / CBOM Policy'
+            : at.includes('Secret') || at.includes('Token') || at.includes('API') ? 'Secrets & Tokens Policy'
+            : 'Certificate Policy';
+          const tpl: PolicyTemplate = {
+            id: `tpl-${Date.now()}`,
+            name: src.name,
+            description: src.description || '',
+            type: pt,
+            assetType: at,
+            severity: src.severity || 'High',
+            conditionGroups: src.conditionGroups?.length ? deepCloneGroups(src.conditionGroups) : [emptyGroup()],
+            groupLogic: src.groupLogic || 'AND',
+            scope: src.scope ? { groupIds: [...src.scope.groupIds], environments: [...src.scope.environments], providers: [...src.scope.providers] } : emptyScope(),
+            tags: [...(src.tags || [])],
+            author: 'you',
+            uses: 0,
+          };
+          setTemplates(prev => [tpl, ...prev]);
+          toast.success(`"${src.name}" saved as template`);
+        };
+
+        const resetFilters = () => {
+          setSearchTerm(''); setFilterSource('all'); setFilterSeverity('all'); setFilterPolicyType('all'); setFilterStatus('all');
+        };
+        const hasActiveFilter = !!searchTerm || filterSource !== 'all' || filterSeverity !== 'all' || filterPolicyType !== 'all' || filterStatus !== 'all';
+
 
         return (
           <div className="space-y-3">
