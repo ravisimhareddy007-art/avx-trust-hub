@@ -799,6 +799,7 @@ export default function PolicyBuilderPage() {
           description: p.description,
           policyType: p.assetType || 'Certificate',
           framework: '',
+          conditionText: '',
           severity: p.severity || 'High',
           status: p.status,
           violations: p.violations,
