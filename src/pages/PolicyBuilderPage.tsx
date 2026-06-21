@@ -787,6 +787,7 @@ export default function PolicyBuilderPage() {
             description: p.description,
             policyType: (p as { policyType?: string }).policyType || 'Certificate',
             framework: (p as { framework?: string }).framework || '',
+            conditionText: (p as { conditionText?: string }).conditionText || '',
             severity: p.severity,
             status: policyStates[p.id] ? 'Enabled' : 'Disabled',
             violations: p.affectedAssets,
