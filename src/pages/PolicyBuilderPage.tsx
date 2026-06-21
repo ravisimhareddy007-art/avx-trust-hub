@@ -1440,21 +1440,19 @@ export default function PolicyBuilderPage() {
                 </tr>
               </thead>
               <tbody>
-                {([
-                  { key: 'pci-ssh' as const, name: 'PCI-DSS SSH Key Strength', type: 'SSH Key', desc: 'RSA keys under 2048 bits flagged as non-compliant per PCI-DSS.', author: 'platform-sec', uses: 42 },
-                  { key: 'nist-ssh' as const, name: 'NIST SSH Baseline', type: 'SSH Key', desc: 'Disallows DSA keys and legacy MAC algorithms (hmac-sha1, hmac-md5).', author: 'crypto-team', uses: 28 },
-                  { key: 'zero-trust-tls' as const, name: 'Zero-Trust TLS Validity', type: 'Certificate', desc: 'Production certificates must have validity ≤ 90 days.', author: 'identity-eng', uses: 67 },
-                  { key: 'secret-rotation' as const, name: 'Secret Rotation Baseline', type: 'Secrets & Tokens', desc: 'Flags any secret not rotated within the last 90 days.', author: 'platform-sec', uses: 31 },
-                  { key: 'untrusted-ca' as const, name: 'Untrusted Issuing CA', type: 'Certificate', desc: 'Flags certificates issued by CAs outside the approved issuer list.', author: 'crypto-team', uses: 19 },
-                ]).map(t => (
-                  <tr key={t.key} className="border-b border-border hover:bg-muted/30">
+                {templates.length === 0 && (
+                  <tr><td colSpan={6} className="py-10 px-3 text-center text-muted-foreground text-xs">No templates yet. Use "Save as Template" from Create Policy to add one.</td></tr>
+                )}
+                {templates.map(t => (
+                  <tr key={t.id} className="border-b border-border hover:bg-muted/30">
                     <td className="py-2.5 px-3 font-semibold">{t.name}</td>
-                    <td className="py-2.5 px-3 text-muted-foreground">{t.type}</td>
-                    <td className="py-2.5 px-3 text-muted-foreground max-w-md">{t.desc}</td>
+                    <td className="py-2.5 px-3 text-muted-foreground">{t.assetType}</td>
+                    <td className="py-2.5 px-3 text-muted-foreground max-w-md">{t.description}</td>
                     <td className="py-2.5 px-3 text-muted-foreground">{t.author}</td>
                     <td className="py-2.5 px-3 text-muted-foreground">{t.uses}</td>
-                    <td className="py-2.5 px-3">
-                      <button onClick={() => openTemplate(t.key)} className="text-[10px] px-2 py-1 rounded bg-teal/10 text-teal hover:bg-teal/20">Use template</button>
+                    <td className="py-2.5 px-3 flex gap-1">
+                      <button onClick={() => useTemplate(t)} className="text-[10px] px-2 py-1 rounded bg-teal/10 text-teal hover:bg-teal/20">Use template</button>
+                      <button onClick={() => { setTemplates(prev => prev.filter(x => x.id !== t.id)); toast.success('Template deleted'); }} className="text-[10px] px-2 py-1 rounded text-muted-foreground hover:text-coral hover:bg-coral/10">Delete</button>
                     </td>
                   </tr>
                 ))}
