@@ -1843,6 +1843,48 @@ export default function PolicyBuilderPage() {
               </div>
             </div>
           </Modal>
+      <Modal open={saveTemplateOpen} onClose={() => setSaveTemplateOpen(false)} title="Save as Template">
+        <div className="w-full max-w-md space-y-3 text-foreground">
+          <p className="text-[11px] text-muted-foreground">Saves the current policy's structure (type, conditions, severity, scope, tags) as a reusable template. It does not create a policy and does not evaluate anything.</p>
+          <div>
+            <label className="block text-[11px] font-medium mb-1">Template name</label>
+            <input value={templateNameInput} onChange={e => setTemplateNameInput(e.target.value)} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal/40" />
+          </div>
+          <div>
+            <label className="block text-[11px] font-medium mb-1">Description (optional)</label>
+            <textarea value={templateDescInput} onChange={e => setTemplateDescInput(e.target.value)} rows={2} className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal/40" />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <button onClick={() => setSaveTemplateOpen(false)} className="px-4 py-2 text-xs rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted">Cancel</button>
+            <button
+              onClick={() => {
+                const name = templateNameInput.trim() || 'Untitled template';
+                const tpl: PolicyTemplate = {
+                  id: `tpl-${Date.now()}`,
+                  name,
+                  description: templateDescInput.trim(),
+                  type: formPolicyType,
+                  assetType: assetTypeFor(formPolicyType),
+                  severity: formSeverity,
+                  conditionGroups: deepCloneGroups(conditionGroups),
+                  groupLogic,
+                  scope: { groupIds: [...scope.groupIds], environments: [...scope.environments], providers: [...scope.providers] },
+                  tags: [...formTags],
+                  author: 'you',
+                  uses: 0,
+                };
+                setTemplates(prev => [tpl, ...prev]);
+                setSaveTemplateOpen(false);
+                toast.success('Saved as template');
+              }}
+              className="px-5 py-2 text-xs font-semibold rounded-lg bg-teal text-primary-foreground hover:bg-teal-light"
+            >
+              Save template
+            </button>
+          </div>
+        </div>
+      </Modal>
+
       <Modal open={!!configModal} onClose={() => setConfigModal(null)} title="Configure Policy">
         <div className="space-y-4">
           <div>
