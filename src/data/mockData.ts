@@ -305,27 +305,26 @@ export const discoveryRuns = [
   { id: 'DR-2026-0406-001', profile: 'Endpoint Agent Collection', scanType: 'Endpoint Agent Scan', target: 'Agent Group: production-linux (847 hosts)', startedBy: 'Scheduled', startTime: '2026-04-06 03:00:00', duration: '35 min', sources: 1, assetsDiscovered: 2890, newAssets: 21, changedAssets: 78, errors: 5, status: 'Complete' },
 ];
 
-// Built-in OOB policy library. MVP scope: ONLY genuine NIST mandates that are
-// evaluable against attributes we actually discover. Convention-based rules
-// (rotation cadence, secret expiry, forward secrecy, PQC migration) are left
-// to customer-authored custom policies and intentionally excluded here.
 export const policyRules = [
-  // CERTIFICATES
-  { id: 'pol-cert-001', name: 'Weak Signature Algorithm', description: 'Certificates signed with SHA-1 or MD5 are disallowed.', conditionText: 'Signature Algorithm is in [SHA-1, MD5].', severity: 'Critical', policyType: 'Certificate', framework: 'NIST SP 800-131A Rev2 · FIPS 186-5', affectedAssets: 412, enabled: true, lastTriggered: '1 hour ago' },
-  { id: 'pol-cert-002', name: 'Weak RSA Key Length', description: 'Certificates using RSA keys shorter than 2048 bits are disallowed.', conditionText: 'Key Type = RSA AND Key Length Bits < 2048.', severity: 'Critical', policyType: 'Certificate', framework: 'NIST SP 800-131A Rev2', affectedAssets: 287, enabled: true, lastTriggered: '2 hours ago' },
-  { id: 'pol-cert-003', name: 'Self-Signed Server Certificate', description: 'TLS servers must use CA-issued certificates, not self-signed.', conditionText: 'Is Self-Signed = true.', severity: 'High', policyType: 'Certificate', framework: 'NIST SP 800-52 Rev2', affectedAssets: 73, enabled: true, lastTriggered: '6 hours ago' },
-  { id: 'pol-cert-004', name: 'Revoked Certificate Still Deployed', description: 'Certificate revocation status indicates the certificate has been revoked.', conditionText: 'Revocation Status = Revoked.', severity: 'Critical', policyType: 'Certificate', framework: 'NIST SP 800-52 Rev2', affectedAssets: 6, enabled: true, lastTriggered: '40 min ago' },
 
-  // SSH KEYS
-  { id: 'pol-ssh-001', name: 'Disallowed SSH Key Algorithm (DSA)', description: 'SSH host or user key uses DSA, whose transition is complete and is disallowed.', conditionText: 'Key Type = DSA.', severity: 'Critical', policyType: 'SSH Key', framework: 'NIST SP 800-131A Rev2 · FIPS 186-5', affectedAssets: 47, enabled: true, lastTriggered: '5 hours ago' },
-  { id: 'pol-ssh-002', name: 'Weak SSH RSA Key Length', description: 'SSH RSA key shorter than 2048 bits is disallowed.', conditionText: 'Key Type = RSA AND Key Length Bits < 2048.', severity: 'Critical', policyType: 'SSH Key', framework: 'NIST SP 800-131A Rev2', affectedAssets: 119, enabled: true, lastTriggered: '3 hours ago' },
+  { id: 'oob-001', name: 'Weak Signature Algorithm', type: 'Certificate', description: 'Certificate uses SHA-1 or MD5 for its signature. Disallowed by NIST SP 800-131A Rev2 and FIPS 186-5.', severity: 'Critical', affectedAssets: 47, enabled: true, lastTriggered: '2 hours ago', framework: 'NIST SP 800-131A Rev2 | FIPS 186-5', source: 'Built-in', readOnly: true },
 
-  // ENCRYPTION KEYS (KMS / HSM)
-  { id: 'pol-key-001', name: 'Weak Symmetric Key Length', description: 'AES key shorter than 128 bits does not meet the minimum 112-bit security strength floor.', conditionText: 'Key Algorithm = AES AND Key Length Bits < 128.', severity: 'Critical', policyType: 'Encryption Keys', framework: 'NIST SP 800-57 Pt1 Rev5', affectedAssets: 8, enabled: true, lastTriggered: '12 hours ago' },
+  { id: 'oob-002', name: 'Weak RSA Key Length', type: 'Certificate', description: 'Certificate uses an RSA key smaller than 2048 bits. RSA below 2048 is disallowed by NIST SP 800-131A Rev2.', severity: 'Critical', affectedAssets: 31, enabled: true, lastTriggered: '5 hours ago', framework: 'NIST SP 800-131A Rev2', source: 'Built-in', readOnly: true },
 
-  // PROTOCOL & CIPHER
-  { id: 'pol-prot-001', name: 'Deprecated TLS Version Accepted', description: 'Endpoint accepts TLS 1.0 or TLS 1.1; TLS 1.2 is the minimum compliant version.', conditionText: 'Protocol Version Accepted is in [TLS 1.0, TLS 1.1].', severity: 'Critical', policyType: 'Protocol & Cipher', framework: 'NIST SP 800-52 Rev2', affectedAssets: 56, enabled: true, lastTriggered: '30 min ago' },
-  { id: 'pol-prot-002', name: 'Weak or Prohibited Cipher Suite', description: 'Endpoint accepts RC4, 3DES, NULL, or export-grade ciphers.', conditionText: 'Cipher Suite is in [RC4, 3DES, NULL, Export-grade].', severity: 'Critical', policyType: 'Protocol & Cipher', framework: 'NIST SP 800-52 Rev2 · SP 800-131A Rev2', affectedAssets: 41, enabled: true, lastTriggered: '2 hours ago' },
+  { id: 'oob-003', name: 'Self-Signed Server Certificate', type: 'Certificate', description: 'TLS server certificate is self-signed. NIST SP 800-52 Rev2 requires server certificates to be issued by a CA.', severity: 'High', affectedAssets: 12, enabled: true, lastTriggered: '1 day ago', framework: 'NIST SP 800-52 Rev2', source: 'Built-in', readOnly: true },
+
+  { id: 'oob-004', name: 'Revoked Certificate Still Deployed', type: 'Certificate', description: 'A revoked certificate is still deployed on an endpoint. Fails certificate path validation under NIST SP 800-52 Rev2.', severity: 'Critical', affectedAssets: 4, enabled: true, lastTriggered: '8 hours ago', framework: 'NIST SP 800-52 Rev2', source: 'Built-in', readOnly: true },
+
+  { id: 'oob-005', name: 'Disallowed SSH Key Algorithm (DSA)', type: 'SSH Key', description: 'SSH host or user key uses DSA. The DSA transition is complete and DSA is disallowed by NIST SP 800-131A Rev2.', severity: 'Critical', affectedAssets: 18, enabled: true, lastTriggered: '3 hours ago', framework: 'NIST SP 800-131A Rev2 | FIPS 186-5', source: 'Built-in', readOnly: true },
+
+  { id: 'oob-006', name: 'Weak SSH RSA Key Length', type: 'SSH Key', description: 'SSH key uses an RSA key smaller than 2048 bits. Disallowed by NIST SP 800-131A Rev2.', severity: 'Critical', affectedAssets: 26, enabled: true, lastTriggered: '6 hours ago', framework: 'NIST SP 800-131A Rev2', source: 'Built-in', readOnly: true },
+
+  { id: 'oob-007', name: 'Weak Symmetric Key Length', type: 'Encryption Keys', description: 'Symmetric (AES) key is below 128 bits, under the NIST SP 800-57 Pt1 Rev5 minimum 112-bit security strength.', severity: 'Critical', affectedAssets: 9, enabled: true, lastTriggered: '12 hours ago', framework: 'NIST SP 800-57 Pt1 Rev5', source: 'Built-in', readOnly: true },
+
+  { id: 'oob-008', name: 'Deprecated TLS Version Accepted', type: 'Protocol & Cipher', description: 'Endpoint accepts TLS 1.0 or TLS 1.1. NIST SP 800-52 Rev2 sets TLS 1.2 as the minimum; accepting 1.0/1.1 is non-compliant.', severity: 'Critical', affectedAssets: 63, enabled: true, lastTriggered: '1 hour ago', framework: 'NIST SP 800-52 Rev2', source: 'Built-in', readOnly: true },
+
+  { id: 'oob-009', name: 'Weak or Prohibited Cipher Suite', type: 'Protocol & Cipher', description: 'Endpoint accepts RC4, 3DES, NULL, or export-grade ciphers. Prohibited by NIST SP 800-52 Rev2; 3DES disallowed by SP 800-131A Rev2.', severity: 'Critical', affectedAssets: 38, enabled: true, lastTriggered: '4 hours ago', framework: 'NIST SP 800-52 Rev2 | SP 800-131A Rev2', source: 'Built-in', readOnly: true },
+
 ];
 
 export const customPolicies = [
