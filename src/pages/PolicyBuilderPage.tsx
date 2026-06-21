@@ -2,6 +2,7 @@ import { FEATURES } from '@/config/features';
 import React, { useState } from 'react';
 import { useNav } from '@/context/NavigationContext';
 import { policyRules, customPolicies as initialCustomPolicies } from '@/data/mockData';
+import { POLICY_PACKS, packTypeToAssetType, type PolicyPack, type PackPolicy } from '@/data/policyPacks';
 import { mockGroups } from '@/data/inventoryMockData';
 import { SeverityBadge, Modal } from '@/components/shared/UIComponents';
 import ConditionBuilder, { ConditionGroup, emptyGroup } from '@/components/policies/ConditionBuilder';
@@ -24,6 +25,10 @@ import {
   Code2,
   Atom,
   MoreHorizontal,
+  ChevronLeft,
+  CheckCircle2,
+  Package,
+  Link2,
 } from 'lucide-react';
 
 // ──────────────────────────────────────────────────────────────────────────────
