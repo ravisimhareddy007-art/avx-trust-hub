@@ -781,9 +781,10 @@ export default function PolicyBuilderPage() {
       <div className="inline-flex rounded-lg border border-border overflow-hidden bg-card">
         {([
           { id: 'policies', label: 'Policies' },
+          { id: 'packs', label: 'Policy Packs' },
           { id: 'templates', label: 'Templates' },
         ] as const).map(s => (
-          <button key={s.id} onClick={() => setTab(s.id)}
+          <button key={s.id} onClick={() => { setTab(s.id); setOpenPackId(null); }}
             className={`px-4 py-1.5 text-xs font-medium transition-colors ${tab === s.id ? 'bg-teal text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
             {s.label}
           </button>
