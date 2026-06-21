@@ -83,6 +83,12 @@ interface CustomPolicy {
   notify?: NotifyConfig;
   ticket?: TicketConfig;
   effectiveFrom?: string | null;
+  // Pack provenance (when a policy was created via a Policy Pack import)
+  source?: string;          // e.g. "Pack: PCI DSS v4.0"; falls back to 'Custom'
+  packId?: string;
+  advisory?: boolean;
+  clauseMapping?: string;
+  reusesBuiltin?: string;
 }
 
 type PolicyType = 'ssh-key' | 'ssh-cert' | 'certificates' | 'secrets' | 'encryption-keys' | 'protocol-cipher' | 'cbom' | '';
