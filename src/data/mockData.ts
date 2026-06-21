@@ -588,9 +588,13 @@ function policyAppliesTo(p: AppliedPolicy, a: CryptoAsset): boolean {
  * provided active policies plus all enabled built-in policyRules. Called once
  * at module load and again from PolicyBuilderPage on edits.
  */
-export function recomputePolicyViolations(extras: AppliedPolicy[] = []): void {
+export function recomputePolicyViolations(
+  extras: AppliedPolicy[] = [],
+  builtinEnabled?: Record<string, boolean>,
+): void {
   const all: AppliedPolicy[] = [
-    ...policyRules.filter(p => p.enabled !== false) as unknown as AppliedPolicy[],
+    ...((policyRules as unknown as AppliedPolicy[]).filter(p =>
+      builtinEnabled ? builtinEnabled[p.id] !== false : p.enabled !== false)),
     ...extras.filter(p => (p.status ?? 'Active') === 'Active'),
   ];
   for (const a of mockAssets) {
