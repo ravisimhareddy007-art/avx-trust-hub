@@ -305,26 +305,58 @@ export const discoveryRuns = [
   { id: 'DR-2026-0406-001', profile: 'Endpoint Agent Collection', scanType: 'Endpoint Agent Scan', target: 'Agent Group: production-linux (847 hosts)', startedBy: 'Scheduled', startTime: '2026-04-06 03:00:00', duration: '35 min', sources: 1, assetsDiscovered: 2890, newAssets: 21, changedAssets: 78, errors: 5, status: 'Complete' },
 ];
 
+// Helpers to keep OOB condition shapes consistent with ConditionBuilder.
+const _g = (id: string, innerLogic: 'AND' | 'OR', rows: { field: string; operator: string; value: string }[]) => ({
+  id,
+  innerLogic,
+  rows: rows.map((r, i) => ({ id: `${id}-r${i}`, ...r })),
+});
+
 export const policyRules = [
+  { id: 'oob-001', name: 'Weak Signature Algorithm', type: 'Certificate', description: 'Certificate uses SHA-1 or MD5 for its signature. Disallowed by NIST SP 800-131A Rev2 and FIPS 186-5.', severity: 'Critical', affectedAssets: 47, enabled: true, lastTriggered: '2 hours ago', framework: 'NIST SP 800-131A Rev2 | FIPS 186-5', source: 'Built-in', readOnly: true,
+    conditionText: 'Signature Algorithm is in [SHA-1, MD5]',
+    conditionGroups: [_g('oob-001-g1', 'AND', [{ field: 'sig_algo', operator: 'in', value: 'SHA-1,MD5' }])],
+    groupLogic: 'AND' as const },
 
-  { id: 'oob-001', name: 'Weak Signature Algorithm', type: 'Certificate', description: 'Certificate uses SHA-1 or MD5 for its signature. Disallowed by NIST SP 800-131A Rev2 and FIPS 186-5.', severity: 'Critical', affectedAssets: 47, enabled: true, lastTriggered: '2 hours ago', framework: 'NIST SP 800-131A Rev2 | FIPS 186-5', source: 'Built-in', readOnly: true },
+  { id: 'oob-002', name: 'Weak RSA Key Length', type: 'Certificate', description: 'Certificate uses an RSA key smaller than 2048 bits. RSA below 2048 is disallowed by NIST SP 800-131A Rev2.', severity: 'Critical', affectedAssets: 31, enabled: true, lastTriggered: '5 hours ago', framework: 'NIST SP 800-131A Rev2', source: 'Built-in', readOnly: true,
+    conditionText: 'Key Type equals RSA AND Key Length Bits less than 2048',
+    conditionGroups: [_g('oob-002-g1', 'AND', [{ field: 'key_type', operator: 'eq', value: 'RSA' }, { field: 'key_bits', operator: 'lt', value: '2048' }])],
+    groupLogic: 'AND' as const },
 
-  { id: 'oob-002', name: 'Weak RSA Key Length', type: 'Certificate', description: 'Certificate uses an RSA key smaller than 2048 bits. RSA below 2048 is disallowed by NIST SP 800-131A Rev2.', severity: 'Critical', affectedAssets: 31, enabled: true, lastTriggered: '5 hours ago', framework: 'NIST SP 800-131A Rev2', source: 'Built-in', readOnly: true },
+  { id: 'oob-003', name: 'Self-Signed Server Certificate', type: 'Certificate', description: 'TLS server certificate is self-signed. NIST SP 800-52 Rev2 requires server certificates to be issued by a CA.', severity: 'High', affectedAssets: 12, enabled: true, lastTriggered: '1 day ago', framework: 'NIST SP 800-52 Rev2', source: 'Built-in', readOnly: true,
+    conditionText: 'Is Self-Signed is true',
+    conditionGroups: [_g('oob-003-g1', 'AND', [{ field: 'is_self_signed', operator: 'is_true', value: '' }])],
+    groupLogic: 'AND' as const },
 
-  { id: 'oob-003', name: 'Self-Signed Server Certificate', type: 'Certificate', description: 'TLS server certificate is self-signed. NIST SP 800-52 Rev2 requires server certificates to be issued by a CA.', severity: 'High', affectedAssets: 12, enabled: true, lastTriggered: '1 day ago', framework: 'NIST SP 800-52 Rev2', source: 'Built-in', readOnly: true },
+  { id: 'oob-004', name: 'Revoked Certificate Still Deployed', type: 'Certificate', description: 'A revoked certificate is still deployed on an endpoint. Fails certificate path validation under NIST SP 800-52 Rev2.', severity: 'Critical', affectedAssets: 4, enabled: true, lastTriggered: '8 hours ago', framework: 'NIST SP 800-52 Rev2', source: 'Built-in', readOnly: true,
+    conditionText: 'Revocation Status equals Revoked',
+    conditionGroups: [_g('oob-004-g1', 'AND', [{ field: 'revocation_status', operator: 'eq', value: 'Revoked' }])],
+    groupLogic: 'AND' as const },
 
-  { id: 'oob-004', name: 'Revoked Certificate Still Deployed', type: 'Certificate', description: 'A revoked certificate is still deployed on an endpoint. Fails certificate path validation under NIST SP 800-52 Rev2.', severity: 'Critical', affectedAssets: 4, enabled: true, lastTriggered: '8 hours ago', framework: 'NIST SP 800-52 Rev2', source: 'Built-in', readOnly: true },
+  { id: 'oob-005', name: 'Disallowed SSH Key Algorithm (DSA)', type: 'SSH Key', description: 'SSH host or user key uses DSA. The DSA transition is complete and DSA is disallowed by NIST SP 800-131A Rev2.', severity: 'Critical', affectedAssets: 18, enabled: true, lastTriggered: '3 hours ago', framework: 'NIST SP 800-131A Rev2 | FIPS 186-5', source: 'Built-in', readOnly: true,
+    conditionText: 'Key Type equals DSA',
+    conditionGroups: [_g('oob-005-g1', 'AND', [{ field: 'key_type', operator: 'eq', value: 'DSA' }])],
+    groupLogic: 'AND' as const },
 
-  { id: 'oob-005', name: 'Disallowed SSH Key Algorithm (DSA)', type: 'SSH Key', description: 'SSH host or user key uses DSA. The DSA transition is complete and DSA is disallowed by NIST SP 800-131A Rev2.', severity: 'Critical', affectedAssets: 18, enabled: true, lastTriggered: '3 hours ago', framework: 'NIST SP 800-131A Rev2 | FIPS 186-5', source: 'Built-in', readOnly: true },
+  { id: 'oob-006', name: 'Weak SSH RSA Key Length', type: 'SSH Key', description: 'SSH key uses an RSA key smaller than 2048 bits. Disallowed by NIST SP 800-131A Rev2.', severity: 'Critical', affectedAssets: 26, enabled: true, lastTriggered: '6 hours ago', framework: 'NIST SP 800-131A Rev2', source: 'Built-in', readOnly: true,
+    conditionText: 'Key Type equals RSA AND Key Length Bits less than 2048',
+    conditionGroups: [_g('oob-006-g1', 'AND', [{ field: 'key_type', operator: 'eq', value: 'RSA' }, { field: 'key_bits', operator: 'lt', value: '2048' }])],
+    groupLogic: 'AND' as const },
 
-  { id: 'oob-006', name: 'Weak SSH RSA Key Length', type: 'SSH Key', description: 'SSH key uses an RSA key smaller than 2048 bits. Disallowed by NIST SP 800-131A Rev2.', severity: 'Critical', affectedAssets: 26, enabled: true, lastTriggered: '6 hours ago', framework: 'NIST SP 800-131A Rev2', source: 'Built-in', readOnly: true },
+  { id: 'oob-007', name: 'Weak Symmetric Key Length', type: 'Encryption Keys', description: 'Symmetric (AES) key is below 128 bits, under the NIST SP 800-57 Pt1 Rev5 minimum 112-bit security strength.', severity: 'Critical', affectedAssets: 9, enabled: true, lastTriggered: '12 hours ago', framework: 'NIST SP 800-57 Pt1 Rev5', source: 'Built-in', readOnly: true,
+    conditionText: 'Key Algorithm equals AES AND Key Length Bits less than 128',
+    conditionGroups: [_g('oob-007-g1', 'AND', [{ field: 'key_algorithm', operator: 'eq', value: 'AES' }, { field: 'key_bits', operator: 'lt', value: '128' }])],
+    groupLogic: 'AND' as const },
 
-  { id: 'oob-007', name: 'Weak Symmetric Key Length', type: 'Encryption Keys', description: 'Symmetric (AES) key is below 128 bits, under the NIST SP 800-57 Pt1 Rev5 minimum 112-bit security strength.', severity: 'Critical', affectedAssets: 9, enabled: true, lastTriggered: '12 hours ago', framework: 'NIST SP 800-57 Pt1 Rev5', source: 'Built-in', readOnly: true },
+  { id: 'oob-008', name: 'Deprecated TLS Version Accepted', type: 'Protocol & Cipher', description: 'Endpoint accepts TLS 1.0 or TLS 1.1. NIST SP 800-52 Rev2 sets TLS 1.2 as the minimum; accepting 1.0/1.1 is non-compliant.', severity: 'Critical', affectedAssets: 63, enabled: true, lastTriggered: '1 hour ago', framework: 'NIST SP 800-52 Rev2', source: 'Built-in', readOnly: true,
+    conditionText: 'Protocol Version Accepted is in [TLS 1.0, TLS 1.1]',
+    conditionGroups: [_g('oob-008-g1', 'AND', [{ field: 'protocol_version', operator: 'in', value: 'TLS 1.0,TLS 1.1' }])],
+    groupLogic: 'AND' as const },
 
-  { id: 'oob-008', name: 'Deprecated TLS Version Accepted', type: 'Protocol & Cipher', description: 'Endpoint accepts TLS 1.0 or TLS 1.1. NIST SP 800-52 Rev2 sets TLS 1.2 as the minimum; accepting 1.0/1.1 is non-compliant.', severity: 'Critical', affectedAssets: 63, enabled: true, lastTriggered: '1 hour ago', framework: 'NIST SP 800-52 Rev2', source: 'Built-in', readOnly: true },
-
-  { id: 'oob-009', name: 'Weak or Prohibited Cipher Suite', type: 'Protocol & Cipher', description: 'Endpoint accepts RC4, 3DES, NULL, or export-grade ciphers. Prohibited by NIST SP 800-52 Rev2; 3DES disallowed by SP 800-131A Rev2.', severity: 'Critical', affectedAssets: 38, enabled: true, lastTriggered: '4 hours ago', framework: 'NIST SP 800-52 Rev2 | SP 800-131A Rev2', source: 'Built-in', readOnly: true },
-
+  { id: 'oob-009', name: 'Weak or Prohibited Cipher Suite', type: 'Protocol & Cipher', description: 'Endpoint accepts RC4, 3DES, NULL, or export-grade ciphers. Prohibited by NIST SP 800-52 Rev2; 3DES disallowed by SP 800-131A Rev2.', severity: 'Critical', affectedAssets: 38, enabled: true, lastTriggered: '4 hours ago', framework: 'NIST SP 800-52 Rev2 | SP 800-131A Rev2', source: 'Built-in', readOnly: true,
+    conditionText: 'Cipher Suite is in [RC4, 3DES, NULL, Export-grade]',
+    conditionGroups: [_g('oob-009-g1', 'AND', [{ field: 'cipher_suite', operator: 'in', value: 'RC4,3DES,NULL,Export-grade' }])],
+    groupLogic: 'AND' as const },
 ];
 
 export const customPolicies = [
