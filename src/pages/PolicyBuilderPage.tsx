@@ -497,16 +497,18 @@ function OverflowMenu({ items }: { items: OverflowItem[] }) {
 
 export default function PolicyBuilderPage() {
   const { setCurrentPage, setFilters } = useNav();
-  const [tab, setTab] = useState<'policies' | 'templates'>('policies');
+  const [tab, setTab] = useState<'policies' | 'templates' | 'packs'>('policies');
   const [policyStates, setPolicyStates] = useState<Record<string, boolean>>(Object.fromEntries(policyRules.map(p => [p.id, p.enabled])));
   const [configModal, setConfigModal] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterSource, setFilterSource] = useState<'all' | 'Built-in' | 'Custom'>('all');
+  const [filterSource, setFilterSource] = useState<string>('all');
   const [filterSeverity, setFilterSeverity] = useState<'all' | 'Critical' | 'High' | 'Medium' | 'Low'>('all');
   const [filterPolicyType, setFilterPolicyType] = useState<string>('all');
   const [userPolicies, setUserPolicies] = useState<CustomPolicy[]>(initialCustomPolicies);
   const [expandedPolicy, setExpandedPolicy] = useState<string | null>(null);
   const [editingPolicy, setEditingPolicy] = useState<string | null>(null);
+  const [importedPackIds, setImportedPackIds] = useState<Set<string>>(new Set());
+  const [openPackId, setOpenPackId] = useState<string | null>(null);
 
   // Create-policy modal state
   const [createOpen, setCreateOpen] = useState(false);
