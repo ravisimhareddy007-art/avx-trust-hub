@@ -787,6 +787,7 @@ export default function PolicyBuilderPage() {
             description: p.description,
             policyType: (p as { policyType?: string }).policyType || 'Certificate',
             framework: (p as { framework?: string }).framework || '',
+            conditionText: (p as { conditionText?: string }).conditionText || '',
             severity: p.severity,
             status: policyStates[p.id] ? 'Enabled' : 'Disabled',
             violations: p.affectedAssets,
@@ -798,6 +799,7 @@ export default function PolicyBuilderPage() {
           description: p.description,
           policyType: p.assetType || 'Certificate',
           framework: '',
+          conditionText: '',
           severity: p.severity || 'High',
           status: p.status,
           violations: p.violations,
@@ -977,9 +979,16 @@ export default function PolicyBuilderPage() {
                           <tr className="border-b border-border bg-navy/40">
                             <td colSpan={9} className="px-6 py-4 space-y-3 animate-in fade-in slide-in-from-top-1 duration-150">
                               {!isCustom && (
-                                <div className="grid grid-cols-3 gap-3 text-xs">
-                                  <div><span className="text-muted-foreground block mb-0.5 text-[10px] uppercase tracking-wide">Policy Type</span><span className="font-medium">{r.policyType}</span></div>
-                                  <div className="col-span-2"><span className="text-muted-foreground block mb-0.5 text-[10px] uppercase tracking-wide">Framework reference</span><span className="font-medium text-foreground">{r.framework || '—'}</span></div>
+                                <div className="space-y-3">
+                                  <div className="rounded-lg border border-border bg-card/60 p-3">
+                                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Condition (read-only)</div>
+                                    <code className="text-xs font-mono text-foreground break-words">{r.conditionText || '—'}</code>
+                                  </div>
+                                  <div className="grid grid-cols-3 gap-3 text-xs">
+                                    <div><span className="text-muted-foreground block mb-0.5 text-[10px] uppercase tracking-wide">Policy Type</span><span className="font-medium">{r.policyType}</span></div>
+                                    <div className="col-span-2"><span className="text-muted-foreground block mb-0.5 text-[10px] uppercase tracking-wide">NIST reference</span><span className="font-medium text-foreground">{r.framework || '—'}</span></div>
+                                  </div>
+                                  <div className="text-[10px] text-muted-foreground italic">Built-in policies are read-only. Use "Clone to customize" from the row menu to author a variation.</div>
                                 </div>
                               )}
                               {isCustom && customPol && (

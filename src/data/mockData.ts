@@ -305,50 +305,27 @@ export const discoveryRuns = [
   { id: 'DR-2026-0406-001', profile: 'Endpoint Agent Collection', scanType: 'Endpoint Agent Scan', target: 'Agent Group: production-linux (847 hosts)', startedBy: 'Scheduled', startTime: '2026-04-06 03:00:00', duration: '35 min', sources: 1, assetsDiscovered: 2890, newAssets: 21, changedAssets: 78, errors: 5, status: 'Complete' },
 ];
 
+// Built-in OOB policy library. MVP scope: ONLY genuine NIST mandates that are
+// evaluable against attributes we actually discover. Convention-based rules
+// (rotation cadence, secret expiry, forward secrecy, PQC migration) are left
+// to customer-authored custom policies and intentionally excluded here.
 export const policyRules = [
-  // CERTIFICATE
-  { id: 'pol-cert-001', name: 'Weak Signature Algorithm', description: 'Flag certificates signed with SHA-1 or MD5.', severity: 'Critical', policyType: 'Certificate', framework: 'NIST SP 800-131A Rev2 · FIPS 186-5', affectedAssets: 412, enabled: true, lastTriggered: '1 hour ago' },
-  { id: 'pol-cert-002', name: 'Weak RSA Key Length', description: 'Flag certificates using RSA keys shorter than 2048 bits.', severity: 'Critical', policyType: 'Certificate', framework: 'NIST SP 800-57 Pt1 Rev5 §5.6.3 · FIPS 186-5', affectedAssets: 287, enabled: true, lastTriggered: '2 hours ago' },
-  { id: 'pol-cert-003', name: 'Weak ECC Key Length', description: 'Flag certificates using ECC keys shorter than 256 bits.', severity: 'High', policyType: 'Certificate', framework: 'NIST SP 800-57 Pt1 Rev5', affectedAssets: 64, enabled: false, lastTriggered: '—' },
-  { id: 'pol-cert-004', name: 'Certificate Expiry — Critical', description: 'Certificate expires in less than 7 days.', severity: 'Critical', policyType: 'Certificate', framework: 'CLM best practice', affectedAssets: 38, enabled: true, lastTriggered: '20 min ago' },
-  { id: 'pol-cert-005', name: 'Certificate Expiry — Warning', description: 'Certificate expires in less than 30 days.', severity: 'High', policyType: 'Certificate', framework: 'CLM best practice', affectedAssets: 184, enabled: false, lastTriggered: '—' },
-  { id: 'pol-cert-006', name: 'Excessive Validity Period', description: 'Public certificate validity exceeds 398 days.', severity: 'High', policyType: 'Certificate', framework: 'CA/Browser Forum BR · NIST alignment', affectedAssets: 73, enabled: false, lastTriggered: '—' },
-  { id: 'pol-cert-007', name: 'Self-Signed in Production', description: 'Self-signed certificate deployed in production scope.', severity: 'Medium', policyType: 'Certificate', framework: 'Internal hardening', affectedAssets: 21, enabled: false, lastTriggered: '—' },
-  { id: 'pol-cert-008', name: 'Revoked Certificate Deployed', description: 'Revocation status is Revoked but the certificate is still deployed.', severity: 'Critical', policyType: 'Certificate', framework: 'RFC 5280 / CRL & OCSP', affectedAssets: 6, enabled: false, lastTriggered: '—' },
+  // CERTIFICATES
+  { id: 'pol-cert-001', name: 'Weak Signature Algorithm', description: 'Certificates signed with SHA-1 or MD5 are disallowed.', conditionText: 'Signature Algorithm is in [SHA-1, MD5].', severity: 'Critical', policyType: 'Certificate', framework: 'NIST SP 800-131A Rev2 · FIPS 186-5', affectedAssets: 412, enabled: true, lastTriggered: '1 hour ago' },
+  { id: 'pol-cert-002', name: 'Weak RSA Key Length', description: 'Certificates using RSA keys shorter than 2048 bits are disallowed.', conditionText: 'Key Type = RSA AND Key Length Bits < 2048.', severity: 'Critical', policyType: 'Certificate', framework: 'NIST SP 800-131A Rev2', affectedAssets: 287, enabled: true, lastTriggered: '2 hours ago' },
+  { id: 'pol-cert-003', name: 'Self-Signed Server Certificate', description: 'TLS servers must use CA-issued certificates, not self-signed.', conditionText: 'Is Self-Signed = true.', severity: 'High', policyType: 'Certificate', framework: 'NIST SP 800-52 Rev2', affectedAssets: 73, enabled: true, lastTriggered: '6 hours ago' },
+  { id: 'pol-cert-004', name: 'Revoked Certificate Still Deployed', description: 'Certificate revocation status indicates the certificate has been revoked.', conditionText: 'Revocation Status = Revoked.', severity: 'Critical', policyType: 'Certificate', framework: 'NIST SP 800-52 Rev2', affectedAssets: 6, enabled: true, lastTriggered: '40 min ago' },
 
-  // SSH KEY
-  { id: 'pol-ssh-001', name: 'Weak SSH Key Type (DSA)', description: 'SSH host or user key uses DSA.', severity: 'Critical', policyType: 'SSH Key', framework: 'NIST SP 800-131A Rev2 · FIPS 186-5', affectedAssets: 47, enabled: true, lastTriggered: '5 hours ago' },
-  { id: 'pol-ssh-002', name: 'Weak SSH RSA Key Length', description: 'SSH RSA key shorter than 2048 bits.', severity: 'Critical', policyType: 'SSH Key', framework: 'NIST SP 800-57 Pt1 Rev5', affectedAssets: 119, enabled: false, lastTriggered: '—' },
-  { id: 'pol-ssh-003', name: 'SSH Key Not Rotated', description: 'Managed SSH key has not been rotated in over 365 days.', severity: 'Medium', policyType: 'SSH Key', framework: 'NIST SP 800-57 crypto-period', affectedAssets: 312, enabled: false, lastTriggered: '—' },
-  { id: 'pol-ssh-004', name: 'Deprecated SSH MAC', description: 'SSH session negotiates hmac-md5 or hmac-sha1.', severity: 'High', policyType: 'SSH Key', framework: 'NIST SP 800-131A Rev2', affectedAssets: 88, enabled: false, lastTriggered: '—' },
+  // SSH KEYS
+  { id: 'pol-ssh-001', name: 'Disallowed SSH Key Algorithm (DSA)', description: 'SSH host or user key uses DSA, whose transition is complete and is disallowed.', conditionText: 'Key Type = DSA.', severity: 'Critical', policyType: 'SSH Key', framework: 'NIST SP 800-131A Rev2 · FIPS 186-5', affectedAssets: 47, enabled: true, lastTriggered: '5 hours ago' },
+  { id: 'pol-ssh-002', name: 'Weak SSH RSA Key Length', description: 'SSH RSA key shorter than 2048 bits is disallowed.', conditionText: 'Key Type = RSA AND Key Length Bits < 2048.', severity: 'Critical', policyType: 'SSH Key', framework: 'NIST SP 800-131A Rev2', affectedAssets: 119, enabled: true, lastTriggered: '3 hours ago' },
 
-  // SSH CERTIFICATE
-  { id: 'pol-sshc-001', name: 'SSH Certificate Expiry', description: 'SSH certificate has less than 7 days remaining.', severity: 'High', policyType: 'SSH Certificate', framework: 'Short-lived SSH cert best practice', affectedAssets: 11, enabled: false, lastTriggered: '—' },
-  { id: 'pol-sshc-002', name: 'Excessive SSH Cert Validity', description: 'SSH certificate validity exceeds 90 days.', severity: 'Medium', policyType: 'SSH Certificate', framework: 'Short-lived SSH cert best practice', affectedAssets: 29, enabled: false, lastTriggered: '—' },
-  { id: 'pol-sshc-003', name: 'Revoked SSH Certificate Active', description: 'SSH certificate is on the KRL but still in use.', severity: 'High', policyType: 'SSH Certificate', framework: 'OpenSSH KRL', affectedAssets: 4, enabled: false, lastTriggered: '—' },
-
-  // ENCRYPTION KEYS
-  { id: 'pol-key-001', name: 'Key Rotation Disabled', description: 'Automatic rotation is not enabled on a KMS or HSM key.', severity: 'High', policyType: 'Encryption Keys', framework: 'NIST SP 800-57 crypto-period · cloud KMS auto-rotation', affectedAssets: 142, enabled: true, lastTriggered: '4 hours ago' },
-  { id: 'pol-key-002', name: 'Encryption Key Not Rotated', description: 'Days since last rotation exceeds 365.', severity: 'High', policyType: 'Encryption Keys', framework: 'NIST SP 800-57 Pt1 Rev5', affectedAssets: 96, enabled: false, lastTriggered: '—' },
-  { id: 'pol-key-003', name: 'Weak Symmetric Key Length', description: 'AES key shorter than 128 bits.', severity: 'Critical', policyType: 'Encryption Keys', framework: 'NIST SP 800-57 Pt1 Rev5', affectedAssets: 8, enabled: false, lastTriggered: '—' },
-  { id: 'pol-key-004', name: 'Weak Asymmetric Key Length', description: 'Asymmetric key with RSA < 2048 or ECC < 256.', severity: 'Critical', policyType: 'Encryption Keys', framework: 'NIST SP 800-57 Pt1 Rev5', affectedAssets: 33, enabled: false, lastTriggered: '—' },
-  { id: 'pol-key-005', name: 'Software-Protected High-Value Key', description: 'Customer-managed key uses software protection instead of HSM.', severity: 'Medium', policyType: 'Encryption Keys', framework: 'HSM protection preference', affectedAssets: 57, enabled: false, lastTriggered: '—' },
-
-  // SECRETS & TOKENS
-  { id: 'pol-sec-001', name: 'Secret Without Expiry', description: 'Secret has no expiry configured.', severity: 'High', policyType: 'Secrets & Tokens', framework: 'NIST SP 800-57 · credential lifecycle', affectedAssets: 421, enabled: true, lastTriggered: '1 hour ago' },
-  { id: 'pol-sec-002', name: 'Secret Not Rotated', description: 'Days since last rotation exceeds 90.', severity: 'High', policyType: 'Secrets & Tokens', framework: 'NIST SP 800-57', affectedAssets: 263, enabled: false, lastTriggered: '—' },
-  { id: 'pol-sec-003', name: 'Privileged Secret Without Expiry', description: 'Privileged secret has no expiry configured.', severity: 'High', policyType: 'Secrets & Tokens', framework: 'NIST SP 800-57', affectedAssets: 74, enabled: false, lastTriggered: '—' },
-  { id: 'pol-sec-004', name: 'Stale Token', description: 'Token has not been used in over 90 days.', severity: 'Medium', policyType: 'Secrets & Tokens', framework: 'Credential hygiene', affectedAssets: 188, enabled: false, lastTriggered: '—' },
+  // ENCRYPTION KEYS (KMS / HSM)
+  { id: 'pol-key-001', name: 'Weak Symmetric Key Length', description: 'AES key shorter than 128 bits does not meet the minimum 112-bit security strength floor.', conditionText: 'Key Algorithm = AES AND Key Length Bits < 128.', severity: 'Critical', policyType: 'Encryption Keys', framework: 'NIST SP 800-57 Pt1 Rev5', affectedAssets: 8, enabled: true, lastTriggered: '12 hours ago' },
 
   // PROTOCOL & CIPHER
-  { id: 'pol-prot-001', name: 'Deprecated TLS Version', description: 'Endpoint accepts TLS 1.0 or TLS 1.1.', severity: 'Critical', policyType: 'Protocol & Cipher', framework: 'NIST SP 800-52 Rev2 — TLS 1.2 minimum', affectedAssets: 56, enabled: true, lastTriggered: '30 min ago' },
-  { id: 'pol-prot-002', name: 'Weak / Prohibited Cipher', description: 'Endpoint accepts RC4, 3DES, NULL, or export-grade ciphers.', severity: 'Critical', policyType: 'Protocol & Cipher', framework: 'NIST SP 800-52 Rev2 · SP 800-131A Rev2', affectedAssets: 41, enabled: true, lastTriggered: '2 hours ago' },
-  { id: 'pol-prot-003', name: 'No Forward Secrecy', description: 'Endpoint does not negotiate ECDHE or DHE.', severity: 'Medium', policyType: 'Protocol & Cipher', framework: 'NIST SP 800-52 Rev2', affectedAssets: 102, enabled: false, lastTriggered: '—' },
-  { id: 'pol-prot-004', name: 'Deprecated SSH/IPSec MAC', description: 'Weak MAC negotiated on SSH or IPSec.', severity: 'High', policyType: 'Protocol & Cipher', framework: 'NIST SP 800-131A Rev2', affectedAssets: 67, enabled: false, lastTriggered: '—' },
-
-  // POST-QUANTUM
-  { id: 'pol-pqc-001', name: 'Quantum-Vulnerable Algorithm in Use', description: 'Asset uses RSA, ECC, or DH — vulnerable to quantum attack.', severity: 'Medium', policyType: 'Post-Quantum', framework: 'NIST IR 8413 · FIPS 203/204/205 · NSA CNSA 2.0', affectedAssets: 12847, enabled: false, lastTriggered: '—' },
-  { id: 'pol-pqc-002', name: 'Non-Approved PQC Algorithm', description: 'Asset uses a PQC algorithm not in the NIST-approved set (ML-KEM, ML-DSA, SLH-DSA).', severity: 'High', policyType: 'Post-Quantum', framework: 'FIPS 203/204/205', affectedAssets: 19, enabled: false, lastTriggered: '—' },
+  { id: 'pol-prot-001', name: 'Deprecated TLS Version Accepted', description: 'Endpoint accepts TLS 1.0 or TLS 1.1; TLS 1.2 is the minimum compliant version.', conditionText: 'Protocol Version Accepted is in [TLS 1.0, TLS 1.1].', severity: 'Critical', policyType: 'Protocol & Cipher', framework: 'NIST SP 800-52 Rev2', affectedAssets: 56, enabled: true, lastTriggered: '30 min ago' },
+  { id: 'pol-prot-002', name: 'Weak or Prohibited Cipher Suite', description: 'Endpoint accepts RC4, 3DES, NULL, or export-grade ciphers.', conditionText: 'Cipher Suite is in [RC4, 3DES, NULL, Export-grade].', severity: 'Critical', policyType: 'Protocol & Cipher', framework: 'NIST SP 800-52 Rev2 · SP 800-131A Rev2', affectedAssets: 41, enabled: true, lastTriggered: '2 hours ago' },
 ];
 
 export const customPolicies = [
