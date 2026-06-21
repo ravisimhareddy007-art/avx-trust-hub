@@ -1033,7 +1033,6 @@ export default function PolicyBuilderPage() {
                   {rows.map(r => {
                     const isCustom = r.source === 'Custom';
                     const customPol = isCustom ? userPolicies.find(p => p.id === r.id) : undefined;
-                    const expanded = expandedPolicy === r.id;
                     const sev = sevAccent[r.severity] || sevAccent.Medium;
                     const tm = typeMeta[r.policyType] || typeMeta['Certificate'];
                     const TIcon = tm.Icon;
@@ -1043,115 +1042,165 @@ export default function PolicyBuilderPage() {
                       else { setPolicyStates(prev => ({ ...prev, [r.id]: !prev[r.id] })); toast.success(`Policy ${policyStates[r.id] ? 'disabled' : 'enabled'}`); }
                     };
                     return (
-                      <React.Fragment key={`${r.source}-${r.id}`}>
-                        <tr
-                          onClick={() => setExpandedPolicy(expanded ? null : r.id)}
-                          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedPolicy(expanded ? null : r.id); } }}
-                          tabIndex={0}
-                          className={`group border-b border-border/60 cursor-pointer transition-all bg-navy-light/40 hover:bg-navy-lighter/60 hover:shadow-[inset_2px_0_0_0_hsl(var(--teal))] border-l-[3px] ${sev.border} focus:outline-none focus:ring-1 focus:ring-teal/40`}
-                        >
-                          <td className="w-1 p-0" />
-                          <td className="py-3 px-3">
-                            <span className={`text-[9px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide ${r.source === 'Built-in' ? 'bg-purple/15 text-purple border border-purple/30' : 'bg-teal/15 text-teal border border-teal/30'}`}>{r.source}</span>
-                          </td>
-                          <td className="py-3 px-3 max-w-md">
-                            <div className="font-semibold text-foreground flex items-center gap-1.5">
-                              {r.name}
-                              {expanded ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />}
-                            </div>
-                            <div className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5">{r.description}</div>
-                          </td>
-                          <td className="py-3 px-3">
-                            <span className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md border ${tm.tint}`}>
-                              <TIcon className="w-3 h-3" />
-                              {r.policyType}
-                            </span>
-                          </td>
-                          <td className="py-3 px-3">
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${sev.chip}`}>{r.severity}</span>
-                          </td>
-                          <td className="py-3 px-3">
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${statusClass(r.status)}`}>{r.status}</span>
-                          </td>
-                          <td className="py-3 px-3">
-                            {r.violations > 0 ? (
-                              <button onClick={(e) => { e.stopPropagation(); setFilters({ policy: r.name }); setCurrentPage('inventory'); }} className={`font-bold tabular-nums hover:underline ${sev.text}`}>
-                                {r.violations.toLocaleString()}
-                              </button>
-                            ) : <span className="text-success/70 font-medium tabular-nums">0</span>}
-                          </td>
-                          <td className="py-3 px-3" onClick={e => e.stopPropagation()}>
-                            <button onClick={toggle}
-                              className={`w-8 h-4 rounded-full transition-colors relative ${enabled ? 'bg-teal' : 'bg-muted'}`} title={enabled ? 'Disable' : 'Enable'}>
-                              <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-card shadow transition-transform ${enabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                      <tr
+                        key={`${r.source}-${r.id}`}
+                        onClick={() => setDetailPolicyId(r.id)}
+                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDetailPolicyId(r.id); } }}
+                        tabIndex={0}
+                        className={`group border-b border-border/60 cursor-pointer transition-all bg-navy-light/40 hover:bg-navy-lighter/60 hover:shadow-[inset_2px_0_0_0_hsl(var(--teal))] border-l-[3px] ${sev.border} focus:outline-none focus:ring-1 focus:ring-teal/40`}
+                      >
+                        <td className="w-1 p-0" />
+                        <td className="py-3 px-3">
+                          <span className={`text-[9px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide ${r.source === 'Built-in' ? 'bg-purple/15 text-purple border border-purple/30' : 'bg-teal/15 text-teal border border-teal/30'}`}>{r.source}</span>
+                        </td>
+                        <td className="py-3 px-3 max-w-md">
+                          <div className="font-semibold text-foreground flex items-center gap-1.5">
+                            {r.name}
+                            <ChevronDown className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                          <div className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5">{r.description}</div>
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md border ${tm.tint}`}>
+                            <TIcon className="w-3 h-3" />
+                            {r.policyType}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${sev.chip}`}>{r.severity}</span>
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${statusClass(r.status)}`}>{r.status}</span>
+                        </td>
+                        <td className="py-3 px-3">
+                          {r.violations > 0 ? (
+                            <button onClick={(e) => { e.stopPropagation(); setFilters({ policy: r.name }); setCurrentPage('inventory'); }} className={`font-bold tabular-nums hover:underline ${sev.text}`}>
+                              {r.violations.toLocaleString()}
                             </button>
-                          </td>
-                          <td className="py-3 px-3" onClick={e => e.stopPropagation()}>
-                            <OverflowMenu
-                              items={isCustom && customPol ? [
-                                { label: 'Edit',    onClick: () => loadPolicyForEdit(customPol) },
-                                { label: 'Clone',   onClick: () => { resetCreateForm(); const c = { ...customPol, id: `cpol-${Date.now()}`, name: `${customPol.name} (Copy)`, status: 'Draft', violations: 0 }; loadPolicyForEdit(c); } },
-                                { label: customPol.status === 'Active' ? 'Deactivate' : 'Activate', onClick: () => togglePolicyStatus(r.id) },
-                                { label: 'Delete',  onClick: () => deletePolicy(r.id), tone: 'danger' as const },
-                              ] : [
-                                { label: 'Clone to customize', onClick: () => cloneBuiltinToCustom(r) },
-                              ]}
-                            />
-                          </td>
-                        </tr>
-                        {expanded && (
-                          <tr className="border-b border-border bg-navy/40">
-                            <td colSpan={9} className="px-6 py-4 space-y-3 animate-in fade-in slide-in-from-top-1 duration-150">
-                              {!isCustom && (
-                                <div className="space-y-3">
-                                  <div className="rounded-lg border border-border bg-card/60 p-3">
-                                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Condition (read-only)</div>
-                                    <code className="text-xs font-mono text-foreground break-words">{r.conditionText || '—'}</code>
-                                  </div>
-                                  <div className="grid grid-cols-3 gap-3 text-xs">
-                                    <div><span className="text-muted-foreground block mb-0.5 text-[10px] uppercase tracking-wide">Policy Type</span><span className="font-medium">{r.policyType}</span></div>
-                                    <div className="col-span-2"><span className="text-muted-foreground block mb-0.5 text-[10px] uppercase tracking-wide">NIST reference</span><span className="font-medium text-foreground">{r.framework || '—'}</span></div>
-                                  </div>
-                                  <div className="text-[10px] text-muted-foreground italic">Built-in policies are read-only. Use "Clone to customize" from the row menu to author a variation.</div>
-                                </div>
-                              )}
-                              {isCustom && customPol && (
-                                <>
-                                  <div className="grid grid-cols-4 gap-3 text-xs">
-                                    <div><span className="text-muted-foreground block mb-0.5 text-[10px] uppercase tracking-wide">Asset Type</span><span className="font-medium">{customPol.assetType || 'All'}</span></div>
-                                    <div className="col-span-2"><span className="text-muted-foreground block mb-0.5 text-[10px] uppercase tracking-wide">Scope</span><span className="font-medium">{scopeSummary(customPol.scope)}</span></div>
-                                    <div><span className="text-muted-foreground block mb-0.5 text-[10px] uppercase tracking-wide">Ticket</span><span className="font-medium">{ticketBadge(customPol)}</span></div>
-                                  </div>
-                                  {customPol.tags && customPol.tags.length > 0 && (
-                                    <div className="flex flex-wrap gap-1.5">
-                                      {customPol.tags.map(t => (
-                                        <span key={t} className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">{t}</span>
-                                      ))}
-                                    </div>
-                                  )}
-                                  {customPol.effectiveFrom && (
-                                    <div className="text-[10px]"><span className="text-muted-foreground">Effective from: </span><span className="font-medium">{customPol.effectiveFrom}</span></div>
-                                  )}
-                                  {customPol.conditionSummary && (
-                                    <div>
-                                      <span className="text-[10px] text-muted-foreground block mb-1 uppercase tracking-wide">Conditions</span>
-                                      <p className="text-[11px] font-mono bg-navy/60 border border-border rounded px-2 py-1.5">{customPol.conditionSummary}</p>
-                                    </div>
-                                  )}
-                                </>
-                              )}
-                            </td>
-                          </tr>
-                        )}
-                      </React.Fragment>
+                          ) : <span className="text-success/70 font-medium tabular-nums">0</span>}
+                        </td>
+                        <td className="py-3 px-3" onClick={e => e.stopPropagation()}>
+                          <button onClick={toggle}
+                            className={`w-8 h-4 rounded-full transition-colors relative ${enabled ? 'bg-teal' : 'bg-muted'}`} title={enabled ? 'Disable' : 'Enable'}>
+                            <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-card shadow transition-transform ${enabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                          </button>
+                        </td>
+                        <td className="py-3 px-3" onClick={e => e.stopPropagation()}>
+                          <OverflowMenu
+                            items={isCustom && customPol ? [
+                              { label: 'Edit',    onClick: () => loadPolicyForEdit(customPol) },
+                              { label: 'Clone',   onClick: () => cloneCustom(customPol) },
+                              { label: 'Save as template', onClick: () => saveCustomAsTemplate(customPol) },
+                              { label: customPol.status === 'Active' ? 'Deactivate' : 'Activate', onClick: () => togglePolicyStatus(r.id) },
+                              { label: 'Delete',  onClick: () => deletePolicy(r.id), tone: 'danger' as const },
+                            ] : [
+                              { label: 'Clone to customize', onClick: () => cloneBuiltinToCustom(r) },
+                            ]}
+                          />
+                        </td>
+                      </tr>
                     );
                   })}
                 </tbody>
               </table>
             </div>
+
+            {/* Detail popup */}
+            {(() => {
+              if (!detailPolicyId) return null;
+              const row = rows.find(r => r.id === detailPolicyId);
+              if (!row) return null;
+              const isCustom = row.source === 'Custom';
+              const customPol = isCustom ? userPolicies.find(p => p.id === row.id) : undefined;
+              const sev = sevAccent[row.severity] || sevAccent.Medium;
+              return (
+                <Modal open={!!detailPolicyId} onClose={() => setDetailPolicyId(null)} title={row.name} wide>
+                  <div className="w-full max-w-2xl space-y-4 text-foreground">
+                    <div className={sectionCardCls + ` border-l-[3px] ${sev.border}`}>
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
+                        <span className={`text-[9px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide ${row.source === 'Built-in' ? 'bg-purple/15 text-purple border border-purple/30' : 'bg-teal/15 text-teal border border-teal/30'}`}>{row.source}</span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${sev.chip}`}>{row.severity}</span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${statusClass(row.status)}`}>{row.status}</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-md border bg-card text-muted-foreground border-border">{row.policyType}</span>
+                      </div>
+                      {row.description && <p className="text-xs text-muted-foreground leading-relaxed">{row.description}</p>}
+                    </div>
+
+                    <div className={sectionCardCls}>
+                      <SectionHeading label="Condition (read-only)" info="The rule evaluated against discovered assets." accent="teal" />
+                      <code className="text-xs font-mono text-foreground break-words block bg-navy/60 border border-border rounded px-2 py-1.5">
+                        {row.conditionText || customPol?.conditionSummary || '—'}
+                      </code>
+                    </div>
+
+                    {!isCustom && (
+                      <div className={sectionCardCls}>
+                        <SectionHeading label="Framework reference" info="Standard or regulation this policy implements." accent="purple" />
+                        <div className="text-xs font-medium text-foreground">{row.framework || '—'}</div>
+                        <div className="text-[10px] text-muted-foreground italic mt-2">Built-in policies are read-only. Use "Clone to customize" to author a variation.</div>
+                      </div>
+                    )}
+
+                    {isCustom && customPol && (
+                      <div className={sectionCardCls}>
+                        <SectionHeading label="Scope & delivery" info="Where this policy applies and how violations are routed." accent="purple" />
+                        <div className="grid grid-cols-2 gap-3 text-xs">
+                          <div><span className="text-muted-foreground block mb-0.5 text-[10px] uppercase tracking-wide">Asset Type</span><span className="font-medium">{customPol.assetType || 'All'}</span></div>
+                          <div><span className="text-muted-foreground block mb-0.5 text-[10px] uppercase tracking-wide">Scope</span><span className="font-medium">{scopeSummary(customPol.scope)}</span></div>
+                          <div><span className="text-muted-foreground block mb-0.5 text-[10px] uppercase tracking-wide">Ticket</span><span className="font-medium">{ticketBadge(customPol)}</span></div>
+                          {customPol.effectiveFrom && <div><span className="text-muted-foreground block mb-0.5 text-[10px] uppercase tracking-wide">Effective from</span><span className="font-medium">{customPol.effectiveFrom}</span></div>}
+                        </div>
+                        {customPol.tags && customPol.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mt-3">
+                            {customPol.tags.map(t => (
+                              <span key={t} className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">{t}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="sticky bottom-0 -mx-6 -mb-6 mt-2 border-t border-border bg-card/95 backdrop-blur px-4 py-3 flex justify-end gap-2">
+                      <button onClick={() => setDetailPolicyId(null)} className="px-4 py-2 text-xs rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">Close</button>
+                      {!isCustom && (
+                        <button onClick={() => { cloneBuiltinToCustom(row); setDetailPolicyId(null); }}
+                          className="px-5 py-2 text-xs font-semibold rounded-lg bg-teal text-primary-foreground hover:bg-teal-light shadow-[0_4px_14px_-4px_hsl(var(--teal)/0.5)] transition-colors">
+                          Clone to customize
+                        </button>
+                      )}
+                      {isCustom && customPol && (
+                        <>
+                          <button onClick={() => { saveCustomAsTemplate(customPol); }}
+                            className="px-4 py-2 text-xs rounded-lg border border-border bg-card text-foreground hover:bg-muted hover:border-foreground/30">
+                            Save as template
+                          </button>
+                          <button onClick={() => { cloneCustom(customPol); setDetailPolicyId(null); }}
+                            className="px-4 py-2 text-xs rounded-lg border border-border bg-card text-foreground hover:bg-muted hover:border-foreground/30">
+                            Clone
+                          </button>
+                          <button onClick={() => togglePolicyStatus(customPol.id)}
+                            className="px-4 py-2 text-xs rounded-lg border border-border bg-card text-foreground hover:bg-muted hover:border-foreground/30">
+                            {customPol.status === 'Active' ? 'Deactivate' : 'Activate'}
+                          </button>
+                          <button onClick={() => { deletePolicy(customPol.id); setDetailPolicyId(null); }}
+                            className="px-4 py-2 text-xs rounded-lg border border-coral/40 text-coral hover:bg-coral/10">
+                            Delete
+                          </button>
+                          <button onClick={() => { loadPolicyForEdit(customPol); setDetailPolicyId(null); }}
+                            className="px-5 py-2 text-xs font-semibold rounded-lg bg-teal text-primary-foreground hover:bg-teal-light shadow-[0_4px_14px_-4px_hsl(var(--teal)/0.5)]">
+                            Edit
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </Modal>
+              );
+            })()}
           </div>
         );
       })()}
+
 
       {tab === 'packs' && (() => {
         const sevChip: Record<string, string> = {
