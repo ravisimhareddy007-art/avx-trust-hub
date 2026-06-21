@@ -1046,6 +1046,232 @@ export default function PolicyBuilderPage() {
         );
       })()}
 
+      {tab === 'packs' && (() => {
+        const sevChip: Record<string, string> = {
+          Critical: 'bg-coral text-white',
+          High:     'bg-amber text-white',
+          Medium:   'bg-purple text-white',
+          Low:      'bg-teal text-white',
+        };
+        const typeTint: Record<string, string> = {
+          'Certificate':       'bg-teal/15 text-teal border-teal/30',
+          'SSH Key':           'bg-amber/15 text-amber border-amber/30',
+          'SSH Certificate':   'bg-amber/15 text-amber border-amber/30',
+          'Secrets & Tokens':  'bg-purple/15 text-purple border-purple/30',
+          'Encryption Keys':   'bg-info/15 text-info border-info/30',
+          'Protocol & Cipher': 'bg-coral/15 text-coral border-coral/30',
+          'Post-Quantum':      'bg-purple/15 text-purple border-purple/30',
+        };
+
+        const importPack = (pack: PolicyPack) => {
+          if (importedPackIds.has(pack.id)) return;
+          const sourceTag = `Pack: ${pack.name}`;
+          const stamp = Date.now();
+          const newPolicies: CustomPolicy[] = pack.policies.map((pp, i) => ({
+            id: `pack-${pack.id}-${pp.key}-${stamp}-${i}`,
+            name: pp.name,
+            description: pp.clause,
+            // Pack policies import disabled; admin activates after review.
+            // Advisory policies stay Draft (off); mandatory policies are also Draft
+            // until the admin activates the pack, then they become Active.
+            status: 'Draft',
+            violations: 0,
+            assetType: packTypeToAssetType(pp.type),
+            severity: pp.severity,
+            conditionSummary: pp.condition,
+            tags: [`pack:${pack.name}`, ...(pp.advisory ? ['advisory'] : []), ...(pp.reusesBuiltin ? [`reuses:${pp.reusesBuiltin}`] : [])],
+            source: sourceTag,
+            packId: pack.id,
+            advisory: !!pp.advisory,
+            clauseMapping: pp.clause,
+            reusesBuiltin: pp.reusesBuiltin,
+          }));
+          setUserPolicies(prev => [...prev, ...newPolicies]);
+          setImportedPackIds(prev => { const n = new Set(prev); n.add(pack.id); return n; });
+          const mandatory = pack.policies.filter(p => !p.advisory).length;
+          const advisory = pack.policies.length - mandatory;
+          const reused = pack.policies.filter(p => p.reusesBuiltin).length;
+          toast.success(`Imported "${pack.name}" — ${pack.policies.length} policies created as Draft (${mandatory} mandatory, ${advisory} advisory${reused ? `, ${reused} reuse built-in conditions` : ''}). Activate from the Policies tab.`);
+        };
+
+        const activatePack = (pack: PolicyPack) => {
+          setUserPolicies(prev => prev.map(p => {
+            if (p.packId !== pack.id) return p;
+            // Mandatory policies → Active; advisory stay Draft (admin opts in per spec).
+            if (p.advisory) return p;
+            return { ...p, status: 'Active' };
+          }));
+          toast.success(`Activated mandatory policies in "${pack.name}". Advisory policies remain Draft — enable individually.`);
+        };
+
+        const removePack = (pack: PolicyPack) => {
+          setUserPolicies(prev => prev.filter(p => p.packId !== pack.id));
+          setImportedPackIds(prev => { const n = new Set(prev); n.delete(pack.id); return n; });
+          toast.success(`Removed "${pack.name}" — ${pack.policies.length} pack policies deleted.`);
+        };
+
+        // ── Pack detail view ──
+        if (openPackId) {
+          const pack = POLICY_PACKS.find(p => p.id === openPackId);
+          if (!pack) { setOpenPackId(null); return null; }
+          const imported = importedPackIds.has(pack.id);
+          return (
+            <div className="space-y-4">
+              <button onClick={() => setOpenPackId(null)} className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground">
+                <ChevronLeft className="w-3 h-3" /> Back to packs
+              </button>
+              <div className="rounded-xl border border-border bg-gradient-to-br from-card via-card to-navy/40 p-5 shadow-sm">
+                <div className="flex items-start gap-4">
+                  <div className="w-14 h-14 rounded-xl bg-teal/15 border border-teal/30 flex items-center justify-center text-teal font-bold text-sm tracking-wide shrink-0">
+                    {pack.initial}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="text-base font-bold text-foreground">{pack.name}</h2>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple/15 text-purple border border-purple/30">{pack.region}</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal/15 text-teal border border-teal/30">{pack.industry}</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">{pack.policies.length} policies</span>
+                      {imported && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-success/15 text-success border border-success/30 inline-flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3" /> Imported
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{pack.description}</p>
+                    <p className="text-[10px] text-muted-foreground/80 mt-2"><span className="font-semibold text-foreground/80">Basis:</span> {pack.basis}</p>
+                  </div>
+                  <div className="flex flex-col gap-2 shrink-0">
+                    {!imported ? (
+                      <button onClick={() => importPack(pack)} className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-teal text-primary-foreground text-xs font-medium hover:bg-teal-light">
+                        <Plus className="w-3 h-3" /> Import pack
+                      </button>
+                    ) : (
+                      <>
+                        <button onClick={() => activatePack(pack)} className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-teal text-primary-foreground text-xs font-medium hover:bg-teal-light">
+                          <CheckCircle2 className="w-3 h-3" /> Activate mandatory
+                        </button>
+                        <button onClick={() => { setTab('policies'); setFilterSource(`Pack: ${pack.name}`); setOpenPackId(null); }} className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-border text-xs font-medium hover:border-foreground/30">
+                          Manage in Policies
+                        </button>
+                        <button onClick={() => removePack(pack)} className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-coral/40 text-coral text-xs font-medium hover:bg-coral/10">
+                          Remove pack
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-card/40 rounded-xl border border-border overflow-hidden shadow-sm">
+                <table className="w-full text-xs">
+                  <thead className="bg-navy/60 border-b border-border">
+                    <tr>
+                      {['#', 'Policy', 'Type', 'Severity', 'Source', 'Regulation clause'].map(h => (
+                        <th key={h} className="text-left py-2.5 px-3 font-semibold text-[10px] uppercase tracking-[0.1em] text-muted-foreground">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pack.policies.map(pp => (
+                      <tr key={pp.key} className="border-b border-border/60 hover:bg-navy-lighter/40">
+                        <td className="py-3 px-3 text-muted-foreground tabular-nums">{pp.key}</td>
+                        <td className="py-3 px-3 max-w-md">
+                          <div className="font-semibold text-foreground flex items-center gap-1.5">
+                            {pp.name}
+                            {pp.advisory && (
+                              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber/15 text-amber border border-amber/30 font-semibold uppercase tracking-wide">Advisory</span>
+                            )}
+                          </div>
+                          <code className="text-[10px] font-mono text-muted-foreground break-words mt-0.5 block">{pp.condition}</code>
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className={`text-[10px] px-2 py-0.5 rounded-md border ${typeTint[pp.type] || 'bg-muted text-muted-foreground border-border'}`}>{pp.type}</span>
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${sevChip[pp.severity]}`}>{pp.severity}</span>
+                        </td>
+                        <td className="py-3 px-3">
+                          {pp.reusesBuiltin ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] text-teal" title={`Reuses built-in policy ${pp.reusesBuiltin}`}>
+                              <Link2 className="w-3 h-3" /> Reuses built-in
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground">Pack-specific</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 text-[10px] text-muted-foreground leading-snug">{pp.clause}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="text-[10px] text-muted-foreground italic">
+                <span className="font-semibold text-foreground/80">Out of pack scope (not evaluable from discovery):</span> {pack.outOfScope}
+              </div>
+            </div>
+          );
+        }
+
+        // ── Pack grid ──
+        return (
+          <div className="space-y-3">
+            <div className="text-[11px] text-muted-foreground">
+              Regulation-aligned bundles you can import as a managed compliance program. Importing creates the pack's policies as Draft — admin reviews then activates.
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {POLICY_PACKS.map(pack => {
+                const imported = importedPackIds.has(pack.id);
+                const mandatory = pack.policies.filter(p => !p.advisory).length;
+                const advisory = pack.policies.length - mandatory;
+                return (
+                  <div key={pack.id} className="rounded-xl border border-border bg-card/60 hover:border-teal/40 hover:shadow-[0_0_24px_-12px_hsl(var(--teal)/0.5)] transition-all p-4 flex flex-col gap-3">
+                    <div className="flex items-start gap-3">
+                      <div className="w-12 h-12 rounded-xl bg-teal/15 border border-teal/30 flex items-center justify-center text-teal font-bold text-sm tracking-wide shrink-0">
+                        {pack.initial}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h3 className="text-sm font-bold text-foreground">{pack.name}</h3>
+                          {imported && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-success/15 text-success border border-success/30 inline-flex items-center gap-1">
+                              <CheckCircle2 className="w-2.5 h-2.5" /> Imported
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2 leading-relaxed">{pack.description}</p>
+                      </div>
+                      <Package className="w-4 h-4 text-muted-foreground/60 shrink-0" />
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap text-[10px]">
+                      <span className="px-2 py-0.5 rounded-full bg-purple/15 text-purple border border-purple/30">{pack.region}</span>
+                      <span className="px-2 py-0.5 rounded-full bg-teal/15 text-teal border border-teal/30">{pack.industry}</span>
+                      <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">
+                        {pack.policies.length} policies · {mandatory} mandatory{advisory ? ` · ${advisory} advisory` : ''}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 pt-1 mt-auto">
+                      <button onClick={() => setOpenPackId(pack.id)} className="flex-1 text-[11px] px-3 py-1.5 rounded border border-border hover:border-foreground/30 text-foreground">
+                        View policies
+                      </button>
+                      {imported ? (
+                        <button onClick={() => { setTab('policies'); setFilterSource(`Pack: ${pack.name}`); }} className="flex-1 text-[11px] px-3 py-1.5 rounded bg-card border border-teal/40 text-teal hover:bg-teal/10">
+                          Manage
+                        </button>
+                      ) : (
+                        <button onClick={() => importPack(pack)} className="flex-1 inline-flex items-center justify-center gap-1 text-[11px] px-3 py-1.5 rounded bg-teal text-primary-foreground font-medium hover:bg-teal-light">
+                          <Plus className="w-3 h-3" /> Import pack
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
       {tab === 'templates' && (
         <div className="space-y-2">
           <div className="bg-card rounded-lg border border-border overflow-hidden">
