@@ -1,3 +1,6 @@
+import { mockGroups } from './inventoryMockData';
+import { objectViolatesPolicy, type EvalGroup } from '@/lib/policyEval';
+
 export interface SSHEndpoint {
   host: string;
   ip: string;
