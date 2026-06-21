@@ -495,6 +495,55 @@ function OverflowMenu({ items }: { items: OverflowItem[] }) {
 
 
 
+interface PolicyTemplate {
+  id: string;
+  name: string;
+  description: string;
+  type: string;
+  assetType: string;
+  severity: string;
+  conditionGroups: ConditionGroup[];
+  groupLogic: 'AND' | 'OR';
+  scope: ScopeConfig;
+  tags: string[];
+  author: string;
+  uses: number;
+}
+
+const deepCloneGroups = (groups: ConditionGroup[]): ConditionGroup[] =>
+  groups.map(g => ({
+    id: `grp-${Math.random().toString(36).slice(2, 8)}`,
+    innerLogic: g.innerLogic,
+    rows: g.rows.map(r => ({ id: `row-${Math.random().toString(36).slice(2, 8)}`, field: r.field, operator: r.operator, value: r.value })),
+  }));
+
+function seedTemplates(): PolicyTemplate[] {
+  const mk = (rows: { field: string; operator: string; value: string }[][], logic: 'AND' | 'OR' = 'AND'): ConditionGroup[] =>
+    rows.map((g, gi) => ({ id: `tpl-g-${gi}-${Math.random().toString(36).slice(2,6)}`, innerLogic: logic === 'AND' ? 'AND' : 'AND', rows: g.map((r, ri) => ({ id: `tpl-r-${gi}-${ri}-${Math.random().toString(36).slice(2,6)}`, ...r })) }));
+  return [
+    { id: 'tpl-pci-ssh', name: 'PCI-DSS SSH Key Strength', description: 'RSA keys under 2048 bits flagged as non-compliant per PCI-DSS.',
+      type: 'SSH Key Policy', assetType: 'SSH Key', severity: 'Critical', groupLogic: 'AND',
+      conditionGroups: mk([[{ field: 'key_type', operator: 'eq', value: 'RSA' }, { field: 'key_bits', operator: 'lt', value: '2048' }]]),
+      scope: { groupIds: [], environments: [], providers: [] }, tags: ['framework:PCI-DSS'], author: 'platform-sec', uses: 42 },
+    { id: 'tpl-nist-ssh', name: 'NIST SSH Baseline', description: 'Disallows DSA keys and legacy MAC algorithms (hmac-sha1, hmac-md5).',
+      type: 'SSH Key Policy', assetType: 'SSH Key', severity: 'High', groupLogic: 'OR',
+      conditionGroups: mk([[{ field: 'key_type', operator: 'eq', value: 'DSA' }], [{ field: 'mac_algo', operator: 'in', value: 'hmac-sha1,hmac-md5' }]]),
+      scope: { groupIds: [], environments: [], providers: [] }, tags: ['framework:NIST'], author: 'crypto-team', uses: 28 },
+    { id: 'tpl-zero-trust-tls', name: 'Zero-Trust TLS Validity', description: 'Production certificates must have validity ≤ 90 days.',
+      type: 'Certificate Policy', assetType: 'TLS Certificate', severity: 'High', groupLogic: 'AND',
+      conditionGroups: mk([[{ field: 'validity_days', operator: 'gt', value: '90' }]]),
+      scope: { groupIds: [], environments: ['Production'], providers: [] }, tags: ['framework:Zero-Trust'], author: 'identity-eng', uses: 67 },
+    { id: 'tpl-secret-rotation', name: 'Secret Rotation Baseline', description: 'Flags any secret not rotated within the last 90 days.',
+      type: 'Secrets & Tokens Policy', assetType: 'Secret / Token', severity: 'High', groupLogic: 'AND',
+      conditionGroups: mk([[{ field: 'days_since_rotation', operator: 'gt', value: '90' }]]),
+      scope: { groupIds: [], environments: [], providers: [] }, tags: [], author: 'platform-sec', uses: 31 },
+    { id: 'tpl-untrusted-ca', name: 'Untrusted Issuing CA', description: 'Flags certificates issued by CAs outside the approved issuer list.',
+      type: 'Certificate Policy', assetType: 'TLS Certificate', severity: 'High', groupLogic: 'AND',
+      conditionGroups: mk([[{ field: 'issuing_ca', operator: 'nin', value: 'DigiCert,Sectigo,internal-Root-G2' }]]),
+      scope: { groupIds: [], environments: [], providers: [] }, tags: ['scope:internal'], author: 'crypto-team', uses: 19 },
+  ];
+}
+
 export default function PolicyBuilderPage() {
   const { setCurrentPage, setFilters } = useNav();
   const [tab, setTab] = useState<'policies' | 'templates' | 'packs'>('policies');
@@ -504,11 +553,16 @@ export default function PolicyBuilderPage() {
   const [filterSource, setFilterSource] = useState<string>('all');
   const [filterSeverity, setFilterSeverity] = useState<'all' | 'Critical' | 'High' | 'Medium' | 'Low'>('all');
   const [filterPolicyType, setFilterPolicyType] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'Active' | 'Draft' | 'Disabled'>('all');
   const [userPolicies, setUserPolicies] = useState<CustomPolicy[]>(initialCustomPolicies);
-  const [expandedPolicy, setExpandedPolicy] = useState<string | null>(null);
+  const [detailPolicyId, setDetailPolicyId] = useState<string | null>(null);
   const [editingPolicy, setEditingPolicy] = useState<string | null>(null);
   const [importedPackIds, setImportedPackIds] = useState<Set<string>>(new Set());
   const [openPackId, setOpenPackId] = useState<string | null>(null);
+  const [templates, setTemplates] = useState<PolicyTemplate[]>(() => seedTemplates());
+  const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
+  const [templateNameInput, setTemplateNameInput] = useState('');
+  const [templateDescInput, setTemplateDescInput] = useState('');
 
   // Create-policy modal state
   const [createOpen, setCreateOpen] = useState(false);
