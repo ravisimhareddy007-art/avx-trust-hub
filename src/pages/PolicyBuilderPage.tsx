@@ -785,7 +785,7 @@ export default function PolicyBuilderPage() {
             id: p.id,
             name: p.name,
             description: p.description,
-            policyType: (p as { policyType?: string }).policyType || 'Certificate',
+            policyType: (p as { type?: string }).type || 'Certificate',
             framework: (p as { framework?: string }).framework || '',
             conditionText: (p as { conditionText?: string }).conditionText || '',
             severity: p.severity,
