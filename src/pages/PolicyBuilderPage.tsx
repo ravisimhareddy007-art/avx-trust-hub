@@ -589,6 +589,16 @@ export default function PolicyBuilderPage() {
   const [aiTouched, setAiTouched] = useState<Set<AIField>>(new Set());
   const [manuallyEdited, setManuallyEdited] = useState<Set<AIField>>(new Set());
 
+  // Re-derive policy verdicts across the estate whenever the active set changes.
+  useEffect(() => {
+    const extras = userPolicies.map(p => ({
+      id: p.id, name: p.name, assetType: p.assetType, severity: p.severity,
+      conditionGroups: p.conditionGroups as unknown as never,
+      groupLogic: p.groupLogic, scope: p.scope, status: p.status, ticket: p.ticket,
+    }));
+    recomputePolicyViolations(extras as never[], policyStates);
+  }, [userPolicies, policyStates]);
+
   const markUserEdit = (field: AIField) => {
     setManuallyEdited(prev => { const n = new Set(prev); n.add(field); return n; });
     setAiTouched(prev => { if (!prev.has(field)) return prev; const n = new Set(prev); n.delete(field); return n; });
