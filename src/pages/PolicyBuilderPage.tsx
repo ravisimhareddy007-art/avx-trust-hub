@@ -807,13 +807,13 @@ export default function PolicyBuilderPage() {
             violations: p.affectedAssets,
           }));
         const customRows = userPolicies.map(p => ({
-          source: 'Custom' as const,
+          source: p.source || ('Custom' as const),
           id: p.id,
           name: p.name,
           description: p.description,
           policyType: p.assetType || 'Certificate',
-          framework: '',
-          conditionText: '',
+          framework: p.clauseMapping || '',
+          conditionText: p.conditionSummary || '',
           severity: p.severity || 'High',
           status: p.status,
           violations: p.violations,
