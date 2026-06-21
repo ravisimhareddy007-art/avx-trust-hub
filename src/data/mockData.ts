@@ -498,8 +498,7 @@ export const users = [
 // Policy-evaluation enrichment + group seeding + initial verdict derivation
 // (Wires the OOB NIST policies to real evaluation against the mock estate.)
 // ─────────────────────────────────────────────────────────────────────────────
-import { mockGroups } from './inventoryMockData';
-import { objectViolatesPolicy, type EvalGroup } from '@/lib/policyEval';
+// (imports hoisted to top of file)
 
 type _Enrich = Partial<Pick<CryptoAsset,
   'signatureAlgorithm' | 'isSelfSigned' | 'revocationStatus' |
