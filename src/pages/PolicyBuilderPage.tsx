@@ -1,5 +1,5 @@
 import { FEATURES } from '@/config/features';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNav } from '@/context/NavigationContext';
 import { policyRules, customPolicies as initialCustomPolicies, recomputePolicyViolations } from '@/data/mockData';
 import { POLICY_PACKS, packTypeToAssetType, type PolicyPack } from '@/data/policyPacks';
