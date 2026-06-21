@@ -879,10 +879,13 @@ export default function PolicyBuilderPage() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search policies..." className="w-full pl-9 pr-4 py-2 bg-card border border-border rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-teal" />
               </div>
-              <select value={filterSource} onChange={e => setFilterSource(e.target.value as typeof filterSource)} className="border border-border rounded-lg px-2 py-2 text-xs bg-card">
+              <select value={filterSource} onChange={e => setFilterSource(e.target.value)} className="border border-border rounded-lg px-2 py-2 text-xs bg-card">
                 <option value="all">Source: All</option>
                 <option value="Built-in">Built-in</option>
                 <option value="Custom">Custom</option>
+                {POLICY_PACKS.filter(pk => importedPackIds.has(pk.id)).map(pk => (
+                  <option key={pk.id} value={`Pack: ${pk.name}`}>{`Pack: ${pk.name}`}</option>
+                ))}
               </select>
               <select value={filterSeverity} onChange={e => setFilterSeverity(e.target.value as typeof filterSeverity)} className="border border-border rounded-lg px-2 py-2 text-xs bg-card">
                 <option value="all">Severity: All</option>
