@@ -899,14 +899,8 @@ function DetailPanel({
             );
           })()}
 
-          {/* Exceptions on this object */}
-          <div className="px-4 py-3">
-            <SectionHeading label="Exceptions" count={exceptedCount} />
-            {shownPolicyViolations === 0 && ((co as any).policyViolations ?? 0) > 0 && (
-              <p className="text-[10px] text-amber mb-2">All policy violations on this object are currently excepted.</p>
-            )}
-            <ExceptionsList scope={{ kind: 'object', id: co.id }} />
-          </div>
+
+
 
           {exceptCtx && (
             <RaiseExceptionModal
