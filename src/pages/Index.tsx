@@ -32,6 +32,7 @@ import ViolationsPage from '@/pages/ViolationsPage';
 import CertHolisticView from '@/pages/CertHolisticView';
 import WorkOrderStatus from '@/pages/WorkOrderStatus';
 import MCPRuntimePage from '@/pages/MCPRuntimePage';
+import PolicyExceptionsPage from '@/pages/PolicyExceptionsPage';
 
 function DashboardPage() {
   const { persona } = usePersona();
