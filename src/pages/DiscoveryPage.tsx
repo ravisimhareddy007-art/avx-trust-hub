@@ -17,7 +17,7 @@ import {
 // FINALIZED DISCOVERY METHODS (Unified Discovery Framework, MVP scope)
 // One scan method per category. Content matches the locked PLT requirements.
 // ============================================================================
-type ConfigKey = 'network' | 'ca' | 'cloud' | 'secrets' | 'thirdparty';
+type ConfigKey = 'network' | 'sshauth' | 'ca' | 'cloud' | 'secrets' | 'thirdparty';
 
 interface ScanType { value: string; description: string; config: ConfigKey; discovers: string[]; }
 interface ScanCategory { category: string; icon: React.ComponentType<{ className?: string }>; description: string; types: ScanType[]; }
@@ -25,11 +25,15 @@ interface ScanCategory { category: string; icon: React.ComponentType<{ className
 const scanCategories: ScanCategory[] = [
   {
     category: 'Active Scanning', icon: Radar,
-    description: 'Direct, agentless network discovery via protocol handshakes',
+    description: 'Network discovery via protocol handshakes and authenticated SSH scan',
     types: [{
       value: 'Network Scan', config: 'network',
       description: 'Agentless probing of IP and DNS targets. Discovers TLS, SSH, IPsec/VPN and Kubernetes endpoints across the configured ports.',
       discovers: ['TLS Certificates', 'Cipher Suites', 'Protocol Versions', 'SSH Host Keys', 'IPsec/VPN'],
+    }, {
+      value: 'SSH Keys & Certificate Scan', config: 'sshauth',
+      description: 'Authenticated SSH scan. Logs into hosts to discover and onboard user and host keys and host certificates into inventory with compliance policy.',
+      discovers: ['SSH User Keys', 'SSH Host Keys', 'Host Certificates', 'Compliance Mapping'],
     }],
   },
   {
@@ -472,6 +476,7 @@ interface SecretsProps {
 function ConfigPanel({ configKey, secretsProps }: { configKey: ConfigKey; secretsProps: SecretsProps }) {
   switch (configKey) {
     case 'network':    return <NetworkConfig />;
+    case 'sshauth':    return <SSHAuthConfig />;
     case 'ca':         return <CAConfig />;
     case 'cloud':      return <CloudConfig />;
     case 'secrets':    return <SecretsConfig {...secretsProps} />;
@@ -812,6 +817,104 @@ function ThirdPartyConfig() {
           </div>
         </FormRow>
       )}
+    </div>
+  );
+}
+
+function GroupHeader({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="border-b border-border/60 pb-1.5 mb-1">
+      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{children}</p>
+    </div>
+  );
+}
+
+function Radios<T extends string>({ options, value, onChange }: { options: readonly T[]; value: T; onChange: (v: T) => void }) {
+  return (
+    <div className="flex items-center gap-4">
+      {options.map(o => (
+        <label key={o} className="flex items-center gap-1.5 text-xs cursor-pointer">
+          <input type="radio" checked={value === o} onChange={() => onChange(o)} className="accent-teal" /> {o}
+        </label>
+      ))}
+    </div>
+  );
+}
+
+function SSHAuthConfig() {
+  const [startIp, setStartIp] = useState('');
+  const [endIp, setEndIp] = useState('');
+  const [port, setPort] = useState('22');
+  const [batch, setBatch] = useState('128');
+  const [discover, setDiscover] = useState<string[]>(['User Keys', 'Host Keys']);
+  const [scanType, setScanType] = useState<'Default' | 'Full' | 'Directory'>('Default');
+  const [recursive, setRecursive] = useState(false);
+  const [intensive, setIntensive] = useState(false);
+  const [accessType, setAccessType] = useState<'Key' | 'Certificate'>('Key');
+  const [dataCenter, setDataCenter] = useState('');
+  const [credentialType, setCredentialType] = useState('Manual Entry');
+  const [loginType, setLoginType] = useState<'Password' | 'Identity Key'>('Password');
+  const [username, setUsername] = useState('');
+  const [infraGroup, setInfraGroup] = useState('');
+  const [hostGroup, setHostGroup] = useState('Default_Host_Group');
+  const [keyGroup, setKeyGroup] = useState('Default_Key_Group');
+  const [inventoryAction, setInventoryAction] = useState<'Do Not Move' | 'Manage' | 'Monitor'>('Manage');
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-start gap-2 rounded-md border border-teal/20 bg-teal/5 px-3 py-2 text-[11px] text-muted-foreground leading-snug">
+        <AlertCircle className="w-3.5 h-3.5 text-teal flex-shrink-0 mt-0.5" />
+        <span>Authenticated SSH scan logs into hosts to discover user and host keys and onboard them into inventory with compliance policy. Lifecycle operations (rotation, remediation) arrive with the SSH remediation module.</span>
+      </div>
+
+      <div className="space-y-3">
+        <GroupHeader>Scan target</GroupHeader>
+        <FormRow label="Start IP" required><input value={startIp} onChange={e => setStartIp(e.target.value)} placeholder="192.168.1.1" className={inputCls} /></FormRow>
+        <FormRow label="End IP" required><input value={endIp} onChange={e => setEndIp(e.target.value)} placeholder="192.168.1.254" className={inputCls} /></FormRow>
+        <FormRow label="Port" required><input value={port} onChange={e => setPort(e.target.value)} className="w-24 px-3 py-2 bg-muted border border-border rounded text-xs text-foreground" /></FormRow>
+        <FormRow label="IP(s) per batch"><select value={batch} onChange={e => setBatch(e.target.value)} className={selectCls}>{['64', '128', '256', '512'].map(b => <option key={b}>{b}</option>)}</select></FormRow>
+      </div>
+
+      <div className="space-y-3">
+        <GroupHeader>Discovery scope</GroupHeader>
+        <FormRow label="Discover" required><CheckGroup options={['User Keys', 'Host Keys']} value={discover} onChange={setDiscover} /></FormRow>
+        <FormRow label="Scan type" required><Radios options={['Default', 'Full', 'Directory'] as const} value={scanType} onChange={setScanType} /></FormRow>
+        <FormRow label="Recursive scan"><Toggle checked={recursive} onChange={setRecursive} label="Traverse subdirectories for keys" /></FormRow>
+        <FormRow label="Intensive scan"><Toggle checked={intensive} onChange={setIntensive} label="Deeper scan, slower but more thorough" /></FormRow>
+      </div>
+
+      <div className="space-y-3">
+        <GroupHeader>Access and credentials</GroupHeader>
+        <FormRow label="Access type" required><Radios options={['Key', 'Certificate'] as const} value={accessType} onChange={setAccessType} /></FormRow>
+        <FormRow label="DataCenter" required>
+          <select value={dataCenter} onChange={e => setDataCenter(e.target.value)} className={selectCls}>
+            <option value="">Select…</option>{['absecon', 'us-east-1', 'us-west-2', 'eu-central-1'].map(d => <option key={d}>{d}</option>)}
+          </select>
+        </FormRow>
+        <FormRow label="Credential type" required>
+          <select value={credentialType} onChange={e => setCredentialType(e.target.value)} className={selectCls}>{['Manual Entry', 'Stored Credential'].map(c => <option key={c}>{c}</option>)}</select>
+        </FormRow>
+        <FormRow label="Login type" required><Radios options={['Password', 'Identity Key'] as const} value={loginType} onChange={setLoginType} /></FormRow>
+        <FormRow label="Username" required><input value={username} onChange={e => setUsername(e.target.value)} placeholder="svc-discovery" className={inputCls} /></FormRow>
+        <FormRow label={loginType === 'Password' ? 'Password' : 'Identity key'} required>
+          {loginType === 'Password'
+            ? <input type="password" placeholder="••••••••" className={inputCls} />
+            : <textarea rows={2} placeholder="-----BEGIN OPENSSH PRIVATE KEY-----" className={textareaCls} />}
+        </FormRow>
+      </div>
+
+      <div className="space-y-3">
+        <GroupHeader>Onboarding and governance</GroupHeader>
+        <FormRow label="Infra Access Group" required>
+          <div className="flex-1 max-w-md space-y-1">
+            <input value={infraGroup} onChange={e => setInfraGroup(e.target.value)} placeholder="Select or type to add…" className={inputCls.replace('max-w-md', 'w-full')} />
+            <p className="text-[10px] text-muted-foreground">Maps the onboarded host to an Application Infra Access Group. Type a new name and press enter to add.</p>
+          </div>
+        </FormRow>
+        <FormRow label="Host Compliance Group"><select value={hostGroup} onChange={e => setHostGroup(e.target.value)} className={selectCls}>{['Default_Host_Group', 'Prod_Host_Group', 'PCI_Host_Group'].map(g => <option key={g}>{g}</option>)}</select></FormRow>
+        <FormRow label="Key Compliance Group"><select value={keyGroup} onChange={e => setKeyGroup(e.target.value)} className={selectCls}>{['Default_Key_Group', 'Prod_Key_Group', 'PCI_Key_Group'].map(g => <option key={g}>{g}</option>)}</select></FormRow>
+        <FormRow label="Inventory action" required><Radios options={['Do Not Move', 'Manage', 'Monitor'] as const} value={inventoryAction} onChange={setInventoryAction} /></FormRow>
+      </div>
     </div>
   );
 }
