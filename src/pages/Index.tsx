@@ -53,6 +53,7 @@ function PageRouter() {
     discovery: <DiscoveryPage />,
     inventory: <InventoryPage />,
     'policy-builder': <PolicyBuilderPage />,
+    'policy-exceptions': <PolicyExceptionsPage />,
     remediation: <RemediationPage />,
     'remediation-objects': <RemediationPage />,
     'remediation-clm': <RemediationPage />,
