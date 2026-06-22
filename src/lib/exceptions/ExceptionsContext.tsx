@@ -1,0 +1,95 @@
+import React, { createContext, useContext, useState, useCallback } from 'react';
+
+export type ExceptionStatus = 'Active' | 'Expired' | 'Revoked';
+
+export interface PolicyException {
+  id: string;
+  assetId: string;
+  assetName: string;
+  policyId: string;
+  policyName: string;
+  reason: string;
+  expiry: string;
+  createdBy: string;
+  createdAt: string;
+  revokedBy?: string;
+  revokedAt?: string;
+  endedReason?: 'Revoked' | 'Expired';
+}
+
+interface ExceptionsContextValue {
+  exceptions: PolicyException[];
+  statusOf: (e: PolicyException) => ExceptionStatus;
+  isExcepted: (assetId: string, policyId: string) => boolean;
+  activeForAsset: (assetId: string) => PolicyException[];
+  activeForPolicy: (policyId: string) => PolicyException[];
+  raiseException: (input: Omit<PolicyException, 'id' | 'createdBy' | 'createdAt'>) => { ok: boolean; message: string };
+  revokeException: (id: string, by?: string) => void;
+  extendExpiry: (id: string, newExpiry: string) => void;
+}
+
+const ExceptionsContext = createContext<ExceptionsContextValue | null>(null);
+const todayISO = () => new Date().toISOString().slice(0, 10);
+
+function deriveStatus(e: PolicyException): ExceptionStatus {
+  if (e.revokedAt) return 'Revoked';
+  if (e.expiry && e.expiry < todayISO()) return 'Expired';
+  return 'Active';
+}
+
+export function ExceptionsProvider({ children }: { children: React.ReactNode }) {
+  const [exceptions, setExceptions] = useState<PolicyException[]>([
+    {
+      id: 'exc-seed-1', assetId: 'cert-014', assetName: 'legacy-appliance.internal',
+      policyId: 'oob-003', policyName: 'Self-Signed Server Certificate',
+      reason: 'Vendor appliance cannot present a CA-issued certificate; compensating network controls in place.',
+      expiry: new Date(Date.now() + 60 * 86400000).toISOString().slice(0, 10),
+      createdBy: 'compliance-officer', createdAt: new Date(Date.now() - 5 * 86400000).toISOString(),
+    },
+  ]);
+
+  const statusOf = useCallback((e: PolicyException) => deriveStatus(e), []);
+  const isExcepted = useCallback((assetId: string, policyId: string) =>
+    exceptions.some(e => e.assetId === assetId && e.policyId === policyId && deriveStatus(e) === 'Active'), [exceptions]);
+  const activeForAsset = useCallback((assetId: string) =>
+    exceptions.filter(e => e.assetId === assetId && deriveStatus(e) === 'Active'), [exceptions]);
+  const activeForPolicy = useCallback((policyId: string) =>
+    exceptions.filter(e => e.policyId === policyId && deriveStatus(e) === 'Active'), [exceptions]);
+
+  const raiseException = useCallback((input: Omit<PolicyException, 'id' | 'createdBy' | 'createdAt'>) => {
+    if (!input.reason?.trim()) return { ok: false, message: 'A justification is required.' };
+    if (!input.expiry?.trim()) return { ok: false, message: 'An expiry date is required.' };
+    if (input.expiry < todayISO()) return { ok: false, message: 'Expiry must be in the future.' };
+    const existing = exceptions.find(e => e.assetId === input.assetId && e.policyId === input.policyId && deriveStatus(e) === 'Active');
+    if (existing) {
+      setExceptions(prev => prev.map(e => e.id === existing.id ? { ...e, reason: input.reason, expiry: input.expiry } : e));
+      return { ok: true, message: 'Existing exception updated.' };
+    }
+    const rec: PolicyException = { ...input, id: `exc-${Date.now()}`, createdBy: 'current-user', createdAt: new Date().toISOString() };
+    setExceptions(prev => [rec, ...prev]);
+    return { ok: true, message: 'Exception raised.' };
+  }, [exceptions]);
+
+  const revokeException = useCallback((id: string, by = 'current-user') => {
+    setExceptions(prev => prev.map(e => e.id === id ? { ...e, revokedBy: by, revokedAt: new Date().toISOString(), endedReason: 'Revoked' } : e));
+  }, []);
+  const extendExpiry = useCallback((id: string, newExpiry: string) => {
+    setExceptions(prev => prev.map(e => e.id === id ? { ...e, expiry: newExpiry } : e));
+  }, []);
+
+  return (
+    <ExceptionsContext.Provider value={{ exceptions, statusOf, isExcepted, activeForAsset, activeForPolicy, raiseException, revokeException, extendExpiry }}>
+      {children}
+    </ExceptionsContext.Provider>
+  );
+}
+
+export function useExceptions() {
+  const ctx = useContext(ExceptionsContext);
+  if (!ctx) throw new Error('useExceptions must be used within ExceptionsProvider');
+  return ctx;
+}
+
+export function effectiveViolations(rawCount: number, exceptedCount: number): number {
+  return Math.max(0, rawCount - exceptedCount);
+}
