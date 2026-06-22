@@ -54,7 +54,7 @@ export function ExceptionsProvider({ children }: { children: React.ReactNode }) 
       policyName: 'Self-Signed Server Certificate',
       reason: 'Vendor appliance cannot present a CA-issued certificate; compensating network controls in place.',
       expiry: new Date(Date.now() + 60 * 86400000).toISOString().slice(0, 10),
-      createdBy: 'compliance-officer',
+      createdBy: 'Daniel Foster',
       createdAt: new Date(Date.now() - 5 * 86400000).toISOString(),
     },
   ]);
@@ -99,12 +99,12 @@ export function ExceptionsProvider({ children }: { children: React.ReactNode }) 
       setExceptions(prev => prev.map(e => e.id === existing.id ? { ...e, reason: input.reason, expiry: input.expiry } : e));
       return { ok: true, message: 'Existing exception updated.' };
     }
-    const rec: PolicyException = { ...input, id: `exc-${Date.now()}`, createdBy: 'current-user', createdAt: new Date().toISOString() };
+    const rec: PolicyException = { ...input, id: `exc-${Date.now()}`, createdBy: 'Alex Morgan', createdAt: new Date().toISOString() };
     setExceptions(prev => [rec, ...prev]);
     return { ok: true, message: 'Exception raised.' };
   }, [exceptions]);
 
-  const revokeException = useCallback((id: string, by = 'current-user') => {
+  const revokeException = useCallback((id: string, by = 'Alex Morgan') => {
     setExceptions(prev => prev.map(e => e.id === id ? { ...e, revokedBy: by, revokedAt: new Date().toISOString(), endedReason: 'Revoked' } : e));
   }, []);
 
