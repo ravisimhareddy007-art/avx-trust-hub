@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNav } from '@/context/NavigationContext';
 import { useExceptions, PolicyException } from '@/lib/exceptions/ExceptionsContext';
+import { ExtendExpiryModal } from '@/lib/exceptions/ExceptionComponents';
 import { mockAssets } from '@/data/mockData';
 import { X, ExternalLink } from 'lucide-react';
 
@@ -21,6 +22,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function ExceptionDetailPanel({ exception, onClose }: { exception: PolicyException; onClose: () => void }) {
   const { statusOf, revokeException, extendExpiry } = useExceptions();
   const { setFilters, setCurrentPage } = useNav();
+  const [extending, setExtending] = useState(false);
   const s = statusOf(exception);
   const obj = mockAssets.find(a => a.id === exception.objectId);
 
@@ -90,16 +92,21 @@ function ExceptionDetailPanel({ exception, onClose }: { exception: PolicyExcepti
                 className="text-[11px] px-3 py-1.5 rounded-lg border border-coral/40 text-coral hover:bg-coral/10"
               >Revoke</button>
               <button
-                onClick={() => {
-                  const d = prompt('New expiry date (yyyy-mm-dd)', exception.expiry);
-                  if (d) extendExpiry(exception.id, d);
-                }}
+                onClick={() => setExtending(true)}
                 className="text-[11px] px-3 py-1.5 rounded-lg border border-teal/40 text-teal hover:bg-teal/10"
               >Extend</button>
             </div>
           )}
         </div>
       </div>
+      {extending && (
+        <ExtendExpiryModal
+          open={true}
+          onClose={() => setExtending(false)}
+          currentExpiry={exception.expiry}
+          onConfirm={(d) => extendExpiry(exception.id, d)}
+        />
+      )}
     </div>
   );
 }
