@@ -24,6 +24,18 @@ import { computeCRS } from '@/lib/risk/crs';
 import { useExceptions, effectiveViolations } from '@/lib/exceptions/ExceptionsContext';
 import { RaiseExceptionModal, ExceptionsList } from '@/lib/exceptions/ExceptionComponents';
 
+// Map a violation label → its built-in policy (id + name). Returns null for
+// operational flags that don't correspond to a policy.
+function violationToPolicy(label: string, co: CryptoAsset): { policyId: string; policyName: string } | null {
+  const l = label.toLowerCase();
+  if (l.includes('self-signed')) return { policyId: 'oob-003', policyName: 'Self-Signed Server Certificate' };
+  if (l.includes('quantum-vulnerable') || l.includes('quantum vulnerable')) return { policyId: 'oob-pqc', policyName: 'Quantum-Vulnerable Algorithm in Use' };
+  if (l.includes('sha-1') || l.includes('md5')) return { policyId: 'oob-001', policyName: 'Weak Signature Algorithm' };
+  if (l.includes('revoked')) return { policyId: 'oob-004', policyName: 'Revoked Certificate Still Deployed' };
+  if (((co as any).algorithm || '').match(/RSA-(512|1024)/i)) return { policyId: 'oob-002', policyName: 'Weak RSA Key Length' };
+  return null;
+}
+
 // CRS lookup memoised per render via module-level WeakMap
 const _crsCache = new WeakMap<CryptoAsset, number>();
 function crsScore(a: CryptoAsset): number {
@@ -625,9 +637,11 @@ function DetailPanel({
 
   const { operational, quantum } = deriveViolations(co);
   const rawViolations = operational.length + quantum.length;
-  const { activeForAsset, isExcepted } = useExceptions();
-  const exceptedCount = activeForAsset(co.id).length;
+  const { activeForObject, isExcepted } = useExceptions();
+  const exceptedCount = activeForObject(co.id).length;
   const totalViolations = effectiveViolations(rawViolations, exceptedCount);
+  const shownPolicyViolations = effectiveViolations((co as any).policyViolations ?? 0, exceptedCount);
+  const parentAsset = (co as any).host || co.application || co.infrastructure;
   const [exceptCtx, setExceptCtx] = useState<{ policyId: string; policyName: string } | null>(null);
 
   const expiryDisplay = co.daysToExpiry >= 0
@@ -816,16 +830,26 @@ function DetailPanel({
                 <div className="mb-3">
                   <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Operational</p>
                   <div className="space-y-1.5">
-                    {operational.map((v, i) => (
+                    {operational.map((v, i) => {
+                      const mapped = violationToPolicy(v.label, co);
+                      const excepted = mapped ? isExcepted(co.id, mapped.policyId) : false;
+                      return (
                       <div key={i} className="flex items-start gap-2 py-1 border-b border-border/30 last:border-0">
                         <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 ${v.severity === 'critical' ? 'bg-coral' : v.severity === 'high' ? 'bg-amber' : 'bg-muted-foreground'}`} />
                         <span className="text-[11px] text-foreground flex-1">{v.label}</span>
+                        {mapped && (excepted ? (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber/10 text-amber font-medium">Excepted</span>
+                        ) : (
+                          <button onClick={() => setExceptCtx({ policyId: mapped.policyId, policyName: mapped.policyName })}
+                            className="text-[10px] px-2 py-0.5 rounded border border-amber/30 text-amber hover:bg-amber/10">Except</button>
+                        ))}
                         {v.action && !isSecret && (
                           <button onClick={() => onTicket(v.actionKey ?? 'fix')}
                             className="text-[10px] text-teal hover:underline flex-shrink-0">{v.action}</button>
                         )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -837,12 +861,22 @@ function DetailPanel({
                     <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-purple/15 text-purple-light">NIST 2030</span>
                   </p>
                   <div className="space-y-1.5">
-                    {quantum.map((v, i) => (
+                    {quantum.map((v, i) => {
+                      const mapped = violationToPolicy(v.label, co);
+                      const excepted = mapped ? isExcepted(co.id, mapped.policyId) : false;
+                      return (
                       <div key={i} className="flex items-start gap-2 py-1 border-b border-border/30 last:border-0">
                         <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 bg-purple/60" />
                         <span className="text-[11px] text-foreground flex-1">{v.label}</span>
+                        {mapped && (excepted ? (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber/10 text-amber font-medium">Excepted</span>
+                        ) : (
+                          <button onClick={() => setExceptCtx({ policyId: mapped.policyId, policyName: mapped.policyName })}
+                            className="text-[10px] px-2 py-0.5 rounded border border-amber/30 text-amber hover:bg-amber/10">Except</button>
+                        ))}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -895,18 +929,23 @@ function DetailPanel({
             );
           })()}
 
-          {/* Exceptions on this asset */}
+          {/* Exceptions on this object */}
           <div className="px-4 py-3">
             <SectionHeading label="Exceptions" count={exceptedCount} />
-            <ExceptionsList scope={{ kind: 'asset', id: co.id }} />
+            {shownPolicyViolations === 0 && ((co as any).policyViolations ?? 0) > 0 && (
+              <p className="text-[10px] text-amber mb-2">All policy violations on this object are currently excepted.</p>
+            )}
+            <ExceptionsList scope={{ kind: 'object', id: co.id }} />
           </div>
 
           {exceptCtx && (
             <RaiseExceptionModal
               open={!!exceptCtx}
               onClose={() => setExceptCtx(null)}
-              assetId={co.id}
-              assetName={co.name}
+              objectId={co.id}
+              objectName={co.name}
+              objectType={co.type}
+              parentAsset={parentAsset}
               policyId={exceptCtx.policyId}
               policyName={exceptCtx.policyName}
             />
