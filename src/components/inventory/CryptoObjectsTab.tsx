@@ -344,20 +344,29 @@ function RiskScoreAttr({ co, assocCount }: { co: CryptoAsset; assocCount: number
 
 interface ViolationItem { label: string; severity: 'critical' | 'high' | 'medium'; action?: string; actionKey?: string; }
 
-function deriveViolations(co: CryptoAsset): { operational: ViolationItem[]; quantum: ViolationItem[] } {
+function deriveViolations(co: CryptoAsset): { policy: ViolationItem[]; operational: ViolationItem[]; quantum: ViolationItem[] } {
+  const policy: ViolationItem[] = [];
   const operational: ViolationItem[] = [];
   const quantum: ViolationItem[] = [];
 
+  // ── POLICY violations (real policy breaches; eligible for exceptions) ──
+  if (co.environment === 'Production' && co.caIssuer === 'Self-Signed')
+    policy.push({ label: 'Self-signed certificate in production', severity: 'high' });
+
+  if (['RSA-512','RSA-1024','SHA-1','MD5'].includes(co.algorithm))
+    policy.push({ label: `Weak algorithm (${co.algorithm})`, severity: 'critical' });
+
+  // ── OPERATIONAL alerts (informational; no actions, no exceptions) ──
   if (co.status === 'Expired')
-    operational.push({ label: `Expired ${co.daysToExpiry < 0 ? Math.abs(co.daysToExpiry) + 'd ago' : ''}`, severity: 'critical', action: 'Renew', actionKey: 'renew' });
+    operational.push({ label: `Expired ${co.daysToExpiry < 0 ? Math.abs(co.daysToExpiry) + 'd ago' : ''}`, severity: 'critical' });
   else if (co.status === 'Expiring' && co.daysToExpiry >= 0)
-    operational.push({ label: `Expires in ${co.daysToExpiry}d`, severity: co.daysToExpiry <= 7 ? 'critical' : 'high', action: 'Renew', actionKey: 'renew' });
+    operational.push({ label: `Expires in ${co.daysToExpiry}d`, severity: co.daysToExpiry <= 7 ? 'critical' : 'high' });
 
   if (!co.autoRenewal && co.daysToExpiry >= 0 && co.daysToExpiry <= 30 && co.type !== 'SSH Key' && co.type !== 'Encryption Key')
     operational.push({ label: 'Auto-renewal disabled — manual action required', severity: 'high' });
 
   if (co.owner === 'Unassigned' || co.status === 'Orphaned')
-    operational.push({ label: 'No owner assigned', severity: 'high', action: 'Assign', actionKey: 'assign' });
+    operational.push({ label: 'No owner assigned', severity: 'high' });
 
   if (co.rotationFrequency === 'Never')
     operational.push({ label: 'No rotation policy configured', severity: 'medium' });
@@ -368,9 +377,7 @@ function deriveViolations(co: CryptoAsset): { operational: ViolationItem[]; quan
   if (co.agentMeta?.permissionRisk === 'Over-privileged')
     operational.push({ label: 'Token is over-privileged — unused scopes detected', severity: 'high' });
 
-  if (co.environment === 'Production' && co.caIssuer === 'Self-Signed')
-    operational.push({ label: 'Self-signed certificate in production', severity: 'high' });
-
+  // ── QUANTUM violations (policy violation; eligible for exceptions) ──
   const isPqc = ['RSA-1024','RSA-2048','RSA-4096','ECDSA-P256','ECDSA-P384','ECC P-256','ECC P-384','SHA-1','MD5','DH-1024','DH-2048'].includes(co.algorithm);
   if (isPqc) {
     const expYear = co.expiryDate && co.expiryDate !== 'N/A' ? new Date(co.expiryDate).getFullYear() : 0;
@@ -378,11 +385,10 @@ function deriveViolations(co: CryptoAsset): { operational: ViolationItem[]; quan
     quantum.push({
       label: `${co.algorithm} is quantum-vulnerable (NIST deprecated)${expYear > 0 ? ` · Expires ${expYear}${yearsPast > 0 ? ` — ${yearsPast}yr past deadline` : ' — at NIST 2030 deadline'}` : ''}`,
       severity: co.pqcRisk === 'Critical' ? 'critical' : 'high',
-      action: 'PQC Ticket', actionKey: 'pqc',
     });
   }
 
-  return { operational, quantum };
+  return { policy, operational, quantum };
 }
 
 // ── Section heading ───────────────────────────────────────────────────────────
