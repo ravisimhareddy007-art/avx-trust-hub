@@ -11,7 +11,7 @@ import { useNav } from '@/context/NavigationContext';
 import { StatusBadge, EnvBadge, PQCBadge, DaysToExpiry } from '@/components/shared/UIComponents';
 import {
   Search, X, Info, Atom, FileEdit, ArrowRight,
-  RefreshCw, UserPlus, Ticket, Lock, ChevronUp, ChevronDown,
+  UserPlus, Ticket, Lock, ChevronUp, ChevronDown,
   Filter as FilterIcon,
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
