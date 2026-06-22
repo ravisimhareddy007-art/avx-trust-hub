@@ -1527,7 +1527,7 @@ export default function PolicyBuilderPage() {
 
             <div className="bg-card rounded-lg border border-border p-4">
               <p className="text-[11px] text-muted-foreground mb-4">
-                Every asset-level policy exception. An exception exempts one asset from one policy with a justification and a mandatory expiry. Active exceptions remove the asset from that policy's non-compliant count and risk score; expired or revoked exceptions return it to Non-Compliant.
+                Every crypto object that is exempted from a policy. An exception exempts one object from one policy with a justification and a mandatory expiry.
               </p>
               {exceptions.length === 0 ? (
                 <p className="text-[11px] text-muted-foreground text-center py-6">No exceptions have been raised.</p>
@@ -1536,7 +1536,7 @@ export default function PolicyBuilderPage() {
                   <table className="w-full text-xs">
                     <thead className="bg-muted/50">
                       <tr className="border-b border-border">
-                        {['Asset', 'Policy', 'Justification', 'Expiry', 'Raised By', 'Status', 'Actions'].map(h => (
+                        {['Object', 'Type', 'Parent Asset', 'Policy', 'Justification', 'Expiry', 'Raised By', 'Status', 'Actions'].map(h => (
                           <th key={h} className="text-left py-2.5 px-3 font-medium text-muted-foreground whitespace-nowrap">{h}</th>
                         ))}
                       </tr>
@@ -1547,7 +1547,9 @@ export default function PolicyBuilderPage() {
                         const chip = s === 'Active' ? 'bg-teal/10 text-teal' : s === 'Expired' ? 'bg-muted text-muted-foreground' : 'bg-coral/10 text-coral';
                         return (
                           <tr key={e.id} className="border-b border-border hover:bg-muted/30">
-                            <td className="py-2.5 px-3 font-medium whitespace-nowrap">{e.assetName}</td>
+                            <td className="py-2.5 px-3 font-medium whitespace-nowrap">{e.objectName}</td>
+                            <td className="py-2.5 px-3 text-muted-foreground whitespace-nowrap">{e.objectType}</td>
+                            <td className="py-2.5 px-3 text-muted-foreground whitespace-nowrap">{e.parentAsset || '—'}</td>
                             <td className="py-2.5 px-3 text-muted-foreground whitespace-nowrap">{e.policyName}</td>
                             <td className="py-2.5 px-3 text-muted-foreground max-w-xs truncate">{e.reason}</td>
                             <td className="py-2.5 px-3 text-muted-foreground whitespace-nowrap">{e.expiry}</td>
