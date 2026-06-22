@@ -10,7 +10,7 @@ import {
 import { toast } from 'sonner';
 import {
   Search, RefreshCw, Plus, Play, Database, Radar, ShieldCheck, Cloud, Lock,
-  Activity, Copy, Edit, Calendar, Filter, X, Check, AlertCircle, AlertTriangle,
+  Activity, Copy, Edit, Calendar, Filter, X, Check, AlertCircle, AlertTriangle, ArrowLeft,
 } from 'lucide-react';
 
 // ============================================================================
@@ -74,8 +74,36 @@ const scanCategories: ScanCategory[] = [
 // MAIN PAGE
 // ============================================================================
 export default function DiscoveryPage() {
-  const [tab, setTab] = useState<'profiles' | 'new' | 'runs'>('profiles');
+  const [view, setView] = useState<'list' | 'create'>('list');
+  const [tab, setTab] = useState<'profiles' | 'runs'>('profiles');
   const [editingProfile, setEditingProfile] = useState<DiscoveryProfile | null>(null);
+
+  const openCreate = (p: DiscoveryProfile | null) => { setEditingProfile(p); setView('create'); };
+  const backToList = () => { setView('list'); setEditingProfile(null); };
+  const finishTo = (dest: 'profiles' | 'runs') => { setView('list'); setEditingProfile(null); setTab(dest); };
+
+  // New Scan surface (in-page view swap, not an overlay)
+  if (view === 'create') {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <button onClick={backToList} aria-label="Back to Discovery"
+            className="flex items-center justify-center w-8 h-8 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-secondary">
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <div>
+            <h1 className="text-xl font-bold">{editingProfile ? 'Edit Discovery' : 'Start Discovery'}</h1>
+            <p className="text-[11px] text-muted-foreground">
+              {editingProfile
+                ? <>Editing <span className="text-foreground">{editingProfile.name}</span> · changes apply on save</>
+                : 'Select a method, add the details, choose what to run against, and run.'}
+            </p>
+          </div>
+        </div>
+        <NewScanTab existing={editingProfile} onDone={finishTo} onCancel={backToList} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -84,16 +112,14 @@ export default function DiscoveryPage() {
           <h1 className="text-xl font-bold">Discovery</h1>
           <p className="text-[11px] text-muted-foreground">Profiles · Scans · Runs · Unified Discovery Framework</p>
         </div>
-        {tab === 'profiles' && (
-          <button onClick={() => { setEditingProfile(null); setTab('new'); }}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-teal text-primary-foreground text-xs font-medium hover:bg-teal-light">
-            <Plus className="w-3.5 h-3.5" /> New Profile
-          </button>
-        )}
+        <button onClick={() => openCreate(null)}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-teal text-primary-foreground text-xs font-medium hover:bg-teal-light">
+          <Play className="w-3.5 h-3.5" /> Start Discovery
+        </button>
       </div>
 
       <div className="flex gap-1 border-b border-border">
-        {([['profiles', 'Profiles'], ['new', 'New Scan'], ['runs', 'Discovery Runs']] as const).map(([id, label]) => (
+        {([['profiles', 'Profiles'], ['runs', 'Discovery Runs']] as const).map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)}
             className={`px-4 py-2 text-xs font-medium border-b-2 transition-colors ${tab === id ? 'border-teal text-teal' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
             {label}
@@ -101,8 +127,7 @@ export default function DiscoveryPage() {
         ))}
       </div>
 
-      {tab === 'profiles' && <ProfilesTab onEdit={(p) => { setEditingProfile(p); setTab('new'); }} onNew={() => { setEditingProfile(null); setTab('new'); }} />}
-      {tab === 'new' && <NewScanTab existing={editingProfile} onSaved={() => setTab('runs')} goToTab={setTab} />}
+      {tab === 'profiles' && <ProfilesTab onEdit={(p) => openCreate(p)} onNew={() => openCreate(null)} />}
       {tab === 'runs' && <RunsTab />}
     </div>
   );
@@ -222,7 +247,7 @@ function ProfilesTab({ onEdit, onNew }: { onEdit: (p: DiscoveryProfile) => void;
 // ============================================================================
 // TAB 2 — NEW SCAN
 // ============================================================================
-function NewScanTab({ existing, onSaved, goToTab }: { existing: DiscoveryProfile | null; onSaved: () => void; goToTab: (t: 'profiles' | 'new' | 'runs') => void }) {
+function NewScanTab({ existing, onDone, onCancel }: { existing: DiscoveryProfile | null; onDone: (dest: 'profiles' | 'runs') => void; onCancel: () => void }) {
   const initialCategory = existing
     ? scanCategories.find(c => c.category === existing.category) ?? scanCategories[0]
     : scanCategories[0];
@@ -292,8 +317,8 @@ function NewScanTab({ existing, onSaved, goToTab }: { existing: DiscoveryProfile
       const items = 50 + Math.floor(Math.random() * 451);
       updateRun(run.id, { status: 'completed', completedAt: Date.now(), itemsDiscovered: items });
     }, 2000);
-    toast.success('Discovery started. View progress in Discovery Runs.', { action: { label: 'View Runs', onClick: () => goToTab('runs') } });
-    resetForm(); onSaved();
+    toast.success('Discovery started. View progress in Discovery Runs.');
+    resetForm(); onDone('runs');
   };
 
   const handleSaveOnly = () => {
@@ -308,7 +333,7 @@ function NewScanTab({ existing, onSaved, goToTab }: { existing: DiscoveryProfile
       schedule, nextRunAt: computeNextRun(schedule),
     });
     toast.success(`Profile "${profileName}" saved`);
-    resetForm(); goToTab('profiles');
+    resetForm(); onDone('profiles');
   };
 
   const handleUpdate = () => {
@@ -320,18 +345,11 @@ function NewScanTab({ existing, onSaved, goToTab }: { existing: DiscoveryProfile
       includes: isSecretsScan ? secretTypes : existing.includes,
     });
     toast.success(`Profile "${discoveryName}" updated`, { description: 'Changes saved successfully' });
-    goToTab('profiles');
+    onDone('profiles');
   };
 
   return (
     <div className="space-y-4">
-      {isEditing && (
-        <div className="bg-amber/10 border border-amber/30 rounded-lg px-3 py-2 flex items-center justify-between">
-          <p className="text-[11.5px]"><span className="font-semibold text-amber">Editing profile:</span>{' '}<span className="text-foreground">{existing?.name}</span><span className="text-muted-foreground"> · changes apply on save</span></p>
-          <button onClick={onSaved} className="text-[10.5px] text-muted-foreground hover:text-foreground">Cancel</button>
-        </div>
-      )}
-
       {/* Method selector */}
       <div className="bg-card rounded-lg border border-border overflow-hidden">
         <div className="px-3 py-2 border-b border-border bg-secondary/30"><p className="text-[11px] font-semibold text-foreground">Select discovery method</p></div>
@@ -435,6 +453,7 @@ function NewScanTab({ existing, onSaved, goToTab }: { existing: DiscoveryProfile
           </>
         )}
         <button onClick={resetForm} className="px-5 py-2 rounded-lg border border-border text-xs font-medium text-muted-foreground hover:bg-secondary">Reset</button>
+        <button onClick={onCancel} className="ml-auto px-5 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground">Cancel</button>
       </div>
     </div>
   );
