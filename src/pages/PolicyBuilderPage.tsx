@@ -548,7 +548,7 @@ function seedTemplates(): PolicyTemplate[] {
 
 export default function PolicyBuilderPage() {
   const { setCurrentPage, setFilters } = useNav();
-  const { activeForPolicy } = useExceptions();
+  const { activeForPolicy, setActivePolicyIds } = useExceptions();
   const [tab, setTab] = useState<'policies' | 'templates' | 'packs' | 'exceptions'>('policies');
   const [policyStates, setPolicyStates] = useState<Record<string, boolean>>(Object.fromEntries(policyRules.map(p => [p.id, p.enabled])));
   const [configModal, setConfigModal] = useState<string | null>(null);
@@ -601,6 +601,16 @@ export default function PolicyBuilderPage() {
     }));
     recomputePolicyViolations(extras as never[], policyStates);
   }, [userPolicies, policyStates]);
+
+  // Register currently-active policy ids with the exceptions context so that
+  // exceptions for deactivated policies have no effect.
+  useEffect(() => {
+    const activeIds = [
+      ...policyRules.filter(p => policyStates[p.id]).map(p => p.id),
+      ...userPolicies.filter(p => (p.status || '').toLowerCase() === 'active').map(p => p.id),
+    ];
+    setActivePolicyIds(activeIds);
+  }, [userPolicies, policyStates, setActivePolicyIds]);
 
   const markUserEdit = (field: AIField) => {
     setManuallyEdited(prev => { const n = new Set(prev); n.add(field); return n; });

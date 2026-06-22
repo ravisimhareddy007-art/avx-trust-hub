@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 
 export type ExceptionStatus = 'Active' | 'Expired' | 'Revoked';
 
@@ -26,6 +26,7 @@ interface ExceptionsContextValue {
   raiseException: (input: Omit<PolicyException, 'id' | 'createdBy' | 'createdAt'>) => { ok: boolean; message: string };
   revokeException: (id: string, by?: string) => void;
   extendExpiry: (id: string, newExpiry: string) => void;
+  setActivePolicyIds: (ids: string[]) => void;
 }
 
 const ExceptionsContext = createContext<ExceptionsContextValue | null>(null);
@@ -48,13 +49,35 @@ export function ExceptionsProvider({ children }: { children: React.ReactNode }) 
     },
   ]);
 
+  // Registered active policy ids. When null (never set), all policies are treated
+  // as active — preserves prior behavior for surfaces that haven't registered.
+  const [activePolicyIds, setActivePolicyIdsState] = useState<Set<string> | null>(null);
+  const lastIdsRef = useRef<string>('');
+
+  const setActivePolicyIds = useCallback((ids: string[]) => {
+    const sorted = [...ids].sort();
+    const key = sorted.join('|');
+    if (key === lastIdsRef.current) return;
+    lastIdsRef.current = key;
+    setActivePolicyIdsState(new Set(sorted));
+  }, []);
+
+  const policyActive = useCallback((policyId: string) =>
+    activePolicyIds === null ? true : activePolicyIds.has(policyId),
+    [activePolicyIds]);
+
   const statusOf = useCallback((e: PolicyException) => deriveStatus(e), []);
   const isExcepted = useCallback((assetId: string, policyId: string) =>
-    exceptions.some(e => e.assetId === assetId && e.policyId === policyId && deriveStatus(e) === 'Active'), [exceptions]);
+    exceptions.some(e => e.assetId === assetId && e.policyId === policyId && deriveStatus(e) === 'Active' && policyActive(policyId)),
+    [exceptions, policyActive]);
   const activeForAsset = useCallback((assetId: string) =>
-    exceptions.filter(e => e.assetId === assetId && deriveStatus(e) === 'Active'), [exceptions]);
+    exceptions.filter(e => e.assetId === assetId && deriveStatus(e) === 'Active' && policyActive(e.policyId)),
+    [exceptions, policyActive]);
   const activeForPolicy = useCallback((policyId: string) =>
-    exceptions.filter(e => e.policyId === policyId && deriveStatus(e) === 'Active'), [exceptions]);
+    policyActive(policyId)
+      ? exceptions.filter(e => e.policyId === policyId && deriveStatus(e) === 'Active')
+      : [],
+    [exceptions, policyActive]);
 
   const raiseException = useCallback((input: Omit<PolicyException, 'id' | 'createdBy' | 'createdAt'>) => {
     if (!input.reason?.trim()) return { ok: false, message: 'A justification is required.' };
@@ -78,7 +101,7 @@ export function ExceptionsProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   return (
-    <ExceptionsContext.Provider value={{ exceptions, statusOf, isExcepted, activeForAsset, activeForPolicy, raiseException, revokeException, extendExpiry }}>
+    <ExceptionsContext.Provider value={{ exceptions, statusOf, isExcepted, activeForAsset, activeForPolicy, raiseException, revokeException, extendExpiry, setActivePolicyIds }}>
       {children}
     </ExceptionsContext.Provider>
   );
