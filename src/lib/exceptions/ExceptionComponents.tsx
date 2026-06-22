@@ -26,7 +26,7 @@ export function RaiseExceptionModal({
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-foreground/30 backdrop-blur-sm" onClick={onClose}>
       <div className="w-[440px] max-w-[92vw] bg-card border border-border rounded-xl shadow-2xl p-5" onClick={e => e.stopPropagation()}>
         <div className="mb-3">
-          <p className="text-[13px] font-semibold text-foreground">Except crypto object from policy</p>
+          <p className="text-[13px] font-semibold text-foreground">Add policy exception</p>
         </div>
         <p className="text-[11px] text-muted-foreground mb-3">
           <span className="text-foreground font-medium">{objectName}</span>
@@ -45,7 +45,7 @@ export function RaiseExceptionModal({
         {error && <p className="text-[11px] text-coral mb-3">{error}</p>}
         <div className="flex justify-end gap-2">
           <button onClick={onClose} className="text-[11px] px-3 py-1.5 rounded-lg text-muted-foreground hover:text-foreground">Cancel</button>
-          <button onClick={submit} className="text-[11px] px-3 py-1.5 rounded-lg bg-amber text-white font-medium hover:opacity-90">Raise exception</button>
+          <button onClick={submit} className="text-[11px] px-3 py-1.5 rounded-lg bg-amber text-white font-medium hover:opacity-90">Add exception</button>
         </div>
       </div>
     </div>
