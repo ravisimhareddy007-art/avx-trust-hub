@@ -686,8 +686,12 @@ function DetailPanel({
               </p>
             </div>
             <div className="bg-card rounded-lg px-3 py-2 border border-border/50">
-              <p className={`text-[18px] font-bold tabular-nums ${totalViolations > 0 ? 'text-coral' : 'text-teal'}`}>{totalViolations}</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Violations</p>
+              <p className={`text-[18px] font-bold tabular-nums ${totalViolations > 0 ? 'text-coral' : rawViolations > 0 ? 'text-amber' : 'text-teal'}`}>{totalViolations}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                Violations
+                {rawViolations > 0 && totalViolations === 0 && <span className="ml-1 text-amber">· Excepted</span>}
+                {exceptedCount > 0 && totalViolations > 0 && <span className="ml-1 text-amber">· {exceptedCount} excepted</span>}
+              </p>
             </div>
           </div>
         </div>
