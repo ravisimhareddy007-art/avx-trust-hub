@@ -22,7 +22,7 @@ import DeployToDeviceModal from '@/components/integrations/DeployToDeviceModal';
 import TicketDraftModal, { TicketDraft } from '@/components/inventory/TicketDraftModal';
 import { computeCRS } from '@/lib/risk/crs';
 import { useExceptions, effectiveViolations } from '@/lib/exceptions/ExceptionsContext';
-import { RaiseExceptionModal, ExceptionsList } from '@/lib/exceptions/ExceptionComponents';
+import { RaiseExceptionModal } from '@/lib/exceptions/ExceptionComponents';
 
 // Map a violation label → its built-in policy (id + name). Returns null for
 // operational flags that don't correspond to a policy.
