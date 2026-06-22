@@ -797,16 +797,16 @@ function DetailPanel({
             )}
           </div>
 
-          {/* Violations */}
-          {rawViolations > 0 && (
+          {/* Policy Violations (policy + quantum) */}
+          {(policy.length + quantum.length) > 0 && (
             <div className="px-4 py-3">
               <SectionHeading label="Violations" count={totalViolations} />
 
-              {operational.length > 0 && (
+              {policy.length > 0 && (
                 <div className="mb-3">
-                  <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Operational</p>
+                  <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Policy Violations</p>
                   <div className="space-y-1.5">
-                    {operational.map((v, i) => {
+                    {policy.map((v, i) => {
                       const mapped = violationToPolicy(v.label, co);
                       const excepted = mapped ? isExcepted(co.id, mapped.policyId) : false;
                       return (
@@ -819,10 +819,6 @@ function DetailPanel({
                           <button onClick={() => setExceptCtx({ policyId: mapped.policyId, policyName: mapped.policyName })}
                             className="text-[10px] px-2 py-0.5 rounded border border-amber/30 text-amber hover:bg-amber/10">Add exception</button>
                         ))}
-                        {v.action && !isSecret && (
-                          <button onClick={() => onTicket(v.actionKey ?? 'fix')}
-                            className="text-[10px] text-teal hover:underline flex-shrink-0">{v.action}</button>
-                        )}
                       </div>
                       );
                     })}
@@ -856,6 +852,21 @@ function DetailPanel({
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Operational Alerts (informational; no actions, no exceptions) */}
+          {operational.length > 0 && (
+            <div className="px-4 py-3">
+              <SectionHeading label="Operational Alerts" count={operational.length} />
+              <div className="space-y-1.5">
+                {operational.map((v, i) => (
+                  <div key={i} className="flex items-start gap-2 py-1 border-b border-border/30 last:border-0">
+                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 ${v.severity === 'critical' ? 'bg-coral' : v.severity === 'high' ? 'bg-amber' : 'bg-muted-foreground'}`} />
+                    <span className="text-[11px] text-foreground flex-1">{v.label}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
