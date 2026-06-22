@@ -841,7 +841,7 @@ function DetailPanel({
                           <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber/10 text-amber font-medium">Excepted</span>
                         ) : (
                           <button onClick={() => setExceptCtx({ policyId: mapped.policyId, policyName: mapped.policyName })}
-                            className="text-[10px] px-2 py-0.5 rounded border border-amber/30 text-amber hover:bg-amber/10">Except</button>
+                            className="text-[10px] px-2 py-0.5 rounded border border-amber/30 text-amber hover:bg-amber/10">Add exception</button>
                         ))}
                         {v.action && !isSecret && (
                           <button onClick={() => onTicket(v.actionKey ?? 'fix')}
@@ -872,7 +872,7 @@ function DetailPanel({
                           <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber/10 text-amber font-medium">Excepted</span>
                         ) : (
                           <button onClick={() => setExceptCtx({ policyId: mapped.policyId, policyName: mapped.policyName })}
-                            className="text-[10px] px-2 py-0.5 rounded border border-amber/30 text-amber hover:bg-amber/10">Except</button>
+                            className="text-[10px] px-2 py-0.5 rounded border border-amber/30 text-amber hover:bg-amber/10">Add exception</button>
                         ))}
                       </div>
                       );
@@ -918,7 +918,7 @@ function DetailPanel({
                             onClick={() => setExceptCtx({ policyId: p.id, policyName: p.name || p.id })}
                             className="text-[10px] px-2 py-0.5 rounded border border-amber/30 text-amber hover:bg-amber/10"
                           >
-                            Except
+                            Add exception
                           </button>
                         )}
                       </div>
