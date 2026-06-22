@@ -1197,7 +1197,7 @@ export default function PolicyBuilderPage() {
                     )}
 
                     <div className={sectionCardCls}>
-                      <SectionHeading label={`Exceptions (${activeForPolicy(row.id).length} excepted)`} info="Assets exempt from this policy with a justification and expiry." accent="amber" />
+                      <SectionHeading label={`Exceptions (${activeForPolicy(row.id).length} excepted objects)`} info="Crypto objects exempt from this policy with a justification and expiry." accent="amber" />
                       <ExceptionsList scope={{ kind: 'policy', id: row.id }} />
                     </div>
 
