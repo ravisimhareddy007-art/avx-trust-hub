@@ -52,6 +52,56 @@ export function RaiseExceptionModal({
   );
 }
 
+export function ExtendExpiryModal({
+  open, onClose, currentExpiry, onConfirm,
+}: {
+  open: boolean;
+  onClose: () => void;
+  currentExpiry: string;
+  onConfirm: (newExpiry: string) => void;
+}) {
+  const [expiry, setExpiry] = useState(currentExpiry);
+  const [error, setError] = useState('');
+  if (!open) return null;
+
+  const submit = () => {
+    if (!expiry) { setError('Pick a new expiry date.'); return; }
+    const today = todayISO();
+    if (expiry < today) { setError('Expiry must be in the future.'); return; }
+    if (expiry === currentExpiry) { setError('Pick a date later than the current expiry.'); return; }
+    if (expiry <= currentExpiry) { setError('New expiry must be after the current expiry.'); return; }
+    onConfirm(expiry);
+    setError('');
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-foreground/30 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-[400px] max-w-[92vw] bg-card border border-border rounded-xl shadow-2xl p-5" onClick={e => e.stopPropagation()}>
+        <div className="mb-3">
+          <p className="text-[13px] font-semibold text-foreground">Extend exception expiry</p>
+        </div>
+        <p className="text-[11px] text-muted-foreground mb-3">
+          Current expiry: <span className="text-foreground font-medium">{currentExpiry}</span>. Choose a later date. The exception remains active until the new date is reached.
+        </p>
+        <label className="block text-[11px] font-medium mb-1">New expiry date<span className="text-coral">*</span></label>
+        <input
+          type="date"
+          value={expiry}
+          min={todayISO()}
+          onChange={e => { setExpiry(e.target.value); setError(''); }}
+          className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-background text-foreground focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal/40 mb-1"
+        />
+        {error && <p className="text-[11px] text-coral mt-2">{error}</p>}
+        <div className="flex justify-end gap-2 mt-4">
+          <button onClick={onClose} className="text-[11px] px-3 py-1.5 rounded-lg text-muted-foreground hover:text-foreground">Cancel</button>
+          <button onClick={submit} className="text-[11px] px-3 py-1.5 rounded-lg bg-teal text-white font-medium hover:opacity-90">Extend</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function StatusChip({ s }: { s: string }) {
   const cls = s === 'Active' ? 'bg-teal/10 text-teal' : s === 'Expired' ? 'bg-muted text-muted-foreground' : 'bg-coral/10 text-coral';
   return <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${cls}`}>{s}</span>;
@@ -59,8 +109,10 @@ function StatusChip({ s }: { s: string }) {
 
 export function ExceptionsList({ scope }: { scope: { kind: 'object'; id: string } | { kind: 'policy'; id: string } }) {
   const { exceptions, statusOf, revokeException, extendExpiry } = useExceptions();
+  const [extendId, setExtendId] = useState<string | null>(null);
   const rows = exceptions.filter(e => scope.kind === 'object' ? e.objectId === scope.id : e.policyId === scope.id);
   if (rows.length === 0) return <p className="text-[11px] text-muted-foreground py-2">No exceptions.</p>;
+  const extendRow = extendId ? exceptions.find(x => x.id === extendId) : null;
   return (
     <div className="space-y-2">
       {rows.map(e => {
@@ -89,12 +141,20 @@ export function ExceptionsList({ scope }: { scope: { kind: 'object'; id: string 
             {s === 'Active' && (
               <div className="flex gap-2 mt-2">
                 <button onClick={() => revokeException(e.id)} className="text-[10px] px-2 py-0.5 rounded text-coral hover:bg-coral/10">Revoke</button>
-                <button onClick={() => { const d = prompt('New expiry date (yyyy-mm-dd)', e.expiry); if (d) extendExpiry(e.id, d); }} className="text-[10px] px-2 py-0.5 rounded text-teal hover:bg-teal/10">Extend</button>
+                <button onClick={() => setExtendId(e.id)} className="text-[10px] px-2 py-0.5 rounded text-teal hover:bg-teal/10">Extend</button>
               </div>
             )}
           </div>
         );
       })}
+      {extendRow && (
+        <ExtendExpiryModal
+          open={true}
+          onClose={() => setExtendId(null)}
+          currentExpiry={extendRow.expiry}
+          onConfirm={(d) => extendExpiry(extendRow.id, d)}
+        />
+      )}
     </div>
   );
 }

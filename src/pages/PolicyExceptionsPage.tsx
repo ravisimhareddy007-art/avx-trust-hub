@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNav } from '@/context/NavigationContext';
 import { useExceptions, PolicyException } from '@/lib/exceptions/ExceptionsContext';
+import { ExtendExpiryModal } from '@/lib/exceptions/ExceptionComponents';
 import { mockAssets } from '@/data/mockData';
 import { X, ExternalLink } from 'lucide-react';
 
