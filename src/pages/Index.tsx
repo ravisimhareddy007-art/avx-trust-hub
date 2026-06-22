@@ -10,6 +10,7 @@ import { NotificationProvider } from '@/context/NotificationContext';
 import { OnboardingProvider } from '@/context/OnboardingContext';
 import { ConnectionsProvider } from '@/context/ConnectionsContext';
 import { ProfilesProvider, RunsProvider } from '@/context/DiscoveryContext';
+import { ExceptionsProvider } from '@/lib/exceptions/ExceptionsContext';
 import AppSidebar from '@/components/AppSidebar';
 import TopBar from '@/components/TopBar';
 import InfinityAIDrawer from '@/components/InfinityAIDrawer';
@@ -112,9 +113,11 @@ export default function Index() {
               <InventoryRegistryProvider>
                 <RiskProvider>
                   <CertificateWorkflowProvider>
-                    <AgentBoundary>
-                      <AppShell />
-                    </AgentBoundary>
+                    <ExceptionsProvider>
+                      <AgentBoundary>
+                        <AppShell />
+                      </AgentBoundary>
+                    </ExceptionsProvider>
                   </CertificateWorkflowProvider>
                 </RiskProvider>
               </InventoryRegistryProvider>

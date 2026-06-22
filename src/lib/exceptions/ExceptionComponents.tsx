@@ -1,0 +1,89 @@
+import React, { useState } from 'react';
+import { useExceptions } from '@/lib/exceptions/ExceptionsContext';
+
+const todayISO = () => new Date().toISOString().slice(0, 10);
+
+export function RaiseExceptionModal({
+  open, onClose, assetId, assetName, policyId, policyName,
+}: {
+  open: boolean; onClose: () => void;
+  assetId: string; assetName: string; policyId: string; policyName: string;
+}) {
+  const { raiseException } = useExceptions();
+  const [reason, setReason] = useState('');
+  const [expiry, setExpiry] = useState('');
+  const [error, setError] = useState('');
+  if (!open) return null;
+
+  const submit = () => {
+    const res = raiseException({ assetId, assetName, policyId, policyName, reason, expiry });
+    if (!res.ok) { setError(res.message); return; }
+    setReason(''); setExpiry(''); setError(''); onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-foreground/30 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-[440px] max-w-[92vw] bg-card border border-border rounded-xl shadow-2xl p-5" onClick={e => e.stopPropagation()}>
+        <div className="mb-3">
+          <p className="text-[13px] font-semibold text-foreground">Except asset from policy</p>
+        </div>
+        <p className="text-[11px] text-muted-foreground mb-3">
+          <span className="text-foreground font-medium">{assetName}</span> will be exempt from
+          <span className="text-foreground font-medium"> {policyName}</span> until the expiry date.
+          The asset stays visible as Excepted and is removed from this policy's non-compliant count and risk score while the exception is active.
+        </p>
+        <label className="block text-[11px] font-medium mb-1">Justification<span className="text-coral">*</span></label>
+        <textarea value={reason} onChange={e => setReason(e.target.value)} rows={3}
+          placeholder="Why is this non-compliance accepted? e.g. legacy appliance, compensating control in place."
+          className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-background text-foreground focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal/40 mb-3" />
+        <label className="block text-[11px] font-medium mb-1">Expiry date<span className="text-coral">*</span></label>
+        <input type="date" value={expiry} min={todayISO()} onChange={e => setExpiry(e.target.value)}
+          className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-background text-foreground focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal/40 mb-1" />
+        <p className="text-[10px] text-muted-foreground mb-3">An exception cannot be open-ended. It will automatically lapse on this date and the asset will return to Non-Compliant.</p>
+        {error && <p className="text-[11px] text-coral mb-3">{error}</p>}
+        <div className="flex justify-end gap-2">
+          <button onClick={onClose} className="text-[11px] px-3 py-1.5 rounded-lg text-muted-foreground hover:text-foreground">Cancel</button>
+          <button onClick={submit} className="text-[11px] px-3 py-1.5 rounded-lg bg-amber text-white font-medium hover:opacity-90">Raise exception</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatusChip({ s }: { s: string }) {
+  const cls = s === 'Active' ? 'bg-teal/10 text-teal' : s === 'Expired' ? 'bg-muted text-muted-foreground' : 'bg-coral/10 text-coral';
+  return <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${cls}`}>{s}</span>;
+}
+
+export function ExceptionsList({ scope }: { scope: { kind: 'asset'; id: string } | { kind: 'policy'; id: string } }) {
+  const { exceptions, statusOf, revokeException, extendExpiry } = useExceptions();
+  const rows = exceptions.filter(e => scope.kind === 'asset' ? e.assetId === scope.id : e.policyId === scope.id);
+  if (rows.length === 0) return <p className="text-[11px] text-muted-foreground py-2">No exceptions.</p>;
+  return (
+    <div className="space-y-2">
+      {rows.map(e => {
+        const s = statusOf(e);
+        return (
+          <div key={e.id} className="border border-border rounded-lg p-2.5 bg-background">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[11px] font-medium text-foreground">{scope.kind === 'asset' ? e.policyName : e.assetName}</span>
+              <StatusChip s={s} />
+            </div>
+            <p className="text-[10px] text-muted-foreground mb-1">{e.reason}</p>
+            <div className="flex items-center gap-3 text-[9px] text-muted-foreground">
+              <span>Raised by {e.createdBy}</span>
+              <span>Expires {e.expiry}</span>
+              {e.revokedAt && <span className="text-coral">Revoked by {e.revokedBy}</span>}
+            </div>
+            {s === 'Active' && (
+              <div className="flex gap-2 mt-2">
+                <button onClick={() => revokeException(e.id)} className="text-[10px] px-2 py-0.5 rounded text-coral hover:bg-coral/10">Revoke</button>
+                <button onClick={() => { const d = prompt('New expiry date (yyyy-mm-dd)', e.expiry); if (d) extendExpiry(e.id, d); }} className="text-[10px] px-2 py-0.5 rounded text-teal hover:bg-teal/10">Extend</button>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}

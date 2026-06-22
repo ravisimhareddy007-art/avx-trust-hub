@@ -8,6 +8,8 @@ import { SeverityBadge, Modal } from '@/components/shared/UIComponents';
 import ConditionBuilder, { ConditionGroup, emptyGroup } from '@/components/policies/ConditionBuilder';
 import { POLICY_TYPES, describeCondition, FIELDS_BY_POLICY_TYPE } from '@/components/policies/policyFields';
 import { toast } from 'sonner';
+import { useExceptions } from '@/lib/exceptions/ExceptionsContext';
+import { ExceptionsList } from '@/lib/exceptions/ExceptionComponents';
 import {
   Plus,
   Search,
@@ -546,6 +548,7 @@ function seedTemplates(): PolicyTemplate[] {
 
 export default function PolicyBuilderPage() {
   const { setCurrentPage, setFilters } = useNav();
+  const { activeForPolicy } = useExceptions();
   const [tab, setTab] = useState<'policies' | 'templates' | 'packs'>('policies');
   const [policyStates, setPolicyStates] = useState<Record<string, boolean>>(Object.fromEntries(policyRules.map(p => [p.id, p.enabled])));
   const [configModal, setConfigModal] = useState<string | null>(null);
@@ -1181,6 +1184,11 @@ export default function PolicyBuilderPage() {
                         )}
                       </div>
                     )}
+
+                    <div className={sectionCardCls}>
+                      <SectionHeading label={`Exceptions (${activeForPolicy(row.id).length} excepted)`} info="Assets exempt from this policy with a justification and expiry." accent="amber" />
+                      <ExceptionsList scope={{ kind: 'policy', id: row.id }} />
+                    </div>
 
                     <div className="sticky bottom-0 -mx-6 -mb-6 mt-2 border-t border-border bg-card/95 backdrop-blur px-4 py-3 flex justify-end gap-2">
                       <button onClick={() => setDetailPolicyId(null)} className="px-4 py-2 text-xs rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">Close</button>
