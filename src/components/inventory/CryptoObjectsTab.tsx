@@ -720,50 +720,50 @@ function DetailPanel({
         <div className="flex-1 overflow-y-auto scrollbar-thin divide-y divide-border/40">
 
           {/* Actions */}
-          <div className="px-4 py-3">
-            <SectionHeading label="Actions" />
-            {isSecret && !SECRETS_LICENSED ? (
-              <SecretsUpsell co={co} />
-            ) : (
-              <div className="flex flex-wrap gap-1.5">
-                {(co.type === 'TLS Certificate' || co.type === 'Code-Signing Certificate') && (
-                  <button onClick={() => toast.success('Certificate downloaded')}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-border text-foreground hover:bg-secondary/80 transition-colors">
-                    ↓ Download
-                  </button>
-                )}
-                {co.owner === 'Unassigned' && (
-                  <button onClick={() => toast.success('Owner assignment opened')}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-amber/30 text-amber hover:bg-amber/10 transition-colors">
-                    <UserPlus className="w-3 h-3" /> Assign owner
-                  </button>
-                )}
-                {(() => {
-                  const { operational } = deriveViolations(co);
-                  return (<>
-                    {operational.length > 0 && (
-                      <button onClick={() => onTicket('fix')}
-                        className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-purple/30 text-purple-light hover:bg-purple/10 transition-colors">
-                        <Ticket className="w-3 h-3" /> Remediation ticket
-                      </button>
-                    )}
-                    {isPqc && (
-                      <button onClick={() => onTicket('pqc')}
-                        className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-purple/30 text-purple-light hover:bg-purple/10 transition-colors">
-                        <Atom className="w-3 h-3" /> PQC ticket
-                      </button>
-                    )}
-                    {operational.length === 0 && !isPqc && (
-                      <button onClick={() => onTicket('fix')}
-                        className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-purple/30 text-purple-light hover:bg-purple/10 transition-colors">
-                        <Ticket className="w-3 h-3" /> Create ticket
-                      </button>
-                    )}
-                  </>);
-                })()}
+          {(() => {
+            const showDownload = co.type === 'TLS Certificate' || co.type === 'Code-Signing Certificate';
+            const hasOperational = operational.length > 0;
+            const hasAnyAction = showDownload || hasOperational || isPqc || (!hasOperational && !isPqc);
+            if (isSecret && !SECRETS_LICENSED) {
+              return (
+                <div className="px-4 py-3">
+                  <SectionHeading label="Actions" />
+                  <SecretsUpsell co={co} />
+                </div>
+              );
+            }
+            return (
+              <div className="px-4 py-3">
+                <SectionHeading label="Actions" />
+                <div className="flex flex-wrap gap-1.5">
+                  {showDownload && (
+                    <button onClick={() => toast.success('Certificate downloaded')}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-border text-foreground hover:bg-secondary/80 transition-colors">
+                      ↓ Download
+                    </button>
+                  )}
+                  {hasOperational && (
+                    <button onClick={() => onTicket('fix')}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-purple/30 text-purple-light hover:bg-purple/10 transition-colors">
+                      <Ticket className="w-3 h-3" /> Remediation ticket
+                    </button>
+                  )}
+                  {isPqc && (
+                    <button onClick={() => onTicket('pqc')}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-purple/30 text-purple-light hover:bg-purple/10 transition-colors">
+                      <Atom className="w-3 h-3" /> PQC ticket
+                    </button>
+                  )}
+                  {!hasOperational && !isPqc && (
+                    <button onClick={() => onTicket('fix')}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-purple/30 text-purple-light hover:bg-purple/10 transition-colors">
+                      <Ticket className="w-3 h-3" /> Create ticket
+                    </button>
+                  )}
+                </div>
               </div>
-            )}
-          </div>
+            );
+          })()}
 
           {/* Type-specific details */}
           <div className="px-4 py-3">
