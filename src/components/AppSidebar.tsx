@@ -65,6 +65,7 @@ export default function AppSidebar() {
 
   // Hidden for MVP R1; will be enabled in R2
   const SHOW_REMEDIATION = false;
+  const SHOW_MCP_RUNTIME = false;
 
   const navItems: NavItem[] = [
     { id: 'dashboard', label: 'DASHBOARD', icon: LayoutDashboard, page: 'dashboards' },

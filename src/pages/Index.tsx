@@ -1,4 +1,5 @@
 import React from 'react';
+import { FEATURES } from '@/config/features';
 import { PersonaProvider, usePersona } from '@/context/PersonaContext';
 import { NavigationProvider, useNav } from '@/context/NavigationContext';
 import { IntegrationsProvider, useIntegrations } from '@/context/IntegrationsContext';
