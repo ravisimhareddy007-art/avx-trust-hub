@@ -641,8 +641,8 @@ function DetailPanel({
   const riskScore = Math.round(alg * 0.30 + exp * 0.20 + env * 0.20 + dep * 0.15 + own * 0.15);
   const riskCol = riskScore > 70 ? 'text-coral' : riskScore > 40 ? 'text-amber' : 'text-teal';
 
-  const { operational, quantum } = deriveViolations(co);
-  const rawViolations = operational.length + quantum.length;
+  const { policy, operational, quantum } = deriveViolations(co);
+  const rawViolations = policy.length + quantum.length;
   const { activeForObject, isExcepted } = useExceptions();
   const exceptedCount = activeForObject(co.id).length;
   const totalViolations = effectiveViolations(rawViolations, exceptedCount);
