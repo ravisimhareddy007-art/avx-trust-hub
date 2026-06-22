@@ -549,7 +549,7 @@ function seedTemplates(): PolicyTemplate[] {
 export default function PolicyBuilderPage() {
   const { setCurrentPage, setFilters } = useNav();
   const { activeForPolicy } = useExceptions();
-  const [tab, setTab] = useState<'policies' | 'templates' | 'packs'>('policies');
+  const [tab, setTab] = useState<'policies' | 'templates' | 'packs' | 'exceptions'>('policies');
   const [policyStates, setPolicyStates] = useState<Record<string, boolean>>(Object.fromEntries(policyRules.map(p => [p.id, p.enabled])));
   const [configModal, setConfigModal] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -844,6 +844,7 @@ export default function PolicyBuilderPage() {
           { id: 'policies', label: 'Policies' },
           { id: 'packs', label: 'Policy Packs' },
           { id: 'templates', label: 'Templates' },
+          { id: 'exceptions', label: 'Exceptions' },
         ] as const).map(s => (
           <button key={s.id} onClick={() => { setTab(s.id); setOpenPackId(null); }}
             className={`px-4 py-1.5 text-xs font-medium transition-colors ${tab === s.id ? 'bg-teal text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
