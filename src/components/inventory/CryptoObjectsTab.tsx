@@ -21,6 +21,8 @@ import CryptoObjectRiskDrawer from '@/components/risk/CryptoObjectRiskDrawer';
 import DeployToDeviceModal from '@/components/integrations/DeployToDeviceModal';
 import TicketDraftModal, { TicketDraft } from '@/components/inventory/TicketDraftModal';
 import { computeCRS } from '@/lib/risk/crs';
+import { useExceptions, effectiveViolations } from '@/lib/exceptions/ExceptionsContext';
+import { RaiseExceptionModal, ExceptionsList } from '@/lib/exceptions/ExceptionComponents';
 
 // CRS lookup memoised per render via module-level WeakMap
 const _crsCache = new WeakMap<CryptoAsset, number>();
@@ -622,7 +624,11 @@ function DetailPanel({
   const riskCol = riskScore > 70 ? 'text-coral' : riskScore > 40 ? 'text-amber' : 'text-teal';
 
   const { operational, quantum } = deriveViolations(co);
-  const totalViolations = operational.length + quantum.length;
+  const rawViolations = operational.length + quantum.length;
+  const { activeForAsset, isExcepted } = useExceptions();
+  const exceptedCount = activeForAsset(co.id).length;
+  const totalViolations = effectiveViolations(rawViolations, exceptedCount);
+  const [exceptCtx, setExceptCtx] = useState<{ policyId: string; policyName: string } | null>(null);
 
   const expiryDisplay = co.daysToExpiry >= 0
     ? co.daysToExpiry === 0 ? 'Today' : `${co.daysToExpiry}d`
