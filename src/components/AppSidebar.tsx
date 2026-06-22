@@ -77,9 +77,10 @@ export default function AppSidebar() {
       label: 'POLICIES',
       icon: ScrollText,
       page: 'policy-builder',
-      children: persona === 'compliance-officer' ? [
-        { id: 'violations', label: 'Violations', page: 'violations' },
-      ] : undefined,
+      children: [
+        ...(persona === 'compliance-officer' ? [{ id: 'violations', label: 'Violations', page: 'violations' }] : []),
+        { id: 'policy-exceptions', label: 'Exceptions', page: 'policy-exceptions' },
+      ],
     },
     ...(SHOW_REMEDIATION ? [{
       id: 'remediation',

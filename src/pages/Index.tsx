@@ -32,6 +32,7 @@ import ViolationsPage from '@/pages/ViolationsPage';
 import CertHolisticView from '@/pages/CertHolisticView';
 import WorkOrderStatus from '@/pages/WorkOrderStatus';
 import MCPRuntimePage from '@/pages/MCPRuntimePage';
+import PolicyExceptionsPage from '@/pages/PolicyExceptionsPage';
 
 function DashboardPage() {
   const { persona } = usePersona();
@@ -52,6 +53,7 @@ function PageRouter() {
     discovery: <DiscoveryPage />,
     inventory: <InventoryPage />,
     'policy-builder': <PolicyBuilderPage />,
+    'policy-exceptions': <PolicyExceptionsPage />,
     remediation: <RemediationPage />,
     'remediation-objects': <RemediationPage />,
     'remediation-clm': <RemediationPage />,
