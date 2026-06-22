@@ -625,9 +625,11 @@ function DetailPanel({
 
   const { operational, quantum } = deriveViolations(co);
   const rawViolations = operational.length + quantum.length;
-  const { activeForAsset, isExcepted } = useExceptions();
-  const exceptedCount = activeForAsset(co.id).length;
+  const { activeForObject, isExcepted } = useExceptions();
+  const exceptedCount = activeForObject(co.id).length;
   const totalViolations = effectiveViolations(rawViolations, exceptedCount);
+  const shownPolicyViolations = effectiveViolations((co as any).policyViolations ?? 0, exceptedCount);
+  const parentAsset = (co as any).host || co.application || co.infrastructure;
   const [exceptCtx, setExceptCtx] = useState<{ policyId: string; policyName: string } | null>(null);
 
   const expiryDisplay = co.daysToExpiry >= 0
@@ -895,18 +897,23 @@ function DetailPanel({
             );
           })()}
 
-          {/* Exceptions on this asset */}
+          {/* Exceptions on this object */}
           <div className="px-4 py-3">
             <SectionHeading label="Exceptions" count={exceptedCount} />
-            <ExceptionsList scope={{ kind: 'asset', id: co.id }} />
+            {shownPolicyViolations === 0 && ((co as any).policyViolations ?? 0) > 0 && (
+              <p className="text-[10px] text-amber mb-2">All policy violations on this object are currently excepted.</p>
+            )}
+            <ExceptionsList scope={{ kind: 'object', id: co.id }} />
           </div>
 
           {exceptCtx && (
             <RaiseExceptionModal
               open={!!exceptCtx}
               onClose={() => setExceptCtx(null)}
-              assetId={co.id}
-              assetName={co.name}
+              objectId={co.id}
+              objectName={co.name}
+              objectType={co.type}
+              parentAsset={parentAsset}
               policyId={exceptCtx.policyId}
               policyName={exceptCtx.policyName}
             />
