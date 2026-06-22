@@ -24,6 +24,18 @@ import { computeCRS } from '@/lib/risk/crs';
 import { useExceptions, effectiveViolations } from '@/lib/exceptions/ExceptionsContext';
 import { RaiseExceptionModal, ExceptionsList } from '@/lib/exceptions/ExceptionComponents';
 
+// Map a violation label → its built-in policy (id + name). Returns null for
+// operational flags that don't correspond to a policy.
+function violationToPolicy(label: string, co: CryptoAsset): { policyId: string; policyName: string } | null {
+  const l = label.toLowerCase();
+  if (l.includes('self-signed')) return { policyId: 'oob-003', policyName: 'Self-Signed Server Certificate' };
+  if (l.includes('quantum-vulnerable') || l.includes('quantum vulnerable')) return { policyId: 'oob-pqc', policyName: 'Quantum-Vulnerable Algorithm in Use' };
+  if (l.includes('sha-1') || l.includes('md5')) return { policyId: 'oob-001', policyName: 'Weak Signature Algorithm' };
+  if (l.includes('revoked')) return { policyId: 'oob-004', policyName: 'Revoked Certificate Still Deployed' };
+  if (((co as any).algorithm || '').match(/RSA-(512|1024)/i)) return { policyId: 'oob-002', policyName: 'Weak RSA Key Length' };
+  return null;
+}
+
 // CRS lookup memoised per render via module-level WeakMap
 const _crsCache = new WeakMap<CryptoAsset, number>();
 function crsScore(a: CryptoAsset): number {
