@@ -1185,6 +1185,11 @@ export default function PolicyBuilderPage() {
                       </div>
                     )}
 
+                    <div className={sectionCardCls}>
+                      <SectionHeading label={`Exceptions (${activeForPolicy(row.id).length} excepted)`} info="Assets exempt from this policy with a justification and expiry." accent="amber" />
+                      <ExceptionsList scope={{ kind: 'policy', id: row.id }} />
+                    </div>
+
                     <div className="sticky bottom-0 -mx-6 -mb-6 mt-2 border-t border-border bg-card/95 backdrop-blur px-4 py-3 flex justify-end gap-2">
                       <button onClick={() => setDetailPolicyId(null)} className="px-4 py-2 text-xs rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">Close</button>
                       {!isCustom && (
