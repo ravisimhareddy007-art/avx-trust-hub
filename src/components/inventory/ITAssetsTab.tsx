@@ -72,7 +72,7 @@ function RiskBar({ label, score, driver }: { label: string; score: number; drive
 // Row menu for identities inside asset detail
 function CryptoRowMenu({ asset, onAction }: { asset: CryptoAsset; onAction: (action: string) => void }) {
   const [open, setOpen] = useState(false);
-  const actions = ['Renew', 'Revoke', 'Assign Owner', 'Add to Group', 'Create Ticket', 'View Full Detail'];
+  const actions = ['Assign Owner', 'Add to Group', 'Create Ticket', 'View Full Detail'];
   return (
     <div className="relative">
       <button onClick={e => { e.stopPropagation(); setOpen(!open); }} className="p-1 rounded hover:bg-secondary"><MoreVertical className="w-3 h-3 text-muted-foreground" /></button>
@@ -82,7 +82,7 @@ function CryptoRowMenu({ asset, onAction }: { asset: CryptoAsset; onAction: (act
           <div className="absolute right-0 top-full mt-1 bg-card border border-border rounded-lg shadow-lg z-50 min-w-[150px] py-1">
             {actions.map(a => (
               <button key={a} onClick={e => { e.stopPropagation(); setOpen(false); onAction(a); }}
-                className={`w-full flex items-center gap-2 px-3 py-1.5 text-[10px] hover:bg-secondary transition-colors ${a === 'Revoke' ? 'text-coral' : 'text-foreground'}`}>
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-[10px] hover:bg-secondary transition-colors text-foreground">
                 {a}
               </button>
             ))}

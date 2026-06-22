@@ -11,7 +11,7 @@ import { useNav } from '@/context/NavigationContext';
 import { StatusBadge, EnvBadge, PQCBadge, DaysToExpiry } from '@/components/shared/UIComponents';
 import {
   Search, X, Info, Atom, FileEdit, ArrowRight,
-  RefreshCw, UserPlus, Ticket, Lock, ChevronUp, ChevronDown,
+  UserPlus, Ticket, Lock, ChevronUp, ChevronDown,
   Filter as FilterIcon,
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -22,7 +22,7 @@ import DeployToDeviceModal from '@/components/integrations/DeployToDeviceModal';
 import TicketDraftModal, { TicketDraft } from '@/components/inventory/TicketDraftModal';
 import { computeCRS } from '@/lib/risk/crs';
 import { useExceptions, effectiveViolations } from '@/lib/exceptions/ExceptionsContext';
-import { RaiseExceptionModal, ExceptionsList } from '@/lib/exceptions/ExceptionComponents';
+import { RaiseExceptionModal } from '@/lib/exceptions/ExceptionComponents';
 
 // Map a violation label → its built-in policy (id + name). Returns null for
 // operational flags that don't correspond to a policy.
@@ -726,40 +726,10 @@ function DetailPanel({
                     ↓ Download
                   </button>
                 )}
-                {(co.type === 'TLS Certificate' || co.type === 'K8s Workload Cert' || co.type === 'SSH Certificate') && (
-                  <button
-                    onClick={() => co.status === 'Active' ? undefined : toast.success(`Renewal initiated`)}
-                    disabled={co.status === 'Active'}
-                    title={co.status === 'Active' ? 'Certificate is active — renew when nearing expiry' : undefined}
-                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold transition-colors ${co.status === 'Active' ? 'opacity-40 cursor-not-allowed bg-teal/10 text-teal border border-teal/20' : 'bg-teal text-primary-foreground hover:bg-teal/90'}`}>
-                    <RefreshCw className="w-3 h-3" /> Renew
-                  </button>
-                )}
-                {(co.type === 'SSH Key' || co.type === 'Encryption Key' || co.type === 'AI Agent Token') && (
-                  <button onClick={() => toast.success(`Rotation initiated`)}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold bg-teal text-primary-foreground hover:bg-teal/90 transition-colors">
-                    <RefreshCw className="w-3 h-3" /> Rotate
-                  </button>
-                )}
-                {(co.type === 'TLS Certificate' || co.type === 'K8s Workload Cert') && (
-                  <button
-                    onClick={() => co.status === 'Active' ? undefined : onDeploy()}
-                    disabled={co.status === 'Active'}
-                    title={co.status === 'Active' ? 'Deploy is available after renewal' : undefined}
-                    className={`px-2.5 py-1.5 rounded text-[10px] font-semibold border transition-colors ${co.status === 'Active' ? 'opacity-40 cursor-not-allowed border-border text-muted-foreground' : 'border-border text-foreground hover:bg-secondary/80'}`}>
-                    Deploy
-                  </button>
-                )}
                 {co.owner === 'Unassigned' && (
                   <button onClick={() => toast.success('Owner assignment opened')}
                     className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-amber/30 text-amber hover:bg-amber/10 transition-colors">
                     <UserPlus className="w-3 h-3" /> Assign owner
-                  </button>
-                )}
-                {!['API Key / Secret'].includes(co.type) && (
-                  <button onClick={() => toast.error(`Revoke ${co.name}?`, { action: { label: 'Confirm', onClick: () => toast.success('Revoked') } })}
-                    className="px-2.5 py-1.5 rounded text-[10px] font-semibold border border-coral/30 text-coral hover:bg-coral/10 transition-colors">
-                    Revoke
                   </button>
                 )}
                 {(() => {
@@ -929,14 +899,8 @@ function DetailPanel({
             );
           })()}
 
-          {/* Exceptions on this object */}
-          <div className="px-4 py-3">
-            <SectionHeading label="Exceptions" count={exceptedCount} />
-            {shownPolicyViolations === 0 && ((co as any).policyViolations ?? 0) > 0 && (
-              <p className="text-[10px] text-amber mb-2">All policy violations on this object are currently excepted.</p>
-            )}
-            <ExceptionsList scope={{ kind: 'object', id: co.id }} />
-          </div>
+
+
 
           {exceptCtx && (
             <RaiseExceptionModal
