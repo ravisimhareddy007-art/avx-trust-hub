@@ -726,40 +726,10 @@ function DetailPanel({
                     ↓ Download
                   </button>
                 )}
-                {(co.type === 'TLS Certificate' || co.type === 'K8s Workload Cert' || co.type === 'SSH Certificate') && (
-                  <button
-                    onClick={() => co.status === 'Active' ? undefined : toast.success(`Renewal initiated`)}
-                    disabled={co.status === 'Active'}
-                    title={co.status === 'Active' ? 'Certificate is active — renew when nearing expiry' : undefined}
-                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold transition-colors ${co.status === 'Active' ? 'opacity-40 cursor-not-allowed bg-teal/10 text-teal border border-teal/20' : 'bg-teal text-primary-foreground hover:bg-teal/90'}`}>
-                    <RefreshCw className="w-3 h-3" /> Renew
-                  </button>
-                )}
-                {(co.type === 'SSH Key' || co.type === 'Encryption Key' || co.type === 'AI Agent Token') && (
-                  <button onClick={() => toast.success(`Rotation initiated`)}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold bg-teal text-primary-foreground hover:bg-teal/90 transition-colors">
-                    <RefreshCw className="w-3 h-3" /> Rotate
-                  </button>
-                )}
-                {(co.type === 'TLS Certificate' || co.type === 'K8s Workload Cert') && (
-                  <button
-                    onClick={() => co.status === 'Active' ? undefined : onDeploy()}
-                    disabled={co.status === 'Active'}
-                    title={co.status === 'Active' ? 'Deploy is available after renewal' : undefined}
-                    className={`px-2.5 py-1.5 rounded text-[10px] font-semibold border transition-colors ${co.status === 'Active' ? 'opacity-40 cursor-not-allowed border-border text-muted-foreground' : 'border-border text-foreground hover:bg-secondary/80'}`}>
-                    Deploy
-                  </button>
-                )}
                 {co.owner === 'Unassigned' && (
                   <button onClick={() => toast.success('Owner assignment opened')}
                     className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-amber/30 text-amber hover:bg-amber/10 transition-colors">
                     <UserPlus className="w-3 h-3" /> Assign owner
-                  </button>
-                )}
-                {!['API Key / Secret'].includes(co.type) && (
-                  <button onClick={() => toast.error(`Revoke ${co.name}?`, { action: { label: 'Confirm', onClick: () => toast.success('Revoked') } })}
-                    className="px-2.5 py-1.5 rounded text-[10px] font-semibold border border-coral/30 text-coral hover:bg-coral/10 transition-colors">
-                    Revoke
                   </button>
                 )}
                 {(() => {
