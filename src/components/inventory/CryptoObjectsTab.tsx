@@ -808,7 +808,7 @@ function DetailPanel({
           </div>
 
           {/* Violations */}
-          {totalViolations > 0 && (
+          {rawViolations > 0 && (
             <div className="px-4 py-3">
               <SectionHeading label="Violations" count={totalViolations} />
 
@@ -849,8 +849,8 @@ function DetailPanel({
             </div>
           )}
 
-          {/* Ticketing (inherited from violated policies) */}
-          {totalViolations > 0 && (() => {
+          {/* Ticketing & exceptions (per violating policy) */}
+          {rawViolations > 0 && (() => {
             const vps = violatedPoliciesForObject(co.id);
             if (!vps.length) return null;
             return (
@@ -861,6 +861,7 @@ function DetailPanel({
                   {vps.map(p => {
                     const t: any = (p as any).ticket;
                     const enabled = t && t.enabled;
+                    const excepted = isExcepted(co.id, p.id);
                     return (
                       <div key={p.id} className="flex items-start gap-2 py-1.5 border-b border-border/30 last:border-0">
                         <Ticket className="w-3 h-3 mt-0.5 text-muted-foreground flex-shrink-0" />
@@ -876,6 +877,16 @@ function DetailPanel({
                             <p className="text-[10px] text-muted-foreground italic">No ticket configured</p>
                           )}
                         </div>
+                        {excepted ? (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-full font-medium bg-amber/15 text-amber">Excepted</span>
+                        ) : (
+                          <button
+                            onClick={() => setExceptCtx({ policyId: p.id, policyName: p.name || p.id })}
+                            className="text-[10px] px-2 py-0.5 rounded border border-amber/30 text-amber hover:bg-amber/10"
+                          >
+                            Except
+                          </button>
+                        )}
                       </div>
                     );
                   })}
@@ -884,6 +895,22 @@ function DetailPanel({
             );
           })()}
 
+          {/* Exceptions on this asset */}
+          <div className="px-4 py-3">
+            <SectionHeading label="Exceptions" count={exceptedCount} />
+            <ExceptionsList scope={{ kind: 'asset', id: co.id }} />
+          </div>
+
+          {exceptCtx && (
+            <RaiseExceptionModal
+              open={!!exceptCtx}
+              onClose={() => setExceptCtx(null)}
+              assetId={co.id}
+              assetName={co.name}
+              policyId={exceptCtx.policyId}
+              policyName={exceptCtx.policyName}
+            />
+          )}
 
           {/* Linked infrastructure */}
           <div className="px-4 py-3">
