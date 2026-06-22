@@ -830,16 +830,26 @@ function DetailPanel({
                 <div className="mb-3">
                   <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Operational</p>
                   <div className="space-y-1.5">
-                    {operational.map((v, i) => (
+                    {operational.map((v, i) => {
+                      const mapped = violationToPolicy(v.label, co);
+                      const excepted = mapped ? isExcepted(co.id, mapped.policyId) : false;
+                      return (
                       <div key={i} className="flex items-start gap-2 py-1 border-b border-border/30 last:border-0">
                         <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 ${v.severity === 'critical' ? 'bg-coral' : v.severity === 'high' ? 'bg-amber' : 'bg-muted-foreground'}`} />
                         <span className="text-[11px] text-foreground flex-1">{v.label}</span>
+                        {mapped && (excepted ? (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber/10 text-amber font-medium">Excepted</span>
+                        ) : (
+                          <button onClick={() => setExceptCtx({ policyId: mapped.policyId, policyName: mapped.policyName })}
+                            className="text-[10px] px-2 py-0.5 rounded border border-amber/30 text-amber hover:bg-amber/10">Except</button>
+                        ))}
                         {v.action && !isSecret && (
                           <button onClick={() => onTicket(v.actionKey ?? 'fix')}
                             className="text-[10px] text-teal hover:underline flex-shrink-0">{v.action}</button>
                         )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -851,12 +861,22 @@ function DetailPanel({
                     <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-purple/15 text-purple-light">NIST 2030</span>
                   </p>
                   <div className="space-y-1.5">
-                    {quantum.map((v, i) => (
+                    {quantum.map((v, i) => {
+                      const mapped = violationToPolicy(v.label, co);
+                      const excepted = mapped ? isExcepted(co.id, mapped.policyId) : false;
+                      return (
                       <div key={i} className="flex items-start gap-2 py-1 border-b border-border/30 last:border-0">
                         <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 bg-purple/60" />
                         <span className="text-[11px] text-foreground flex-1">{v.label}</span>
+                        {mapped && (excepted ? (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber/10 text-amber font-medium">Excepted</span>
+                        ) : (
+                          <button onClick={() => setExceptCtx({ policyId: mapped.policyId, policyName: mapped.policyName })}
+                            className="text-[10px] px-2 py-0.5 rounded border border-amber/30 text-amber hover:bg-amber/10">Except</button>
+                        ))}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
