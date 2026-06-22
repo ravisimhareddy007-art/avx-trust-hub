@@ -72,7 +72,7 @@ function RiskBar({ label, score, driver }: { label: string; score: number; drive
 // Row menu for identities inside asset detail
 function CryptoRowMenu({ asset, onAction }: { asset: CryptoAsset; onAction: (action: string) => void }) {
   const [open, setOpen] = useState(false);
-  const actions = ['Renew', 'Revoke', 'Assign Owner', 'Add to Group', 'Create Ticket', 'View Full Detail'];
+  const actions = ['Assign Owner', 'Add to Group', 'Create Ticket', 'View Full Detail'];
   return (
     <div className="relative">
       <button onClick={e => { e.stopPropagation(); setOpen(!open); }} className="p-1 rounded hover:bg-secondary"><MoreVertical className="w-3 h-3 text-muted-foreground" /></button>
