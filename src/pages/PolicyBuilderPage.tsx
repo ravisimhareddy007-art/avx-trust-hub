@@ -8,6 +8,8 @@ import { SeverityBadge, Modal } from '@/components/shared/UIComponents';
 import ConditionBuilder, { ConditionGroup, emptyGroup } from '@/components/policies/ConditionBuilder';
 import { POLICY_TYPES, describeCondition, FIELDS_BY_POLICY_TYPE } from '@/components/policies/policyFields';
 import { toast } from 'sonner';
+import { useExceptions } from '@/lib/exceptions/ExceptionsContext';
+import { ExceptionsList } from '@/lib/exceptions/ExceptionComponents';
 import {
   Plus,
   Search,
