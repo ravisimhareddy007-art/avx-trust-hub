@@ -1,11 +1,15 @@
+// Policy Exceptions (prototype, client-side, self-contained).
+// Object-level: an exception exempts ONE crypto object from ONE policy.
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 
 export type ExceptionStatus = 'Active' | 'Expired' | 'Revoked';
 
 export interface PolicyException {
   id: string;
-  assetId: string;
-  assetName: string;
+  objectId: string;
+  objectName: string;
+  objectType: string;
+  parentAsset?: string;
   policyId: string;
   policyName: string;
   reason: string;
@@ -20,8 +24,8 @@ export interface PolicyException {
 interface ExceptionsContextValue {
   exceptions: PolicyException[];
   statusOf: (e: PolicyException) => ExceptionStatus;
-  isExcepted: (assetId: string, policyId: string) => boolean;
-  activeForAsset: (assetId: string) => PolicyException[];
+  isExcepted: (objectId: string, policyId: string) => boolean;
+  activeForObject: (objectId: string) => PolicyException[];
   activeForPolicy: (policyId: string) => PolicyException[];
   raiseException: (input: Omit<PolicyException, 'id' | 'createdBy' | 'createdAt'>) => { ok: boolean; message: string };
   revokeException: (id: string, by?: string) => void;
@@ -41,16 +45,20 @@ function deriveStatus(e: PolicyException): ExceptionStatus {
 export function ExceptionsProvider({ children }: { children: React.ReactNode }) {
   const [exceptions, setExceptions] = useState<PolicyException[]>([
     {
-      id: 'exc-seed-1', assetId: 'cert-014', assetName: 'legacy-appliance.internal',
-      policyId: 'oob-003', policyName: 'Self-Signed Server Certificate',
+      id: 'exc-seed-1',
+      objectId: 'cert-014',
+      objectName: 'legacy-appliance.internal',
+      objectType: 'TLS Certificate',
+      parentAsset: 'legacy-appliance-01',
+      policyId: 'oob-003',
+      policyName: 'Self-Signed Server Certificate',
       reason: 'Vendor appliance cannot present a CA-issued certificate; compensating network controls in place.',
       expiry: new Date(Date.now() + 60 * 86400000).toISOString().slice(0, 10),
-      createdBy: 'compliance-officer', createdAt: new Date(Date.now() - 5 * 86400000).toISOString(),
+      createdBy: 'compliance-officer',
+      createdAt: new Date(Date.now() - 5 * 86400000).toISOString(),
     },
   ]);
 
-  // Registered active policy ids. When null (never set), all policies are treated
-  // as active — preserves prior behavior for surfaces that haven't registered.
   const [activePolicyIds, setActivePolicyIdsState] = useState<Set<string> | null>(null);
   const lastIdsRef = useRef<string>('');
 
@@ -67,12 +75,15 @@ export function ExceptionsProvider({ children }: { children: React.ReactNode }) 
     [activePolicyIds]);
 
   const statusOf = useCallback((e: PolicyException) => deriveStatus(e), []);
-  const isExcepted = useCallback((assetId: string, policyId: string) =>
-    exceptions.some(e => e.assetId === assetId && e.policyId === policyId && deriveStatus(e) === 'Active' && policyActive(policyId)),
+
+  const isExcepted = useCallback((objectId: string, policyId: string) =>
+    exceptions.some(e => e.objectId === objectId && e.policyId === policyId && deriveStatus(e) === 'Active' && policyActive(policyId)),
     [exceptions, policyActive]);
-  const activeForAsset = useCallback((assetId: string) =>
-    exceptions.filter(e => e.assetId === assetId && deriveStatus(e) === 'Active' && policyActive(e.policyId)),
+
+  const activeForObject = useCallback((objectId: string) =>
+    exceptions.filter(e => e.objectId === objectId && deriveStatus(e) === 'Active' && policyActive(e.policyId)),
     [exceptions, policyActive]);
+
   const activeForPolicy = useCallback((policyId: string) =>
     policyActive(policyId)
       ? exceptions.filter(e => e.policyId === policyId && deriveStatus(e) === 'Active')
@@ -83,7 +94,7 @@ export function ExceptionsProvider({ children }: { children: React.ReactNode }) 
     if (!input.reason?.trim()) return { ok: false, message: 'A justification is required.' };
     if (!input.expiry?.trim()) return { ok: false, message: 'An expiry date is required.' };
     if (input.expiry < todayISO()) return { ok: false, message: 'Expiry must be in the future.' };
-    const existing = exceptions.find(e => e.assetId === input.assetId && e.policyId === input.policyId && deriveStatus(e) === 'Active');
+    const existing = exceptions.find(e => e.objectId === input.objectId && e.policyId === input.policyId && deriveStatus(e) === 'Active');
     if (existing) {
       setExceptions(prev => prev.map(e => e.id === existing.id ? { ...e, reason: input.reason, expiry: input.expiry } : e));
       return { ok: true, message: 'Existing exception updated.' };
@@ -96,12 +107,13 @@ export function ExceptionsProvider({ children }: { children: React.ReactNode }) 
   const revokeException = useCallback((id: string, by = 'current-user') => {
     setExceptions(prev => prev.map(e => e.id === id ? { ...e, revokedBy: by, revokedAt: new Date().toISOString(), endedReason: 'Revoked' } : e));
   }, []);
+
   const extendExpiry = useCallback((id: string, newExpiry: string) => {
     setExceptions(prev => prev.map(e => e.id === id ? { ...e, expiry: newExpiry } : e));
   }, []);
 
   return (
-    <ExceptionsContext.Provider value={{ exceptions, statusOf, isExcepted, activeForAsset, activeForPolicy, raiseException, revokeException, extendExpiry, setActivePolicyIds }}>
+    <ExceptionsContext.Provider value={{ exceptions, statusOf, isExcepted, activeForObject, activeForPolicy, raiseException, revokeException, extendExpiry, setActivePolicyIds }}>
       {children}
     </ExceptionsContext.Provider>
   );
