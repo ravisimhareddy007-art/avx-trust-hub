@@ -7,6 +7,11 @@ export const FEATURES = {
   // governance, AI agent token remediation). Out of scope for the MVP, which
   // covers discovery, visibility, and posture management. Set to true to restore.
   AI_IDENTITY: false,
+
+  // MCP Runtime framework (the MCP Runtime page and its navigation entry).
+  // Out of scope for this release. Code is retained; set to true to restore in a
+  // future release.
+  MCP_RUNTIME: false,
 } as const;
 
 export type FeatureKey = keyof typeof FEATURES;

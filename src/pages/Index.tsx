@@ -1,4 +1,5 @@
 import React from 'react';
+import { FEATURES } from '@/config/features';
 import { PersonaProvider, usePersona } from '@/context/PersonaContext';
 import { NavigationProvider, useNav } from '@/context/NavigationContext';
 import { IntegrationsProvider, useIntegrations } from '@/context/IntegrationsContext';
@@ -64,7 +65,7 @@ function PageRouter() {
     integrations: <IntegrationsPage />,
     'integrations-sources': <IntegrationsPage />,
     'integrations-targets': <IntegrationsPage />,
-    'mcp-runtime': <MCPRuntimePage />,
+    ...(FEATURES.MCP_RUNTIME ? { 'mcp-runtime': <MCPRuntimePage /> } : {}),
     'core-services': <CoreServicesPage />,
     trustops: <TrustOpsPage />,
     quantum: <QuantumPosturePage />,

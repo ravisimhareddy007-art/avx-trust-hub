@@ -65,6 +65,7 @@ export default function AppSidebar() {
 
   // Hidden for MVP R1; will be enabled in R2
   const SHOW_REMEDIATION = false;
+  const SHOW_MCP_RUNTIME = false;
 
   const navItems: NavItem[] = [
     { id: 'dashboard', label: 'DASHBOARD', icon: LayoutDashboard, page: 'dashboards' },
@@ -102,7 +103,7 @@ export default function AppSidebar() {
         { id: 'integrations-sources', label: 'Sources', page: 'integrations-sources' },
       ],
     },
-    { id: 'mcp-runtime', label: 'MCP RUNTIME', icon: Cpu, page: 'mcp-runtime' },
+    ...(SHOW_MCP_RUNTIME ? [{ id: 'mcp-runtime', label: 'MCP RUNTIME', icon: Cpu, page: 'mcp-runtime' }] : []),
     { id: 'core-services', label: 'PLATFORM CORE', icon: Cog, page: 'core-services' },
   ];
 
