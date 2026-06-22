@@ -11,7 +11,7 @@ import { useNav } from '@/context/NavigationContext';
 import { StatusBadge, EnvBadge, PQCBadge, DaysToExpiry } from '@/components/shared/UIComponents';
 import {
   Search, X, Info, Atom, FileEdit, ArrowRight,
-  UserPlus, Ticket, Lock, ChevronUp, ChevronDown,
+  Ticket, Lock, ChevronUp, ChevronDown,
   Filter as FilterIcon,
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -344,20 +344,29 @@ function RiskScoreAttr({ co, assocCount }: { co: CryptoAsset; assocCount: number
 
 interface ViolationItem { label: string; severity: 'critical' | 'high' | 'medium'; action?: string; actionKey?: string; }
 
-function deriveViolations(co: CryptoAsset): { operational: ViolationItem[]; quantum: ViolationItem[] } {
+function deriveViolations(co: CryptoAsset): { policy: ViolationItem[]; operational: ViolationItem[]; quantum: ViolationItem[] } {
+  const policy: ViolationItem[] = [];
   const operational: ViolationItem[] = [];
   const quantum: ViolationItem[] = [];
 
+  // ── POLICY violations (real policy breaches; eligible for exceptions) ──
+  if (co.environment === 'Production' && co.caIssuer === 'Self-Signed')
+    policy.push({ label: 'Self-signed certificate in production', severity: 'high' });
+
+  if (['RSA-512','RSA-1024','SHA-1','MD5'].includes(co.algorithm))
+    policy.push({ label: `Weak algorithm (${co.algorithm})`, severity: 'critical' });
+
+  // ── OPERATIONAL alerts (informational; no actions, no exceptions) ──
   if (co.status === 'Expired')
-    operational.push({ label: `Expired ${co.daysToExpiry < 0 ? Math.abs(co.daysToExpiry) + 'd ago' : ''}`, severity: 'critical', action: 'Renew', actionKey: 'renew' });
+    operational.push({ label: `Expired ${co.daysToExpiry < 0 ? Math.abs(co.daysToExpiry) + 'd ago' : ''}`, severity: 'critical' });
   else if (co.status === 'Expiring' && co.daysToExpiry >= 0)
-    operational.push({ label: `Expires in ${co.daysToExpiry}d`, severity: co.daysToExpiry <= 7 ? 'critical' : 'high', action: 'Renew', actionKey: 'renew' });
+    operational.push({ label: `Expires in ${co.daysToExpiry}d`, severity: co.daysToExpiry <= 7 ? 'critical' : 'high' });
 
   if (!co.autoRenewal && co.daysToExpiry >= 0 && co.daysToExpiry <= 30 && co.type !== 'SSH Key' && co.type !== 'Encryption Key')
     operational.push({ label: 'Auto-renewal disabled — manual action required', severity: 'high' });
 
   if (co.owner === 'Unassigned' || co.status === 'Orphaned')
-    operational.push({ label: 'No owner assigned', severity: 'high', action: 'Assign', actionKey: 'assign' });
+    operational.push({ label: 'No owner assigned', severity: 'high' });
 
   if (co.rotationFrequency === 'Never')
     operational.push({ label: 'No rotation policy configured', severity: 'medium' });
@@ -368,9 +377,7 @@ function deriveViolations(co: CryptoAsset): { operational: ViolationItem[]; quan
   if (co.agentMeta?.permissionRisk === 'Over-privileged')
     operational.push({ label: 'Token is over-privileged — unused scopes detected', severity: 'high' });
 
-  if (co.environment === 'Production' && co.caIssuer === 'Self-Signed')
-    operational.push({ label: 'Self-signed certificate in production', severity: 'high' });
-
+  // ── QUANTUM violations (policy violation; eligible for exceptions) ──
   const isPqc = ['RSA-1024','RSA-2048','RSA-4096','ECDSA-P256','ECDSA-P384','ECC P-256','ECC P-384','SHA-1','MD5','DH-1024','DH-2048'].includes(co.algorithm);
   if (isPqc) {
     const expYear = co.expiryDate && co.expiryDate !== 'N/A' ? new Date(co.expiryDate).getFullYear() : 0;
@@ -378,11 +385,10 @@ function deriveViolations(co: CryptoAsset): { operational: ViolationItem[]; quan
     quantum.push({
       label: `${co.algorithm} is quantum-vulnerable (NIST deprecated)${expYear > 0 ? ` · Expires ${expYear}${yearsPast > 0 ? ` — ${yearsPast}yr past deadline` : ' — at NIST 2030 deadline'}` : ''}`,
       severity: co.pqcRisk === 'Critical' ? 'critical' : 'high',
-      action: 'PQC Ticket', actionKey: 'pqc',
     });
   }
 
-  return { operational, quantum };
+  return { policy, operational, quantum };
 }
 
 // ── Section heading ───────────────────────────────────────────────────────────
@@ -635,8 +641,8 @@ function DetailPanel({
   const riskScore = Math.round(alg * 0.30 + exp * 0.20 + env * 0.20 + dep * 0.15 + own * 0.15);
   const riskCol = riskScore > 70 ? 'text-coral' : riskScore > 40 ? 'text-amber' : 'text-teal';
 
-  const { operational, quantum } = deriveViolations(co);
-  const rawViolations = operational.length + quantum.length;
+  const { policy, operational, quantum } = deriveViolations(co);
+  const rawViolations = policy.length + quantum.length;
   const { activeForObject, isExcepted } = useExceptions();
   const exceptedCount = activeForObject(co.id).length;
   const totalViolations = effectiveViolations(rawViolations, exceptedCount);
@@ -714,50 +720,50 @@ function DetailPanel({
         <div className="flex-1 overflow-y-auto scrollbar-thin divide-y divide-border/40">
 
           {/* Actions */}
-          <div className="px-4 py-3">
-            <SectionHeading label="Actions" />
-            {isSecret && !SECRETS_LICENSED ? (
-              <SecretsUpsell co={co} />
-            ) : (
-              <div className="flex flex-wrap gap-1.5">
-                {(co.type === 'TLS Certificate' || co.type === 'Code-Signing Certificate') && (
-                  <button onClick={() => toast.success('Certificate downloaded')}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-border text-foreground hover:bg-secondary/80 transition-colors">
-                    ↓ Download
-                  </button>
-                )}
-                {co.owner === 'Unassigned' && (
-                  <button onClick={() => toast.success('Owner assignment opened')}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-amber/30 text-amber hover:bg-amber/10 transition-colors">
-                    <UserPlus className="w-3 h-3" /> Assign owner
-                  </button>
-                )}
-                {(() => {
-                  const { operational } = deriveViolations(co);
-                  return (<>
-                    {operational.length > 0 && (
-                      <button onClick={() => onTicket('fix')}
-                        className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-purple/30 text-purple-light hover:bg-purple/10 transition-colors">
-                        <Ticket className="w-3 h-3" /> Remediation ticket
-                      </button>
-                    )}
-                    {isPqc && (
-                      <button onClick={() => onTicket('pqc')}
-                        className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-purple/30 text-purple-light hover:bg-purple/10 transition-colors">
-                        <Atom className="w-3 h-3" /> PQC ticket
-                      </button>
-                    )}
-                    {operational.length === 0 && !isPqc && (
-                      <button onClick={() => onTicket('fix')}
-                        className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-purple/30 text-purple-light hover:bg-purple/10 transition-colors">
-                        <Ticket className="w-3 h-3" /> Create ticket
-                      </button>
-                    )}
-                  </>);
-                })()}
+          {(() => {
+            const showDownload = co.type === 'TLS Certificate' || co.type === 'Code-Signing Certificate';
+            const hasOperational = operational.length > 0;
+            const hasAnyAction = showDownload || hasOperational || isPqc || (!hasOperational && !isPqc);
+            if (isSecret && !SECRETS_LICENSED) {
+              return (
+                <div className="px-4 py-3">
+                  <SectionHeading label="Actions" />
+                  <SecretsUpsell co={co} />
+                </div>
+              );
+            }
+            return (
+              <div className="px-4 py-3">
+                <SectionHeading label="Actions" />
+                <div className="flex flex-wrap gap-1.5">
+                  {showDownload && (
+                    <button onClick={() => toast.success('Certificate downloaded')}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-border text-foreground hover:bg-secondary/80 transition-colors">
+                      ↓ Download
+                    </button>
+                  )}
+                  {hasOperational && (
+                    <button onClick={() => onTicket('fix')}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-purple/30 text-purple-light hover:bg-purple/10 transition-colors">
+                      <Ticket className="w-3 h-3" /> Remediation ticket
+                    </button>
+                  )}
+                  {isPqc && (
+                    <button onClick={() => onTicket('pqc')}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-purple/30 text-purple-light hover:bg-purple/10 transition-colors">
+                      <Atom className="w-3 h-3" /> PQC ticket
+                    </button>
+                  )}
+                  {!hasOperational && !isPqc && (
+                    <button onClick={() => onTicket('fix')}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-purple/30 text-purple-light hover:bg-purple/10 transition-colors">
+                      <Ticket className="w-3 h-3" /> Create ticket
+                    </button>
+                  )}
+                </div>
               </div>
-            )}
-          </div>
+            );
+          })()}
 
           {/* Type-specific details */}
           <div className="px-4 py-3">
@@ -791,16 +797,16 @@ function DetailPanel({
             )}
           </div>
 
-          {/* Violations */}
-          {rawViolations > 0 && (
+          {/* Policy Violations (policy + quantum) */}
+          {(policy.length + quantum.length) > 0 && (
             <div className="px-4 py-3">
               <SectionHeading label="Violations" count={totalViolations} />
 
-              {operational.length > 0 && (
+              {policy.length > 0 && (
                 <div className="mb-3">
-                  <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Operational</p>
+                  <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Policy Violations</p>
                   <div className="space-y-1.5">
-                    {operational.map((v, i) => {
+                    {policy.map((v, i) => {
                       const mapped = violationToPolicy(v.label, co);
                       const excepted = mapped ? isExcepted(co.id, mapped.policyId) : false;
                       return (
@@ -813,10 +819,6 @@ function DetailPanel({
                           <button onClick={() => setExceptCtx({ policyId: mapped.policyId, policyName: mapped.policyName })}
                             className="text-[10px] px-2 py-0.5 rounded border border-amber/30 text-amber hover:bg-amber/10">Add exception</button>
                         ))}
-                        {v.action && !isSecret && (
-                          <button onClick={() => onTicket(v.actionKey ?? 'fix')}
-                            className="text-[10px] text-teal hover:underline flex-shrink-0">{v.action}</button>
-                        )}
                       </div>
                       );
                     })}
@@ -850,6 +852,21 @@ function DetailPanel({
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Operational Alerts (informational; no actions, no exceptions) */}
+          {operational.length > 0 && (
+            <div className="px-4 py-3">
+              <SectionHeading label="Operational Alerts" count={operational.length} />
+              <div className="space-y-1.5">
+                {operational.map((v, i) => (
+                  <div key={i} className="flex items-start gap-2 py-1 border-b border-border/30 last:border-0">
+                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 ${v.severity === 'critical' ? 'bg-coral' : v.severity === 'high' ? 'bg-amber' : 'bg-muted-foreground'}`} />
+                    <span className="text-[11px] text-foreground flex-1">{v.label}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
