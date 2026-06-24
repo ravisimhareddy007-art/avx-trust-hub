@@ -783,7 +783,7 @@ function SecretsConfig({ vaultType, setVaultType, vaultAccountId, setVaultAccoun
         <CheckGroup options={['Certificates', 'Encryption Keys', 'API Keys', 'SSH Keys', 'Database Credentials', 'Unclassified Secrets']} value={secretTypes} onChange={setSecretTypes} />
       </FormRow>
       <FormRow label="Path scoping"><input placeholder={isHsm ? 'partition-1, partition-2 (optional)' : 'secret/data/prod/* (optional)'} className={inputCls} /></FormRow>
-      <p className="text-[10px] text-muted-foreground ml-44">Metadata only; secret values are never extracted. A path that is listable but not readable is reported as partial visibility.{isHsm ? ' HSM keys are enumerated per authenticated partition via PKCS#11.' : ''}</p>
+      
       {!isPending && (
         <FormRow label="">
           <button onClick={runTest} disabled={testing} className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-secondary disabled:opacity-60">
@@ -824,11 +824,6 @@ function ThirdPartyConfig() {
           <optgroup label="CBOM (read directly)"><option>Third-party CBOM (CycloneDX 1.6)</option><option>QTH CBOM</option></optgroup>
         </select>
       </FormRow>
-      <p className="text-[10px] text-muted-foreground ml-44">
-        {isVuln ? 'Vulnerability reports are inferred and sit below native scans and CBOM in source priority; findings may be posture-only.'
-          : isQTH ? 'QTH (Quantum Trust Hub) generates a CBOM from code scan findings; asset context is a code component (repository, file, library).'
-          : 'Native CycloneDX-CBOM is read directly. Minimum accepted version is 1.6; older or unversioned documents are rejected with a reason.'}
-      </p>
       <FormRow label="Ingest mode">
         <div className="flex gap-1.5">
           {(['pull', 'push'] as const).map(m => (
@@ -836,7 +831,7 @@ function ThirdPartyConfig() {
           ))}
         </div>
       </FormRow>
-      <p className="text-[10px] text-muted-foreground ml-44">Mode is locked after activation; changing it later requires cloning the profile. Re-ingested records are deduplicated by source scan time.</p>
+      
       {mode === 'pull' ? (
         <FormRow label="Source connection" required>
           <input className={`${inputCls} font-mono`} placeholder="https://api.source.example/v1" />
