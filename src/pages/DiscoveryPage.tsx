@@ -642,7 +642,7 @@ function CAConfig() {
           {['Issued + Revoked', 'Issued only', 'Revoked only'].map(s => <option key={s}>{s}</option>)}
         </select>
       </FormRow>
-      <p className="text-[10px] text-muted-foreground ml-44">Revoked and expired certificates are requested explicitly. Reconciliation with Network Scan is by certificate fingerprint; CA findings carry no deployment locus.</p>
+      
       {mode === 'Aggressive' && <div className="ml-44 max-w-md"><Advisory>Aggressive performs a full pull each run and is slower. Optimized captures status changes via the Atlas cursor and is recommended for routine schedules.</Advisory></div>}
     </div>
   );
