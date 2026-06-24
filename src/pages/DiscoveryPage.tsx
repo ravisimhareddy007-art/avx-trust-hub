@@ -846,7 +846,6 @@ function ThirdPartyConfig() {
                 <div className="font-mono text-teal break-all">{token}</div>
               </div>
             )}
-            <p className="text-[10px] text-muted-foreground">Push is a standing endpoint that listens for posted data. Save the profile to activate it.</p>
           </div>
         </FormRow>
       )}
