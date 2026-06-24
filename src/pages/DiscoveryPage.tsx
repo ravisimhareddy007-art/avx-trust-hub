@@ -518,17 +518,26 @@ const PORT_PRESETS = ['443', '8443', '22', '636', '993', '995', '3389', '500', '
 
 function NetworkConfig() {
   const [targets, setTargets] = useState('');
+  const [sni, setSni] = useState('');
   const [excludes, setExcludes] = useState('');
   const [ports, setPorts] = useState(DEFAULT_PORTS);
+  const [tlsVersions, setTlsVersions] = useState<string[]>(['TLS 1.2', 'TLS 1.3']);
   const [depth, setDepth] = useState<'Quick' | 'Deep' | 'Full'>('Deep');
+  const [intensity, setIntensity] = useState<'Conservative' | 'Balanced' | 'Aggressive'>('Balanced');
 
-  const ipOnly = targets.trim().length > 0 && !/[a-zA-Z]/.test(targets);
+  const ipOnly = targets.trim().length > 0 && !/[a-zA-Z]/.test(targets) && sni.trim().length === 0;
   const broad = depth === 'Full' && ports.split(',').filter(Boolean).length > 6;
 
   return (
     <div className="space-y-3">
-      <FormRow label="Targets (IP, CIDR, FQDN)" required>
-        <textarea value={targets} onChange={e => setTargets(e.target.value)} rows={3} placeholder={'10.0.0.0/16\napp.corp.io\n192.168.1.10'} className={textareaCls} />
+      <FormRow label="Targets (IP, CIDR, FQDN, URL)" required>
+        <textarea value={targets} onChange={e => setTargets(e.target.value)} rows={3} placeholder={'10.0.0.0/16\nhttps://app.corp.io\n192.168.1.10'} className={textareaCls} />
+      </FormRow>
+      <FormRow label="SNI hostname(s)">
+        <div className="flex-1 max-w-md space-y-1">
+          <input value={sni} onChange={e => setSni(e.target.value)} placeholder="app.corp.io, api.corp.io" className={inputCls.replace('max-w-md', 'w-full')} />
+          <p className="text-[10px] text-muted-foreground">Probes these names per IP so SNI-served certificates are not missed on shared hosts.</p>
+        </div>
       </FormRow>
       <FormRow label="Exclude IPs">
         <input value={excludes} onChange={e => setExcludes(e.target.value)} placeholder="10.0.5.0/24" className={inputCls} />
@@ -544,7 +553,10 @@ function NetworkConfig() {
           </div>
         </div>
       </FormRow>
-      <FormRow label="Scan depth">
+      <FormRow label="TLS versions to probe">
+        <CheckGroup options={['TLS 1.0', 'TLS 1.1', 'TLS 1.2', 'TLS 1.3']} value={tlsVersions} onChange={setTlsVersions} />
+      </FormRow>
+      <FormRow label="Posture depth">
         <div className="flex gap-1.5">
           {(['Quick', 'Deep', 'Full'] as const).map(d => (
             <button key={d} onClick={() => setDepth(d)}
@@ -555,8 +567,19 @@ function NetworkConfig() {
           </span>
         </div>
       </FormRow>
-      <p className="text-[10px] text-muted-foreground ml-44">Discovers TLS, SSH, IPsec/VPN and Kubernetes endpoints. SSH enumerates all host key types; the IKEv2 gateway certificate is not retrievable unauthenticated.</p>
-      {ipOnly && <div className="ml-44 max-w-md"><Advisory>IP-only targeting can miss SNI-served certificates. Add FQDN targets for complete TLS discovery; reduced coverage is not confirmed absence.</Advisory></div>}
+      <FormRow label="Scan intensity">
+        <div className="flex-1 max-w-md space-y-1">
+          <div className="flex gap-1.5">
+            {(['Conservative', 'Balanced', 'Aggressive'] as const).map(i => (
+              <button key={i} onClick={() => setIntensity(i)}
+                className={`px-3 py-1.5 rounded text-xs border ${intensity === i ? 'border-teal bg-teal/10 text-teal' : 'border-border text-muted-foreground hover:bg-secondary'}`}>{i}</button>
+            ))}
+          </div>
+          <p className="text-[10px] text-muted-foreground">Preset for probe pacing and concurrency. Detailed timing, retry and batch values use a platform-managed profile.</p>
+        </div>
+      </FormRow>
+      <p className="text-[10px] text-muted-foreground ml-44">Discovers TLS, SSH, IPsec/VPN and Kubernetes endpoints as observed posture. Findings land in inventory as monitored; no certificate is moved into a managed lifecycle by this scan.</p>
+      {ipOnly && <div className="ml-44 max-w-md"><Advisory>IP-only targeting can miss SNI-served certificates. Add FQDN targets or SNI hostnames for complete TLS discovery; reduced coverage is not confirmed absence.</Advisory></div>}
       {broad && <div className="ml-44 max-w-md"><Advisory>Full depth across a broad port list multiplies handshakes and revocation lookups per endpoint and will take longer.</Advisory></div>}
     </div>
   );
@@ -878,14 +901,14 @@ function SSHAuthConfig() {
       <div className="space-y-3">
         <GroupHeader>Discovery scope</GroupHeader>
         <FormRow label="Discover" required><CheckGroup options={['User Keys', 'Host Keys']} value={discover} onChange={setDiscover} /></FormRow>
-        <FormRow label="Scan type" required><Radios options={['Default', 'Full', 'Directory'] as const} value={scanType} onChange={v => setScanType(v)} /></FormRow>
+        <FormRow label="Scan type" required><Radios options={['Default', 'Full', 'Directory'] as const} value={scanType} onChange={setScanType} /></FormRow>
         <FormRow label="Recursive scan"><Toggle checked={recursive} onChange={setRecursive} label="Traverse subdirectories for keys" /></FormRow>
         <FormRow label="Intensive scan"><Toggle checked={intensive} onChange={setIntensive} label="Deeper scan, slower but more thorough" /></FormRow>
       </div>
 
       <div className="space-y-3">
         <GroupHeader>Access and credentials</GroupHeader>
-        <FormRow label="Access type" required><Radios options={['Key', 'Certificate'] as const} value={accessType} onChange={v => setAccessType(v)} /></FormRow>
+        <FormRow label="Access type" required><Radios options={['Key', 'Certificate'] as const} value={accessType} onChange={setAccessType} /></FormRow>
         <FormRow label="DataCenter" required>
           <select value={dataCenter} onChange={e => setDataCenter(e.target.value)} className={selectCls}>
             <option value="">Select…</option>{['absecon', 'us-east-1', 'us-west-2', 'eu-central-1'].map(d => <option key={d}>{d}</option>)}
@@ -894,7 +917,7 @@ function SSHAuthConfig() {
         <FormRow label="Credential type" required>
           <select value={credentialType} onChange={e => setCredentialType(e.target.value)} className={selectCls}>{['Manual Entry', 'Stored Credential'].map(c => <option key={c}>{c}</option>)}</select>
         </FormRow>
-        <FormRow label="Login type" required><Radios options={['Password', 'Identity Key'] as const} value={loginType} onChange={v => setLoginType(v)} /></FormRow>
+        <FormRow label="Login type" required><Radios options={['Password', 'Identity Key'] as const} value={loginType} onChange={setLoginType} /></FormRow>
         <FormRow label="Username" required><input value={username} onChange={e => setUsername(e.target.value)} placeholder="svc-discovery" className={inputCls} /></FormRow>
         <FormRow label={loginType === 'Password' ? 'Password' : 'Identity key'} required>
           {loginType === 'Password'
@@ -913,7 +936,7 @@ function SSHAuthConfig() {
         </FormRow>
         <FormRow label="Host Compliance Group"><select value={hostGroup} onChange={e => setHostGroup(e.target.value)} className={selectCls}>{['Default_Host_Group', 'Prod_Host_Group', 'PCI_Host_Group'].map(g => <option key={g}>{g}</option>)}</select></FormRow>
         <FormRow label="Key Compliance Group"><select value={keyGroup} onChange={e => setKeyGroup(e.target.value)} className={selectCls}>{['Default_Key_Group', 'Prod_Key_Group', 'PCI_Key_Group'].map(g => <option key={g}>{g}</option>)}</select></FormRow>
-        <FormRow label="Inventory action" required><Radios options={['Do Not Move', 'Manage', 'Monitor'] as const} value={inventoryAction} onChange={v => setInventoryAction(v)} /></FormRow>
+        <FormRow label="Inventory action" required><Radios options={['Do Not Move', 'Manage', 'Monitor'] as const} value={inventoryAction} onChange={setInventoryAction} /></FormRow>
       </div>
     </div>
   );
