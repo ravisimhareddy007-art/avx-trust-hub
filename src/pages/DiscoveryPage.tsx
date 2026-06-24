@@ -941,7 +941,6 @@ function SSHAuthConfig() {
         <FormRow label="Infra Access Group" required>
           <div className="flex-1 max-w-md space-y-1">
             <input value={infraGroup} onChange={e => setInfraGroup(e.target.value)} placeholder="Select or type to add…" className={inputCls.replace('max-w-md', 'w-full')} />
-            <p className="text-[10px] text-muted-foreground">Maps the onboarded host to an Application Infra Access Group. Type a new name and press enter to add.</p>
           </div>
         </FormRow>
         <FormRow label="Host Compliance Group"><select value={hostGroup} onChange={e => setHostGroup(e.target.value)} className={selectCls}>{['Default_Host_Group', 'Prod_Host_Group', 'PCI_Host_Group'].map(g => <option key={g}>{g}</option>)}</select></FormRow>
