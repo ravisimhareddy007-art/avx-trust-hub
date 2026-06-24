@@ -10,7 +10,7 @@ import {
 import { toast } from 'sonner';
 import {
   Search, RefreshCw, Plus, Play, Database, Radar, ShieldCheck, Cloud, Lock,
-  Activity, Copy, Edit, Calendar, Filter, X, Check, AlertCircle, AlertTriangle, ArrowLeft,
+  Activity, Copy, Edit, Calendar, Filter, X, Check, AlertCircle, AlertTriangle, ArrowLeft, Info,
 } from 'lucide-react';
 
 // ============================================================================
@@ -521,64 +521,82 @@ function NetworkConfig() {
   const [sni, setSni] = useState('');
   const [excludes, setExcludes] = useState('');
   const [ports, setPorts] = useState(DEFAULT_PORTS);
-  const [tlsVersions, setTlsVersions] = useState<string[]>(['TLS 1.2', 'TLS 1.3']);
+  const [tlsVersions, setTlsVersions] = useState<string[]>(['TLS 1.0', 'TLS 1.1', 'TLS 1.2', 'TLS 1.3']);
   const [depth, setDepth] = useState<'Quick' | 'Deep' | 'Full'>('Deep');
   const [intensity, setIntensity] = useState<'Conservative' | 'Balanced' | 'Aggressive'>('Balanced');
 
+  const portList = ports.split(',').map(s => s.trim()).filter(Boolean);
+  const togglePort = (p: string) => {
+    setPorts((portList.includes(p) ? portList.filter(x => x !== p) : [...portList, p]).join(', '));
+  };
+
   const ipOnly = targets.trim().length > 0 && !/[a-zA-Z]/.test(targets) && sni.trim().length === 0;
-  const broad = depth === 'Full' && ports.split(',').filter(Boolean).length > 6;
+  const broad = depth === 'Full' && portList.length > 6;
 
   return (
-    <div className="space-y-3">
-      <FormRow label="Targets (IP, CIDR, FQDN, URL)" required>
-        <textarea value={targets} onChange={e => setTargets(e.target.value)} rows={3} placeholder={'10.0.0.0/16\nhttps://app.corp.io\n192.168.1.10'} className={textareaCls} />
-      </FormRow>
-      <FormRow label="SNI hostname(s)">
-        <div className="flex-1 max-w-md space-y-1">
-          <input value={sni} onChange={e => setSni(e.target.value)} placeholder="app.corp.io, api.corp.io" className={inputCls.replace('max-w-md', 'w-full')} />
-          <p className="text-[10px] text-muted-foreground">Probes these names per IP so SNI-served certificates are not missed on shared hosts.</p>
-        </div>
-      </FormRow>
-      <FormRow label="Exclude IPs">
-        <input value={excludes} onChange={e => setExcludes(e.target.value)} placeholder="10.0.5.0/24" className={inputCls} />
-      </FormRow>
-      <FormRow label="Ports" required>
-        <div className="flex-1 max-w-md space-y-1.5">
-          <input value={ports} onChange={e => setPorts(e.target.value)} className={inputCls.replace('max-w-md', 'w-full')} />
-          <div className="flex gap-1 flex-wrap">
-            {PORT_PRESETS.map(p => (
-              <button key={p} onClick={() => setPorts(prev => prev.includes(p) ? prev : prev ? `${prev}, ${p}` : p)}
-                className="px-2 py-0.5 text-[10px] rounded bg-muted border border-border hover:bg-secondary text-muted-foreground">+{p}</button>
+    <div className="space-y-5">
+      <div className="space-y-3">
+        <GroupHeader info="Network Scan probes targets without credentials and records what each endpoint presents. Findings land in inventory as monitored posture across TLS, SSH, IPsec/VPN and Kubernetes; no certificate is moved into a managed lifecycle by this scan.">Scan scope</GroupHeader>
+        <FormRow label="Targets (IP, CIDR, FQDN)" required info="The address space to scan. Accepts individual IP addresses, CIDR ranges, and fully qualified domain names, one per line or comma separated.">
+          <textarea value={targets} onChange={e => setTargets(e.target.value)} rows={3} placeholder={'10.0.0.0/16\napp.corp.io\n192.168.1.10'} className={textareaCls} />
+        </FormRow>
+        <FormRow label="SNI hostname(s)" info="Server Name Indication. The scan presents these hostnames during the TLS handshake so certificates served only for a specific name on a shared IP are discovered rather than missed.">
+          <input value={sni} onChange={e => setSni(e.target.value)} placeholder="app.corp.io, api.corp.io" className={inputCls} />
+        </FormRow>
+        <FormRow label="Exclude IPs" info="IP addresses or ranges to skip. Exclusions always take precedence over the target set.">
+          <input value={excludes} onChange={e => setExcludes(e.target.value)} placeholder="10.0.5.0/24" className={inputCls} />
+        </FormRow>
+        <FormRow label="Ports" required info="Ports probed on each reachable target. TLS version testing applies only to the TLS-capable ports in this list.">
+          <div className="flex-1 max-w-md space-y-1.5">
+            <input value={ports} onChange={e => setPorts(e.target.value)} className={inputCls.replace('max-w-md', 'w-full')} />
+            <div className="flex gap-1 flex-wrap">
+              {PORT_PRESETS.map(p => {
+                const on = portList.includes(p);
+                return (
+                  <button key={p} onClick={() => togglePort(p)}
+                    className={`px-2 py-0.5 text-[10px] rounded border ${on ? 'border-teal bg-teal/10 text-teal' : 'border-border bg-muted text-muted-foreground hover:bg-secondary'}`}>{p}</button>
+                );
+              })}
+            </div>
+          </div>
+        </FormRow>
+        <FormRow label="TLS versions to probe" info="Versions the scan attempts on each TLS port to report which the endpoint accepts. Probing all versions is what surfaces weak protocol support; deselect a version only to narrow the test.">
+          <div className="flex gap-1.5 flex-wrap">
+            {['TLS 1.0', 'TLS 1.1', 'TLS 1.2', 'TLS 1.3'].map(v => {
+              const on = tlsVersions.includes(v);
+              return (
+                <button key={v} onClick={() => setTlsVersions(on ? tlsVersions.filter(x => x !== v) : [...tlsVersions, v])}
+                  className={`px-3 py-1.5 rounded text-xs border ${on ? 'border-teal bg-teal/10 text-teal' : 'border-border text-muted-foreground hover:bg-secondary'}`}>{v}</button>
+              );
+            })}
+          </div>
+        </FormRow>
+      </div>
+
+      <div className="space-y-3">
+        <GroupHeader info="How much detail is collected per endpoint. Quick: handshake and certificate only. Deep: adds the served chain and the full accepted cipher list. Full: adds revocation checking (CRL primary, OCSP fallback) and completes the chain via AIA when the served chain is incomplete.">Coverage</GroupHeader>
+        <FormRow label="Posture depth">
+          <div className="flex gap-1.5">
+            {(['Quick', 'Deep', 'Full'] as const).map(d => (
+              <button key={d} onClick={() => setDepth(d)}
+                className={`px-3 py-1.5 rounded text-xs border ${depth === d ? 'border-teal bg-teal/10 text-teal' : 'border-border text-muted-foreground hover:bg-secondary'}`}>{d}</button>
             ))}
           </div>
-        </div>
-      </FormRow>
-      <FormRow label="TLS versions to probe">
-        <CheckGroup options={['TLS 1.0', 'TLS 1.1', 'TLS 1.2', 'TLS 1.3']} value={tlsVersions} onChange={setTlsVersions} />
-      </FormRow>
-      <FormRow label="Posture depth">
-        <div className="flex gap-1.5">
-          {(['Quick', 'Deep', 'Full'] as const).map(d => (
-            <button key={d} onClick={() => setDepth(d)}
-              className={`px-3 py-1.5 rounded text-xs border ${depth === d ? 'border-teal bg-teal/10 text-teal' : 'border-border text-muted-foreground hover:bg-secondary'}`}>{d}</button>
-          ))}
-          <span className="self-center text-[10px] text-muted-foreground ml-1">
-            {depth === 'Quick' ? 'Handshake only' : depth === 'Deep' ? 'Served chain + full cipher list' : 'Deep + revocation (CRL primary)'}
-          </span>
-        </div>
-      </FormRow>
-      <FormRow label="Scan intensity">
-        <div className="flex-1 max-w-md space-y-1">
+        </FormRow>
+      </div>
+
+      <div className="space-y-3">
+        <GroupHeader info="Preset for how aggressively the probe runs against the network. Detailed pacing, concurrency, retry and batch values use a platform-managed profile behind each preset.">Execution</GroupHeader>
+        <FormRow label="Scan intensity">
           <div className="flex gap-1.5">
             {(['Conservative', 'Balanced', 'Aggressive'] as const).map(i => (
               <button key={i} onClick={() => setIntensity(i)}
                 className={`px-3 py-1.5 rounded text-xs border ${intensity === i ? 'border-teal bg-teal/10 text-teal' : 'border-border text-muted-foreground hover:bg-secondary'}`}>{i}</button>
             ))}
           </div>
-          <p className="text-[10px] text-muted-foreground">Preset for probe pacing and concurrency. Detailed timing, retry and batch values use a platform-managed profile.</p>
-        </div>
-      </FormRow>
-      <p className="text-[10px] text-muted-foreground ml-44">Discovers TLS, SSH, IPsec/VPN and Kubernetes endpoints as observed posture. Findings land in inventory as monitored; no certificate is moved into a managed lifecycle by this scan.</p>
+        </FormRow>
+      </div>
+
       {ipOnly && <div className="ml-44 max-w-md"><Advisory>IP-only targeting can miss SNI-served certificates. Add FQDN targets or SNI hostnames for complete TLS discovery; reduced coverage is not confirmed absence.</Advisory></div>}
       {broad && <div className="ml-44 max-w-md"><Advisory>Full depth across a broad port list multiplies handshakes and revocation lookups per endpoint and will take longer.</Advisory></div>}
     </div>
@@ -844,10 +862,11 @@ function ThirdPartyConfig() {
   );
 }
 
-function GroupHeader({ children }: { children: React.ReactNode }) {
+function GroupHeader({ children, info }: { children: React.ReactNode; info?: string }) {
   return (
-    <div className="border-b border-border/60 pb-1.5 mb-1">
+    <div className="border-b border-border/60 pb-1.5 mb-1 flex items-center gap-1">
       <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{children}</p>
+      {info && <InfoTip text={info} />}
     </div>
   );
 }
@@ -901,14 +920,14 @@ function SSHAuthConfig() {
       <div className="space-y-3">
         <GroupHeader>Discovery scope</GroupHeader>
         <FormRow label="Discover" required><CheckGroup options={['User Keys', 'Host Keys']} value={discover} onChange={setDiscover} /></FormRow>
-        <FormRow label="Scan type" required><Radios options={['Default', 'Full', 'Directory'] as const} value={scanType} onChange={v => setScanType(v as any)} /></FormRow>
+        <FormRow label="Scan type" required><Radios options={['Default', 'Full', 'Directory'] as const} value={scanType} onChange={setScanType} /></FormRow>
         <FormRow label="Recursive scan"><Toggle checked={recursive} onChange={setRecursive} label="Traverse subdirectories for keys" /></FormRow>
         <FormRow label="Intensive scan"><Toggle checked={intensive} onChange={setIntensive} label="Deeper scan, slower but more thorough" /></FormRow>
       </div>
 
       <div className="space-y-3">
         <GroupHeader>Access and credentials</GroupHeader>
-        <FormRow label="Access type" required><Radios options={['Key', 'Certificate'] as const} value={accessType} onChange={v => setAccessType(v as any)} /></FormRow>
+        <FormRow label="Access type" required><Radios options={['Key', 'Certificate'] as const} value={accessType} onChange={setAccessType} /></FormRow>
         <FormRow label="DataCenter" required>
           <select value={dataCenter} onChange={e => setDataCenter(e.target.value)} className={selectCls}>
             <option value="">Select…</option>{['absecon', 'us-east-1', 'us-west-2', 'eu-central-1'].map(d => <option key={d}>{d}</option>)}
@@ -917,7 +936,7 @@ function SSHAuthConfig() {
         <FormRow label="Credential type" required>
           <select value={credentialType} onChange={e => setCredentialType(e.target.value)} className={selectCls}>{['Manual Entry', 'Stored Credential'].map(c => <option key={c}>{c}</option>)}</select>
         </FormRow>
-        <FormRow label="Login type" required><Radios options={['Password', 'Identity Key'] as const} value={loginType} onChange={v => setLoginType(v as any)} /></FormRow>
+        <FormRow label="Login type" required><Radios options={['Password', 'Identity Key'] as const} value={loginType} onChange={setLoginType} /></FormRow>
         <FormRow label="Username" required><input value={username} onChange={e => setUsername(e.target.value)} placeholder="svc-discovery" className={inputCls} /></FormRow>
         <FormRow label={loginType === 'Password' ? 'Password' : 'Identity key'} required>
           {loginType === 'Password'
@@ -936,7 +955,7 @@ function SSHAuthConfig() {
         </FormRow>
         <FormRow label="Host Compliance Group"><select value={hostGroup} onChange={e => setHostGroup(e.target.value)} className={selectCls}>{['Default_Host_Group', 'Prod_Host_Group', 'PCI_Host_Group'].map(g => <option key={g}>{g}</option>)}</select></FormRow>
         <FormRow label="Key Compliance Group"><select value={keyGroup} onChange={e => setKeyGroup(e.target.value)} className={selectCls}>{['Default_Key_Group', 'Prod_Key_Group', 'PCI_Key_Group'].map(g => <option key={g}>{g}</option>)}</select></FormRow>
-        <FormRow label="Inventory action" required><Radios options={['Do Not Move', 'Manage', 'Monitor'] as const} value={inventoryAction} onChange={v => setInventoryAction(v as any)} /></FormRow>
+        <FormRow label="Inventory action" required><Radios options={['Do Not Move', 'Manage', 'Monitor'] as const} value={inventoryAction} onChange={setInventoryAction} /></FormRow>
       </div>
     </div>
   );
@@ -1020,11 +1039,22 @@ function RunsTab() {
 // ============================================================================
 // SHARED
 // ============================================================================
-function FormRow({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+function InfoTip({ text }: { text: string }) {
+  return (
+    <span className="group relative inline-flex items-center align-middle ml-1">
+      <Info className="w-3 h-3 text-muted-foreground/70 hover:text-teal cursor-help" />
+      <span className="pointer-events-none absolute left-1/2 top-full z-50 mt-1.5 w-60 -translate-x-1/2 rounded-md border border-border bg-popover px-2.5 py-1.5 text-[10.5px] leading-snug text-popover-foreground text-left normal-case font-normal tracking-normal opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
+        {text}
+      </span>
+    </span>
+  );
+}
+
+function FormRow({ label, required, info, children }: { label: string; required?: boolean; info?: string; children: React.ReactNode }) {
   return (
     <div className="flex items-start gap-4">
       <label className="text-xs text-muted-foreground w-40 text-right pt-2 flex items-center justify-end gap-1 flex-shrink-0">
-        {required && <span className="text-coral">*</span>} {label}
+        {required && <span className="text-coral">*</span>} {label}{info && <InfoTip text={info} />}
       </label>
       {children}
     </div>
