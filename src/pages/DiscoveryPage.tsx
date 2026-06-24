@@ -697,8 +697,6 @@ function CloudConfig() {
       </FormRow>
       <FormRow label="Resource tag filter"><input value={tag} onChange={e => setTag(e.target.value)} placeholder="env=prod (optional)" className={inputCls} /></FormRow>
       <FormRow label="Execution"><Toggle checked={sequential} onChange={setSequential} label="Execute batches sequentially" /></FormRow>
-      {vendor === 'AWS' && <p className="text-[10px] text-muted-foreground ml-44">AWS is enumerated per enabled region, with a us-east-1 pass for CloudFront and edge certificates.</p>}
-      {vendor === 'Azure' && <p className="text-[10px] text-muted-foreground ml-44">Azure Key Vault and Managed HSM enumeration needs data-plane access, separate from an ARM Reader role.</p>}
       <FormRow label="">
         <button onClick={runTest} disabled={testing} className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-secondary disabled:opacity-60">
           {testing ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Testing…</> : <><Check className="w-3.5 h-3.5" /> Test connection</>}
