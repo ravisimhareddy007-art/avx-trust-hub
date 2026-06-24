@@ -616,7 +616,6 @@ function CAConfig() {
       <FormRow label="CA provider" required>
         <div className="flex items-center gap-2">
           <span className="text-xs text-foreground px-3 py-2 bg-muted border border-border rounded">GlobalSign Atlas</span>
-          <span className="text-[10px] text-muted-foreground">mTLS + API key/secret · the only CA in MVP scope</span>
         </div>
       </FormRow>
       <FormRow label="CA instance" required>
