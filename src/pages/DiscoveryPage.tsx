@@ -65,10 +65,10 @@ const scanCategories: ScanCategory[] = [
   },
   {
     category: 'Third-Party & Imported', icon: Database,
-    description: 'Import vulnerability scan reports and CBOM',
+    description: 'Import vulnerability scanner findings and CBOM inventory',
     types: [{
-      value: 'Third-Party Findings Ingestion', config: 'thirdparty',
-      description: 'Imports vulnerability scan reports (Qualys, Tenable) and CBOM (third-party CycloneDX 1.6 and QTH).',
+      value: 'Third-Party Data Ingestion', config: 'thirdparty',
+      description: 'Imports vulnerability scanner findings (Qualys, Tenable) and CBOM inventory (CycloneDX 1.6, including QTH).',
       discovers: ['Vulnerability Findings', 'CBOM Components'],
     }],
   },
@@ -916,54 +916,66 @@ function SecretsConfig({ vaultType, setVaultType, vaultAccountId, setVaultAccoun
 }
 
 function ThirdPartyConfig() {
-  const [source, setSource] = useState('Qualys');
-  const [mode, setMode] = useState<'pull' | 'push'>('pull');
+  const [sourceType, setSourceType] = useState<'Vulnerability Scanner' | 'CBOM'>('Vulnerability Scanner');
+  const [scanner, setScanner] = useState('Qualys Production');
+  const [cbomInput, setCbomInput] = useState<'Upload' | 'Push endpoint'>('Upload');
   const [token, setToken] = useState('');
 
-  const isVuln = /Qualys|Tenable/.test(source);
-  const isQTH = source === 'QTH CBOM';
-
   const genToken = () => setToken(Array.from({ length: 24 }, () => '0123456789abcdef'[Math.floor(Math.random() * 16)]).join(''));
+  const pickType = (t: 'Vulnerability Scanner' | 'CBOM') => { setSourceType(t); setToken(''); };
 
   return (
     <div className="space-y-3">
-      <FormRow label="Source" required>
-        <select value={source} onChange={e => { setSource(e.target.value); setToken(''); }} className={selectCls}>
-          <optgroup label="Vulnerability scan reports (inferred)"><option>Qualys</option><option>Tenable</option></optgroup>
-          <optgroup label="CBOM (read directly)"><option>Third-party CBOM (CycloneDX 1.6)</option><option>QTH CBOM</option></optgroup>
-        </select>
-      </FormRow>
-      <p className="text-[10px] text-muted-foreground ml-44">
-        {isVuln ? 'Vulnerability reports are inferred and sit below native scans and CBOM in source priority; findings may be posture-only.'
-          : isQTH ? 'QTH (Quantum Trust Hub) generates a CBOM from code scan findings; asset context is a code component (repository, file, library).'
-          : 'Native CycloneDX-CBOM is read directly. Minimum accepted version is 1.6; older or unversioned documents are rejected with a reason.'}
-      </p>
-      <FormRow label="Ingest mode">
+      <FormRow label="Source type" required info="Vulnerability scanners emit security findings that are inferred into posture. CBOM is an inventory document describing cryptographic assets and is read directly.">
         <div className="flex gap-1.5">
-          {(['pull', 'push'] as const).map(m => (
-            <button key={m} onClick={() => { setMode(m); setToken(''); }} className={`px-3 py-1.5 rounded text-xs border capitalize ${mode === m ? 'border-teal bg-teal/10 text-teal' : 'border-border text-muted-foreground hover:bg-secondary'}`}>{m}</button>
+          {(['Vulnerability Scanner', 'CBOM'] as const).map(t => (
+            <button key={t} onClick={() => pickType(t)} className={`px-3 py-1.5 rounded text-xs border ${sourceType === t ? 'border-teal bg-teal/10 text-teal' : 'border-border text-muted-foreground hover:bg-secondary'}`}>{t}</button>
           ))}
         </div>
       </FormRow>
-      <p className="text-[10px] text-muted-foreground ml-44">Mode is locked after activation; changing it later requires cloning the profile. Re-ingested records are deduplicated by source scan time.</p>
-      {mode === 'pull' ? (
-        <FormRow label="Source connection" required>
-          <input className={`${inputCls} font-mono`} placeholder="https://api.source.example/v1" />
-        </FormRow>
+
+      {sourceType === 'Vulnerability Scanner' ? (
+        <>
+          <FormRow label="Connection" required info="The configured scanner connection to pull from. Endpoint and credentials are set in Integrations. Findings are inferred and sit below native scans and CBOM in source priority.">
+            <select value={scanner} onChange={e => setScanner(e.target.value)} className={selectCls}>
+              <optgroup label="Vulnerability Scanners"><option>Qualys Production</option><option>Tenable Production</option></optgroup>
+            </select>
+          </FormRow>
+          <FormRow label="Mode" info="Vulnerability scanners are polled on a schedule. Re-ingested records are deduplicated by source scan time.">
+            <span className="text-xs text-foreground pt-2">Pull</span>
+          </FormRow>
+        </>
       ) : (
-        <FormRow label="Push endpoint">
-          <div className="flex-1 max-w-md space-y-2">
-            <button onClick={genToken} className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-border text-xs text-foreground hover:bg-secondary"><Plus className="w-3 h-3" /> Generate endpoint & token</button>
-            {token && (
-              <div className="rounded-lg border border-amber/40 bg-amber/10 p-3 text-[11px] space-y-1">
-                <div className="flex items-center gap-1.5 text-amber"><AlertTriangle className="w-3.5 h-3.5" /> Shown once and not retained. Copy it into your source now.</div>
-                <div className="font-mono text-muted-foreground break-all">https://ingest.avx.io/v1/third-party</div>
-                <div className="font-mono text-teal break-all">{token}</div>
+        <>
+          <FormRow label="Accepted format" info="Minimum accepted version is CycloneDX 1.6; older or unversioned documents are rejected with a reason. QTH is a known producer of CycloneDX CBOM.">
+            <span className="text-xs text-foreground pt-2">CycloneDX 1.6</span>
+          </FormRow>
+          <FormRow label="Input" info="CBOM is provided as a file upload or posted to a standing push endpoint. Re-ingested records are deduplicated by source scan time.">
+            <div className="flex gap-1.5">
+              {(['Upload', 'Push endpoint'] as const).map(m => (
+                <button key={m} onClick={() => { setCbomInput(m); setToken(''); }} className={`px-3 py-1.5 rounded text-xs border ${cbomInput === m ? 'border-teal bg-teal/10 text-teal' : 'border-border text-muted-foreground hover:bg-secondary'}`}>{m}</button>
+              ))}
+            </div>
+          </FormRow>
+          {cbomInput === 'Upload' ? (
+            <FormRow label="CBOM file">
+              <button className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-border text-xs text-foreground hover:bg-secondary"><Plus className="w-3 h-3" /> Choose CBOM file</button>
+            </FormRow>
+          ) : (
+            <FormRow label="Push endpoint">
+              <div className="flex-1 max-w-md space-y-2">
+                <button onClick={genToken} className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-border text-xs text-foreground hover:bg-secondary"><Plus className="w-3 h-3" /> Generate endpoint</button>
+                {token && (
+                  <div className="rounded-lg border border-amber/40 bg-amber/10 p-3 text-[11px] space-y-1">
+                    <div className="flex items-center gap-1.5 text-amber"><AlertTriangle className="w-3.5 h-3.5" /> Shown once and not retained. Copy it into your source now.</div>
+                    <div className="font-mono text-muted-foreground break-all">https://ingest.avx.io/v1/cbom</div>
+                    <div className="font-mono text-teal break-all">{token}</div>
+                  </div>
+                )}
               </div>
-            )}
-            <p className="text-[10px] text-muted-foreground">Push is a standing endpoint that listens for posted data. Save the profile to activate it.</p>
-          </div>
-        </FormRow>
+            </FormRow>
+          )}
+        </>
       )}
     </div>
   );
