@@ -214,104 +214,89 @@ export function OnboardingStrip() {
     );
   }
 
-  // ---- Expanded (thin, outcome-driven, overflow-safe) ----
+  // ---- Expanded (compact dot stepper + current step) ----
   return (
     <div className="border-b border-border bg-card/60">
-      <div className="px-4 py-3 flex items-start gap-4">
+      <div className="px-4 py-3 flex items-center gap-4">
         {/* Title block */}
         <div className="flex-shrink-0 pt-1">
           <div className="text-[12px] font-semibold text-foreground leading-tight">Get to your first trust posture</div>
           <div className="text-[10.5px] text-muted-foreground leading-tight">Connect, inventory, protect</div>
         </div>
 
-        {/* Steps: horizontally scrollable safety net on narrow widths */}
-        <div className="flex items-stretch gap-2 flex-1 min-w-0 overflow-x-auto scrollbar-thin">
+        {/* Compact dot stepper */}
+        <div className="flex items-center gap-2 flex-shrink-0">
           {STAGE_ORDER.map((id, idx) => {
             const meta = STAGE_META[id];
             const status = o.stageStatus(id);
             const Icon = meta.icon;
-            const isLocked = status === 'locked';
             const isDone = status === 'done';
             const isActive = status === 'active';
-            const showAI = id === 'discover' && isActive;
+            const isLocked = status === 'locked';
             return (
               <React.Fragment key={id}>
                 <div
+                  title={`Step ${meta.step}: ${meta.outcome}`}
                   className={[
-                    'flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors',
-                    isDone ? 'border-teal/30 bg-teal/5' :
-                    isActive ? 'border-teal/40 bg-card' :
-                    'border-border bg-card/40 opacity-60',
+                    'w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0',
+                    isDone ? 'bg-teal/20 text-teal' :
+                    isActive ? 'bg-teal/15 text-teal ring-1 ring-teal' :
+                    'bg-muted text-muted-foreground',
                   ].join(' ')}
                 >
-                  {/* Status node */}
-                  <div
-                    className={[
-                      'w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0',
-                      isDone ? 'bg-teal/20 text-teal' :
-                      isActive ? 'bg-teal/15 text-teal' :
-                      'bg-muted text-muted-foreground',
-                    ].join(' ')}
-                  >
-                    {isDone ? <Check className="w-3.5 h-3.5" /> :
-                     isLocked ? <Lock className="w-3 h-3" /> :
-                     <Icon className="w-3.5 h-3.5" />}
-                  </div>
-
-                  {/* Label */}
-                  <div className="whitespace-nowrap">
-                    <div className="text-[9px] uppercase tracking-wider text-teal font-semibold leading-tight">
-                      Step {meta.step}
-                    </div>
-                    <div className="text-[11px] font-medium text-foreground leading-tight">
-                      {meta.outcome}
-                    </div>
-                    <div className="text-[10px] text-muted-foreground">
-                      {statusLine(id, status)}
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  {isActive && (
-                    <div className="flex items-center gap-1.5 flex-shrink-0 ml-1">
-                      <button
-                        onClick={() => goToStage(id)}
-                        className="flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-md bg-teal text-white font-medium hover:bg-teal/90 whitespace-nowrap"
-                      >
-                        {meta.cta} <ArrowRight className="w-2.5 h-2.5" />
-                      </button>
-                      {showAI && (
-                        <button
-                          onClick={() => goToStage(id, true)}
-                          title="Plan this discovery with AI"
-                          className="flex items-center gap-1 text-[10px] px-2 py-1.5 rounded-md border border-teal/40 text-teal font-medium hover:bg-teal/10 whitespace-nowrap"
-                        >
-                          <Sparkles className="w-3 h-3" /> Use AI
-                        </button>
-                      )}
-                    </div>
-                  )}
-                  {isDone && (
-                    <button
-                      onClick={() => goToStage(id)}
-                      className="text-[10px] px-2 py-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted/30 whitespace-nowrap flex-shrink-0 ml-1"
-                    >
-                      Review
-                    </button>
-                  )}
+                  {isDone ? <Check className="w-3.5 h-3.5" /> :
+                   isLocked ? <Lock className="w-3 h-3" /> :
+                   <Icon className="w-3.5 h-3.5" />}
                 </div>
                 {idx < STAGE_ORDER.length - 1 && (
-                  <div className="flex items-center text-muted-foreground/40 flex-shrink-0">
-                    <ArrowRight className="w-3 h-3" />
-                  </div>
+                  <div
+                    className={[
+                      'w-4 h-px flex-shrink-0',
+                      o.stageStatus(id) === 'done' ? 'bg-teal' : 'bg-border',
+                    ].join(' ')}
+                  />
                 )}
               </React.Fragment>
             );
           })}
         </div>
 
+        {/* Current step detail */}
+        {o.currentStage && (
+          <div className="flex items-center gap-3 flex-1 min-w-0 pl-4 border-l border-border">
+            <div className="flex-1 min-w-0">
+              <div className="text-[9px] uppercase tracking-wider text-teal font-semibold leading-tight">
+                Step {STAGE_META[o.currentStage].step} of 3
+              </div>
+              <div className="text-[12px] font-semibold text-foreground leading-tight">
+                {STAGE_META[o.currentStage].outcome}
+              </div>
+              <div className="text-[10px] text-muted-foreground">
+                {statusLine(o.currentStage, o.stageStatus(o.currentStage))}
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <button
+                onClick={() => goToStage(o.currentStage)}
+                className="flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-md bg-teal text-white font-medium hover:bg-teal/90 whitespace-nowrap"
+              >
+                {STAGE_META[o.currentStage].cta} <ArrowRight className="w-2.5 h-2.5" />
+              </button>
+              {o.currentStage === 'discover' && (
+                <button
+                  onClick={() => goToStage(o.currentStage, true)}
+                  title="Plan this discovery with AI"
+                  className="flex items-center gap-1 text-[10px] px-2 py-1.5 rounded-md border border-teal/40 text-teal font-medium hover:bg-teal/10 whitespace-nowrap"
+                >
+                  <Sparkles className="w-3 h-3" /> Use AI
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Window controls */}
-        <div className="flex items-center gap-1 flex-shrink-0 pt-1">
+        <div className="flex items-center gap-1 flex-shrink-0 pt-1 ml-auto">
           <button onClick={() => o.setExpanded(false)} className="text-muted-foreground hover:text-foreground p-1" aria-label="Collapse">
             <ChevronUp className="w-3.5 h-3.5" />
           </button>
