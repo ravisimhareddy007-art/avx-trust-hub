@@ -37,11 +37,11 @@ const scanCategories: ScanCategory[] = [
     }],
   },
   {
-    category: 'CA & PKI', icon: ShieldCheck,
+    category: 'Certificate Authority', icon: ShieldCheck,
     description: 'Pull issued certificate inventory directly from the configured CA',
     types: [{
-      value: 'CA Scan', config: 'ca',
-      description: 'Pulls issued certificate inventory from GlobalSign Atlas: issued and revoked status and chain of trust.',
+      value: 'CA Discovery', config: 'ca',
+      description: 'Pulls issued certificate inventory from GlobalSign Atlas: issued, revoked and expired status and chain of trust.',
       discovers: ['Issued Certificates', 'Revocation Status', 'Chain of Trust'],
     }],
   },
@@ -731,7 +731,7 @@ function NetworkConfig() {
 function CAConfig() {
   const GS_INSTANCES = ['GlobalSign Atlas - Production', 'GlobalSign Atlas - Staging'];
   const [instance, setInstance] = useState(GS_INSTANCES[0]);
-  const [mode, setMode] = useState<'Incremental' | 'Full pull'>('Incremental');
+  const [mode, setMode] = useState<'Incremental' | 'Full sync'>('Incremental');
   const [status, setStatus] = useState('Issued + Revoked + Expired');
   const [window, setWindow] = useState('Since last run');
 
@@ -740,30 +740,32 @@ function CAConfig() {
       <FormRow label="CA provider">
         <span className="text-xs text-foreground pt-2">GlobalSign Atlas</span>
       </FormRow>
-      <FormRow label="CA instance" required info="The configured GlobalSign Atlas connection the scan pulls issued certificate inventory from. Connections are managed under Integrations.">
+      <FormRow label="CA instance" required info="The configured GlobalSign Atlas connection the discovery pulls issued certificate inventory from. Connections are managed under Integrations.">
         <select value={instance} onChange={e => setInstance(e.target.value)} className={selectCls}>
           {GS_INSTANCES.map(i => <option key={i}>{i}</option>)}
         </select>
       </FormRow>
-      <FormRow label="Pull mode" info="Incremental fetches only certificates changed since the last run using the Atlas cursor. Full pull re-reads the entire issued set and is slower; use it for a first run or a periodic reconcile.">
+      <FormRow label="Pull mode" info="Incremental fetches only certificates changed since the last run using the Atlas cursor. Full sync re-reads the entire issued set and is slower; use it for a first run or a periodic reconcile.">
         <div className="flex gap-1.5">
-          {(['Incremental', 'Full pull'] as const).map(m => (
+          {(['Incremental', 'Full sync'] as const).map(m => (
             <button key={m} onClick={() => setMode(m)} className={`px-3 py-1.5 rounded text-xs border ${mode === m ? 'border-teal bg-teal/10 text-teal' : 'border-border text-muted-foreground hover:bg-secondary'}`}>{m}</button>
           ))}
         </div>
       </FormRow>
-      <FormRow label="Issuance window" info="Bounds how far back the scan reads. Since last run continues from the previous run; a fixed window or all time is available for backfills. A first full pull over all time can be large on a high-volume CA.">
-        <select value={window} onChange={e => setWindow(e.target.value)} className={selectCls}>
-          {['Since last run', 'Last 30 days', 'Last 90 days', 'Last 12 months', 'All time'].map(w => <option key={w}>{w}</option>)}
-        </select>
-      </FormRow>
-      <FormRow label="Status scope" info="Which certificate states are requested. Revoked and expired are pulled explicitly because an expired or revoked certificate still deployed is a posture finding. Reconciliation with Network Scan is by certificate fingerprint; CA findings carry no deployment locus.">
+      {mode === 'Incremental' && (
+        <FormRow label="Issuance window" info="Bounds how far back incremental discovery reads. Since last run continues from the previous run; a fixed window is available for backfills.">
+          <select value={window} onChange={e => setWindow(e.target.value)} className={selectCls}>
+            {['Since last run', 'Last 24 hours', 'Last 7 days', 'Last 30 days', 'Last 90 days'].map(w => <option key={w}>{w}</option>)}
+          </select>
+        </FormRow>
+      )}
+      <FormRow label="Certificate status" info="Which certificate states are discovered. Certificates found at the CA are automatically correlated with deployed certificates found by Network Discovery.">
         <select value={status} onChange={e => setStatus(e.target.value)} className={selectCls}>
-          {['Issued + Revoked + Expired', 'Issued + Revoked', 'Issued only', 'Revoked only', 'Expired only'].map(s => <option key={s}>{s}</option>)}
+          {['Issued only', 'Issued + Revoked', 'Issued + Revoked + Expired', 'Revoked only', 'Expired only'].map(s => <option key={s}>{s}</option>)}
         </select>
       </FormRow>
-      {mode === 'Full pull' && window === 'All time' && (
-        <div className="ml-44 max-w-md"><Advisory>A full pull over all time re-reads every issued certificate and can be slow on a high-volume CA. Incremental or a bounded window is recommended for routine schedules.</Advisory></div>
+      {mode === 'Full sync' && (
+        <div className="ml-44 max-w-md"><Advisory>Full sync re-reads every issued certificate and can be slow on a high-volume CA. Incremental is recommended for routine schedules.</Advisory></div>
       )}
     </div>
   );
@@ -1041,14 +1043,14 @@ function SSHAuthConfig() {
       <div className="space-y-3">
         <GroupHeader>Discovery scope</GroupHeader>
         <FormRow label="Discover" required><CheckGroup options={['User Keys', 'Host Keys']} value={discover} onChange={setDiscover} /></FormRow>
-        <FormRow label="Scan type" required><Radios options={['Default', 'Full', 'Directory'] as const} value={scanType} onChange={v => setScanType(v)} /></FormRow>
+        <FormRow label="Scan type" required><Radios options={['Default', 'Full', 'Directory'] as const} value={scanType} onChange={setScanType} /></FormRow>
         <FormRow label="Recursive scan"><Toggle checked={recursive} onChange={setRecursive} label="Traverse subdirectories for keys" /></FormRow>
         <FormRow label="Intensive scan"><Toggle checked={intensive} onChange={setIntensive} label="Deeper scan, slower but more thorough" /></FormRow>
       </div>
 
       <div className="space-y-3">
         <GroupHeader>Access and credentials</GroupHeader>
-        <FormRow label="Access type" required><Radios options={['Key', 'Certificate'] as const} value={accessType} onChange={v => setAccessType(v)} /></FormRow>
+        <FormRow label="Access type" required><Radios options={['Key', 'Certificate'] as const} value={accessType} onChange={setAccessType} /></FormRow>
         <FormRow label="DataCenter" required>
           <select value={dataCenter} onChange={e => setDataCenter(e.target.value)} className={selectCls}>
             <option value="">Select…</option>{['absecon', 'us-east-1', 'us-west-2', 'eu-central-1'].map(d => <option key={d}>{d}</option>)}
@@ -1057,7 +1059,7 @@ function SSHAuthConfig() {
         <FormRow label="Credential type" required>
           <select value={credentialType} onChange={e => setCredentialType(e.target.value)} className={selectCls}>{['Manual Entry', 'Stored Credential'].map(c => <option key={c}>{c}</option>)}</select>
         </FormRow>
-        <FormRow label="Login type" required><Radios options={['Password', 'Identity Key'] as const} value={loginType} onChange={v => setLoginType(v)} /></FormRow>
+        <FormRow label="Login type" required><Radios options={['Password', 'Identity Key'] as const} value={loginType} onChange={setLoginType} /></FormRow>
         <FormRow label="Username" required><input value={username} onChange={e => setUsername(e.target.value)} placeholder="svc-discovery" className={inputCls} /></FormRow>
         <FormRow label={loginType === 'Password' ? 'Password' : 'Identity key'} required>
           {loginType === 'Password'
@@ -1076,7 +1078,7 @@ function SSHAuthConfig() {
         </FormRow>
         <FormRow label="Host Compliance Group"><select value={hostGroup} onChange={e => setHostGroup(e.target.value)} className={selectCls}>{['Default_Host_Group', 'Prod_Host_Group', 'PCI_Host_Group'].map(g => <option key={g}>{g}</option>)}</select></FormRow>
         <FormRow label="Key Compliance Group"><select value={keyGroup} onChange={e => setKeyGroup(e.target.value)} className={selectCls}>{['Default_Key_Group', 'Prod_Key_Group', 'PCI_Key_Group'].map(g => <option key={g}>{g}</option>)}</select></FormRow>
-        <FormRow label="Inventory action" required><Radios options={['Do Not Move', 'Manage', 'Monitor'] as const} value={inventoryAction} onChange={v => setInventoryAction(v)} /></FormRow>
+        <FormRow label="Inventory action" required><Radios options={['Do Not Move', 'Manage', 'Monitor'] as const} value={inventoryAction} onChange={setInventoryAction} /></FormRow>
       </div>
     </div>
   );
