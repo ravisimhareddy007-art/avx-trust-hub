@@ -133,13 +133,10 @@ export function OnboardingStrip() {
   };
 
   const doneCount = STAGE_ORDER.filter(s => o.stageStatus(s) === 'done').length;
-  const connectedCount = connected.length;
 
   const statusLine = (id: StageId, status: StageStatus): string => {
     if (id === 'connect') {
-      return connectedCount > 0
-        ? `${connectedCount} source${connectedCount === 1 ? '' : 's'} connected`
-        : STAGE_META.connect.todo;
+      return status === 'done' ? 'Sources connected' : STAGE_META.connect.todo;
     }
     if (id === 'discover') {
       return status === 'done' ? 'Inventory available' : STAGE_META.discover.todo;
