@@ -33,7 +33,8 @@ import CertHolisticView from '@/pages/CertHolisticView';
 import WorkOrderStatus from '@/pages/WorkOrderStatus';
 import MCPRuntimePage from '@/pages/MCPRuntimePage';
 import PolicyExceptionsPage from '@/pages/PolicyExceptionsPage';
-import { OnboardingStrip, OnboardingConductor } from '@/components/onboarding/OnboardingStrip';
+import { OnboardingStrip } from '@/components/onboarding/OnboardingStrip';
+import { OnboardingConductor } from '@/components/onboarding/OnboardingConductor';
 
 function DashboardPage() {
   const { persona } = usePersona();
