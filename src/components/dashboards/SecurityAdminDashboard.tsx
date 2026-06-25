@@ -19,7 +19,7 @@ export default function SecurityAdminDashboard() {
 
   return (
     <DashboardProvider>
-      <div className="space-y-0 max-h-[calc(100vh-120px)] flex flex-col">
+      <div className="space-y-0">
 
         {/* Page header */}
         <div className="flex items-end justify-between pt-1 pb-3 flex-shrink-0">
@@ -47,7 +47,7 @@ export default function SecurityAdminDashboard() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto scrollbar-thin pt-4">
+        <div className="pt-4">
           <div className="space-y-4 pr-1">
 
             {escalations.length > 0 && (
