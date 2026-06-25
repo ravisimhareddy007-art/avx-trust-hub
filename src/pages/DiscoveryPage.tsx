@@ -1041,7 +1041,7 @@ function SSHAuthConfig() {
       <div className="space-y-3">
         <GroupHeader>Discovery scope</GroupHeader>
         <FormRow label="Discover" required><CheckGroup options={['User Keys', 'Host Keys']} value={discover} onChange={setDiscover} /></FormRow>
-        <FormRow label="Scan type" required><Radios options={['Default', 'Full', 'Directory'] as const} value={scanType} onChange={setScanType} /></FormRow>
+        <FormRow label="Scan type" required><Radios options={['Default', 'Full', 'Directory'] as const} value={scanType} onChange={v => setScanType(v)} /></FormRow>
         <FormRow label="Recursive scan"><Toggle checked={recursive} onChange={setRecursive} label="Traverse subdirectories for keys" /></FormRow>
         <FormRow label="Intensive scan"><Toggle checked={intensive} onChange={setIntensive} label="Deeper scan, slower but more thorough" /></FormRow>
       </div>
