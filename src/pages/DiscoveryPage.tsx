@@ -1048,7 +1048,7 @@ function SSHAuthConfig() {
 
       <div className="space-y-3">
         <GroupHeader>Access and credentials</GroupHeader>
-        <FormRow label="Access type" required><Radios options={['Key', 'Certificate'] as const} value={accessType} onChange={setAccessType} /></FormRow>
+        <FormRow label="Access type" required><Radios options={['Key', 'Certificate'] as const} value={accessType} onChange={v => setAccessType(v)} /></FormRow>
         <FormRow label="DataCenter" required>
           <select value={dataCenter} onChange={e => setDataCenter(e.target.value)} className={selectCls}>
             <option value="">Select…</option>{['absecon', 'us-east-1', 'us-west-2', 'eu-central-1'].map(d => <option key={d}>{d}</option>)}
@@ -1057,7 +1057,7 @@ function SSHAuthConfig() {
         <FormRow label="Credential type" required>
           <select value={credentialType} onChange={e => setCredentialType(e.target.value)} className={selectCls}>{['Manual Entry', 'Stored Credential'].map(c => <option key={c}>{c}</option>)}</select>
         </FormRow>
-        <FormRow label="Login type" required><Radios options={['Password', 'Identity Key'] as const} value={loginType} onChange={setLoginType} /></FormRow>
+        <FormRow label="Login type" required><Radios options={['Password', 'Identity Key'] as const} value={loginType} onChange={v => setLoginType(v)} /></FormRow>
         <FormRow label="Username" required><input value={username} onChange={e => setUsername(e.target.value)} placeholder="svc-discovery" className={inputCls} /></FormRow>
         <FormRow label={loginType === 'Password' ? 'Password' : 'Identity key'} required>
           {loginType === 'Password'
@@ -1076,7 +1076,7 @@ function SSHAuthConfig() {
         </FormRow>
         <FormRow label="Host Compliance Group"><select value={hostGroup} onChange={e => setHostGroup(e.target.value)} className={selectCls}>{['Default_Host_Group', 'Prod_Host_Group', 'PCI_Host_Group'].map(g => <option key={g}>{g}</option>)}</select></FormRow>
         <FormRow label="Key Compliance Group"><select value={keyGroup} onChange={e => setKeyGroup(e.target.value)} className={selectCls}>{['Default_Key_Group', 'Prod_Key_Group', 'PCI_Key_Group'].map(g => <option key={g}>{g}</option>)}</select></FormRow>
-        <FormRow label="Inventory action" required><Radios options={['Do Not Move', 'Manage', 'Monitor'] as const} value={inventoryAction} onChange={setInventoryAction} /></FormRow>
+        <FormRow label="Inventory action" required><Radios options={['Do Not Move', 'Manage', 'Monitor'] as const} value={inventoryAction} onChange={v => setInventoryAction(v)} /></FormRow>
       </div>
     </div>
   );
