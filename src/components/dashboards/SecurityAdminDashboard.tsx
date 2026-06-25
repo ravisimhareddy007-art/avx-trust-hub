@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import EnterpriseRiskScore from './ers/EnterpriseRiskScore';
 import CriticalActionFeed from './CriticalActionFeed';
 import IdentityHealthBands from './IdentityHealthBands';
-import QTHPostureStrip from './QTHPostureStrip';
+
 import InfrastructurePostureStrip from './InfrastructurePostureStrip';
 
 export default function SecurityAdminDashboard() {
@@ -98,7 +98,7 @@ export default function SecurityAdminDashboard() {
                 <CriticalActionFeed />
               </div>
             </div>
-            <QTHPostureStrip />
+            
             <IdentityHealthBands />
             <InfrastructurePostureStrip />
           </div>
