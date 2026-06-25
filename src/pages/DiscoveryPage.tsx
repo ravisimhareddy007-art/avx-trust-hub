@@ -516,11 +516,33 @@ function Advisory({ children }: { children: React.ReactNode }) {
 const DEFAULT_PORTS = '443, 8443, 22, 636, 993, 995, 3389, 500, 4500, 6443';
 const PORT_PRESETS = ['443', '8443', '22', '636', '993', '995', '3389', '500', '4500', '6443'];
 
-type ScanTuning = { pps: string; concurrency: string; rtt: string; retries: string; hostTimeout: string; probeDelay: string; batch: string; service: string; aliveDetect: boolean; sequential: boolean };
+type ScanTuning = {
+  activeIpScan: boolean; detectionMode: string; hostSpeed: string; hostConcurrency: string; hostTimeout: string; hostRetries: string;
+  portIntensity: string; pps: string; portConcurrency: string; rtt: string; portRetries: string; probeDelay: string;
+  osCheck: boolean; osIntensity: string; service: string; osScan: string; versionProbe: string; osProbeDelay: string;
+  batch: string; sequential: boolean;
+};
+const SPEED_OPTS = ['Minimal', 'Low & Slow', 'Light', 'Balanced', 'Performance', 'Max'];
+const DETECTION_OPTS = ['Default Ports', 'All Ports', 'ICMP Ping'];
+const PPS_OPTS = ['10', '100', '250', '500', '1000', '2000', '4000', '8000'];
+const CONC_OPTS = ['20', '40', '60', '80', '100'];
+const RTT_OPTS = ['100', '500', '1000', '2000', '5000', '10000'];
+const RETRY_OPTS = ['0', '1', '2', '3', '4', '5'];
+const HOSTTO_OPTS = ['5', '10', '30', '60', '120'];
+const DELAY_OPTS = ['0', '10', '50', '100', '200', '500', '1000'];
+const VERSIONPROBE_OPTS = ['Light', 'Moderate', 'Balance', 'Aggressive', 'Extensive'];
+const BATCH_OPTS = ['64', '128', '256', '512'];
+
 const INTENSITY_PRESETS: Record<'Conservative' | 'Balanced' | 'Aggressive', ScanTuning> = {
-  Conservative: { pps: '100', concurrency: '20', rtt: '2000', retries: '2', hostTimeout: '30', probeDelay: '100', batch: '128', service: 'Normal', aliveDetect: true, sequential: true },
-  Balanced: { pps: '500', concurrency: '40', rtt: '1000', retries: '2', hostTimeout: '10', probeDelay: '10', batch: '256', service: 'Normal', aliveDetect: true, sequential: false },
-  Aggressive: { pps: '2000', concurrency: '80', rtt: '500', retries: '1', hostTimeout: '5', probeDelay: '0', batch: '512', service: 'Deep', aliveDetect: true, sequential: false },
+  Conservative: { activeIpScan: true, detectionMode: 'Default Ports', hostSpeed: 'Low & Slow', hostConcurrency: '20', hostTimeout: '60', hostRetries: '2',
+    portIntensity: 'Low & Slow', pps: '100', portConcurrency: '20', rtt: '2000', portRetries: '2', probeDelay: '100',
+    osCheck: false, osIntensity: 'Low & Slow', service: 'Normal', osScan: 'Basic', versionProbe: 'Light', osProbeDelay: '100', batch: '128', sequential: true },
+  Balanced: { activeIpScan: true, detectionMode: 'Default Ports', hostSpeed: 'Balanced', hostConcurrency: '40', hostTimeout: '10', hostRetries: '2',
+    portIntensity: 'Balanced', pps: '250', portConcurrency: '40', rtt: '1000', portRetries: '2', probeDelay: '0',
+    osCheck: false, osIntensity: 'Balanced', service: 'Normal', osScan: 'Basic', versionProbe: 'Balance', osProbeDelay: '0', batch: '256', sequential: false },
+  Aggressive: { activeIpScan: true, detectionMode: 'Default Ports', hostSpeed: 'Performance', hostConcurrency: '80', hostTimeout: '5', hostRetries: '1',
+    portIntensity: 'Performance', pps: '2000', portConcurrency: '80', rtt: '500', portRetries: '1', probeDelay: '0',
+    osCheck: true, osIntensity: 'Performance', service: 'Deep', osScan: 'Aggressive', versionProbe: 'Aggressive', osProbeDelay: '0', batch: '512', sequential: false },
 };
 
 function Modal({ title, onClose, children, footer }: { title: string; onClose: () => void; children: React.ReactNode; footer?: React.ReactNode }) {
@@ -646,7 +668,7 @@ function NetworkConfig() {
       {showSettings && (
         <Modal title="Scan execution settings" onClose={() => setShowSettings(false)}
           footer={<button onClick={() => setShowSettings(false)} className="px-4 py-2 rounded-lg bg-teal text-primary-foreground text-xs font-semibold hover:bg-teal-light">Done</button>}>
-          <p className="text-[11px] text-muted-foreground mb-3">Presets set these values. Adjusting any field switches intensity to Custom. Pacing applies to the scan engine only and does not change what is discovered.</p>
+          <p className="text-[11px] text-muted-foreground mb-3">Presets set every value below. Adjusting any field switches intensity to Custom. These control the scan engine only and do not change what is discovered.</p>
           <div className="flex gap-1.5 mb-4">
             {(['Conservative', 'Balanced', 'Aggressive'] as const).map(i => (
               <button key={i} onClick={() => applyPreset(i)}
@@ -654,19 +676,51 @@ function NetworkConfig() {
             ))}
             {intensity === 'Custom' && <span className="px-3 py-1.5 rounded text-xs border border-teal bg-teal/10 text-teal">Custom</span>}
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <MiniField label="Packets per second" value={tuning.pps} onChange={v => setField({ pps: v })} options={['100', '250', '500', '1000', '2000', '4000']} />
-            <MiniField label="Concurrent probes" value={tuning.concurrency} onChange={v => setField({ concurrency: v })} options={['20', '40', '60', '80', '100']} />
-            <MiniField label="RTT timeout" value={tuning.rtt} onChange={v => setField({ rtt: v })} options={['500', '1000', '2000', '5000']} unit="ms" />
-            <MiniField label="Max retries" value={tuning.retries} onChange={v => setField({ retries: v })} options={['0', '1', '2', '3']} />
-            <MiniField label="Host timeout" value={tuning.hostTimeout} onChange={v => setField({ hostTimeout: v })} options={['5', '10', '30', '60']} unit="s" />
-            <MiniField label="Probe delay" value={tuning.probeDelay} onChange={v => setField({ probeDelay: v })} options={['0', '10', '50', '100', '200']} unit="ms" />
-            <MiniField label="IPs per batch" value={tuning.batch} onChange={v => setField({ batch: v })} options={['64', '128', '256', '512']} />
-            <MiniField label="Service detection" value={tuning.service} onChange={v => setField({ service: v })} options={['Normal', 'Deep']} />
-          </div>
-          <div className="flex flex-col gap-2 mt-4 pt-3 border-t border-border">
-            <Toggle checked={tuning.aliveDetect} onChange={v => setField({ aliveDetect: v })} label="Alive host detection before port scan" />
-            <Toggle checked={tuning.sequential} onChange={v => setField({ sequential: v })} label="Execute batches sequentially" />
+
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <GroupHeader info="Finds which hosts are alive before port scanning, so dead IPs are skipped.">Alive host detection</GroupHeader>
+              <Toggle checked={tuning.activeIpScan} onChange={v => setField({ activeIpScan: v })} label="Active IP scan" />
+              <div className="grid grid-cols-2 gap-3">
+                <MiniField label="Detection mode" value={tuning.detectionMode} onChange={v => setField({ detectionMode: v })} options={DETECTION_OPTS} />
+                <MiniField label="Scanning speed" value={tuning.hostSpeed} onChange={v => setField({ hostSpeed: v })} options={SPEED_OPTS} />
+                <MiniField label="Concurrent probes" value={tuning.hostConcurrency} onChange={v => setField({ hostConcurrency: v })} options={CONC_OPTS} />
+                <MiniField label="Host timeout" value={tuning.hostTimeout} onChange={v => setField({ hostTimeout: v })} options={HOSTTO_OPTS} unit="s" />
+                <MiniField label="Maximum retry" value={tuning.hostRetries} onChange={v => setField({ hostRetries: v })} options={RETRY_OPTS} />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <GroupHeader info="Controls how the open-port scan paces itself against each host.">Open port configuration</GroupHeader>
+              <div className="grid grid-cols-2 gap-3">
+                <MiniField label="Scanning intensity" value={tuning.portIntensity} onChange={v => setField({ portIntensity: v })} options={SPEED_OPTS} />
+                <MiniField label="Packets per second" value={tuning.pps} onChange={v => setField({ pps: v })} options={PPS_OPTS} />
+                <MiniField label="Concurrent parallel probes" value={tuning.portConcurrency} onChange={v => setField({ portConcurrency: v })} options={CONC_OPTS} />
+                <MiniField label="RTT timeout" value={tuning.rtt} onChange={v => setField({ rtt: v })} options={RTT_OPTS} unit="ms" />
+                <MiniField label="Max retries" value={tuning.portRetries} onChange={v => setField({ portRetries: v })} options={RETRY_OPTS} />
+                <MiniField label="Probe delay" value={tuning.probeDelay} onChange={v => setField({ probeDelay: v })} options={DELAY_OPTS} unit="ms" />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <GroupHeader info="Identifies the service and version on each open port. OS scan is included for parity; it is operating-system fingerprinting and not crypto posture.">OS and service check</GroupHeader>
+              <Toggle checked={tuning.osCheck} onChange={v => setField({ osCheck: v })} label="OS / service check" />
+              <div className="grid grid-cols-2 gap-3">
+                <MiniField label="Scanning intensity" value={tuning.osIntensity} onChange={v => setField({ osIntensity: v })} options={SPEED_OPTS} />
+                <MiniField label="Service detection" value={tuning.service} onChange={v => setField({ service: v })} options={['Normal', 'Deep']} />
+                <MiniField label="OS scan" value={tuning.osScan} onChange={v => setField({ osScan: v })} options={['Basic', 'Aggressive']} />
+                <MiniField label="Version probe intensity" value={tuning.versionProbe} onChange={v => setField({ versionProbe: v })} options={VERSIONPROBE_OPTS} />
+                <MiniField label="Probe delay" value={tuning.osProbeDelay} onChange={v => setField({ osProbeDelay: v })} options={DELAY_OPTS} unit="ms" />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <GroupHeader info="Batching of the overall discovery run.">Advanced</GroupHeader>
+              <div className="grid grid-cols-2 gap-3">
+                <MiniField label="IPs per batch" value={tuning.batch} onChange={v => setField({ batch: v })} options={BATCH_OPTS} />
+              </div>
+              <Toggle checked={tuning.sequential} onChange={v => setField({ sequential: v })} label="Execute batches sequentially" />
+            </div>
           </div>
         </Modal>
       )}
