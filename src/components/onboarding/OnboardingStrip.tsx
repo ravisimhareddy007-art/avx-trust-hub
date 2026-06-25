@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useNav } from '@/context/NavigationContext';
-import { useIntegrations } from '@/context/IntegrationsContext';
-import { useRuns } from '@/context/DiscoveryContext';
+
 import {
   Check, Lock, ChevronDown, ChevronUp, X,
   Plug, Radar, ShieldCheck, ArrowRight, Sparkles,
@@ -56,19 +55,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   const [expanded, setExpanded] = useState(true);
   const [seen, setSeen] = useState<Set<StageId>>(new Set());
 
-  // Real signals. A step is complete when its real outcome exists OR the user
-  // has visited the page (an honest "you have been here", not fabricated success).
-  const { connected } = useIntegrations();
-  const { runs } = useRuns();
-  const hasConnection = connected.length > 0;
-  const hasCompletedRun = runs.some(r => r.status === 'completed');
-
-  const done = useMemo(() => {
-    const d = new Set<StageId>(seen);
-    if (hasConnection) d.add('connect');
-    if (hasCompletedRun) d.add('discover');
-    return d;
-  }, [seen, hasConnection, hasCompletedRun]);
+  const done = seen;
 
   const currentStage = useMemo<StageId | null>(() => {
     for (const s of STAGE_ORDER) if (!done.has(s)) return s;
@@ -134,7 +121,6 @@ const STAGE_META: Record<StageId, {
 export function OnboardingStrip() {
   const o = useOnboarding();
   const { setCurrentPage, setFilters, filters } = useNav();
-  const { connected } = useIntegrations();
 
   if (!o.visible) return null;
 
@@ -147,13 +133,10 @@ export function OnboardingStrip() {
   };
 
   const doneCount = STAGE_ORDER.filter(s => o.stageStatus(s) === 'done').length;
-  const connectedCount = connected.length;
 
   const statusLine = (id: StageId, status: StageStatus): string => {
     if (id === 'connect') {
-      return connectedCount > 0
-        ? `${connectedCount} source${connectedCount === 1 ? '' : 's'} connected`
-        : STAGE_META.connect.todo;
+      return status === 'done' ? 'Sources connected' : STAGE_META.connect.todo;
     }
     if (id === 'discover') {
       return status === 'done' ? 'Inventory available' : STAGE_META.discover.todo;
