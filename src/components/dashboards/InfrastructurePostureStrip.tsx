@@ -122,7 +122,7 @@ export default function InfrastructurePostureStrip() {
       </div>
 
       {/* Five tiles */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2.5">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2.5">
         {TILES.map(tile => {
           const Icon = tile.icon;
           const TrendIcon = tile.trend >= 0 ? TrendingUp : TrendingDown;

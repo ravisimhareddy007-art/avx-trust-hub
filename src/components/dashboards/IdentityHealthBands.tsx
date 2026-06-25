@@ -117,7 +117,7 @@ export default function IdentityHealthBands() {
         <span className="text-[10px] text-muted-foreground">4 categories · 7-day trend</span>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {BANDS.map(b => {
           const Icon = b.icon;
           const trendValue = parseFloat(b.trend);
