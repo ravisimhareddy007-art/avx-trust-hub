@@ -75,17 +75,30 @@ const scanCategories: ScanCategory[] = [
 ];
 
 // ============================================================================
-// AI-NATIVE NL DISCOVERY: deterministic intent parser (MVP, offline)
-// Maps a natural-language sentence to a draft discovery config. Never runs a
-// scan. Pre-fills the existing form, which stays the source of truth.
-// v2 swap point: replace parseIntent's body with an in-artifact LLM call that
-// returns the same DiscoveryIntent shape behind this interface. Treat model
-// output as an untrusted draft the user still confirms. Do not build that here.
+// AI-NATIVE DISCOVERY PLANNER (hybrid: live model call, deterministic fallback)
+// ----------------------------------------------------------------------------
+// The unit produced is a DISCOVERY PLAN: a sequenced set of methods, each with
+// resolved fields and a one-line reason per non-obvious decision. This is what
+// the manual form cannot do: it sees one method; the planner reasons across all
+// of them to answer a single question ("find quantum-vulnerable certs before
+// the AWS prod migration" -> Network + Cloud + CA, sequenced).
+//
+// Engine: planDiscovery() tries the in-artifact Anthropic API and validates the
+// JSON against scope (known methods, known connections, no invented IPs/creds).
+// On any failure (network, timeout, malformed, off-scope) it falls back to a
+// deterministic planner. Both paths return the identical DiscoveryPlan shape,
+// which is also the tool contract Infinity AI can call later to plan a scan.
+//
+// Boundary: this planner decides what to GO FIND (discovery verbs). Questions
+// about what you already HAVE (inventory/posture queries) are Infinity AI's job
+// and are detected here and redirected, never half-answered as a scan.
+//
+// Safety unchanged: prompt is untrusted, output is always an editable draft, the
+// confirmation gate stays, RBAC is never widened, credentials never inline.
 // ============================================================================
 
-// Connections the parser is allowed to reference. These mirror what the config
-// panels and Integrations already expose. The parser never invents a connection
-// and never accepts a secret, endpoint or token inline.
+// Connections the planner may reference. Mirrors the config panels and
+// Integrations. The planner never invents a connection.
 const NL_CLOUD_CONNECTIONS: { provider: 'AWS' | 'Azure'; name: string; env: 'prod' | 'nonprod' }[] = [
   { provider: 'AWS', name: 'AWS - prod (123456789012)', env: 'prod' },
   { provider: 'AWS', name: 'AWS - sandbox (987654321098)', env: 'nonprod' },
@@ -100,6 +113,7 @@ const NL_SECRET_CONNECTIONS: { name: string; type: string; kind: 'vault' | 'hsm'
   { name: 'Utimaco HSM - dc1', type: 'Utimaco HSM', kind: 'hsm', env: 'prod', aliases: ['utimaco', 'hsm'] },
 ];
 
+// Panel-specific pre-fill payloads, applied to the existing config panels on accept.
 type PrefillNetwork = { kind: 'network'; tlsVersions?: string[]; objectsNote?: string };
 type PrefillCA = { kind: 'ca'; status?: string };
 type PrefillCloud = { kind: 'cloud'; provider?: 'AWS' | 'Azure'; connection?: string; objects?: string[] };
@@ -107,80 +121,34 @@ type PrefillSecrets = { kind: 'secrets'; connectionName?: string; vaultType?: st
 type PrefillThirdParty = { kind: 'thirdparty'; sourceType?: 'Vulnerability Scanner' | 'CBOM' };
 type Prefill = PrefillNetwork | PrefillCA | PrefillCloud | PrefillSecrets | PrefillThirdParty | null;
 
-interface DiscoveryIntent {
-  matched: boolean;            // false => keep form untouched
-  category: string;            // scanCategories[].category
-  type: string;                // ScanType.value
-  prefill: Prefill;            // panel-specific pre-fill payload
-  summary: string[];           // teal banner: what was set
-  flags: string[];             // amber lines: unresolved / dropped / scope notes
-  alternates: string[];        // "or did you mean" when method signal is weak
+// A single method within a plan.
+interface PlanStep {
+  config: ConfigKey;        // which method
+  category: string;         // scanCategories[].category
+  type: string;            // ScanType.value
+  rationale: string;        // why this method is in the plan (one line)
+  decisions: string[];      // non-obvious field choices, each with its reason
+  unresolved: string[];     // fields the user must complete (e.g. missing target)
+  prefill: Prefill;         // applied to the panel on "Configure"
 }
 
-const LIFECYCLE_VERBS = /\b(rotate|rotat|renew|revoke|remediat|reissue|re-issue|delete|deprovision|decommission)\b/i;
+type PlanKind = 'plan' | 'query-redirect' | 'refused' | 'empty';
+interface DiscoveryPlan {
+  kind: PlanKind;
+  intentEcho: string;       // the goal restated, so the user sees what was understood
+  steps: PlanStep[];        // ordered; sequence is meaningful
+  sequenceNote: string;     // why this order (empty for single-step)
+  notes: string[];          // scope drops, conflicts, advisories
+  source: 'ai' | 'rules';   // which engine produced this (for the demo footer)
+}
+
+const LIFECYCLE_VERBS = /\b(rotate|rotat|renew|revoke|remediat|reissue|re-issue|deprovision|decommission)\b/i;
 const OUT_OF_SCOPE = /\b(gcp|google cloud|oracle cloud|oci|ibm cloud|ot |ot device|scada|plc|firmware|iot device)\b/i;
+// Retrospective / inventory questions belong to Infinity AI, not a scan.
+const QUERY_INTENT = /\b(what|which|how many|show me|list my|do i have|find my|where are my|report on|expiring|expired already|am i exposed|posture of)\b/i;
+const DISCOVERY_VERBS = /\b(discover|scan|find|probe|enumerate|sweep|import|ingest|onboard|crawl|look for|search for)\b/i;
 
-function parseIntent(raw: string): DiscoveryIntent {
-  const text = raw.trim();
-  const t = text.toLowerCase();
-  const none: DiscoveryIntent = { matched: false, category: '', type: '', prefill: null, summary: [], flags: [], alternates: [] };
-
-  if (text.length < 3 || !/[a-z0-9]/i.test(text)) {
-    return { ...none, flags: ['Nothing to interpret. Describe what to discover, for example "TLS certificates in AWS production".'] };
-  }
-
-  // Lifecycle verbs: discovery is monitor-only. Refuse, do not map.
-  if (LIFECYCLE_VERBS.test(t)) {
-    return { ...none, flags: ['Discovery is monitor-only. Lifecycle actions like rotate, renew, revoke or remediate run from the remediation module, not from a scan.'] };
-  }
-
-  const flags: string[] = [];
-
-  // Out-of-scope platforms: name the gap rather than mis-mapping.
-  if (OUT_OF_SCOPE.test(t)) {
-    flags.push('Part of this request is outside MVP scope (only AWS and Azure clouds, and the listed vaults, HSMs, CA and scanners are supported). The unsupported portion was ignored.');
-  }
-
-  // Method signals (scored; strongest wins).
-  const has = (re: RegExp) => re.test(t);
-  const scores: Record<string, number> = { network: 0, sshauth: 0, ca: 0, cloud: 0, secrets: 0, thirdparty: 0 };
-  if (has(/\b(tls|ssl|certificate|cert|endpoint|https|cipher)\b/)) scores.network += 1;
-  if (has(/\b(network|subnet|cidr|ip range|ip address|internal network|probe|scan the network)\b/)) scores.network += 2;
-  if (has(/\b(ssh|host key|user key|authorized key)\b/)) scores.sshauth += 3;
-  if (has(/\b(ca|issued|issuer|globalsign|atlas|chain of trust)\b/)) scores.ca += 2;
-  if (has(/\brevoked\b/) && has(/\b(ca|globalsign|atlas|issued|from)\b/)) scores.ca += 2;
-  if (has(/\b(aws|azure|cloud|kms|acm|key vault|keyvault|managed hsm|s3|ec2|account)\b/)) scores.cloud += 2;
-  if (has(/\b(vault|hsm|secret|secrets|hashicorp|conjur|cyberark|crypto4a|utimaco|key store|keystore)\b/)) scores.secrets += 2;
-  if (has(/\b(cbom|cyclonedx|qualys|tenable|vulnerability|scanner finding|bom)\b/)) scores.thirdparty += 3;
-
-  // Disambiguate vault/HSM vs cloud Key Vault: a named vault product beats generic cloud.
-  if (has(/\b(hashicorp|conjur|cyberark|crypto4a|utimaco)\b/)) scores.cloud = Math.max(0, scores.cloud - 2);
-  // "key vault" as Azure service should not over-trigger Secrets unless a vault product is named.
-  if (has(/\b(azure|key vault|keyvault)\b/) && !has(/\b(hashicorp|conjur|cyberark|crypto4a|utimaco)\b/)) scores.secrets = Math.max(0, scores.secrets - 1);
-
-  const ranked = Object.entries(scores).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
-  if (ranked.length === 0) {
-    return { ...none, flags: ['Could not map that to a discovery method. Pick a method below to configure manually.'] };
-  }
-
-  const [topKey, topScore] = ranked[0];
-  const second = ranked[1];
-  const alternates: string[] = [];
-  // Only offer an alternate on a genuine tie. A clear lead does not prompt "did you mean".
-  if (second && second[1] === topScore) {
-    alternates.push(configToLabel(second[0] as ConfigKey));
-  }
-
-  // Multiple distinct strong methods named in one sentence: note the dropped one.
-  const strong = ranked.filter(([, v]) => v >= 2);
-  if (strong.length > 1) {
-    const dropped = strong.slice(1).map(([k]) => configToLabel(k as ConfigKey));
-    flags.push(`One method runs per discovery. Mapped to the strongest signal; not mapped this run: ${dropped.join(', ')}.`);
-  }
-
-  return buildIntent(topKey as ConfigKey, t, flags, alternates);
-}
-
+// Method routing labels.
 function configToLabel(key: ConfigKey): string {
   for (const cat of scanCategories) for (const ty of cat.types) if (ty.config === key) return ty.value;
   return key;
@@ -190,89 +158,253 @@ function categoryForConfig(key: ConfigKey): { category: string; type: string } {
   return { category: scanCategories[0].category, type: scanCategories[0].types[0].value };
 }
 
-function buildIntent(key: ConfigKey, t: string, flags: string[], alternates: string[]): DiscoveryIntent {
-  const { category, type } = categoryForConfig(key);
-  const summary: string[] = [`Method: ${type}`];
-  const wantsProd = /\b(prod|production)\b/.test(t);
-  const wantsNonProd = /\b(dev|sandbox|staging|non-prod|nonprod|test)\b/.test(t);
+// ---- Field resolvers (shared by AI validation and the deterministic planner) ----
+function resolveCloud(t: string): PrefillCloud & { connName?: string } {
+  const provider: 'AWS' | 'Azure' | undefined = /\baws\b/.test(t) ? 'AWS' : /\bazure\b/.test(t) ? 'Azure' : undefined;
+  let objects: string[] = [];
+  if (/\b(tls|ssl|cert)\b/.test(t)) objects.push('Certificates');
+  if (/\b(key|kms)\b/.test(t)) objects.push('Keys');
+  if (/\bsecret/.test(t)) objects.push('Secrets handoff');
+  if (objects.length === 0) objects = ['Certificates', 'Keys'];
+  const envPref = /\b(prod|production)\b/.test(t) ? 'prod' : /\b(dev|sandbox|staging|test|non-prod|nonprod)\b/.test(t) ? 'nonprod' : null;
+  let connection: string | undefined;
+  if (provider) {
+    const pool = NL_CLOUD_CONNECTIONS.filter(c => c.provider === provider);
+    const pick = envPref ? pool.find(c => c.env === envPref) : pool[0];
+    connection = pick?.name;
+  }
+  return { kind: 'cloud', provider, connection, objects };
+}
+function resolveSecrets(t: string): PrefillSecrets {
+  const envPref = /\b(prod|production)\b/.test(t) ? 'prod' : /\b(dev|sandbox|staging|test)\b/.test(t) ? 'nonprod' : null;
+  const named = NL_SECRET_CONNECTIONS.find(c => c.aliases.some(a => t.includes(a)) && (envPref ? c.env === envPref : true))
+    || NL_SECRET_CONNECTIONS.find(c => c.aliases.some(a => t.includes(a)));
+  if (!named) return { kind: 'secrets' };
+  const enumerate = named.kind === 'hsm' ? ['Keys']
+    : /\bsecret/.test(t) && /\bkey/.test(t) ? ['Certificates', 'Keys', 'Secrets']
+    : /\bsecret/.test(t) ? ['Secrets'] : /\bcert/.test(t) ? ['Certificates'] : ['Certificates', 'Keys'];
+  return { kind: 'secrets', connectionName: named.name, vaultType: named.type, enumerate };
+}
+function caStatusFor(t: string): string {
+  if (/\brevoked\b/.test(t) && !/\bexpired\b/.test(t) && !/\bissued\b/.test(t)) return 'Revoked only';
+  if (/\bexpired\b/.test(t) && !/\brevoked\b/.test(t)) return 'Expired only';
+  return 'Issued + Revoked + Expired';
+}
 
-  const objType = (): string[] => {
-    const o: string[] = [];
-    if (/\b(tls|ssl|certificate|cert)\b/.test(t)) o.push('Certificates');
-    if (/\b(key|keys|kms)\b/.test(t) && !/\b(host key|user key)\b/.test(t)) o.push('Keys');
-    if (/\bsecret/.test(t)) o.push('Secrets');
-    return o;
+// ---- Deterministic planner: the fallback, and the demo's safety net ----
+// Unlike the old single-field parser, this one can emit a MULTI-METHOD plan when
+// the goal implies it (quantum / migration / "everywhere" / audit intents).
+function deterministicPlan(raw: string): DiscoveryPlan {
+  const text = raw.trim();
+  const t = text.toLowerCase();
+  const base: DiscoveryPlan = { kind: 'plan', intentEcho: text, steps: [], sequenceNote: '', notes: [], source: 'rules' };
+
+  if (text.length < 3 || !/[a-z0-9]/i.test(text)) return { ...base, kind: 'empty', notes: ['Describe what to discover, for example "TLS certificates in AWS production".'] };
+  if (LIFECYCLE_VERBS.test(t)) return { ...base, kind: 'refused', notes: ['Discovery is monitor-only. Rotate, renew, revoke and remediate run from the remediation module, not from a scan.'] };
+
+  // Inventory question, not a discovery -> hand to Infinity AI.
+  if (QUERY_INTENT.test(t) && !DISCOVERY_VERBS.test(t)) {
+    return { ...base, kind: 'query-redirect', notes: ['This reads like a question about what you already have. Inventory and posture questions are answered by Infinity AI; discovery finds assets you do not yet know about.'] };
+  }
+
+  const notes: string[] = [];
+  if (OUT_OF_SCOPE.test(t)) notes.push('Part of this is outside MVP scope (only AWS/Azure clouds and the listed vaults, HSMs, CA and scanners). The unsupported part was left out.');
+
+  const mk = (config: ConfigKey, rationale: string, decisions: string[], unresolved: string[], prefill: Prefill): PlanStep => {
+    const { category, type } = categoryForConfig(config); return { config, category, type, rationale, decisions, unresolved, prefill };
   };
 
-  switch (key) {
-    case 'network': {
-      const pf: PrefillNetwork = { kind: 'network' };
-      const hasTarget = /\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\/\d{1,2}\b|cidr|subnet|[a-z0-9-]+\.[a-z]{2,})\b/.test(t);
-      if (/\b(weak|legacy|old protocol|tls 1\.0|tls 1\.1|deprecated)\b/.test(t)) { pf.tlsVersions = ['TLS 1.0', 'TLS 1.1', 'TLS 1.2', 'TLS 1.3']; summary.push('TLS versions: probe all four (surfaces weak protocol support)'); }
-      summary.push('Targets: left for you to confirm');
-      if (!hasTarget) flags.push('Network Scan needs an IP, CIDR or FQDN target. Add the target range before running; an address range is never assumed.');
-      pf.objectsNote = 'Network Scan reports TLS, SSH, IPsec/VPN and Kubernetes posture across the configured ports.';
-      return { matched: true, category, type, prefill: pf, summary, flags, alternates };
-    }
-    case 'sshauth': {
-      summary.push('Authenticated SSH onboarding: host and user keys');
-      flags.push('Authenticated SSH scan needs an IP range and stored credentials, set below. Credentials come from Integrations and are never entered through this prompt.');
-      return { matched: true, category, type, prefill: null, summary, flags, alternates };
-    }
+  // ---- Cross-cutting scenarios: the moment the form cannot reach. ----
+  // Each named goal produces a DISTINCT sequenced multi-method plan, so different
+  // prompts visibly differ. All deterministic, all offline.
+  const provider: 'AWS' | 'Azure' | undefined = /\baws\b/.test(t) ? 'AWS' : /\bazure\b/.test(t) ? 'Azure' : undefined;
+  const cloud = resolveCloud(t);
+  const hasCloudHint = !!provider || /\b(cloud|kms|acm|key vault|keyvault|s3|ec2)\b/.test(t);
+  const hasCbom = /\b(cbom|cyclonedx|bom|sbom)\b/.test(t);
+  const hasVaultHint = /\b(vault|hsm|secret|hashicorp|conjur|cyberark|crypto4a|utimaco|key store|keystore)\b/.test(t);
+
+  // Reusable step builders so scenarios compose consistent, expert-grade cards.
+  const caStep = (status: string, why: string, extra: string[] = []) =>
+    mk('ca', why, ['Status set to ' + status + ' so the issued set is complete', 'Incremental pull on the Atlas cursor keeps the first correlation fast', ...extra], [], { kind: 'ca', status });
+  const networkStep = (why: string, decisions: string[]) =>
+    mk('network', why, decisions, ['Add the IP, CIDR or FQDN target range; a range is never assumed'], { kind: 'network', tlsVersions: ['TLS 1.0', 'TLS 1.1', 'TLS 1.2', 'TLS 1.3'] });
+  const cloudStep = (why: string, objects: string[], extra: string[] = []) =>
+    mk('cloud', why,
+      [provider ? 'Provider ' + provider + ' from the request' : 'Pick AWS or Azure below', cloud.connection ? 'Connection ' + cloud.connection : 'Confirm the connection below', 'Discover ' + objects.join(', '), ...extra],
+      provider && !cloud.connection ? ['No ' + provider + ' ' + (/\bprod/.test(t) ? 'production ' : '') + 'connection matched; choose one or add it in Integrations'] : (!provider ? ['Choose AWS or Azure below'] : []),
+      { kind: 'cloud', provider: cloud.provider, connection: cloud.connection, objects });
+  const secretsStep = (why: string) => {
+    const s = resolveSecrets(t);
+    return mk('secrets', why,
+      s.connectionName ? ['Connection ' + s.connectionName, 'Enumerate ' + (s.enumerate ?? []).join(', '), 'Metadata only; secret values are never extracted'] : ['Select a vault or HSM connection below'],
+      s.connectionName ? [] : ['No matching vault or HSM connection found; select one below'], s);
+  };
+  const cbomStep = () =>
+    mk('thirdparty', 'A supplied CBOM declares cryptographic components the active scans would otherwise miss, including inside third-party software.',
+      ['Source type CBOM (CycloneDX 1.6)'], [], { kind: 'thirdparty', sourceType: 'CBOM' });
+  const scannerStep = () =>
+    mk('thirdparty', 'Existing vulnerability-scanner findings are folded in so known weak-crypto findings are not rediscovered from scratch.',
+      ['Source type Vulnerability Scanner', 'Findings sit below native scans and CBOM in source priority'], [], { kind: 'thirdparty', sourceType: 'Vulnerability Scanner' });
+
+  // Scenario signals.
+  const quantum = /\b(quantum|pqc|post-quantum|post quantum|crypto-?agility|crypto agility|rsa-?1024|rsa-?2048|weak (algorithm|crypto|key)|non-quantum-safe|harvest now|harvest-now)\b/.test(t);
+  const migration = /\b(migration|migrat|cutover|re-?platform|decommission plan|before .* (move|migrat|cut))\b/.test(t);
+  const fullEstate = /\b(everywhere|all our|across (the )?(estate|environment|org|organisation|organization|infrastructure)|full inventory|complete picture|whole estate|enterprise-?wide|company-?wide|baseline (our|the))\b/.test(t);
+  const compliance = /\b(pci|hipaa|soc ?2|fips|nist|cmmc|compliance|audit-?ready|auditor|attestation|regulat)\b/.test(t);
+  const expiryRisk = /\b(expir|expiry|expiration|renewal risk|about to expire|expiring soon|outage risk|lapse|lapsing)/.test(t);
+  const incident = /\b(breach|incident|compromise|compromised|exposed key|leaked|rotate after|post-?incident|forensic|blast radius)\b/.test(t);
+  const weakProto = /\b(weak (protocol|cipher|tls|ssl)|deprecated (protocol|tls|cipher)|tls ?1\.0|tls ?1\.1|sslv3|legacy protocol|insecure cipher)/.test(t);
+
+  // 1) Post-quantum / crypto-agility readiness: the widest, needs material from
+  // every surface to judge algorithms.
+  if (quantum) {
+    const steps: PlanStep[] = [
+      caStep('Issued + Revoked + Expired', 'Establishes the issued-certificate ground truth and the signature algorithms the CA used, before anything deployed is compared.'),
+      networkStep('Finds what is presented on the wire, where weak key exchange and signature algorithms are actually observable, not just what was issued.',
+        ['Probe all four TLS versions, since that is what surfaces weak protocol and key-exchange support', 'SNI pairing on so shared-IP certificates are not missed', 'Full posture depth for an audit-grade pass (cipher list, chain, revocation)']),
+    ];
+    if (hasCloudHint) steps.push(cloudStep('Cloud KMS and Key Vault hold key material the network probe cannot reach, so key type and size must be read directly.', ['Certificates', 'Keys'], ['Captures key algorithm and size for the quantum-risk view']));
+    if (hasVaultHint) steps.push(secretsStep('Vault and HSM stores hold long-lived keys whose algorithm and size feed the quantum-sensitivity score.'));
+    steps.push(hasCbom ? cbomStep() : scannerStep());
+    return { ...base, steps,
+      sequenceNote: 'CA first for the issued algorithms, then the network probe for what is live on the wire, then key stores for material off the wire, and finally the imported source. Algorithm risk only makes sense once issued and deployed are both known.',
+      notes };
+  }
+
+  // 2) Pre-migration audit: know the deployed and issued footprint before a move.
+  if (migration && (provider || hasCloudHint || /\bcert/.test(t) || fullEstate)) {
+    const steps: PlanStep[] = [
+      caStep('Issued + Revoked + Expired', 'Maps every issued certificate in the footprint so nothing in the migration scope is missed at cutover.'),
+      networkStep('Captures what is actually deployed and serving today, so the migration inventory reflects reality rather than just records.',
+        ['Probe all four TLS versions to flag anything that must not be carried forward', 'SNI pairing on to catch shared-IP certificates', 'Deep posture depth for the served chain and cipher list']),
+    ];
+    if (hasCloudHint) steps.push(cloudStep('The target and source cloud accounts hold certificates and keys that move with the workload.', ['Certificates', 'Keys']));
+    return { ...base, steps,
+      sequenceNote: 'CA first for the full issued set, then the network probe to confirm what is actually live, then the cloud account being migrated. The deployed-versus-issued gap is exactly the migration risk list.',
+      notes };
+  }
+
+  // 3) Full-estate baseline / audit: one of every relevant surface.
+  if (fullEstate || (compliance && !expiryRisk && !weakProto)) {
+    const steps: PlanStep[] = [
+      caStep('Issued + Revoked + Expired', 'Anchors the baseline on the authoritative issued set from the CA.', compliance ? ['Revoked and expired included for audit completeness'] : []),
+      networkStep('Discovers everything presented across the network, the largest source of unknown certificates and protocols.',
+        ['Probe all four TLS versions for full protocol posture', 'SNI pairing on for shared-IP coverage', 'Full posture depth for an audit-grade record']),
+    ];
+    steps.push(cloudStep('Cloud accounts hold certificates, keys and secret stores outside the network path.', ['Certificates', 'Keys', 'Secrets handoff']));
+    if (hasVaultHint || fullEstate) steps.push(secretsStep('Vault and HSM enumeration completes the key picture with stored material.'));
+    steps.push(hasCbom ? cbomStep() : scannerStep());
+    return { ...base, steps,
+      sequenceNote: 'Issued set first, then the network for what is deployed, then cloud and vault stores for material off the wire, then the imported source. Together these are the complete crypto surface; each later step fills a gap the earlier ones cannot see.',
+      notes: compliance ? [...notes, 'Scoped for an audit-grade baseline: revoked and expired states are included so the record is complete for an assessor.'] : notes };
+  }
+
+  // 4) Weak-protocol / cipher hunt: deployed surface plus issued cross-check.
+  if (weakProto || (compliance && /\b(tls|ssl|cipher|protocol)\b/.test(t))) {
+    const steps: PlanStep[] = [
+      networkStep('Weak protocols and ciphers are only observable in the live handshake, so the network probe leads.',
+        ['Probe all four TLS versions, since deselecting any hides the weak ones you are hunting', 'Full posture depth so the full accepted cipher list is recorded', 'SNI pairing on so no shared-IP endpoint is skipped']),
+      caStep('Issued + Revoked + Expired', 'The issued set cross-references each weak endpoint back to its certificate and owner for follow-up.'),
+    ];
+    if (hasCloudHint) steps.push(cloudStep('Cloud-fronted endpoints (ACM, Key Vault, CDN) terminate TLS outside the internal network and must be checked too.', ['Certificates']));
+    return { ...base, steps,
+      sequenceNote: 'Network first because weak protocols live in the handshake, then the CA to attribute each finding to a certificate, then cloud-terminated endpoints the internal probe cannot see.',
+      notes };
+  }
+
+  // 5) Expiry / outage-risk sweep: issued set is authoritative, deployed confirms.
+  if (expiryRisk) {
+    const steps: PlanStep[] = [
+      caStep('Issued + Revoked + Expired', 'The CA holds authoritative validity dates, so expiry risk is read from the issued set first.', ['Expired included so already-lapsed but still-deployed certs surface']),
+      networkStep('Confirms which expiring certificates are actually still deployed and serving, which is what turns an expiry date into an outage risk.',
+        ['Deep posture depth to read the served certificate and its expiry as deployed', 'SNI pairing on so shared-IP endpoints are included']),
+    ];
+    if (hasCloudHint) steps.push(cloudStep('Cloud certificate stores carry their own expiry that the network probe may not reach.', ['Certificates']));
+    return { ...base, steps,
+      sequenceNote: 'CA first for authoritative validity dates, then the network to confirm what is still live. An expiring certificate only matters if it is actually deployed.',
+      notes };
+  }
+
+  // 6) Post-incident / breach sweep: find exposure fast across keys and certs.
+  if (incident) {
+    const steps: PlanStep[] = [
+      networkStep('Immediately maps what is exposed and serving, the fastest read on blast radius after an incident.',
+        ['Probe all four TLS versions to catch anything weak that aided the exposure', 'Full posture depth for chain and revocation state', 'SNI pairing on for complete coverage']),
+    ];
+    if (hasVaultHint || /\bkey\b/.test(t)) steps.push(secretsStep('Vault and HSM enumeration shows which stored keys sit inside the blast radius, metadata only.'));
+    steps.push(caStep('Issued + Revoked + Expired', 'The issued set identifies every certificate that may need to be treated as compromised and tracked for replacement.', ['Revoked included to confirm what has already been pulled']));
+    if (hasCloudHint) steps.push(cloudStep('Cloud key and secret stores are a common exposure path and are read directly.', ['Certificates', 'Keys', 'Secrets handoff']));
+    return { ...base, steps,
+      sequenceNote: 'Network first for the fastest exposure picture, then key stores for affected material, then the CA to enumerate certificates to treat as compromised. Speed to blast radius drives the order. Replacement and rotation happen in the remediation module, not here.',
+      notes: [...notes, 'Discovery maps exposure only. Rotating or revoking affected material is a remediation action, run from the remediation module.'] };
+  }
+
+  // Single-method intents (still carry expert defaults, just one card).
+  const scores: Record<ConfigKey, number> = { network: 0, sshauth: 0, ca: 0, cloud: 0, secrets: 0, thirdparty: 0 };
+  if (/\b(tls|ssl|certificate|cert|endpoint|https|cipher)/.test(t)) scores.network += 1;
+  if (/\b(network|subnet|cidr|ip range|ip address|internal network|probe|on the wire)\b/.test(t)) scores.network += 2;
+  if (/\b(ssh|host key|user key|authorized key)\b/.test(t)) scores.sshauth += 3;
+  if (/\b(ca|issued|issuer|globalsign|atlas|chain of trust)\b/.test(t)) scores.ca += 2;
+  if (/\brevoked\b/.test(t)) scores.ca += 2;
+  if (/\b(aws|azure|cloud|kms|acm|key vault|keyvault|managed hsm|s3|ec2|account)\b/.test(t)) scores.cloud += 2;
+  if (/\b(vault|hsm|secret|secrets|hashicorp|conjur|cyberark|crypto4a|utimaco|key store|keystore)\b/.test(t)) scores.secrets += 2;
+  if (/\b(cbom|cyclonedx|qualys|tenable|vulnerability|scanner finding|bom)\b/.test(t)) scores.thirdparty += 3;
+  if (/\b(hashicorp|conjur|cyberark|crypto4a|utimaco)\b/.test(t)) scores.cloud = Math.max(0, scores.cloud - 2);
+  if (/\b(azure|key vault|keyvault)\b/.test(t) && !/\b(hashicorp|conjur|cyberark|crypto4a|utimaco)\b/.test(t)) scores.secrets = Math.max(0, scores.secrets - 1);
+
+  const ranked = (Object.entries(scores) as [ConfigKey, number][]).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+  if (ranked.length === 0) return { ...base, kind: 'empty', notes: ['Could not map that to a method. Pick one below to configure manually.'] };
+
+  const [top, topScore] = ranked[0];
+  if (ranked[1] && ranked[1][1] === topScore) notes.push(`Ambiguous between ${configToLabel(top)} and ${configToLabel(ranked[1][0])}. Started with ${configToLabel(top)}; switch below if needed.`);
+
+  let step: PlanStep;
+  switch (top) {
+    case 'network':
+      step = mk('network', 'Probes targets without credentials and records what each endpoint presents.',
+        ['Probe all four TLS versions to surface weak protocol support', 'SNI pairing on so shared-IP certificates are not missed'],
+        [/\b(\d{1,3}\.){3}\d{1,3}\b|\/\d{1,2}\b|[a-z0-9-]+\.[a-z]{2,}/.test(t) ? '' : 'Add an IP, CIDR or FQDN target'].filter(Boolean),
+        { kind: 'network', tlsVersions: ['TLS 1.0', 'TLS 1.1', 'TLS 1.2', 'TLS 1.3'] }); break;
+    case 'sshauth':
+      step = mk('sshauth', 'Logs into hosts to discover and onboard user and host keys with compliance policy.',
+        ['Both user and host keys enabled'], ['Add the IP range and select stored credentials (credentials come from Integrations, never this prompt)'], null); break;
     case 'ca': {
-      const pf: PrefillCA = { kind: 'ca' };
-      if (/\brevoked\b/.test(t) && !/\bexpired\b/.test(t) && !/\bissued\b/.test(t)) { pf.status = 'Revoked only'; summary.push('Certificate status: Revoked only'); }
-      else if (/\bexpired\b/.test(t) && !/\brevoked\b/.test(t)) { pf.status = 'Expired only'; summary.push('Certificate status: Expired only'); }
-      else { summary.push('Certificate status: Issued + Revoked + Expired'); }
-      if (/\brevoked\b/.test(t) && /\bactive\b/.test(t)) flags.push('Conflicting status requested (revoked and active). Confirm the certificate status filter below; nothing was silently dropped.');
-      summary.push('Source: GlobalSign Atlas');
-      return { matched: true, category, type, prefill: pf, summary, flags, alternates };
+      const status = caStatusFor(t);
+      step = mk('ca', 'Pulls issued-certificate inventory directly from the CA.',
+        [`Certificate status: ${status}`, 'Found certificates auto-correlate with deployed certs from Network Discovery'],
+        [], { kind: 'ca', status });
+      if (/\brevoked\b/.test(t) && /\bactive\b/.test(t)) notes.push('Conflicting status (revoked and active) requested. Confirm the filter below; nothing was silently dropped.');
+      break;
     }
     case 'cloud': {
-      const pf: PrefillCloud = { kind: 'cloud' };
-      const provider: 'AWS' | 'Azure' | null = /\baws\b/.test(t) ? 'AWS' : /\bazure\b/.test(t) ? 'Azure' : null;
-      if (provider) { pf.provider = provider; summary.push(`Provider: ${provider}`); }
-      let objs = objType().filter(o => o !== 'Secrets');
-      if (/\bsecret/.test(t)) objs.push('Secrets handoff');
-      if (objs.length === 0) objs = ['Certificates', 'Keys'];
-      pf.objects = objs; summary.push(`Discover: ${objs.join(', ')}`);
-      if (provider) {
-        const envPref: 'prod' | 'nonprod' | null = wantsProd ? 'prod' : wantsNonProd ? 'nonprod' : null;
-        const pool = NL_CLOUD_CONNECTIONS.filter(c => c.provider === provider);
-        const pick = envPref ? pool.find(c => c.env === envPref) : null;
-        if (pick) { pf.connection = pick.name; summary.push(`Connection: ${pick.name}`); }
-        else if (envPref === 'prod') { flags.push(`No ${provider} production connection is configured. Provider set; pick a connection below or add one in Integrations.`); }
-        else { summary.push('Connection: first available, confirm below'); }
-      } else {
-        flags.push('Cloud provider not stated. Choose AWS or Azure below.');
-      }
-      if (/\bunsupported\b|\boauth token\b/.test(t)) flags.push('OAuth tokens are not a discovered object type; mapped to the nearest in-scope objects. Adjust below.');
-      return { matched: true, category, type, prefill: pf, summary, flags, alternates };
+      const c = resolveCloud(t);
+      step = mk('cloud', 'Enumerates certificates, keys and secrets across the cloud account.',
+        [c.provider ? `Provider ${c.provider}` : 'Pick AWS or Azure', c.connection ? `Connection ${c.connection}` : 'Confirm the connection', `Discover ${(c.objects ?? []).join(', ')}`],
+        c.provider && !c.connection ? [`No matching ${c.provider} connection; choose one or add it in Integrations`] : (!c.provider ? ['Choose AWS or Azure below'] : []),
+        { kind: 'cloud', provider: c.provider, connection: c.connection, objects: c.objects }); break;
     }
     case 'secrets': {
-      const pf: PrefillSecrets = { kind: 'secrets' };
-      const envPref: 'prod' | 'nonprod' | null = wantsProd ? 'prod' : wantsNonProd ? 'nonprod' : null;
-      const named = NL_SECRET_CONNECTIONS.find(c => c.aliases.some(a => t.includes(a)) && (envPref ? c.env === envPref : true))
-        || NL_SECRET_CONNECTIONS.find(c => c.aliases.some(a => t.includes(a)));
-      if (named) {
-        pf.connectionName = named.name; pf.vaultType = named.type;
-        pf.enumerate = named.kind === 'hsm' ? ['Keys'] : (/\bsecret/.test(t) ? ['Secrets'] : /\bcert/.test(t) ? ['Certificates'] : ['Certificates', 'Keys']);
-        summary.push(`Connection: ${named.name}`);
-        summary.push(`Enumerate: ${pf.enumerate.join(', ')}`);
-        if (wantsProd && named.env !== 'prod') flags.push('No production connection matched the named store. Closest available was selected; confirm below.');
-      } else {
-        flags.push('No matching vault or HSM connection was found. Select one below; connections are managed in Integrations.');
-      }
-      if (/\boauth token\b|\bapi token\b/.test(t)) flags.push('Token objects are enumerated as Secrets metadata only; values are never extracted.');
-      return { matched: true, category, type, prefill: pf, summary, flags, alternates };
+      const s = resolveSecrets(t);
+      step = mk('secrets', 'Metadata-only enumeration from the vault or HSM; secret values are never extracted.',
+        s.connectionName ? [`Connection ${s.connectionName}`, `Enumerate ${(s.enumerate ?? []).join(', ')}`] : ['Select a vault or HSM connection below'],
+        s.connectionName ? [] : ['No matching vault or HSM connection found; select one below'],
+        s); break;
     }
-    case 'thirdparty': {
-      const pf: PrefillThirdParty = { kind: 'thirdparty' };
-      if (/\b(cbom|cyclonedx|bom)\b/.test(t)) { pf.sourceType = 'CBOM'; summary.push('Source type: CBOM (CycloneDX 1.6)'); }
-      else { pf.sourceType = 'Vulnerability Scanner'; summary.push('Source type: Vulnerability Scanner'); }
-      return { matched: true, category, type, prefill: pf, summary, flags, alternates };
-    }
+    case 'thirdparty':
+      step = mk('thirdparty', 'Imports findings or a CBOM rather than scanning live.',
+        [/\b(cbom|cyclonedx|bom)\b/.test(t) ? 'Source type CBOM (CycloneDX 1.6)' : 'Source type Vulnerability Scanner'], [],
+        { kind: 'thirdparty', sourceType: /\b(cbom|cyclonedx|bom)\b/.test(t) ? 'CBOM' : 'Vulnerability Scanner' }); break;
+    default:
+      return { ...base, kind: 'empty', notes: ['Could not map that. Pick a method below.'] };
   }
+  return { ...base, steps: [step], notes };
+}
+
+// ---- Demo engine: deterministic, offline, zero network. planDiscovery is a thin
+// synchronous wrapper over the planner so the surface stays async-shaped (the
+// v2 live-model swap drops straight back in here) but spends nothing today. ----
+function planDiscovery(raw: string): DiscoveryPlan {
+  return deterministicPlan(raw);
 }
 
 // ============================================================================
@@ -474,9 +606,11 @@ function NewScanTab({ existing, onDone, onCancel }: { existing: DiscoveryProfile
   const [authMethod, setAuthMethod] = useState('AppRole');
   const [secretTypes, setSecretTypes] = useState<string[]>(existing?.includes ?? ['Certificates', 'Encryption Keys']);
 
-  // NL discovery: interpreted intent + a nonce so config panels re-apply prefill
+  // AI planner: the produced plan, plus a nonce so config panels re-apply prefill
   const [nlText, setNlText] = useState('');
-  const [intent, setIntent] = useState<DiscoveryIntent | null>(null);
+  const [plan, setPlan] = useState<DiscoveryPlan | null>(null);
+  const [planning, setPlanning] = useState(false);
+  const [acceptedStep, setAcceptedStep] = useState<number | null>(null);
   const [prefill, setPrefill] = useState<Prefill>(null);
   const [prefillNonce, setPrefillNonce] = useState(0);
 
@@ -524,13 +658,13 @@ function NewScanTab({ existing, onDone, onCancel }: { existing: DiscoveryProfile
       });
       profileId = prof.id; savedProfileName = prof.name;
     }
-    const fromNl = intent?.matched === true;
+    const fromNl = plan?.kind === 'plan' && plan.steps.length > 0;
     const run = addRun({ profileId, profileName: savedProfileName, connectionId, connectionName, vaultType: resolvedVaultType, category: activeCategory, includes, triggeredBy: 'manual' });
     setTimeout(() => {
       const items = 50 + Math.floor(Math.random() * 451);
       updateRun(run.id, { status: 'completed', completedAt: Date.now(), itemsDiscovered: items });
     }, 2000);
-    toast.success('Discovery started. View progress in Discovery Runs.', fromNl ? { description: 'Originated from a natural-language prompt; resolved config shown above.' } : undefined);
+    toast.success('Discovery started. View progress in Discovery Runs.', fromNl ? { description: 'Planned from a natural-language goal; resolved config shown above.' } : undefined);
     resetForm(); onDone('runs');
   };
 
@@ -549,25 +683,47 @@ function NewScanTab({ existing, onDone, onCancel }: { existing: DiscoveryProfile
     resetForm(); onDone('profiles');
   };
 
-  const interpret = (text: string) => {
-    const result = parseIntent(text);
-    setIntent(result);
-    if (!result.matched) { setPrefill(null); return; }
-    const cat = scanCategories.find(c => c.category === result.category)!;
-    const ty = cat.types.find(x => x.value === result.type) ?? cat.types[0];
+  const runPlanner = (text: string) => {
+    if (!text.trim() || planning) return;
+    setPlanning(true); setAcceptedStep(null); setPlan(null);
+    // Planner is deterministic and offline. A brief delay keeps the "Planning"
+    // state visible so the reasoning reads as deliberate rather than instant.
+    const result = planDiscovery(text);
+    setTimeout(() => {
+      setPlan(result);
+      setPlanning(false);
+      if (result.kind === 'plan' && result.steps.length > 0) {
+        setTimeout(() => document.getElementById('discovery-plan')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+      }
+    }, 550);
+  };
+
+  // Accept one step of the plan: select its method and pre-fill the existing panel.
+  const applyStep = (idx: number) => {
+    const step = plan?.steps[idx];
+    if (!step) return;
+    const cat = scanCategories.find(c => c.category === step.category)!;
+    const ty = cat.types.find(x => x.value === step.type) ?? cat.types[0];
     setActiveCategory(cat.category);
     setSelectedType(ty);
-    setPrefill(result.prefill);
+    setPrefill(step.prefill);
     setPrefillNonce(n => n + 1);
-    // Secrets state is lifted; apply its prefill directly.
-    if (result.prefill?.kind === 'secrets') {
-      if (result.prefill.connectionName) { setVaultAccountId(result.prefill.connectionName); if (result.prefill.vaultType) setVaultType(result.prefill.vaultType); }
-      if (result.prefill.enumerate) setSecretTypes(result.prefill.enumerate);
+    setAcceptedStep(idx);
+    if (step.prefill?.kind === 'secrets') {
+      if (step.prefill.connectionName) { setVaultAccountId(step.prefill.connectionName); if (step.prefill.vaultType) setVaultType(step.prefill.vaultType); }
+      if (step.prefill.enumerate) setSecretTypes(step.prefill.enumerate);
     }
     setTimeout(() => document.getElementById('discovery-config-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
   };
 
-  const clearInterpretation = () => { setIntent(null); setPrefill(null); setNlText(''); };
+  const dropStep = (idx: number) => {
+    if (!plan) return;
+    const steps = plan.steps.filter((_, i) => i !== idx);
+    setPlan({ ...plan, steps, sequenceNote: steps.length < 2 ? '' : plan.sequenceNote });
+    if (acceptedStep === idx) setAcceptedStep(null);
+  };
+
+  const clearPlan = () => { setPlan(null); setPrefill(null); setNlText(''); setAcceptedStep(null); };
 
   const handleUpdate = () => {
     if (!existing) return;
@@ -583,69 +739,117 @@ function NewScanTab({ existing, onDone, onCancel }: { existing: DiscoveryProfile
 
   return (
     <div className="space-y-4">
-      {/* AI-native NL discovery: describe intent, get a reviewable draft config */}
-      <div className="bg-card rounded-lg border border-border p-4 space-y-2.5">
-        <div className="flex items-center gap-1.5">
-          <Sparkles className="w-3.5 h-3.5 text-teal" />
-          <h2 className="text-sm font-semibold text-teal">Describe what to discover</h2>
-          <InfoTip text="Type the discovery you want in plain language. The assistant selects a method and pre-fills its configuration for you to review and edit. It never starts a scan on its own and runs only under your existing permissions." />
-        </div>
-        <p className="text-[11px] text-muted-foreground">Produces a draft you confirm. The form below stays the source of truth; nothing runs until you press Start Discovery.</p>
-        <div className="flex gap-2">
+      {/* AI planner: thin bar. Type a goal, get a sequenced, editable plan. */}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Sparkles className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-teal" />
           <input
             value={nlText}
             onChange={e => setNlText(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') interpret(nlText); }}
-            placeholder='e.g. Discover all TLS certificates in my AWS production accounts'
-            className="flex-1 px-3 py-2 bg-muted border border-border rounded text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal" />
-          <button onClick={() => interpret(nlText)} disabled={!nlText.trim()}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-teal text-primary-foreground text-xs font-semibold hover:bg-teal-light disabled:opacity-50">
-            <Sparkles className="w-3.5 h-3.5" /> Interpret
-          </button>
+            onKeyDown={e => { if (e.key === 'Enter') runPlanner(nlText); }}
+            placeholder='Describe a goal, e.g. "find quantum-vulnerable certificates before the AWS prod migration"'
+            className="w-full pl-8 pr-3 py-2 bg-muted border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal" />
         </div>
+        <button onClick={() => runPlanner(nlText)} disabled={!nlText.trim() || planning}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-teal text-primary-foreground text-xs font-semibold hover:bg-teal-light disabled:opacity-50 whitespace-nowrap">
+          {planning ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Planning…</> : <><Sparkles className="w-3.5 h-3.5" /> Plan discovery</>}
+        </button>
+        <InfoTip text="Describe what you want to find. The planner reasons across all discovery methods, proposes a sequenced plan with the expert settings already chosen, and explains each non-obvious decision. It plans what to find; questions about what you already have are answered by Infinity AI. Nothing runs until you press Start Discovery." />
+      </div>
+      {!plan && !planning && (
         <div className="flex flex-wrap gap-1.5">
-          {['Discover all TLS certificates in my AWS production accounts', 'Find revoked certs from GlobalSign', 'List secrets in HashiCorp prod vault'].map(ex => (
-            <button key={ex} onClick={() => { setNlText(ex); interpret(ex); }}
+          {['Find quantum-vulnerable certificates before the AWS prod migration', 'Find revoked certs from GlobalSign', 'List secrets in HashiCorp prod vault'].map(ex => (
+            <button key={ex} onClick={() => { setNlText(ex); runPlanner(ex); }}
               className="text-[10px] px-2 py-1 rounded-full border border-border bg-muted text-muted-foreground hover:border-teal/40 hover:text-teal">{ex}</button>
           ))}
         </div>
-        <p className="text-[10px] text-muted-foreground/80">Runs under your existing permissions. Interpretation maps intent only; it cannot widen access or accept credentials.</p>
-      </div>
+      )}
 
-      {/* Interpretation result banner */}
-      {intent && (
-        <div className={`rounded-lg border p-3.5 space-y-2 ${intent.matched ? 'border-teal/40 bg-teal/5' : 'border-amber/40 bg-amber/10'}`}>
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-1.5">
-              {intent.matched
-                ? <Sparkles className="w-3.5 h-3.5 text-teal" />
-                : <AlertTriangle className="w-3.5 h-3.5 text-amber" />}
-              <p className={`text-xs font-semibold ${intent.matched ? 'text-teal' : 'text-amber'}`}>
-                {intent.matched ? 'Draft configuration ready for review' : 'Nothing was pre-filled'}
-              </p>
-            </div>
-            <button onClick={clearInterpretation} className="text-[10px] text-muted-foreground hover:text-foreground">Clear</button>
+      {/* Planner output */}
+      {plan && plan.kind === 'query-redirect' && (
+        <div id="discovery-plan" className="rounded-lg border border-teal/40 bg-teal/5 p-3.5 flex items-start gap-2">
+          <Info className="w-4 h-4 text-teal flex-shrink-0 mt-0.5" />
+          <div className="flex-1 space-y-1">
+            <p className="text-xs font-semibold text-teal">That is an inventory question, not a discovery</p>
+            {plan.notes.map((n, i) => <p key={i} className="text-[11px] text-muted-foreground leading-snug">{n}</p>)}
+            <p className="text-[11px] text-muted-foreground">Ask Infinity AI to answer it against your existing inventory. Discovery is for finding assets you do not yet have.</p>
           </div>
-          {intent.matched && intent.summary.length > 0 && (
-            <ul className="space-y-0.5">
-              {intent.summary.map((s, i) => (
-                <li key={i} className="flex items-start gap-1.5 text-[11px] text-foreground">
-                  <Check className="w-3 h-3 text-teal flex-shrink-0 mt-0.5" /><span>{s}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-          {intent.alternates.length > 0 && (
-            <p className="text-[11px] text-muted-foreground">Or did you mean: {intent.alternates.join(', ')}? Pick that method above to switch.</p>
-          )}
-          {intent.flags.map((f, i) => (
-            <div key={i} className="flex items-start gap-1.5 text-[11px] text-amber leading-snug">
-              <AlertTriangle className="w-3 h-3 flex-shrink-0 mt-0.5" /><span>{f}</span>
+          <button onClick={clearPlan} className="text-[10px] text-muted-foreground hover:text-foreground">Clear</button>
+        </div>
+      )}
+
+      {plan && (plan.kind === 'refused' || plan.kind === 'empty') && (
+        <div id="discovery-plan" className="rounded-lg border border-amber/40 bg-amber/10 p-3.5 flex items-start gap-2">
+          <AlertTriangle className="w-4 h-4 text-amber flex-shrink-0 mt-0.5" />
+          <div className="flex-1 space-y-1">
+            {plan.notes.map((n, i) => <p key={i} className="text-[11px] text-amber leading-snug">{n}</p>)}
+          </div>
+          <button onClick={clearPlan} className="text-[10px] text-muted-foreground hover:text-foreground">Clear</button>
+        </div>
+      )}
+
+      {plan && plan.kind === 'plan' && plan.steps.length > 0 && (
+        <div id="discovery-plan" className="space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-teal" />
+              <p className="text-xs font-semibold text-teal">
+                {plan.steps.length === 1 ? 'Proposed discovery' : `Proposed plan · ${plan.steps.length} scans`}
+              </p>
+              <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-teal/30 bg-teal/10 text-teal">AI planned</span>
             </div>
-          ))}
-          {intent.matched && (
-            <p className="text-[10px] text-muted-foreground/80 pt-0.5">Review and edit the fields below, then Start Discovery. Editing is never blocked by this summary.</p>
+            <button onClick={clearPlan} className="text-[10px] text-muted-foreground hover:text-foreground">Clear</button>
+          </div>
+          {plan.intentEcho && <p className="text-[11px] text-muted-foreground">Goal: {plan.intentEcho}</p>}
+
+          {plan.steps.map((step, idx) => {
+            const Icon = scanCategories.find(c => c.category === step.category)?.icon ?? Radar;
+            const isAccepted = acceptedStep === idx;
+            return (
+              <div key={idx} className={`rounded-lg border p-3 space-y-2 ${isAccepted ? 'border-teal/50 bg-teal/5' : 'border-border bg-card'}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-2 min-w-0">
+                    {plan.steps.length > 1 && <span className="flex items-center justify-center w-5 h-5 rounded-full bg-teal/15 text-teal text-[10px] font-bold flex-shrink-0 mt-0.5">{idx + 1}</span>}
+                    <Icon className="w-4 h-4 text-teal flex-shrink-0 mt-0.5" />
+                    <div className="min-w-0">
+                      <p className="text-[12px] font-semibold text-foreground">{step.type}</p>
+                      <p className="text-[11px] text-muted-foreground leading-snug">{step.rationale}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <button onClick={() => applyStep(idx)}
+                      className={`flex items-center gap-1 text-[10.5px] font-semibold px-2.5 py-1 rounded ${isAccepted ? 'bg-teal/20 text-teal border border-teal/40' : 'bg-teal text-primary-foreground hover:bg-teal-light'}`}>
+                      {isAccepted ? <><Check className="w-3 h-3" /> Loaded</> : 'Configure'}
+                    </button>
+                    {plan.steps.length > 1 && (
+                      <button onClick={() => dropStep(idx)} aria-label="Remove step"
+                        className="flex items-center justify-center w-6 h-6 rounded border border-border text-muted-foreground hover:text-coral hover:border-coral/40"><X className="w-3 h-3" /></button>
+                    )}
+                  </div>
+                </div>
+                {step.decisions.length > 0 && (
+                  <ul className="space-y-0.5 ml-1">
+                    {step.decisions.map((d, i) => (
+                      <li key={i} className="flex items-start gap-1.5 text-[10.5px] text-muted-foreground"><Check className="w-2.5 h-2.5 text-teal flex-shrink-0 mt-0.5" /><span>{d}</span></li>
+                    ))}
+                  </ul>
+                )}
+                {step.unresolved.map((u, i) => (
+                  <div key={i} className="flex items-start gap-1.5 text-[10.5px] text-amber ml-1"><AlertTriangle className="w-2.5 h-2.5 flex-shrink-0 mt-0.5" /><span>{u}</span></div>
+                ))}
+              </div>
+            );
+          })}
+
+          {plan.sequenceNote && (
+            <div className="flex items-start gap-1.5 rounded-md border border-border bg-muted/40 px-3 py-2 text-[10.5px] text-muted-foreground leading-snug">
+              <Activity className="w-3 h-3 text-teal flex-shrink-0 mt-0.5" /><span><span className="text-foreground font-medium">Why this order: </span>{plan.sequenceNote}</span>
+            </div>
           )}
+          {plan.notes.map((n, i) => (
+            <div key={i} className="flex items-start gap-1.5 text-[10.5px] text-amber"><AlertTriangle className="w-3 h-3 flex-shrink-0 mt-0.5" /><span>{n}</span></div>
+          ))}
+          <p className="text-[10px] text-muted-foreground/80">Configure loads a scan into the form below to review and run. Runs under your existing permissions; the planner never widens access or accepts credentials. Multiple scans are started one at a time from the form.</p>
         </div>
       )}
 
