@@ -162,8 +162,8 @@ function categoryForConfig(key: ConfigKey): { category: string; type: string } {
 function resolveCloud(t: string): PrefillCloud & { connName?: string } {
   const provider: 'AWS' | 'Azure' | undefined = /\baws\b/.test(t) ? 'AWS' : /\bazure\b/.test(t) ? 'Azure' : undefined;
   let objects: string[] = [];
-  if (/\b(tls|ssl|cert)\b/.test(t)) objects.push('Certificates');
-  if (/\b(key|kms)\b/.test(t)) objects.push('Keys');
+  if (/\b(tls|ssl|cert)/.test(t)) objects.push('Certificates');
+  if (/\b(key|kms)/.test(t)) objects.push('Keys');
   if (/\bsecret/.test(t)) objects.push('Secrets handoff');
   if (objects.length === 0) objects = ['Certificates', 'Keys'];
   const envPref = /\b(prod|production)\b/.test(t) ? 'prod' : /\b(dev|sandbox|staging|test|non-prod|nonprod)\b/.test(t) ? 'nonprod' : null;
@@ -407,6 +407,25 @@ function planDiscovery(raw: string): DiscoveryPlan {
   return deterministicPlan(raw);
 }
 
+// Derive a sensible discovery name + description for an accepted plan step, so
+// the user does not have to name a scan the planner already understands. Pure
+// labelling: no targets or credentials are fabricated here.
+function deriveStepNaming(step: PlanStep, goal: string, idx: number, total: number): { name: string; description: string } {
+  const pf = step.prefill;
+  let scope = '';
+  if (pf?.kind === 'cloud') scope = [pf.provider, (pf.objects ?? []).includes('Certificates') ? 'certificate' : (pf.objects ?? [])[0]?.toLowerCase()].filter(Boolean).join(' ');
+  else if (pf?.kind === 'secrets') scope = pf.vaultType ?? 'vault';
+  else if (pf?.kind === 'ca') scope = pf.status?.includes('Revoked only') ? 'revoked certificate' : pf.status?.includes('Expired only') ? 'expired certificate' : 'issued certificate';
+  else if (pf?.kind === 'network') scope = 'network TLS and SSH';
+  else if (pf?.kind === 'thirdparty') scope = pf.sourceType === 'CBOM' ? 'CBOM' : 'scanner findings';
+  else if (step.config === 'sshauth') scope = 'authenticated SSH';
+  const verb = step.config === 'thirdparty' ? 'ingestion' : step.config === 'ca' ? 'pull' : 'discovery';
+  const core = scope ? `${scope.charAt(0).toUpperCase()}${scope.slice(1)} ${verb}` : `${step.type}`;
+  const name = total > 1 ? `${core} (${idx + 1}/${total})` : core;
+  const description = goal ? `Planned from goal: ${goal}` : `${step.type}. ${step.rationale}`;
+  return { name: name.slice(0, 80), description: description.slice(0, 240) };
+}
+
 // ============================================================================
 // MAIN PAGE
 // ============================================================================
@@ -611,6 +630,7 @@ function NewScanTab({ existing, onDone, onCancel }: { existing: DiscoveryProfile
   const [plan, setPlan] = useState<DiscoveryPlan | null>(null);
   const [planning, setPlanning] = useState(false);
   const [acceptedStep, setAcceptedStep] = useState<number | null>(null);
+  const [autoNamed, setAutoNamed] = useState(false); // true when name/desc came from the planner, so we can refresh them without clobbering manual edits
   const [prefill, setPrefill] = useState<Prefill>(null);
   const [prefillNonce, setPrefillNonce] = useState(0);
 
@@ -623,7 +643,7 @@ function NewScanTab({ existing, onDone, onCancel }: { existing: DiscoveryProfile
 
   const resetForm = () => {
     setDiscoveryName(''); setDescription(''); setSaveAsProfile(false); setProfileName('');
-    setRunType('on-demand'); setVaultAccountId(''); setSecretTypes(['Certificates', 'Encryption Keys']);
+    setRunType('on-demand'); setVaultAccountId(''); setSecretTypes(['Certificates', 'Encryption Keys']); setAutoNamed(false);
   };
 
   const buildScheduleObj = () =>
@@ -713,6 +733,10 @@ function NewScanTab({ existing, onDone, onCancel }: { existing: DiscoveryProfile
       if (step.prefill.connectionName) { setVaultAccountId(step.prefill.connectionName); if (step.prefill.vaultType) setVaultType(step.prefill.vaultType); }
       if (step.prefill.enumerate) setSecretTypes(step.prefill.enumerate);
     }
+    // Pre-fill discovery name and description, unless the user has typed their own.
+    const naming = deriveStepNaming(step, plan?.intentEcho ?? '', idx, plan?.steps.length ?? 1);
+    if (!discoveryName.trim() || autoNamed) { setDiscoveryName(naming.name); setAutoNamed(true); }
+    if (!description.trim() || autoNamed) setDescription(naming.description);
     setTimeout(() => document.getElementById('discovery-config-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
   };
 
@@ -905,11 +929,11 @@ function NewScanTab({ existing, onDone, onCancel }: { existing: DiscoveryProfile
       <div className="bg-card rounded-lg border border-border p-4 space-y-3">
         <h2 className="text-sm font-semibold text-teal">Discovery details</h2>
         <FormRow label="Discovery name" required>
-          <input value={discoveryName} onChange={e => setDiscoveryName(e.target.value)} placeholder="e.g. Production network sweep — week 14"
+          <input value={discoveryName} onChange={e => { setDiscoveryName(e.target.value); setAutoNamed(false); }} placeholder="e.g. Production network sweep — week 14"
             className="flex-1 max-w-md px-3 py-2 bg-muted border border-border rounded text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal" />
         </FormRow>
         <FormRow label="Description">
-          <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="Optional"
+          <textarea value={description} onChange={e => { setDescription(e.target.value); setAutoNamed(false); }} rows={2} placeholder="Optional"
             className="flex-1 max-w-md px-3 py-2 bg-muted border border-border rounded text-xs text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-teal" />
         </FormRow>
         <FormRow label="Run type">
@@ -943,7 +967,7 @@ function NewScanTab({ existing, onDone, onCancel }: { existing: DiscoveryProfile
       </div>
 
       {/* Actions */}
-      <div className="flex gap-2 sticky bottom-0 bg-background/95 backdrop-blur py-2 -mx-1 px-1 border-t border-border">
+      <div className="flex gap-2 pt-2 border-t border-border">
         {isEditing ? (
           <>
             <button onClick={handleUpdate} className="flex items-center gap-2 px-5 py-2 rounded-lg bg-teal text-primary-foreground text-xs font-semibold hover:bg-teal-light"><Check className="w-3.5 h-3.5" /> Save Changes</button>
