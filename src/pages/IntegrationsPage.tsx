@@ -42,30 +42,6 @@ const LAST_SYNC: Record<string, string> = {
   globalsign: '15 min ago', aws: '5 min ago', azure: '12 min ago',
   hashicorp: '3 min ago', servicenow: '45 min ago',
 };
-// ─── Sidebar structure ───────────────────────────────────────────────────────
-const SIDEBAR_GROUPS = [
-  {
-    label: 'PKI & SECRETS',
-    categories: [
-      { label: 'Certificate Authorities', dataKey: 'Certificate Authorities' },
-      { label: 'HSM', dataKey: 'HSM' },
-      { label: 'Secrets & Vaults', dataKey: 'Secrets & Vaults' },
-    ],
-  },
-  {
-    label: 'INFRASTRUCTURE',
-    categories: [
-      { label: 'Cloud Providers', dataKey: 'Cloud Providers' },
-    ],
-  },
-  {
-    label: 'REMEDIATION & FINDINGS',
-    categories: [
-      { label: 'ITSM & ChatOps', dataKey: 'ITSM & ChatOps' },
-      { label: 'Vulnerability Management', dataKey: 'Vulnerability Management' },
-    ],
-  },
-];
 // ─── Mock instances ──────────────────────────────────────────────────────────
 const MOCK_INSTANCES = [
   { id: 'inst-1', name: 'AWS Prod - Org Account', subtitle: 'sts.us-east-1.amazonaws.com', integration: 'Amazon Web Services', category: 'Cloud Providers', status: 'connected' as const, discoveredAssets: 179, lastSync: '4 min ago', error: null },
@@ -633,7 +609,7 @@ function InstancesTab({
   );
 }
 // ─── AI Builder View ──────────────────────────────────────────────────────────
-function AIBuilderView() {
+function AIBuilderView({ onBack, onCancel }: { onBack: () => void; onCancel: () => void }) {
 
   const [step, setStep] = useState<1|2|3|4|5>(1);
 
@@ -767,89 +743,80 @@ function AIBuilderView() {
 
   };
 
-  const STEPS = ['Describe', 'Generate', 'Validate', 'Refine', 'Publish'];
+  // Display progress collapses the internal flow into three phases.
+  const DISPLAY_STEPS = ['Upload', 'Review', 'Connect'];
+  const displayIndex = step === 1 ? 0 : step === 5 ? 2 : 1;
 
   return (
 
-    <div className="flex-1 overflow-y-auto pb-6">
+    <div className="flex flex-col h-full overflow-hidden">
 
-      {/* Step bar */}
-
-      <div className="flex items-center mb-6">
-
-        {STEPS.map((s, idx) => {
-
-          const n = idx + 1;
-
-          const done = step > n;
-
-          const active = step === n;
-
-          return (
-
-            <React.Fragment key={s}>
-
-              <div className="flex items-center gap-2">
-
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${done||active ? 'bg-teal text-white' : 'bg-muted text-muted-foreground'}`}>
-
-                  {done ? <Check className="w-3 h-3"/> : n}
-
+      {/* Top bar: back + 3-step progress */}
+      <div className="flex items-center justify-between px-1 py-3 border-b border-border flex-shrink-0">
+        <button onClick={onBack} className="flex items-center gap-1.5 text-[12px] font-medium text-foreground hover:text-teal">
+          <ChevronLeft className="w-4 h-4" /> Back to Integrations
+        </button>
+        <div className="flex items-center">
+          {DISPLAY_STEPS.map((s, idx) => {
+            const done = idx < displayIndex;
+            const active = idx === displayIndex;
+            return (
+              <React.Fragment key={s}>
+                <div className="flex items-center gap-2">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${done || active ? 'bg-teal text-white' : 'bg-muted text-muted-foreground'}`}>
+                    {done ? <Check className="w-3 h-3" /> : idx + 1}
+                  </div>
+                  <span className={`text-[12px] font-medium ${active ? 'text-foreground' : 'text-muted-foreground'}`}>{s}</span>
                 </div>
-
-                <span className={`text-[11px] font-medium ${active ? 'text-foreground' : 'text-muted-foreground'}`}>{s}</span>
-
-              </div>
-
-              {idx < STEPS.length - 1 && <div className={`h-px w-8 mx-2 flex-shrink-0 ${done ? 'bg-teal' : 'bg-border'}`}/>}
-
-            </React.Fragment>
-
-          );
-
-        })}
-
+                {idx < DISPLAY_STEPS.length - 1 && <div className={`h-px w-10 mx-3 flex-shrink-0 ${done ? 'bg-teal' : 'bg-border'}`} />}
+              </React.Fragment>
+            );
+          })}
+        </div>
+        <div className="w-[140px]" />
       </div>
 
-      {/* Step 1: Describe */}
+      <div className="flex-1 overflow-y-auto py-6 px-1">
+
+      {/* Step 1: Upload / describe */}
 
       {step === 1 && (
 
-        <div className="max-w-2xl">
+        <div className="max-w-2xl mx-auto">
 
-          <h2 className="text-lg font-semibold text-foreground mb-1">Describe your integration</h2>
+          <div className="text-center mb-6">
+            <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-teal/10 mx-auto mb-4">
+              <Sparkles className="w-6 h-6 text-teal" />
+            </div>
+            <h2 className="text-2xl font-bold text-foreground mb-2">Build with Infinity AI</h2>
+            <p className="text-[12px] text-muted-foreground max-w-md mx-auto leading-relaxed">
+              Drop in any spec file, describe your API in plain text, or both. AI will detect the format and draft the integration shell for you.
+            </p>
+          </div>
 
-          <p className="text-[11px] text-muted-foreground mb-4">Tell the builder what system you want to connect. Mention the vendor, auth method, and what you want to discover or manage.</p>
-
-          <textarea
-
-            value={description}
-
-            onChange={e => setDescription(e.target.value)}
-
-            placeholder="e.g. Connect to Okta using OAuth2 to discover service account identities and machine-to-machine app tokens. Track certificate bindings and flag accounts with no MFA."
-
-            rows={5}
-
-            className="w-full border border-border rounded-xl px-4 py-3 text-[11px] bg-muted/30 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-teal/50 resize-none mb-3"
-
-          />
-
-          <label className="flex items-center gap-2 border border-dashed border-border rounded-xl px-4 py-3 text-[11px] bg-muted/10 text-muted-foreground cursor-pointer hover:bg-muted/20 mb-4">
-
-            <Upload className="w-3.5 h-3.5"/>
-
-            <span>{uploadedFile ? uploadedFile.name : 'Upload API docs, OpenAPI spec, or SDK (optional)'}</span>
-
-            <input type="file" className="hidden" accept=".json,.yaml,.yml,.pdf,.md" onChange={e => setUploadedFile(e.target.files?.[0] ?? null)}/>
-
+          <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-2xl px-6 py-10 text-center bg-muted/10 cursor-pointer hover:bg-muted/20 hover:border-teal/40 transition-colors mb-6">
+            <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-muted mb-1">
+              <Upload className="w-5 h-5 text-muted-foreground" />
+            </div>
+            <p className="text-[13px] font-semibold text-foreground">{uploadedFile ? uploadedFile.name : 'Drop your spec here'}</p>
+            <p className="text-[11px] text-muted-foreground">
+              <span className="text-teal font-medium">browse</span> for any file: OpenAPI, Postman, PDF, or other API docs. AI auto-detects.
+            </p>
+            <input type="file" className="hidden" accept=".json,.yaml,.yml,.pdf,.md,.txt" onChange={e => setUploadedFile(e.target.files?.[0] ?? null)} />
           </label>
 
-          <button onClick={generate} disabled={!description.trim() || isGenerating} className="bg-teal text-white text-[11px] px-5 py-2 rounded-lg hover:bg-teal/90 font-medium flex items-center gap-2 disabled:opacity-50">
-
-            {isGenerating ? <><Loader2 className="w-4 h-4 animate-spin"/>Generating...</> : <><Bot className="w-4 h-4"/>Generate Integration</>}
-
-          </button>
+          <div className="mb-2 flex items-center gap-1.5">
+            <Sparkles className="w-3 h-3 text-teal" />
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Describe it for Infinity AI</span>
+            <span className="text-[10px] text-muted-foreground/70">· optional if a file is attached</span>
+          </div>
+          <textarea
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            placeholder={'e.g. "A REST PKI that issues and revokes X.509 certs. OAuth2 client-credentials. Base URL https://pki.acme.internal/api/v1. Need issue, renew, revoke and list endpoints."'}
+            rows={4}
+            className="w-full border border-border rounded-xl px-4 py-3 text-[12px] bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-teal/50 resize-none"
+          />
 
         </div>
 
@@ -1171,6 +1138,31 @@ function AIBuilderView() {
 
       )}
 
+      </div>
+
+      {/* Sticky footer */}
+      <div className="flex items-center justify-between px-1 py-3 border-t border-border flex-shrink-0">
+        <p className="text-[11px] text-muted-foreground">
+          {step === 1
+            ? 'Drop a spec, describe your API, or both, then let Infinity AI draft it.'
+            : step === 2
+            ? 'Review the generated draft, then validate it.'
+            : 'Continue through validation and connect your integration.'}
+        </p>
+        <div className="flex items-center gap-2">
+          <button onClick={onCancel} className="text-[12px] px-4 py-2 rounded-lg text-muted-foreground hover:text-foreground font-medium">Cancel</button>
+          {step === 1 && (
+            <button
+              onClick={generate}
+              disabled={(!description.trim() && !uploadedFile) || isGenerating}
+              className="flex items-center gap-1.5 text-[12px] px-5 py-2 rounded-lg bg-teal text-white font-medium hover:bg-teal/90 disabled:opacity-50"
+            >
+              {isGenerating ? <><Loader2 className="w-4 h-4 animate-spin" /> Generating...</> : <><Sparkles className="w-4 h-4" /> Generate with Infinity AI <ChevronRight className="w-3.5 h-3.5" /></>}
+            </button>
+          )}
+        </div>
+      </div>
+
     </div>
 
   );
@@ -1303,7 +1295,7 @@ function ExchangeView({ onBack }: { onBack: () => void }) {
           </div>
         </div>
       )}
-      {activeSection === 'builder' && <AIBuilderView />}
+      {activeSection === 'builder' && <AIBuilderView onBack={() => setActiveSection('marketplace')} onCancel={() => setActiveSection('marketplace')} />}
     </div>
   );
 }
@@ -1314,9 +1306,6 @@ export default function IntegrationsPage() {
   const [showExchange, setShowExchange] = useState(false);
   const [showCustomModal, setShowCustomModal] = useState(false);
   const [showCustomBuilder, setShowCustomBuilder] = useState(false);
-  const [sidebarVisible, setSidebarVisible] = useState(true);
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
@@ -1331,26 +1320,17 @@ export default function IntegrationsPage() {
   );
   const hasSavedHashicorp = savedConnections.some(c => c.vaultType === 'HashiCorp Vault');
   const effectiveConnections = { ...connections, hashicorp: connections.hashicorp || hasSavedHashicorp };
-  const toggleGroup = (label: string) =>
-    setCollapsedGroups(prev => {
-      const next = new Set(prev);
-      next.has(label) ? next.delete(label) : next.add(label);
-      return next;
-    });
   const toggleExpandCategory = (cat: string) =>
     setExpandedCategories(prev => {
       const next = new Set(prev);
       next.has(cat) ? next.delete(cat) : next.add(cat);
       return next;
     });
-  const filtered = INTEGRATIONS.filter(i => {
-    const matchSearch =
-      !search ||
-      i.name.toLowerCase().includes(search.toLowerCase()) ||
-      i.description.toLowerCase().includes(search.toLowerCase());
-    const matchCat = !selectedCategory || i.category === selectedCategory;
-    return matchSearch && matchCat;
-  });
+  const filtered = INTEGRATIONS.filter(i =>
+    !search ||
+    i.name.toLowerCase().includes(search.toLowerCase()) ||
+    i.description.toLowerCase().includes(search.toLowerCase()),
+  );
   const openAddPanel = (item: typeof INTEGRATIONS[0]) => {
     if (item.id === 'hashicorp') {
       setConfigItem(item);
@@ -1366,12 +1346,7 @@ export default function IntegrationsPage() {
   if (showCustomBuilder) {
     return (
       <div className="flex flex-col h-full overflow-hidden p-6">
-        <button onClick={() => setShowCustomBuilder(false)} className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground mb-3 self-start">
-          <ChevronLeft className="w-3.5 h-3.5" /> Back to Integrations
-        </button>
-        <div className="flex-1 overflow-y-auto">
-          <AIBuilderView />
-        </div>
+        <AIBuilderView onBack={() => setShowCustomBuilder(false)} onCancel={() => setShowCustomBuilder(false)} />
       </div>
     );
   }
@@ -1421,80 +1396,6 @@ export default function IntegrationsPage() {
       </div>
       {/* Body */}
       <div className="flex flex-1 gap-4 overflow-hidden">
-        {/* Sidebar */}
-        {sidebarVisible && (
-          <div className="w-52 flex-shrink-0 overflow-y-auto border-r border-border pr-4">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold">
-                Categories
-              </span>
-              <button
-                onClick={() => setSidebarVisible(false)}
-                className="text-[10px] text-muted-foreground hover:text-foreground"
-              >
-                Hide
-              </button>
-            </div>
-            {SIDEBAR_GROUPS.map(group => {
-              const isCollapsed = collapsedGroups.has(group.label);
-              return (
-                <div key={group.label} className="mb-3">
-                  <button
-                    onClick={() => toggleGroup(group.label)}
-                    className="flex items-center gap-1.5 w-full mb-1"
-                  >
-                    {isCollapsed
-                      ? <ChevronRight className="w-3 h-3 text-muted-foreground" />
-                      : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
-                    <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">
-                      {group.label}
-                    </span>
-                  </button>
-                  {!isCollapsed && (
-                    <div className="pl-2 space-y-0.5">
-                      {group.categories.map(cat => {
-                        const count = INTEGRATIONS.filter(i => i.category === cat.dataKey).length;
-                        const isSelected = selectedCategory === cat.dataKey;
-                        return (
-                          <button
-                            key={cat.label}
-                            onClick={() => setSelectedCategory(isSelected ? null : cat.dataKey)}
-                            className={`flex items-center justify-between w-full px-2 py-1.5 rounded-lg text-[11px] transition-colors ${
-                              isSelected
-                                ? 'bg-teal/10 text-teal'
-                                : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
-                            }`}
-                          >
-                            <span>{cat.label}</span>
-                            <span
-                              className={`text-[9px] px-1.5 py-0.5 rounded-full ${
-                                isSelected
-                                  ? 'bg-teal/20 text-teal'
-                                  : 'bg-muted text-muted-foreground'
-                              }`}
-                            >
-                              {count}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-        {/* Show sidebar toggle when hidden */}
-        {!sidebarVisible && (
-          <button
-            onClick={() => setSidebarVisible(true)}
-            className="flex-shrink-0 text-[10px] text-muted-foreground hover:text-foreground border border-border rounded-lg px-2 py-2 self-start"
-            title="Show categories"
-          >
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
-        )}
         {/* Main content */}
         <div className="flex-1 overflow-y-auto">
           {itab === 'sources' && (
