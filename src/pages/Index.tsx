@@ -112,27 +112,27 @@ export default function Index() {
     <NotificationProvider>
       <PersonaProvider>
         <NavigationProvider>
-          <OnboardingProvider>
-            <ConnectionsProvider>
+          <ConnectionsProvider>
             <ProfilesProvider>
-            <RunsProvider>
-            <IntegrationsProvider>
-              <InventoryRegistryProvider>
-                <RiskProvider>
-                  <CertificateWorkflowProvider>
-                    <ExceptionsProvider>
-                      <AgentBoundary>
-                        <AppShell />
-                      </AgentBoundary>
-                    </ExceptionsProvider>
-                  </CertificateWorkflowProvider>
-                </RiskProvider>
-              </InventoryRegistryProvider>
-            </IntegrationsProvider>
-            </RunsProvider>
+              <RunsProvider>
+                <IntegrationsProvider>
+                  <InventoryRegistryProvider>
+                    <RiskProvider>
+                      <CertificateWorkflowProvider>
+                        <ExceptionsProvider>
+                          <AgentBoundary>
+                            <OnboardingProvider>
+                              <AppShell />
+                            </OnboardingProvider>
+                          </AgentBoundary>
+                        </ExceptionsProvider>
+                      </CertificateWorkflowProvider>
+                    </RiskProvider>
+                  </InventoryRegistryProvider>
+                </IntegrationsProvider>
+              </RunsProvider>
             </ProfilesProvider>
-            </ConnectionsProvider>
-          </OnboardingProvider>
+          </ConnectionsProvider>
         </NavigationProvider>
       </PersonaProvider>
     </NotificationProvider>
