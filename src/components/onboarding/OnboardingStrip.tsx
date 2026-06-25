@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useNav } from '@/context/NavigationContext';
-import { useIntegrations } from '@/context/IntegrationsContext';
+
 import {
   Check, Lock, ChevronDown, ChevronUp, X,
   Plug, Radar, ShieldCheck, ArrowRight, Sparkles,
