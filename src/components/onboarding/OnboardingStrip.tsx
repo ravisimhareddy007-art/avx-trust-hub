@@ -55,19 +55,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   const [expanded, setExpanded] = useState(true);
   const [seen, setSeen] = useState<Set<StageId>>(new Set());
 
-  // Real signals. A step is complete when its real outcome exists OR the user
-  // has visited the page (an honest "you have been here", not fabricated success).
-  const { connected } = useIntegrations();
-  const { runs } = useRuns();
-  const hasConnection = connected.length > 0;
-  const hasCompletedRun = runs.some(r => r.status === 'completed');
-
-  const done = useMemo(() => {
-    const d = new Set<StageId>(seen);
-    if (hasConnection) d.add('connect');
-    if (hasCompletedRun) d.add('discover');
-    return d;
-  }, [seen, hasConnection, hasCompletedRun]);
+  const done = seen;
 
   const currentStage = useMemo<StageId | null>(() => {
     for (const s of STAGE_ORDER) if (!done.has(s)) return s;
