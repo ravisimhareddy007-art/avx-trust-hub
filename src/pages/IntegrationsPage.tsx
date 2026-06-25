@@ -1,4 +1,3 @@
-import { FEATURES } from '@/config/features';
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { useConnections } from '@/context/ConnectionsContext';
@@ -6,7 +5,7 @@ import {
   Search, Eye, EyeOff, X, Shield, Cloud, Lock, Cpu, Ticket, Bell,
   GitBranch, Server, CheckCircle2, ChevronDown, ChevronRight, ChevronLeft, ChevronUp,
   AlertTriangle, Check, Loader2, Upload, Info, Plus, Package,
-  Bot, Trash2, Pencil, AlertCircle,
+  Bot, Trash2, Pencil, AlertCircle, Users, Sparkles, Code2,
 } from 'lucide-react';
 // ─── Integration source data (preserved) ────────────────────────────────────
 const INTEGRATIONS: {
@@ -17,99 +16,31 @@ const INTEGRATIONS: {
   connected: boolean;
   fields: { label: string; placeholder: string; secret?: boolean }[];
 }[] = [
-  { id: 'digicert', name: 'DigiCert', category: 'Certificate Authorities', description: 'Public CA for TLS, code-signing, and S/MIME certificates.', connected: true, fields: [{ label: 'API Key', placeholder: 'dc-api-...', secret: true }, { label: 'Account ID', placeholder: '123456' }] },
-  { id: 'entrust', name: 'Entrust', category: 'Certificate Authorities', description: 'Enterprise CA for TLS and identity certificates.', connected: true, fields: [{ label: 'API Key', placeholder: 'ent-...', secret: true }, { label: 'Organization ID', placeholder: 'org-...' }] },
-  { id: 'msca', name: 'Microsoft CA (ADCS)', category: 'Certificate Authorities', description: 'Internal Microsoft Certificate Authority via ADCS.', connected: true, fields: [{ label: 'Server URL', placeholder: 'https://ca.corp.local/certsrv' }, { label: 'Username', placeholder: 'DOMAIN\\admin' }, { label: 'Password', placeholder: '••••••••', secret: true }] },
-  { id: 'letsencrypt', name: "Let's Encrypt", category: 'Certificate Authorities', description: 'Free, automated TLS certificates via ACME.', connected: false, fields: [{ label: 'ACME Directory URL', placeholder: 'https://acme-v02.api.letsencrypt.org/directory' }, { label: 'Account Email', placeholder: 'admin@acmecorp.com' }] },
-  { id: 'globalsign', name: 'GlobalSign', category: 'Certificate Authorities', description: 'Global CA for enterprise TLS and document signing.', connected: false, fields: [{ label: 'API Key', placeholder: 'gs-api-...', secret: true }, { label: 'Account ID', placeholder: 'acct-...' }] },
-  { id: 'sectigo', name: 'Sectigo', category: 'Certificate Authorities', description: 'Enterprise CA supporting TLS, S/MIME, and code-signing.', connected: false, fields: [{ label: 'Customer URI', placeholder: 'https://hard.cert-manager.com' }, { label: 'Login', placeholder: 'admin@acmecorp.com' }, { label: 'Password', placeholder: '••••••••', secret: true }] },
-  { id: 'aws', name: 'Amazon Web Services', category: 'Cloud Platforms', description: 'ACM certificates, KMS keys, and Secrets Manager.', connected: true, fields: [{ label: 'Access Key ID', placeholder: 'AKIA...', secret: true }, { label: 'Secret Access Key', placeholder: '••••••••', secret: true }, { label: 'Region', placeholder: 'us-east-1' }] },
-  { id: 'azure', name: 'Microsoft Azure', category: 'Cloud Platforms', description: 'Key Vault, managed certificates, and Azure AD.', connected: true, fields: [{ label: 'Tenant ID', placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' }, { label: 'Client ID', placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' }, { label: 'Client Secret', placeholder: '••••••••', secret: true }] },
-  { id: 'gcp', name: 'Google Cloud', category: 'Cloud Platforms', description: 'Certificate Authority Service and Cloud KMS.', connected: false, fields: [{ label: 'Service Account JSON', placeholder: '{ "type": "service_account", ... }', secret: true }, { label: 'Project ID', placeholder: 'my-project-id' }] },
-  { id: 'hashicorp', name: 'HashiCorp Vault', category: 'Secrets & Vaults', description: 'Centralized secrets management and PKI engine.', connected: true, fields: [{ label: 'Vault URL', placeholder: 'https://vault.corp.local:8200' }, { label: 'Token', placeholder: 'hvs.CAESI...', secret: true }, { label: 'Namespace', placeholder: 'admin (optional)' }] },
-  { id: 'cyberark', name: 'CyberArk Conjur', category: 'Secrets & Vaults', description: 'Privileged access and secrets management for DevOps.', connected: false, fields: [{ label: 'Conjur URL', placeholder: 'https://conjur.corp.local' }, { label: 'Account', placeholder: 'myorg' }, { label: 'API Key', placeholder: '••••••••', secret: true }] },
-  { id: 'gcp-secrets', name: 'GCP Secret Manager', category: 'Secrets & Vaults', description: 'Managed secrets storage on Google Cloud.', connected: false, fields: [{ label: 'Project ID', placeholder: 'my-project-id' }, { label: 'Service Account JSON', placeholder: '{ "type": "service_account" }', secret: true }] },
-  { id: 'thales', name: 'Thales Luna HSM', category: 'HSM', description: 'FIPS 140-2 hardware security module for key custody.', connected: false, fields: [{ label: 'HSM Address', placeholder: '10.0.5.100' }, { label: 'Partition', placeholder: 'par-prod-01' }, { label: 'Password', placeholder: '••••••••', secret: true }] },
-  { id: 'entrust-hsm', name: 'Entrust nShield', category: 'HSM', description: 'Network-attached HSM for high-assurance cryptography.', connected: false, fields: [{ label: 'nShield Host', placeholder: '10.0.5.200' }, { label: 'OCS Password', placeholder: '••••••••', secret: true }] },
-  { id: 'servicenow', name: 'ServiceNow', category: 'ITSM & Ticketing', description: 'Change requests, CMDB sync, and incident management.', connected: true, fields: [{ label: 'Instance URL', placeholder: 'https://acmecorp.service-now.com' }, { label: 'Username', placeholder: 'admin' }, { label: 'Password', placeholder: '••••••••', secret: true }] },
-  { id: 'jira', name: 'Jira', category: 'ITSM & Ticketing', description: 'Issue tracking and project management.', connected: false, fields: [{ label: 'Jira URL', placeholder: 'https://acmecorp.atlassian.net' }, { label: 'Email', placeholder: 'admin@acmecorp.com' }, { label: 'API Token', placeholder: 'ATATT3...', secret: true }] },
-  { id: 'pagerduty', name: 'PagerDuty', category: 'ITSM & Ticketing', description: 'Incident alerting and on-call management.', connected: false, fields: [{ label: 'Integration Key', placeholder: 'pd-int-...', secret: true }] },
-  { id: 'slack', name: 'Slack', category: 'Notifications', description: 'Send alerts and workflow notifications to Slack channels.', connected: true, fields: [{ label: 'Webhook URL', placeholder: 'https://hooks.slack.com/services/...', secret: true }, { label: 'Default Channel', placeholder: '#security-alerts' }] },
-  { id: 'teams', name: 'Microsoft Teams', category: 'Notifications', description: 'Send alerts to Teams channels via webhook.', connected: false, fields: [{ label: 'Webhook URL', placeholder: 'https://outlook.office.com/webhook/...', secret: true }] },
-  { id: 'email', name: 'Email (SMTP)', category: 'Notifications', description: 'Send notifications via your SMTP mail server.', connected: false, fields: [{ label: 'SMTP Host', placeholder: 'smtp.acmecorp.com' }, { label: 'Port', placeholder: '587' }, { label: 'Username', placeholder: 'noreply@acmecorp.com' }, { label: 'Password', placeholder: '••••••••', secret: true }] },
-  { id: 'github', name: 'GitHub', category: 'DevOps & CI/CD', description: 'Discover SSH keys and secrets in repositories and Actions.', connected: false, fields: [{ label: 'Personal Access Token', placeholder: 'ghp_...', secret: true }, { label: 'Organization', placeholder: 'acmecorp' }] },
-  { id: 'jenkins', name: 'Jenkins', category: 'DevOps & CI/CD', description: 'Discover credentials and certificates used in pipelines.', connected: false, fields: [{ label: 'Jenkins URL', placeholder: 'https://jenkins.corp.local' }, { label: 'Username', placeholder: 'admin' }, { label: 'API Token', placeholder: '...', secret: true }] },
-  { id: 'f5', name: 'F5 BIG-IP', category: 'Load Balancers & ADC', description: 'Discover and manage TLS certificates on F5 virtual servers.', connected: true, fields: [{ label: 'Host / IP', placeholder: '10.0.1.50' }, { label: 'Username', placeholder: 'admin' }, { label: 'Password', placeholder: '••••••••', secret: true }] },
-  { id: 'citrix', name: 'Citrix ADC', category: 'Load Balancers & ADC', description: 'Discover SSL certificates on Citrix NetScaler.', connected: false, fields: [{ label: 'NSIP', placeholder: '10.0.1.100' }, { label: 'Username', placeholder: 'nsroot' }, { label: 'Password', placeholder: '••••••••', secret: true }] },
-  {
-    id: 'aws-bedrock',
-    name: 'AWS Bedrock',
-    category: 'AI & Agentic',
-    description: 'Discover AI agent identities, model API credentials, and IAM roles across Amazon Bedrock deployments.',
-    connected: true,
-    fields: [
-      { label: 'AWS Account ID', placeholder: '123456789012' },
-      { label: 'Access Key ID', placeholder: 'AKIA...', secret: true },
-      { label: 'Secret Access Key', placeholder: '••••••••', secret: true },
-      { label: 'Region', placeholder: 'us-east-1' },
-    ],
-  },
-  {
-    id: 'azure-openai',
-    name: 'Azure OpenAI',
-    category: 'AI & Agentic',
-    description: 'Inventory API keys and managed identity bindings across Azure OpenAI service deployments.',
-    connected: false,
-    fields: [
-      { label: 'Azure Tenant ID', placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' },
-      { label: 'Subscription ID', placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' },
-      { label: 'API Key', placeholder: '••••••••', secret: true },
-      { label: 'Endpoint URL', placeholder: 'https://acmecorp.openai.azure.com/' },
-    ],
-  },
-  {
-    id: 'langchain',
-    name: 'LangChain',
-    category: 'AI & Agentic',
-    description: 'Discover tool credentials, OAuth tokens, and API keys used by LangChain agent instances.',
-    connected: false,
-    fields: [
-      { label: 'LangSmith API Key', placeholder: 'ls__...', secret: true },
-      { label: 'Agent Endpoint', placeholder: 'https://agents.acmecorp.com' },
-    ],
-  },
-  {
-    id: 'openai',
-    name: 'OpenAI Assistants',
-    category: 'Agentic Frameworks',
-    description: 'Monitor API key usage, token issuance, and credential hygiene across OpenAI Assistants API deployments.',
-    connected: true,
-    fields: [
-      { label: 'API Key', placeholder: 'sk-...', secret: true },
-      { label: 'Organization ID', placeholder: 'org-...' },
-    ],
-  },
-  {
-    id: 'anthropic',
-    name: 'Anthropic Claude API',
-    category: 'Agentic Frameworks',
-    description: 'Discover and govern API credentials used by Claude-powered agents and automation pipelines.',
-    connected: false,
-    fields: [
-      { label: 'API Key', placeholder: 'sk-ant-...', secret: true },
-      { label: 'Workspace ID', placeholder: 'ws-...' },
-    ],
-  },
+  // Certificate Authority (Discovery MVP: GlobalSign Atlas only)
+  { id: 'globalsign', name: 'GlobalSign Atlas', category: 'Certificate Authorities', description: 'Pulls issued certificate inventory, revocation status and chain of trust from GlobalSign Atlas.', connected: true, fields: [{ label: 'API Key', placeholder: 'gs-api-...', secret: true }, { label: 'API Secret', placeholder: '••••••••', secret: true }, { label: 'Account ID', placeholder: 'acct-...' }] },
+  // Cloud Providers (Discovery MVP: AWS and Azure)
+  { id: 'aws', name: 'Amazon Web Services', category: 'Cloud Providers', description: 'Enumerate ACM certificates, KMS keys and Secrets Manager across AWS accounts.', connected: true, fields: [{ label: 'Access Key ID', placeholder: 'AKIA...', secret: true }, { label: 'Secret Access Key', placeholder: '••••••••', secret: true }, { label: 'Region', placeholder: 'us-east-1' }] },
+  { id: 'azure', name: 'Microsoft Azure', category: 'Cloud Providers', description: 'Enumerate Key Vault certificates, keys and secrets across Azure subscriptions.', connected: true, fields: [{ label: 'Tenant ID', placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' }, { label: 'Client ID', placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' }, { label: 'Client Secret', placeholder: '••••••••', secret: true }] },
+  // Secrets & Vaults (Discovery MVP: HashiCorp Vault, CyberArk Conjur)
+  { id: 'hashicorp', name: 'HashiCorp Vault', category: 'Secrets & Vaults', description: 'Metadata-only enumeration of certificates, keys and secrets from HashiCorp Vault.', connected: true, fields: [{ label: 'Vault URL', placeholder: 'https://vault.corp.local:8200' }, { label: 'Token', placeholder: 'hvs.CAESI...', secret: true }, { label: 'Namespace', placeholder: 'admin (optional)' }] },
+  { id: 'cyberark', name: 'CyberArk Conjur', category: 'Secrets & Vaults', description: 'Metadata-only enumeration of secrets and credentials from CyberArk Conjur.', connected: false, fields: [{ label: 'Conjur URL', placeholder: 'https://conjur.corp.local' }, { label: 'Account', placeholder: 'myorg' }, { label: 'API Key', placeholder: '••••••••', secret: true }] },
+  // HSM (Discovery MVP: Crypto4A, Utimaco)
+  { id: 'crypto4a', name: 'Crypto4A HSM', category: 'HSM', description: 'Per-partition key enumeration from the Crypto4A hardware security module.', connected: false, fields: [{ label: 'HSM Address', placeholder: '10.0.5.100' }, { label: 'Partition', placeholder: 'par-prod-01' }, { label: 'Password', placeholder: '••••••••', secret: true }] },
+  { id: 'utimaco', name: 'Utimaco HSM', category: 'HSM', description: 'Per-partition key enumeration from the Utimaco hardware security module.', connected: false, fields: [{ label: 'HSM Address', placeholder: '10.0.5.110' }, { label: 'Partition', placeholder: 'par-prod-02' }, { label: 'Password', placeholder: '••••••••', secret: true }] },
+  // ITSM & ChatOps (remediation ticketing, not a discovery source)
+  { id: 'servicenow', name: 'ServiceNow', category: 'ITSM & ChatOps', description: 'Change request and incident ticketing for remediation workflows. Not a discovery source.', connected: true, fields: [{ label: 'Instance URL', placeholder: 'https://acmecorp.service-now.com' }, { label: 'Username', placeholder: 'svc-avx' }, { label: 'Password', placeholder: '••••••••', secret: true }] },
+  { id: 'jira', name: 'Jira', category: 'ITSM & ChatOps', description: 'Issue ticketing for remediation workflows. Not a discovery source.', connected: false, fields: [{ label: 'Jira URL', placeholder: 'https://acmecorp.atlassian.net' }, { label: 'Email', placeholder: 'svc-avx@acmecorp.com' }, { label: 'API Token', placeholder: 'ATATT3...', secret: true }] },
+  // Vulnerability Management (third-party findings ingestion)
+  { id: 'qualys', name: 'Qualys', category: 'Vulnerability Management', description: 'Pull vulnerability scanner findings inferred into cryptographic posture.', connected: false, fields: [{ label: 'API URL', placeholder: 'https://qualysapi.qualys.com' }, { label: 'Username', placeholder: 'svc-avx' }, { label: 'Password', placeholder: '••••••••', secret: true }] },
+  { id: 'tenable', name: 'Tenable', category: 'Vulnerability Management', description: 'Pull vulnerability scanner findings inferred into cryptographic posture.', connected: false, fields: [{ label: 'API URL', placeholder: 'https://cloud.tenable.com' }, { label: 'Access Key', placeholder: '••••••••', secret: true }, { label: 'Secret Key', placeholder: '••••••••', secret: true }] },
 ];
 const CATEGORIES = [
-  'Certificate Authorities', 'Cloud Platforms', 'Secrets & Vaults', 'HSM',
-  'ITSM & Ticketing', 'Notifications', 'DevOps & CI/CD', 'Load Balancers & ADC',
-  'AI & Agentic', 'Agentic Frameworks',
+  'Certificate Authorities', 'Cloud Providers', 'Secrets & Vaults', 'HSM',
+  'ITSM & ChatOps', 'Vulnerability Management',
 ];
 const LAST_SYNC: Record<string, string> = {
-  digicert: '15 min ago', entrust: '30 min ago', msca: '1 hour ago',
-  aws: '5 min ago', azure: '12 min ago', hashicorp: '3 min ago',
-  servicenow: '45 min ago', slack: '2 min ago', f5: '1 hour ago',
+  globalsign: '15 min ago', aws: '5 min ago', azure: '12 min ago',
+  hashicorp: '3 min ago', servicenow: '45 min ago',
 };
 // ─── Sidebar structure ───────────────────────────────────────────────────────
 const SIDEBAR_GROUPS = [
@@ -124,40 +55,24 @@ const SIDEBAR_GROUPS = [
   {
     label: 'INFRASTRUCTURE',
     categories: [
-      { label: 'Cloud Providers', dataKey: 'Cloud Platforms' },
-      { label: 'Network & ADC', dataKey: 'Load Balancers & ADC' },
+      { label: 'Cloud Providers', dataKey: 'Cloud Providers' },
     ],
   },
   {
-    label: 'IDENTITY & DEVOPS',
+    label: 'REMEDIATION & FINDINGS',
     categories: [
-      { label: 'DevOps', dataKey: 'DevOps & CI/CD' },
-      { label: 'ITSM & Ticketing', dataKey: 'ITSM & Ticketing' },
-    ],
-  },
-  {
-    label: 'AI & AGENTIC',
-    categories: [
-      { label: 'AI/ML Platforms', dataKey: 'AI & Agentic' },
-      { label: 'Agentic Frameworks', dataKey: 'Agentic Frameworks' },
-    ],
-  },
-  {
-    label: 'SECURITY OPERATIONS',
-    categories: [
-      { label: 'Notifications', dataKey: 'Notifications' },
+      { label: 'ITSM & ChatOps', dataKey: 'ITSM & ChatOps' },
+      { label: 'Vulnerability Management', dataKey: 'Vulnerability Management' },
     ],
   },
 ];
 // ─── Mock instances ──────────────────────────────────────────────────────────
 const MOCK_INSTANCES = [
-  { id: 'inst-1', name: 'AWS Prod - Org Account', subtitle: 'sts.us-east-1.amazonaws.com', integration: 'Amazon Web Services', category: 'Cloud Providers', status: 'connected' as const, discoveredAssets: 0, lastSync: '4 min ago', error: null },
-  { id: 'inst-2', name: 'AWS Prod Account - ACM', subtitle: 'acm.us-east-1.amazonaws.com', integration: 'AWS', category: 'Certificate Authorities', status: 'connected' as const, discoveredAssets: 179, lastSync: '3 min ago', error: null },
-  { id: 'inst-3', name: 'Azure Prod - Tenant', subtitle: 'management.azure.com', integration: 'Microsoft Azure', category: 'Cloud Providers', status: 'connected' as const, discoveredAssets: 0, lastSync: '9 min ago', error: null },
-  { id: 'inst-4', name: 'CrowdStrike Falcon - Prod CID', subtitle: 'api.crowdstrike.com', integration: 'CrowdStrike Falcon', category: 'EDR & Vulnerability', status: 'connected' as const, discoveredAssets: 0, lastSync: '2 min ago', error: null },
-  { id: 'inst-5', name: 'CyberArk PAM - Vault', subtitle: 'cyberark.corp.local', integration: 'CyberArk PAM', category: 'Secrets & Vaults', status: 'connected' as const, discoveredAssets: 0, lastSync: '6 min ago', error: null },
-  { id: 'inst-6', name: 'DigiCert - Prod', subtitle: 'certcentral.digicert.com', integration: 'DigiCert', category: 'Certificate Authorities', status: 'error' as const, discoveredAssets: 0, lastSync: '1 hour ago', error: 'Authentication failed: API key expired or revoked. Update credentials to restore sync.' },
-  { id: 'inst-7', name: 'HashiCorp Vault - Prod', subtitle: 'vault.corp.local:8200', integration: 'HashiCorp Vault', category: 'Secrets & Vaults', status: 'connected' as const, discoveredAssets: 42, lastSync: '3 min ago', error: null },
+  { id: 'inst-1', name: 'AWS Prod - Org Account', subtitle: 'sts.us-east-1.amazonaws.com', integration: 'Amazon Web Services', category: 'Cloud Providers', status: 'connected' as const, discoveredAssets: 179, lastSync: '4 min ago', error: null },
+  { id: 'inst-2', name: 'Azure Prod - Tenant', subtitle: 'management.azure.com', integration: 'Microsoft Azure', category: 'Cloud Providers', status: 'connected' as const, discoveredAssets: 64, lastSync: '9 min ago', error: null },
+  { id: 'inst-3', name: 'GlobalSign Atlas - Prod', subtitle: 'emea.api.globalsign.com', integration: 'GlobalSign Atlas', category: 'Certificate Authorities', status: 'error' as const, discoveredAssets: 0, lastSync: '1 hour ago', error: 'Authentication failed: API key expired or revoked. Update credentials to restore sync.' },
+  { id: 'inst-4', name: 'HashiCorp Vault - Prod', subtitle: 'vault.corp.local:8200', integration: 'HashiCorp Vault', category: 'Secrets & Vaults', status: 'connected' as const, discoveredAssets: 42, lastSync: '3 min ago', error: null },
+  { id: 'inst-5', name: 'ServiceNow - Change', subtitle: 'acmecorp.service-now.com', integration: 'ServiceNow', category: 'ITSM & ChatOps', status: 'connected' as const, discoveredAssets: 0, lastSync: '45 min ago', error: null },
 ];
 // ─── Marketplace data ────────────────────────────────────────────────────────
 const MARKETPLACE_ITEMS = [
@@ -340,6 +255,72 @@ function AddInstancePanel({
     </>
   );
 }
+// ─── Custom integration empty state ──────────────────────────────────────────
+function CustomSourcesEmptyState({ onCreate }: { onCreate: () => void }) {
+  return (
+    <div>
+      <div className="flex items-start gap-3 rounded-xl border border-teal/20 bg-teal/5 p-4 mb-6">
+        <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-teal/10 flex-shrink-0">
+          <Users className="w-4 h-4 text-teal" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-foreground">Custom Integrations</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">Build and manage your own internal integrations using the Infinity AI builder or the AppViewX Developer SDK.</p>
+        </div>
+      </div>
+      <div className="text-center py-12">
+        <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-teal/10 mx-auto mb-4">
+          <Pencil className="w-5 h-5 text-teal" />
+        </div>
+        <p className="text-sm font-semibold text-foreground mb-1.5">Bring your own integration source</p>
+        <p className="text-[11px] text-muted-foreground max-w-md mx-auto leading-relaxed mb-5">
+          Connect anything AppViewX does not ship: internal PKI, custom webhooks, homegrown APIs. Build a new connector with Infinity AI, upload a pre-built package, or use the AppViewX Developer SDK.
+        </p>
+        <div className="flex items-center justify-center gap-2">
+          <button onClick={onCreate} className="flex items-center gap-1.5 text-[11px] px-4 py-2 rounded-lg bg-teal text-white font-medium hover:bg-teal/90 transition-colors">
+            <Plus className="w-3.5 h-3.5" /> Create Integration
+          </button>
+          <button onClick={() => toast.info('Upload a pre-built integration package (.zip)')} className="flex items-center gap-1.5 text-[11px] px-4 py-2 rounded-lg border border-border text-foreground font-medium hover:bg-muted/30 transition-colors">
+            <Upload className="w-3.5 h-3.5" /> Upload Package
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+// ─── Create Custom Integration modal ─────────────────────────────────────────
+function CreateCustomIntegrationModal({ onClose, onStartAI }: { onClose: () => void; onStartAI: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={onClose}>
+      <div className="w-full max-w-lg rounded-xl border border-border bg-card shadow-xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-start justify-between px-5 py-4 border-b border-border">
+          <div>
+            <h3 className="text-base font-semibold text-foreground">Create Custom Integration</h3>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Pick how you would like to build it.</p>
+          </div>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+        </div>
+        <div className="px-5 py-5">
+          <div className="rounded-xl border border-teal/30 bg-teal/5 p-6 text-center">
+            <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-card border border-teal/30 mx-auto mb-3">
+              <Sparkles className="w-5 h-5 text-teal" />
+            </div>
+            <p className="text-sm font-semibold text-foreground mb-1">Build with Infinity AI</p>
+            <p className="text-[11px] text-muted-foreground max-w-xs mx-auto leading-relaxed mb-4">
+              Drop in an API spec or describe it in plain text. AI drafts the integration shell for you.
+            </p>
+            <button onClick={onStartAI} className="inline-flex items-center gap-1.5 text-[11px] px-4 py-2 rounded-lg bg-teal text-white font-medium hover:bg-teal/90 transition-colors">
+              <Sparkles className="w-3.5 h-3.5" /> Start with Infinity AI
+            </button>
+          </div>
+          <p className="text-[11px] text-muted-foreground text-center mt-4">
+            Prefer writing code? <button onClick={() => toast.info('Opening AppViewX Developer SDK documentation')} className="text-teal hover:underline font-medium inline-flex items-center gap-1">Use the Developer SDK <Code2 className="w-3 h-3" /></button>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
 // ─── SourcesTab ──────────────────────────────────────────────────────────────
 type TypeFilter = 'all' | 'built-in' | 'external' | 'custom';
 function SourcesTab({
@@ -352,6 +333,7 @@ function SourcesTab({
   toggleExpandCategory,
   effectiveConnections,
   onAddInstance,
+  onOpenCustom,
 }: {
   filtered: typeof INTEGRATIONS;
   search: string;
@@ -362,6 +344,7 @@ function SourcesTab({
   toggleExpandCategory: (c: string) => void;
   effectiveConnections: Record<string, boolean>;
   onAddInstance: (item: typeof INTEGRATIONS[0]) => void;
+  onOpenCustom: () => void;
 }) {
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const SHOW_COUNT = 3;
@@ -395,12 +378,21 @@ function SourcesTab({
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              {f === 'all' ? `All ${INTEGRATIONS.length}` : f === 'built-in' ? 'Built-in 97' : f === 'external' ? 'External 23' : 'Custom 0'}
+              {f === 'all' ? `All ${INTEGRATIONS.length}` : f === 'built-in' ? `Built-in ${INTEGRATIONS.length}` : f === 'external' ? 'External 0' : 'Custom 0'}
             </button>
           ))}
         </div>
       </div>
       {/* Category sections */}
+      {typeFilter === 'custom' ? (
+        <CustomSourcesEmptyState onCreate={onOpenCustom} />
+      ) : typeFilter === 'external' ? (
+        <div className="text-center py-16">
+          <Package className="w-8 h-8 text-muted-foreground/50 mx-auto mb-3" />
+          <p className="text-sm font-medium text-foreground mb-1">No external integrations</p>
+          <p className="text-[11px] text-muted-foreground max-w-sm mx-auto">External integrations published to the Integration Exchange will appear here once installed.</p>
+        </div>
+      ) : (
       <div className="space-y-6">
         {CATEGORIES.map(cat => {
           const items = filtered.filter(i => i.category === cat);
@@ -474,6 +466,7 @@ function SourcesTab({
           );
         })}
       </div>
+      )}
     </div>
   );
 }
@@ -1319,6 +1312,8 @@ type ITab = 'sources' | 'instances';
 export default function IntegrationsPage() {
   const [itab, setItab] = useState<ITab>('sources');
   const [showExchange, setShowExchange] = useState(false);
+  const [showCustomModal, setShowCustomModal] = useState(false);
+  const [showCustomBuilder, setShowCustomBuilder] = useState(false);
   const [sidebarVisible, setSidebarVisible] = useState(true);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -1349,8 +1344,6 @@ export default function IntegrationsPage() {
       return next;
     });
   const filtered = INTEGRATIONS.filter(i => {
-    // AI identity / Eos out of MVP scope: hide the agentic integration categories.
-    if (!FEATURES.AI_IDENTITY && (i.category === 'AI & Agentic' || i.category === 'Agentic Frameworks')) return false;
     const matchSearch =
       !search ||
       i.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -1370,6 +1363,18 @@ export default function IntegrationsPage() {
   if (showExchange) {
     return <ExchangeView onBack={() => setShowExchange(false)} />;
   }
+  if (showCustomBuilder) {
+    return (
+      <div className="flex flex-col h-full overflow-hidden p-6">
+        <button onClick={() => setShowCustomBuilder(false)} className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground mb-3 self-start">
+          <ChevronLeft className="w-3.5 h-3.5" /> Back to Integrations
+        </button>
+        <div className="flex-1 overflow-y-auto">
+          <AIBuilderView />
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="flex flex-col h-full overflow-hidden p-6">
       {/* Header */}
@@ -1377,7 +1382,7 @@ export default function IntegrationsPage() {
         <div>
           <h1 className="text-xl font-semibold text-foreground">Integrations</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            120+ verified integration sources across categories -- Certificate Authorities, Cloud Providers, Network & ADC and more...
+            Verified integration sources across categories: Certificate Authorities, Cloud Providers, HSM, Secrets and Vaults, ITSM and ChatOps, and Vulnerability Management.
           </p>
         </div>
         <button
@@ -1385,7 +1390,7 @@ export default function IntegrationsPage() {
           className="flex items-center gap-2 border border-border text-[11px] px-3 py-1.5 rounded-lg hover:bg-muted/30 text-foreground transition-colors"
         >
           <Package className="w-3.5 h-3.5" />
-          Integrations exchange
+          Integration Exchange
         </button>
       </div>
       {/* Tabs */}
@@ -1430,7 +1435,7 @@ export default function IntegrationsPage() {
                 Hide
               </button>
             </div>
-            {SIDEBAR_GROUPS.filter(g => FEATURES.AI_IDENTITY || g.label !== 'AI & AGENTIC').map(group => {
+            {SIDEBAR_GROUPS.map(group => {
               const isCollapsed = collapsedGroups.has(group.label);
               return (
                 <div key={group.label} className="mb-3">
@@ -1503,6 +1508,7 @@ export default function IntegrationsPage() {
               toggleExpandCategory={toggleExpandCategory}
               effectiveConnections={effectiveConnections}
               onAddInstance={openAddPanel}
+              onOpenCustom={() => setShowCustomModal(true)}
             />
           )}
           {itab === 'instances' && (
@@ -1555,6 +1561,13 @@ export default function IntegrationsPage() {
             toast.success('Connection saved. Available in Discovery and Policies.');
             setConfigItem(null);
           }}
+        />
+      )}
+      {/* Create Custom Integration modal */}
+      {showCustomModal && (
+        <CreateCustomIntegrationModal
+          onClose={() => setShowCustomModal(false)}
+          onStartAI={() => { setShowCustomModal(false); setShowCustomBuilder(true); }}
         />
       )}
     </div>
