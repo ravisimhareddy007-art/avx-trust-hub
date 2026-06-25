@@ -1059,7 +1059,7 @@ function SSHAuthConfig() {
         <FormRow label="Credential type" required>
           <select value={credentialType} onChange={e => setCredentialType(e.target.value)} className={selectCls}>{['Manual Entry', 'Stored Credential'].map(c => <option key={c}>{c}</option>)}</select>
         </FormRow>
-        <FormRow label="Login type" required><Radios options={['Password', 'Identity Key'] as const} value={loginType} onChange={setLoginType} /></FormRow>
+        <FormRow label="Login type" required><Radios options={['Password', 'Identity Key'] as const} value={loginType} onChange={v => setLoginType(v)} /></FormRow>
         <FormRow label="Username" required><input value={username} onChange={e => setUsername(e.target.value)} placeholder="svc-discovery" className={inputCls} /></FormRow>
         <FormRow label={loginType === 'Password' ? 'Password' : 'Identity key'} required>
           {loginType === 'Password'
