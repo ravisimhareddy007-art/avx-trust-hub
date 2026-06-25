@@ -549,6 +549,7 @@ function NetworkConfig() {
         <FormRow label="Ports" required info="Ports probed on each reachable target. TLS version testing applies only to the TLS-capable ports in this list.">
           <div className="flex-1 max-w-md space-y-1.5">
             <input value={ports} onChange={e => setPorts(e.target.value)} className={inputCls.replace('max-w-md', 'w-full')} />
+            <p className="text-[10px] text-muted-foreground">Common ports, tap to add or remove. Any port is accepted in the field above.</p>
             <div className="flex gap-1 flex-wrap">
               {PORT_PRESETS.map(p => {
                 const on = portList.includes(p);
@@ -616,6 +617,7 @@ function CAConfig() {
       <FormRow label="CA provider" required>
         <div className="flex items-center gap-2">
           <span className="text-xs text-foreground px-3 py-2 bg-muted border border-border rounded">GlobalSign Atlas</span>
+          <span className="text-[10px] text-muted-foreground">mTLS + API key/secret · the only CA in MVP scope</span>
         </div>
       </FormRow>
       <FormRow label="CA instance" required>
@@ -641,7 +643,7 @@ function CAConfig() {
           {['Issued + Revoked', 'Issued only', 'Revoked only'].map(s => <option key={s}>{s}</option>)}
         </select>
       </FormRow>
-      
+      <p className="text-[10px] text-muted-foreground ml-44">Revoked and expired certificates are requested explicitly. Reconciliation with Network Scan is by certificate fingerprint; CA findings carry no deployment locus.</p>
       {mode === 'Aggressive' && <div className="ml-44 max-w-md"><Advisory>Aggressive performs a full pull each run and is slower. Optimized captures status changes via the Atlas cursor and is recommended for routine schedules.</Advisory></div>}
     </div>
   );
@@ -696,6 +698,8 @@ function CloudConfig() {
       </FormRow>
       <FormRow label="Resource tag filter"><input value={tag} onChange={e => setTag(e.target.value)} placeholder="env=prod (optional)" className={inputCls} /></FormRow>
       <FormRow label="Execution"><Toggle checked={sequential} onChange={setSequential} label="Execute batches sequentially" /></FormRow>
+      {vendor === 'AWS' && <p className="text-[10px] text-muted-foreground ml-44">AWS is enumerated per enabled region, with a us-east-1 pass for CloudFront and edge certificates.</p>}
+      {vendor === 'Azure' && <p className="text-[10px] text-muted-foreground ml-44">Azure Key Vault and Managed HSM enumeration needs data-plane access, separate from an ARM Reader role.</p>}
       <FormRow label="">
         <button onClick={runTest} disabled={testing} className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-secondary disabled:opacity-60">
           {testing ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Testing…</> : <><Check className="w-3.5 h-3.5" /> Test connection</>}
@@ -782,7 +786,7 @@ function SecretsConfig({ vaultType, setVaultType, vaultAccountId, setVaultAccoun
         <CheckGroup options={['Certificates', 'Encryption Keys', 'API Keys', 'SSH Keys', 'Database Credentials', 'Unclassified Secrets']} value={secretTypes} onChange={setSecretTypes} />
       </FormRow>
       <FormRow label="Path scoping"><input placeholder={isHsm ? 'partition-1, partition-2 (optional)' : 'secret/data/prod/* (optional)'} className={inputCls} /></FormRow>
-      
+      <p className="text-[10px] text-muted-foreground ml-44">Metadata only; secret values are never extracted. A path that is listable but not readable is reported as partial visibility.{isHsm ? ' HSM keys are enumerated per authenticated partition via PKCS#11.' : ''}</p>
       {!isPending && (
         <FormRow label="">
           <button onClick={runTest} disabled={testing} className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-secondary disabled:opacity-60">
@@ -823,6 +827,11 @@ function ThirdPartyConfig() {
           <optgroup label="CBOM (read directly)"><option>Third-party CBOM (CycloneDX 1.6)</option><option>QTH CBOM</option></optgroup>
         </select>
       </FormRow>
+      <p className="text-[10px] text-muted-foreground ml-44">
+        {isVuln ? 'Vulnerability reports are inferred and sit below native scans and CBOM in source priority; findings may be posture-only.'
+          : isQTH ? 'QTH (Quantum Trust Hub) generates a CBOM from code scan findings; asset context is a code component (repository, file, library).'
+          : 'Native CycloneDX-CBOM is read directly. Minimum accepted version is 1.6; older or unversioned documents are rejected with a reason.'}
+      </p>
       <FormRow label="Ingest mode">
         <div className="flex gap-1.5">
           {(['pull', 'push'] as const).map(m => (
@@ -830,7 +839,7 @@ function ThirdPartyConfig() {
           ))}
         </div>
       </FormRow>
-      
+      <p className="text-[10px] text-muted-foreground ml-44">Mode is locked after activation; changing it later requires cloning the profile. Re-ingested records are deduplicated by source scan time.</p>
       {mode === 'pull' ? (
         <FormRow label="Source connection" required>
           <input className={`${inputCls} font-mono`} placeholder="https://api.source.example/v1" />
@@ -846,6 +855,7 @@ function ThirdPartyConfig() {
                 <div className="font-mono text-teal break-all">{token}</div>
               </div>
             )}
+            <p className="text-[10px] text-muted-foreground">Push is a standing endpoint that listens for posted data. Save the profile to activate it.</p>
           </div>
         </FormRow>
       )}
@@ -911,14 +921,14 @@ function SSHAuthConfig() {
       <div className="space-y-3">
         <GroupHeader>Discovery scope</GroupHeader>
         <FormRow label="Discover" required><CheckGroup options={['User Keys', 'Host Keys']} value={discover} onChange={setDiscover} /></FormRow>
-        <FormRow label="Scan type" required><Radios options={['Default', 'Full', 'Directory'] as const} value={scanType} onChange={v => setScanType(v)} /></FormRow>
+        <FormRow label="Scan type" required><Radios options={['Default', 'Full', 'Directory'] as const} value={scanType} onChange={setScanType} /></FormRow>
         <FormRow label="Recursive scan"><Toggle checked={recursive} onChange={setRecursive} label="Traverse subdirectories for keys" /></FormRow>
         <FormRow label="Intensive scan"><Toggle checked={intensive} onChange={setIntensive} label="Deeper scan, slower but more thorough" /></FormRow>
       </div>
 
       <div className="space-y-3">
         <GroupHeader>Access and credentials</GroupHeader>
-        <FormRow label="Access type" required><Radios options={['Key', 'Certificate'] as const} value={accessType} onChange={v => setAccessType(v)} /></FormRow>
+        <FormRow label="Access type" required><Radios options={['Key', 'Certificate'] as const} value={accessType} onChange={setAccessType} /></FormRow>
         <FormRow label="DataCenter" required>
           <select value={dataCenter} onChange={e => setDataCenter(e.target.value)} className={selectCls}>
             <option value="">Select…</option>{['absecon', 'us-east-1', 'us-west-2', 'eu-central-1'].map(d => <option key={d}>{d}</option>)}
@@ -927,7 +937,7 @@ function SSHAuthConfig() {
         <FormRow label="Credential type" required>
           <select value={credentialType} onChange={e => setCredentialType(e.target.value)} className={selectCls}>{['Manual Entry', 'Stored Credential'].map(c => <option key={c}>{c}</option>)}</select>
         </FormRow>
-        <FormRow label="Login type" required><Radios options={['Password', 'Identity Key'] as const} value={loginType} onChange={v => setLoginType(v)} /></FormRow>
+        <FormRow label="Login type" required><Radios options={['Password', 'Identity Key'] as const} value={loginType} onChange={setLoginType} /></FormRow>
         <FormRow label="Username" required><input value={username} onChange={e => setUsername(e.target.value)} placeholder="svc-discovery" className={inputCls} /></FormRow>
         <FormRow label={loginType === 'Password' ? 'Password' : 'Identity key'} required>
           {loginType === 'Password'
@@ -941,11 +951,12 @@ function SSHAuthConfig() {
         <FormRow label="Infra Access Group" required>
           <div className="flex-1 max-w-md space-y-1">
             <input value={infraGroup} onChange={e => setInfraGroup(e.target.value)} placeholder="Select or type to add…" className={inputCls.replace('max-w-md', 'w-full')} />
+            <p className="text-[10px] text-muted-foreground">Maps the onboarded host to an Application Infra Access Group. Type a new name and press enter to add.</p>
           </div>
         </FormRow>
         <FormRow label="Host Compliance Group"><select value={hostGroup} onChange={e => setHostGroup(e.target.value)} className={selectCls}>{['Default_Host_Group', 'Prod_Host_Group', 'PCI_Host_Group'].map(g => <option key={g}>{g}</option>)}</select></FormRow>
         <FormRow label="Key Compliance Group"><select value={keyGroup} onChange={e => setKeyGroup(e.target.value)} className={selectCls}>{['Default_Key_Group', 'Prod_Key_Group', 'PCI_Key_Group'].map(g => <option key={g}>{g}</option>)}</select></FormRow>
-        <FormRow label="Inventory action" required><Radios options={['Do Not Move', 'Manage', 'Monitor'] as const} value={inventoryAction} onChange={v => setInventoryAction(v)} /></FormRow>
+        <FormRow label="Inventory action" required><Radios options={['Do Not Move', 'Manage', 'Monitor'] as const} value={inventoryAction} onChange={setInventoryAction} /></FormRow>
       </div>
     </div>
   );
