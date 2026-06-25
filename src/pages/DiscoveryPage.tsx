@@ -433,6 +433,19 @@ export default function DiscoveryPage() {
   const [view, setView] = useState<'list' | 'create'>('list');
   const [tab, setTab] = useState<'profiles' | 'runs'>('profiles');
   const [editingProfile, setEditingProfile] = useState<DiscoveryProfile | null>(null);
+  const { filters, setFilters } = useNav();
+
+  // Deep-link from onboarding: open the create view (where the AI planner lives)
+  // when navigated here with the "ai" discovery intent, then clear the one-shot.
+  useEffect(() => {
+    if (filters?.discoveryIntent === 'ai') {
+      setEditingProfile(null);
+      setView('create');
+      const { discoveryIntent, ...rest } = filters;
+      setFilters(rest);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters?.discoveryIntent]);
 
   const openCreate = (p: DiscoveryProfile | null) => { setEditingProfile(p); setView('create'); };
   const backToList = () => { setView('list'); setEditingProfile(null); };
