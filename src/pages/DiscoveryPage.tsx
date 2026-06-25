@@ -47,11 +47,11 @@ const scanCategories: ScanCategory[] = [
   },
   {
     category: 'Cloud', icon: Cloud,
-    description: 'Crypto posture across AWS and Azure accounts',
+    description: 'Enumerate certificates, keys and secrets across AWS and Azure accounts',
     types: [{
-      value: 'Cloud Crypto Posture Scan', config: 'cloud',
-      description: 'Crypto posture across AWS and Azure: keys, certificates, transit and at-rest posture, and credential hygiene.',
-      discovers: ['KMS Keys', 'Cloud Certificates', 'Transit / At-rest', 'Credential Hygiene'],
+      value: 'Cloud Discovery', config: 'cloud',
+      description: 'Enumerates certificates, keys and secrets across AWS and Azure accounts using the configured cloud connection.',
+      discovers: ['Certificates', 'Keys', 'Secrets handoff'],
     }],
   },
   {
@@ -772,12 +772,11 @@ function CAConfig() {
 }
 
 function CloudConfig() {
-  const [vendor, setVendor] = useState<'AWS' | 'Azure'>('AWS');
-  const [accounts, setAccounts] = useState<string[]>(['']);
-  const [domains, setDomains] = useState<string[]>(['Certificate Posture', 'Key Management Posture']);
+  const CLOUD_CONNECTIONS = ['AWS - prod (123456789012)', 'AWS - sandbox (987654321098)', 'Azure - corp (corp-sub-01)'];
+  const [conns, setConns] = useState<string[]>([CLOUD_CONNECTIONS[0]]);
+  const [objects, setObjects] = useState<string[]>(['Certificates', 'Keys']);
   const [region, setRegion] = useState('');
   const [tag, setTag] = useState('');
-  const [sequential, setSequential] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ label: string; ok: boolean }[] | null>(null);
 
@@ -785,51 +784,34 @@ function CloudConfig() {
     setTesting(true); setTestResult(null);
     setTimeout(() => {
       setTesting(false);
-      setTestResult(domains.map((d, i) => ({ label: d, ok: i % 3 !== 2 })));
+      setTestResult(objects.map((o, i) => ({ label: o, ok: i % 3 !== 2 })));
     }, 1200);
   };
 
-  const broad = domains.length >= 3 && !region.trim();
+  const broad = conns.length > 0 && !region.trim();
 
   return (
     <div className="space-y-3">
-      <FormRow label="Vendor" required>
-        <div className="flex gap-1.5">
-          {(['AWS', 'Azure'] as const).map(v => (
-            <button key={v} onClick={() => { setVendor(v); setTestResult(null); }} className={`px-3 py-1.5 rounded text-xs border ${vendor === v ? 'border-teal bg-teal/10 text-teal' : 'border-border text-muted-foreground hover:bg-secondary'}`}>{v}</button>
-          ))}
-        </div>
+      <FormRow label="Connections" required info="The configured cloud connections to enumerate. Each connection already carries its provider, account or subscription, credentials and role. AWS connections are read per enabled region with a us-east-1 pass for CloudFront and edge certificates. Azure Key Vault and Managed HSM enumeration needs data-plane access, separate from an ARM Reader role.">
+        <CheckGroup options={CLOUD_CONNECTIONS} value={conns} onChange={v => { setConns(v); setTestResult(null); }} />
       </FormRow>
-      <FormRow label="Posture domains">
-        <CheckGroup options={['Certificate Posture', 'Key Management Posture', 'Transit Encryption', 'At-rest Encryption', 'IAM Credential Hygiene']} value={domains} onChange={setDomains} />
+      <FormRow label="Discover" info="Which crypto objects to enumerate. Certificates covers ACM and Key Vault certificates, Keys covers KMS and Key Vault keys, and Secrets handoff routes discovered secret stores to Secrets and Key Store Discovery.">
+        <CheckGroup options={['Certificates', 'Keys', 'Secrets handoff']} value={objects} onChange={setObjects} />
       </FormRow>
-      <FormRow label={vendor === 'AWS' ? 'Accounts' : 'Subscriptions'}>
-        <div className="flex-1 max-w-md space-y-1.5">
-          {accounts.map((a, i) => (
-            <div key={i} className="flex gap-1">
-              <input value={a} onChange={e => { const n = [...accounts]; n[i] = e.target.value; setAccounts(n); }}
-                placeholder={vendor === 'AWS' ? '123456789012' : 'subscription-id'} className={inputCls.replace('max-w-md', 'w-full')} />
-              {accounts.length > 1 && <button onClick={() => setAccounts(accounts.filter((_, j) => j !== i))} className="px-2 text-muted-foreground hover:text-coral"><X className="w-3.5 h-3.5" /></button>}
-            </div>
-          ))}
-          <button onClick={() => setAccounts([...accounts, ''])} className="text-[11px] text-teal flex items-center gap-1 hover:underline"><Plus className="w-3 h-3" /> Add {vendor === 'AWS' ? 'account' : 'subscription'}</button>
-        </div>
+      <FormRow label="Region filter" info="Optional. Limits enumeration to the listed regions. With no filter, every enabled region for each connection is enumerated.">
+        <input value={region} onChange={e => setRegion(e.target.value)} placeholder="us-east-1, eu-west-2 (optional)" className={inputCls} />
       </FormRow>
-      <FormRow label="Region filter">
-        <input value={region} onChange={e => setRegion(e.target.value)} placeholder={vendor === 'AWS' ? 'us-east-1, eu-west-2 (optional)' : 'eastus, westeurope (optional)'} className={inputCls} />
+      <FormRow label="Resource tag filter" info="Optional. Limits enumeration to resources carrying the given tag.">
+        <input value={tag} onChange={e => setTag(e.target.value)} placeholder="env=prod (optional)" className={inputCls} />
       </FormRow>
-      <FormRow label="Resource tag filter"><input value={tag} onChange={e => setTag(e.target.value)} placeholder="env=prod (optional)" className={inputCls} /></FormRow>
-      <FormRow label="Execution"><Toggle checked={sequential} onChange={setSequential} label="Execute batches sequentially" /></FormRow>
-      {vendor === 'AWS' && <p className="text-[10px] text-muted-foreground ml-44">AWS is enumerated per enabled region, with a us-east-1 pass for CloudFront and edge certificates.</p>}
-      {vendor === 'Azure' && <p className="text-[10px] text-muted-foreground ml-44">Azure Key Vault and Managed HSM enumeration needs data-plane access, separate from an ARM Reader role.</p>}
       <FormRow label="">
-        <button onClick={runTest} disabled={testing} className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-secondary disabled:opacity-60">
+        <button onClick={runTest} disabled={testing || conns.length === 0} className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-secondary disabled:opacity-60">
           {testing ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Testing…</> : <><Check className="w-3.5 h-3.5" /> Test connection</>}
         </button>
       </FormRow>
       {testResult && (
         <div className="ml-44 max-w-md space-y-1">
-          <p className="text-[10.5px] text-muted-foreground">Reachable posture domains under this account's data-plane access:</p>
+          <p className="text-[10.5px] text-muted-foreground">Reachable object types under the selected connections:</p>
           {testResult.map(r => (
             <div key={r.label} className="flex items-center gap-2 text-[11.5px]">
               {r.ok ? <Check className="w-3.5 h-3.5 text-teal" /> : <X className="w-3.5 h-3.5 text-amber" />}
@@ -838,7 +820,7 @@ function CloudConfig() {
           ))}
         </div>
       )}
-      {broad && <div className="ml-44 max-w-md"><Advisory>Several posture domains without a region filter will enumerate every enabled region and can be slow.</Advisory></div>}
+      {broad && <div className="ml-44 max-w-md"><Advisory>With no region filter, every enabled region for each selected connection is enumerated and can be slow.</Advisory></div>}
     </div>
   );
 }
