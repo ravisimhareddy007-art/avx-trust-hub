@@ -729,46 +729,42 @@ function NetworkConfig() {
 }
 
 function CAConfig() {
-  const { byType } = useIntegrations();
-  const { setCurrentPage } = useNav();
-  const caIntegrations = byType('CA');
-  const [caAccount, setCaAccount] = useState(caIntegrations[0]?.account ?? '');
-  const [mode, setMode] = useState<'Optimized' | 'Aggressive'>('Optimized');
-  const [status, setStatus] = useState('Issued + Revoked');
+  const GS_INSTANCES = ['GlobalSign Atlas - Production', 'GlobalSign Atlas - Staging'];
+  const [instance, setInstance] = useState(GS_INSTANCES[0]);
+  const [mode, setMode] = useState<'Incremental' | 'Full pull'>('Incremental');
+  const [status, setStatus] = useState('Issued + Revoked + Expired');
+  const [window, setWindow] = useState('Since last run');
 
   return (
     <div className="space-y-3">
-      <FormRow label="CA provider" required>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-foreground px-3 py-2 bg-muted border border-border rounded">GlobalSign Atlas</span>
-          <span className="text-[10px] text-muted-foreground">mTLS + API key/secret · the only CA in MVP scope</span>
-        </div>
+      <FormRow label="CA provider">
+        <span className="text-xs text-foreground pt-2">GlobalSign Atlas</span>
       </FormRow>
-      <FormRow label="CA instance" required>
-        {caIntegrations.length > 0 ? (
-          <select value={caAccount} onChange={e => setCaAccount(e.target.value)} className={selectCls}>
-            {caIntegrations.map(i => <option key={i.account} value={i.account}>{i.account} ({i.name})</option>)}
-          </select>
-        ) : (
-          <button onClick={() => setCurrentPage('integrations')} className="flex items-center gap-1.5 text-xs text-amber hover:underline">
-            <AlertCircle className="w-3.5 h-3.5" /> No GlobalSign connector configured — Go to Integrations →
-          </button>
-        )}
+      <FormRow label="CA instance" required info="The configured GlobalSign Atlas connection the scan pulls issued certificate inventory from. Connections are managed under Integrations.">
+        <select value={instance} onChange={e => setInstance(e.target.value)} className={selectCls}>
+          {GS_INSTANCES.map(i => <option key={i}>{i}</option>)}
+        </select>
       </FormRow>
-      <FormRow label="Scan mode">
+      <FormRow label="Pull mode" info="Incremental fetches only certificates changed since the last run using the Atlas cursor. Full pull re-reads the entire issued set and is slower; use it for a first run or a periodic reconcile.">
         <div className="flex gap-1.5">
-          {(['Optimized', 'Aggressive'] as const).map(m => (
+          {(['Incremental', 'Full pull'] as const).map(m => (
             <button key={m} onClick={() => setMode(m)} className={`px-3 py-1.5 rounded text-xs border ${mode === m ? 'border-teal bg-teal/10 text-teal' : 'border-border text-muted-foreground hover:bg-secondary'}`}>{m}</button>
           ))}
         </div>
       </FormRow>
-      <FormRow label="Status scope">
-        <select value={status} onChange={e => setStatus(e.target.value)} className={selectCls}>
-          {['Issued + Revoked', 'Issued only', 'Revoked only'].map(s => <option key={s}>{s}</option>)}
+      <FormRow label="Issuance window" info="Bounds how far back the scan reads. Since last run continues from the previous run; a fixed window or all time is available for backfills. A first full pull over all time can be large on a high-volume CA.">
+        <select value={window} onChange={e => setWindow(e.target.value)} className={selectCls}>
+          {['Since last run', 'Last 30 days', 'Last 90 days', 'Last 12 months', 'All time'].map(w => <option key={w}>{w}</option>)}
         </select>
       </FormRow>
-      <p className="text-[10px] text-muted-foreground ml-44">Revoked and expired certificates are requested explicitly. Reconciliation with Network Scan is by certificate fingerprint; CA findings carry no deployment locus.</p>
-      {mode === 'Aggressive' && <div className="ml-44 max-w-md"><Advisory>Aggressive performs a full pull each run and is slower. Optimized captures status changes via the Atlas cursor and is recommended for routine schedules.</Advisory></div>}
+      <FormRow label="Status scope" info="Which certificate states are requested. Revoked and expired are pulled explicitly because an expired or revoked certificate still deployed is a posture finding. Reconciliation with Network Scan is by certificate fingerprint; CA findings carry no deployment locus.">
+        <select value={status} onChange={e => setStatus(e.target.value)} className={selectCls}>
+          {['Issued + Revoked + Expired', 'Issued + Revoked', 'Issued only', 'Revoked only', 'Expired only'].map(s => <option key={s}>{s}</option>)}
+        </select>
+      </FormRow>
+      {mode === 'Full pull' && window === 'All time' && (
+        <div className="ml-44 max-w-md"><Advisory>A full pull over all time re-reads every issued certificate and can be slow on a high-volume CA. Incremental or a bounded window is recommended for routine schedules.</Advisory></div>
+      )}
     </div>
   );
 }
