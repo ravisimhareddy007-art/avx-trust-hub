@@ -772,46 +772,57 @@ function CAConfig() {
 }
 
 function CloudConfig() {
-  const CLOUD_CONNECTIONS = ['AWS - prod (123456789012)', 'AWS - sandbox (987654321098)', 'Azure - corp (corp-sub-01)'];
-  const [conns, setConns] = useState<string[]>([CLOUD_CONNECTIONS[0]]);
+  const CONN_BY_PROVIDER: Record<'AWS' | 'Azure', string[]> = {
+    AWS: ['AWS - prod (123456789012)', 'AWS - sandbox (987654321098)'],
+    Azure: ['Azure - corp (corp-sub-01)', 'Azure - sandbox (sandbox-sub-02)'],
+  };
+  const [provider, setProvider] = useState<'AWS' | 'Azure'>('AWS');
+  const [connection, setConnection] = useState(CONN_BY_PROVIDER.AWS[0]);
   const [objects, setObjects] = useState<string[]>(['Certificates', 'Keys']);
   const [region, setRegion] = useState('');
   const [tag, setTag] = useState('');
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ label: string; ok: boolean }[] | null>(null);
 
+  const changeProvider = (p: 'AWS' | 'Azure') => { setProvider(p); setConnection(CONN_BY_PROVIDER[p][0]); setTestResult(null); };
   const runTest = () => {
     setTesting(true); setTestResult(null);
-    setTimeout(() => {
-      setTesting(false);
-      setTestResult(objects.map((o, i) => ({ label: o, ok: i % 3 !== 2 })));
-    }, 1200);
+    setTimeout(() => { setTesting(false); setTestResult(objects.map((o, i) => ({ label: o, ok: i % 3 !== 2 }))); }, 1200);
   };
-
-  const broad = conns.length > 0 && !region.trim();
+  const broad = !region.trim();
+  const connInfo = provider === 'AWS'
+    ? 'The configured AWS connection to enumerate. It carries the account, credentials and role. AWS is read per enabled region with a us-east-1 pass for CloudFront and edge certificates.'
+    : 'The configured Azure connection to enumerate. It carries the subscription, credentials and role. Key Vault and Managed HSM enumeration needs data-plane access, separate from an ARM Reader role.';
 
   return (
     <div className="space-y-3">
-      <FormRow label="Connections" required info="The configured cloud connections to enumerate. Each connection already carries its provider, account or subscription, credentials and role. AWS connections are read per enabled region with a us-east-1 pass for CloudFront and edge certificates. Azure Key Vault and Managed HSM enumeration needs data-plane access, separate from an ARM Reader role.">
-        <CheckGroup options={CLOUD_CONNECTIONS} value={conns} onChange={v => { setConns(v); setTestResult(null); }} />
+      <FormRow label="Provider" required info="The cloud platform to discover from. The selected provider determines which connections are available below.">
+        <select value={provider} onChange={e => changeProvider(e.target.value as 'AWS' | 'Azure')} className={selectCls}>
+          {(['AWS', 'Azure'] as const).map(p => <option key={p} value={p}>{p}</option>)}
+        </select>
+      </FormRow>
+      <FormRow label="Connection" required info={connInfo}>
+        <select value={connection} onChange={e => { setConnection(e.target.value); setTestResult(null); }} className={selectCls}>
+          {CONN_BY_PROVIDER[provider].map(c => <option key={c}>{c}</option>)}
+        </select>
       </FormRow>
       <FormRow label="Discover" info="Which crypto objects to enumerate. Certificates covers ACM and Key Vault certificates, Keys covers KMS and Key Vault keys, and Secrets handoff routes discovered secret stores to Secrets and Key Store Discovery.">
         <CheckGroup options={['Certificates', 'Keys', 'Secrets handoff']} value={objects} onChange={setObjects} />
       </FormRow>
-      <FormRow label="Region filter" info="Optional. Limits enumeration to the listed regions. With no filter, every enabled region for each connection is enumerated.">
-        <input value={region} onChange={e => setRegion(e.target.value)} placeholder="us-east-1, eu-west-2 (optional)" className={inputCls} />
+      <FormRow label="Region filter" info="Optional. Limits enumeration to the listed regions. With no filter, every enabled region for the connection is enumerated.">
+        <input value={region} onChange={e => setRegion(e.target.value)} placeholder={provider === 'AWS' ? 'us-east-1, eu-west-2 (optional)' : 'eastus, westeurope (optional)'} className={inputCls} />
       </FormRow>
       <FormRow label="Resource tag filter" info="Optional. Limits enumeration to resources carrying the given tag.">
         <input value={tag} onChange={e => setTag(e.target.value)} placeholder="env=prod (optional)" className={inputCls} />
       </FormRow>
       <FormRow label="">
-        <button onClick={runTest} disabled={testing || conns.length === 0} className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-secondary disabled:opacity-60">
+        <button onClick={runTest} disabled={testing} className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-secondary disabled:opacity-60">
           {testing ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Testing…</> : <><Check className="w-3.5 h-3.5" /> Test connection</>}
         </button>
       </FormRow>
       {testResult && (
         <div className="ml-44 max-w-md space-y-1">
-          <p className="text-[10.5px] text-muted-foreground">Reachable object types under the selected connections:</p>
+          <p className="text-[10.5px] text-muted-foreground">Reachable object types under the selected connection:</p>
           {testResult.map(r => (
             <div key={r.label} className="flex items-center gap-2 text-[11.5px]">
               {r.ok ? <Check className="w-3.5 h-3.5 text-teal" /> : <X className="w-3.5 h-3.5 text-amber" />}
@@ -820,7 +831,7 @@ function CloudConfig() {
           ))}
         </div>
       )}
-      {broad && <div className="ml-44 max-w-md"><Advisory>With no region filter, every enabled region for each selected connection is enumerated and can be slow.</Advisory></div>}
+      {broad && <div className="ml-44 max-w-md"><Advisory>With no region filter, every enabled region for the selected connection is enumerated and can be slow.</Advisory></div>}
     </div>
   );
 }
