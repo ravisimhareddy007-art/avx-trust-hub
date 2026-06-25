@@ -1,5 +1,5 @@
 import React from 'react';
-import { Globe, Server, Boxes, Shield, Bot, ArrowRight, TrendingUp, TrendingDown, User, Lock } from 'lucide-react';
+import { Globe, Server, Boxes, Shield, ArrowRight, TrendingUp, TrendingDown, User, Lock } from 'lucide-react';
 import { useNav } from '@/context/NavigationContext';
 
 interface GapRow {
@@ -67,18 +67,6 @@ const TILES: Tile[] = [
     gaps: [
       { dimension: 'Ownership',       icon: User, label: 'No owner assigned', enterpriseCount: 12, coverageGap: 'unowned'   },
       { dimension: 'Policy Coverage', icon: Lock, label: 'No active policy',   enterpriseCount: 24, coverageGap: 'no-policy' },
-    ],
-  },
-  {
-    name: 'AI Platforms',
-    assetType: 'AI Platform',
-    icon: Bot,
-    enterpriseTotal: '486',
-    outsidePerimeter: 32,
-    trend: +4.8,
-    gaps: [
-      { dimension: 'Ownership',       icon: User, label: 'No human sponsor', enterpriseCount: 52,  coverageGap: 'unowned'   },
-      { dimension: 'Policy Coverage', icon: Lock, label: 'No active policy',  enterpriseCount: 194, coverageGap: 'no-policy' },
     ],
   },
 ];

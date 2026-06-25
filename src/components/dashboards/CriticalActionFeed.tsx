@@ -1,6 +1,5 @@
-import { FEATURES } from '@/config/features';
 import React, { useState, useMemo } from 'react';
-import { Shield, Key, Bot, Lock, Fingerprint, Globe, AlertTriangle, Clock, Sparkles, Check, ChevronDown, ChevronUp, Layers, Ticket, Lock as LockIcon, Atom } from 'lucide-react';
+import { Shield, Key, Lock, Fingerprint, Globe, AlertTriangle, Clock, Sparkles, Check, ChevronDown, ChevronUp, Layers, Ticket, Lock as LockIcon, Atom } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDashboard, feedItemToDriver } from '@/context/DashboardContext';
 import { useNav } from '@/context/NavigationContext';
@@ -21,7 +20,7 @@ interface RemediationGroup {
 
 interface ActionItem {
   id: string;
-  category: 'Certs' | 'SSH' | 'AI' | 'Secrets' | 'Code Sign' | 'K8s' | 'PQC';
+  category: 'Certs' | 'SSH' | 'Secrets' | 'Code Sign' | 'K8s' | 'PQC';
   icon: React.ComponentType<{ className?: string }>;
   severity: 'P1' | 'P2' | 'P3';
   title: string;
@@ -42,14 +41,6 @@ const FEED: ActionItem[] = [
     aiPlan: 'Renew expiring wildcard certs via DigiCert G2. New certs valid 90 days. Will be deployed to dependent services automatically.',
     approveSummary: `Renew ${fmt(VIOLATION_FILTERS.cert_expiring_7d.enterpriseCount)} expiring certs and roll to dependent services.`,
     ageMins: 12,
-  },
-  {
-    id: '2', category: 'AI', icon: Bot, severity: 'P1',
-    title: `${fmt(VIOLATION_FILTERS.ai_admin_no_rotation.enterpriseCount)} AI tokens with admin privilege — not rotated >30d`,
-    detail: 'Production agents · OpenAI + S3 + Slack write scopes',
-    aiPlan: 'Right-size admin AI tokens. Remove unused scopes. Re-issue tokens, hot-swap via secret manager.',
-    approveSummary: 'Strip unused scopes, rotate tokens in-place.',
-    ageMins: 47,
   },
   {
     id: '3', category: 'SSH', icon: Key, severity: 'P1',
@@ -131,19 +122,6 @@ const FEED: ActionItem[] = [
     ageMins: 720,
   },
   {
-    id: '10', category: 'AI', icon: Bot, severity: 'P3',
-    title: `${fmt(VIOLATION_FILTERS.ai_over_privileged.enterpriseCount)} over-privileged AI agent tokens — unused scopes`,
-    detail: 'Compliance violation · SOC2 control CC6.1',
-    aiPlan: `Strip unused scopes from ${fmt(VIOLATION_FILTERS.ai_over_privileged.enterpriseCount)} tokens. Send confirmation to each sponsor with 7d objection window.`,
-    approveSummary: `Right-size ${fmt(VIOLATION_FILTERS.ai_over_privileged.enterpriseCount)} tokens with confirmation flow.`,
-    ageMins: 1100,
-    remediationGroups: [
-      { ca: 'Okta', caAccount: 'okta-prod', count: 140, environment: 'Production', teams: ['identity-team'], method: 'acme-auto', requiresApproval: true, workflowTemplate: 'Token Sponsor Assignment' },
-      { ca: 'Azure AD', caAccount: 'aad-corp', count: 110, environment: 'Production', teams: ['identity-team'], method: 'acme-auto', requiresApproval: true, workflowTemplate: 'Token Sponsor Assignment' },
-      { ca: 'AWS IAM', caAccount: 'iam-prod', count: 62, environment: 'Production', teams: ['cloud-eng'], method: 'acme-auto', requiresApproval: false, workflowTemplate: 'Token Sponsor Assignment' },
-    ],
-  },
-  {
     id: 'pqc-1', category: 'PQC', icon: Atom, severity: 'P2',
     title: '847 production certs use RSA-2048 and expire after 2030',
     detail: 'DigiCert · payments team · post-NIST-deadline exposure',
@@ -172,20 +150,18 @@ function ageLabel(mins: number) {
   return `${Math.floor(mins / 1440)}d`;
 }
 
-type FilterKey = 'All' | 'Certificates' | 'Secrets' | 'SSH Keys' | 'AI Tokens' | 'Infrastructure' | 'Quantum';
+type FilterKey = 'All' | 'Certificates' | 'Secrets' | 'SSH Keys' | 'Infrastructure' | 'Quantum';
 
 const FILTER_MAP: Record<FilterKey, ActionItem['category'][] | null> = {
   'All': null,
   'Certificates': ['Certs'],
   'Secrets': ['Secrets'],
   'SSH Keys': ['SSH'],
-  'AI Tokens': ['AI'],
   'Infrastructure': ['K8s', 'Code Sign'],
   'Quantum': ['PQC'],
 };
 
-const FILTERS: FilterKey[] = (['All', 'Certificates', 'Secrets', 'SSH Keys', 'AI Tokens', 'Infrastructure', 'Quantum'] as FilterKey[])
-  .filter(f => FEATURES.AI_IDENTITY || f !== 'AI Tokens');
+const FILTERS: FilterKey[] = ['All', 'Certificates', 'Secrets', 'SSH Keys', 'Infrastructure', 'Quantum'];
 
 export default function CriticalActionFeed() {
   const { hoveredDriver, resolvedFeedItems, resolveFeedItem } = useDashboard();
@@ -195,7 +171,7 @@ export default function CriticalActionFeed() {
 
   // Per-filter counts for chip badges (computed once, ignores filter state)
   const counts = useMemo(() => {
-    const c: Record<FilterKey, number> = { 'All': 0, 'Certificates': 0, 'Secrets': 0, 'SSH Keys': 0, 'AI Tokens': 0, 'Infrastructure': 0, 'Quantum': 0 };
+    const c: Record<FilterKey, number> = { 'All': 0, 'Certificates': 0, 'Secrets': 0, 'SSH Keys': 0, 'Infrastructure': 0, 'Quantum': 0 };
     FEED.forEach(item => {
       c['All']++;
       (Object.keys(FILTER_MAP) as FilterKey[]).forEach(k => {
@@ -209,8 +185,7 @@ export default function CriticalActionFeed() {
   // Apply filter, then sort: pending first, queued/resolved at bottom (preserving impact×urgency order within)
   const items = useMemo(() => {
     const cats = FILTER_MAP[filter];
-    const base = FEATURES.AI_IDENTITY ? FEED : FEED.filter(i => i.category !== 'AI');
-    const filtered = cats ? base.filter(i => cats.includes(i.category)) : base;
+    const filtered = cats ? FEED.filter(i => cats.includes(i.category)) : FEED;
     const decorated = filtered.map(item => ({
       ...item,
       highlighted: hoveredDriver != null && feedItemToDriver[item.id] === hoveredDriver,

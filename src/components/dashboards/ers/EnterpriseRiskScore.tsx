@@ -106,7 +106,7 @@ export default function EnterpriseRiskScore() {
             </div>
           </div>
         </div>
-        <span className="text-[10px] text-muted-foreground">updated 2m ago</span>
+        <span className="text-[10px] text-muted-foreground">updated just now</span>
       </div>
 
       {/* Gauge + verdict */}
@@ -123,7 +123,7 @@ export default function EnterpriseRiskScore() {
       {/* Driver contribution bar */}
       <div className="mb-3">
         <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">
-          What's driving ETS
+          What's driving ERS
         </p>
 
         {/* Stacked horizontal bar — each segment proportional to pts */}

@@ -1,8 +1,8 @@
-import { FEATURES } from '@/config/features';
+
 import React from 'react';
 import { useNav } from '@/context/NavigationContext';
 import { ESTATE_SUMMARY, mockAssets } from '@/data/mockData';
-import { Shield, Key, Bot, Lock, ArrowRight, TrendingUp, TrendingDown } from 'lucide-react';
+import { Shield, Key, Lock, ArrowRight, TrendingUp, TrendingDown } from 'lucide-react';
 import { VIOLATION_FILTERS } from '@/lib/filters/cryptoFilters';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -78,22 +78,6 @@ const BANDS: Band[] = [
       { ...VIOLATION_FILTERS.secret_orphaned,       severity: 'medium'   },
     ],
   },
-  {
-    name: 'AI Agent Tokens',
-    type: 'AI Agent Token',
-    icon: Bot,
-    total: ESTATE_SUMMARY.aiAgentTokens.toLocaleString(),
-    atRisk: ESTATE_SUMMARY.aiTokensAtRisk,
-    trend: ESTATE_SUMMARY.aiTrend,
-    severityBreakdown: { critical: 1.4, high: 9.7, medium: 5.8 },
-    topFilter: { type: 'AI Agent Token', tab: 'identities' },
-    violations: [
-      { ...VIOLATION_FILTERS.ai_admin_no_rotation,  severity: 'critical' },
-      { ...VIOLATION_FILTERS.ai_over_privileged,    severity: 'high'     },
-      { ...VIOLATION_FILTERS.ai_no_sponsor,         severity: 'high'     },
-      { ...VIOLATION_FILTERS.ai_no_rotation_policy, severity: 'medium'   },
-    ],
-  },
 ];
 
 const SEV_DOT: Record<ViolationRow['severity'], string> = {
@@ -134,7 +118,7 @@ export default function IdentityHealthBands() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-        {BANDS.filter(b => FEATURES.AI_IDENTITY || b.type !== 'AI Agent Token').map(b => {
+        {BANDS.map(b => {
           const Icon = b.icon;
           const trendValue = parseFloat(b.trend);
           const TrendIcon = trendValue >= 0 ? TrendingUp : TrendingDown;
