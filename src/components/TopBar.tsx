@@ -14,7 +14,7 @@ const breadcrumbMap: Record<string, string> = {
   'trustops': 'Alerts & Logs > TrustOps Center',
   'quantum': 'Policies > Quantum Posture',
   'automation': 'Automation > Workflows',
-  'integrations': 'Automation > Integrations',
+  'integrations': 'Integrations',
   'reporting': 'Administration > Reports',
   'self-service': 'Administration > Self-Service Portal',
   'user-management': 'Administration > User Management',
