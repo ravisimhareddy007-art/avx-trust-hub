@@ -293,8 +293,9 @@ function NewScanTab({ existing, onDone, onCancel }: { existing: DiscoveryProfile
   const resolveConnection = () => {
     if (isSecretsScan) {
       const conn = byVaultType(vaultType).find(c => c.id === vaultAccountId);
-      if (!conn) return null;
-      return { connectionId: conn.id, connectionName: conn.name, resolvedVaultType: conn.vaultType, includes: secretTypes };
+      if (conn) return { connectionId: conn.id, connectionName: conn.name, resolvedVaultType: conn.vaultType, includes: secretTypes };
+      if (vaultAccountId) return { connectionId: vaultAccountId, connectionName: vaultAccountId, resolvedVaultType: vaultType, includes: secretTypes };
+      return null;
     }
     return { connectionId: `inline_${selectedType.config}`, connectionName: selectedType.value, resolvedVaultType: selectedType.value, includes: selectedType.discovers };
   };
@@ -836,82 +837,72 @@ function CloudConfig() {
   );
 }
 
-function SecretsConfig({ vaultType, setVaultType, vaultAccountId, setVaultAccountId, authMethod, setAuthMethod, secretTypes, setSecretTypes }: SecretsProps) {
+function SecretsConfig({ vaultType, setVaultType, vaultAccountId, setVaultAccountId, secretTypes, setSecretTypes }: SecretsProps) {
   const { setCurrentPage } = useNav();
-  const { connections, byVaultType } = useConnections();
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ label: string; ok: boolean }[] | null>(null);
 
-  const PROVIDERS = ['HashiCorp Vault', 'CyberArk Conjur', 'Crypto4A HSM', 'Utimaco HSM', 'AWS Secrets Manager', 'Azure Key Vault'];
-  const PENDING = ['AWS Secrets Manager', 'Azure Key Vault'];
-  const isPending = PENDING.includes(vaultType);
-  const isHsm = /HSM/.test(vaultType);
+  const SECRET_CONNECTIONS = [
+    { name: 'HashiCorp Vault - prod', type: 'HashiCorp Vault', kind: 'vault' as const },
+    { name: 'HashiCorp Vault - dev', type: 'HashiCorp Vault', kind: 'vault' as const },
+    { name: 'CyberArk Conjur - prod', type: 'CyberArk Conjur', kind: 'vault' as const },
+    { name: 'Crypto4A HSM - dc1', type: 'Crypto4A HSM', kind: 'hsm' as const },
+    { name: 'Utimaco HSM - dc1', type: 'Utimaco HSM', kind: 'hsm' as const },
+  ];
+  const vaults = SECRET_CONNECTIONS.filter(c => c.kind === 'vault');
+  const hsms = SECRET_CONNECTIONS.filter(c => c.kind === 'hsm');
+  const selected = SECRET_CONNECTIONS.find(c => c.name === vaultAccountId);
+  const isHsm = selected?.kind === 'hsm';
+  const enumOptions = isHsm ? ['Keys'] : ['Certificates', 'Keys', 'Secrets'];
 
-  const filtered = useMemo(() => byVaultType(vaultType), [connections, vaultType, byVaultType]);
-  const selected = filtered.find(c => c.id === vaultAccountId);
+  const selectConn = (name: string) => {
+    const c = SECRET_CONNECTIONS.find(x => x.name === name);
+    setVaultAccountId(name);
+    if (c) { setVaultType(c.type); setSecretTypes(c.kind === 'hsm' ? ['Keys'] : ['Certificates', 'Keys']); }
+    setTestResult(null);
+  };
 
   const runTest = () => {
     if (!selected) { toast.error('Please select a connection before testing.'); return; }
     setTesting(true); setTestResult(null);
-    setTimeout(() => {
-      setTesting(false);
-      setTestResult(secretTypes.map((t, i) => ({ label: t, ok: i !== 1 })));
-    }, 1300);
+    setTimeout(() => { setTesting(false); setTestResult(secretTypes.map((t, i) => ({ label: t, ok: i !== 1 }))); }, 1300);
   };
 
   return (
     <div className="space-y-3">
-      <FormRow label="Provider" required>
-        <select value={vaultType} onChange={e => { setVaultType(e.target.value); setVaultAccountId(''); setTestResult(null); }} className={selectCls}>
-          {PROVIDERS.map(v => <option key={v}>{v}{PENDING.includes(v) ? ' (integration pending)' : ''}</option>)}
-        </select>
+      <FormRow label="Connection" required info="The configured vault or HSM connection to enumerate. Each connection carries its provider, endpoint, credentials and authentication. Manage connections under Integrations.">
+        <div className="flex-1 max-w-md space-y-1">
+          <select value={vaultAccountId} onChange={e => selectConn(e.target.value)} className={selectCls.replace('max-w-md', 'w-full')}>
+            <option value="">Select a connection…</option>
+            <optgroup label="Vaults">{vaults.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}</optgroup>
+            <optgroup label="HSMs">{hsms.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}</optgroup>
+          </select>
+          <button type="button" onClick={() => setCurrentPage('integrations')} className="text-[10px] text-teal hover:underline">Manage connections in Integrations →</button>
+        </div>
       </FormRow>
-      {isPending && (
-        <div className="ml-44 max-w-md"><Advisory>Secret stores are in scope as a crypto object, but this integration is pending. Enumeration activates once the connector is added.</Advisory></div>
-      )}
-      {!isPending && (
-        <FormRow label="Connection" required>
-          {filtered.length > 0 ? (
-            <select value={vaultAccountId} onChange={e => { setVaultAccountId(e.target.value); setTestResult(null); }} className={selectCls}>
-              <option value="">Select a connection…</option>
-              {filtered.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          ) : (
-            <span className="text-xs text-muted-foreground">No connections configured.{' '}
-              <button type="button" onClick={() => setCurrentPage('integrations')} className="text-teal hover:underline">Set one up in Integrations →</button>
-            </span>
-          )}
-        </FormRow>
-      )}
       {selected && (
-        <FormRow label="">
-          <div className="flex-1 max-w-md bg-secondary/30 border border-border rounded-lg p-3 space-y-1">
-            <div className="text-[13px] font-medium text-foreground">{selected.name}</div>
-            <div className="text-[11px] text-muted-foreground">{selected.vaultType} · <span className="font-mono">{selected.vaultUrl || '—'}</span></div>
-            <div className="text-[11px] text-muted-foreground flex items-center gap-1">Status:{' '}{selected.status === 'connected' ? <span className="text-teal">● Connected</span> : <span className="text-coral">● Disconnected</span>}{' '}· Last verified: {formatRelativeTime(selected.lastVerified)}</div>
-          </div>
+        <FormRow label="Enumerate" info="Which object classes to enumerate. Metadata only; secret values are never extracted. A path that is listable but not readable is reported as partial visibility. SSH key material here is vault-stored, distinct from host keys found by Network Discovery.">
+          <CheckGroup options={enumOptions} value={secretTypes.filter(t => enumOptions.includes(t))} onChange={setSecretTypes} />
         </FormRow>
       )}
-      <FormRow label="Auth method" required>
-        <select value={authMethod} onChange={e => setAuthMethod(e.target.value)} className={selectCls}>
-          {(isHsm ? ['PKCS#11 session', 'Vendor API'] : vaultType === 'CyberArk Conjur' ? ['API Key', 'OAuth'] : ['AppRole', 'Token', 'AWS IAM Auth', 'Kubernetes Auth']).map(a => <option key={a}>{a}</option>)}
-        </select>
-      </FormRow>
-      <FormRow label="Secret types">
-        <CheckGroup options={['Certificates', 'Encryption Keys', 'API Keys', 'SSH Keys', 'Database Credentials', 'Unclassified Secrets']} value={secretTypes} onChange={setSecretTypes} />
-      </FormRow>
-      <FormRow label="Path scoping"><input placeholder={isHsm ? 'partition-1, partition-2 (optional)' : 'secret/data/prod/* (optional)'} className={inputCls} /></FormRow>
-      <p className="text-[10px] text-muted-foreground ml-44">Metadata only; secret values are never extracted. A path that is listable but not readable is reported as partial visibility.{isHsm ? ' HSM keys are enumerated per authenticated partition via PKCS#11.' : ''}</p>
-      {!isPending && (
-        <FormRow label="">
-          <button onClick={runTest} disabled={testing} className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-secondary disabled:opacity-60">
-            {testing ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Testing…</> : <><Check className="w-3.5 h-3.5" /> Test connection</>}
-          </button>
+      {selected && !isHsm && (
+        <FormRow label="Path scoping" info="Optional. Restricts enumeration to the given Vault path prefix.">
+          <input placeholder="secret/data/prod/* (optional)" className={inputCls} />
         </FormRow>
       )}
+      {selected && isHsm && (
+        <FormRow label="Partition scoping" info="Optional. Restricts enumeration to the given PKCS#11 partitions. HSM keys are enumerated per authenticated partition.">
+          <input placeholder="partition-1, partition-2 (optional)" className={inputCls} />
+        </FormRow>
+      )}
+      <FormRow label="">
+        <button onClick={runTest} disabled={testing || !selected} className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-secondary disabled:opacity-60">
+          {testing ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Testing…</> : <><Check className="w-3.5 h-3.5" /> Test connection</>}
+        </button>
+      </FormRow>
       {testResult && (
         <div className="ml-44 max-w-md space-y-1">
-          <p className="text-[10.5px] text-muted-foreground">Accessible secret types for this connection:</p>
+          <p className="text-[10.5px] text-muted-foreground">Accessible object types for this connection:</p>
           {testResult.map(r => (
             <div key={r.label} className="flex items-center gap-2 text-[11.5px]">
               {r.ok ? <Check className="w-3.5 h-3.5 text-teal" /> : <X className="w-3.5 h-3.5 text-amber" />}
