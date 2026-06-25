@@ -33,6 +33,7 @@ import CertHolisticView from '@/pages/CertHolisticView';
 import WorkOrderStatus from '@/pages/WorkOrderStatus';
 import MCPRuntimePage from '@/pages/MCPRuntimePage';
 import PolicyExceptionsPage from '@/pages/PolicyExceptionsPage';
+import { OnboardingStrip, OnboardingConductor } from '@/components/onboarding/OnboardingStrip';
 
 function DashboardPage() {
   const { persona } = usePersona();
@@ -96,9 +97,11 @@ function AppShell() {
       <AppSidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <TopBar />
+        <OnboardingStrip />
         <PageRouter />
       </div>
       <InfinityAIDrawer />
+      <OnboardingConductor />
     </div>
   );
 }
