@@ -238,7 +238,7 @@ export function OnboardingStrip() {
               <React.Fragment key={id}>
                 <div
                   className={[
-                    'flex-1 min-w-0 flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors',
+                    'flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors',
                     isDone ? 'border-teal/30 bg-teal/5' :
                     isActive ? 'border-teal/40 bg-card' :
                     'border-border bg-card/40 opacity-60',
@@ -259,11 +259,14 @@ export function OnboardingStrip() {
                   </div>
 
                   {/* Label */}
-                  <div className="min-w-0 flex-1">
-                    <div className="text-[11px] font-medium text-foreground truncate">
-                      <span className="text-muted-foreground mr-1">Step {meta.step}.</span>{meta.outcome}
+                  <div className="whitespace-nowrap">
+                    <div className="text-[9px] uppercase tracking-wider text-teal font-semibold leading-tight">
+                      Step {meta.step}
                     </div>
-                    <div className="text-[10px] text-muted-foreground truncate">
+                    <div className="text-[11px] font-medium text-foreground leading-tight">
+                      {meta.outcome}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">
                       {statusLine(id, status)}
                     </div>
                   </div>
