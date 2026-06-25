@@ -1,22 +1,31 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useNav } from '@/context/NavigationContext';
-import { Check, Lock, ChevronDown, ChevronUp, X, Plug, Radar, ShieldCheck, ArrowRight } from 'lucide-react';
+import { useIntegrations } from '@/context/IntegrationsContext';
+import { useRuns } from '@/context/DiscoveryContext';
+import {
+  Check, Lock, ChevronDown, ChevronUp, X,
+  Plug, Radar, ShieldCheck, ArrowRight, Sparkles,
+} from 'lucide-react';
 
 // ============================================================================
-// DAY-0 ONBOARDING: context + strip (single file).
+// DAY-0 ONBOARDING: context + thin strip (canonical implementation).
 //
-// A clean, enterprise wayfinding guide. Three steps, each opening the real page.
-// No assistant, no modal, no fabricated state. A step completes when its page
-// has been visited. Session-only. Retires on completion or dismissal.
+// Outcome-driven wayfinding, not a product checklist. Each step states the
+// business outcome and opens the real page where the rich detail lives. Progress
+// is REAL: the connect step reflects how many sources are actually connected and
+// the discover step reflects whether a discovery has actually completed.
 //
-// This file is the canonical implementation. OnboardingContext.tsx re-exports
-// the provider/hook/types from here; OnboardingConductor.tsx is a no-op.
+// Once a source is connected, the Discover step offers BOTH paths, honestly:
+//   - "Run discovery" opens the manual Discovery flow.
+//   - "Use AI" opens Discovery's existing AI planner (the create view), via a
+//     one-shot nav intent. No fabricated AI, just a deep-link to the real planner.
+//
+// No estimates, no fabricated counts. Session-only; retires on completion/dismiss.
 // ============================================================================
 
 export type StageId = 'connect' | 'discover' | 'govern';
 export const STAGE_ORDER: StageId[] = ['connect', 'discover', 'govern'];
 export type StageStatus = 'locked' | 'active' | 'done';
-// Kept for backwards-compatible re-exports from OnboardingContext.tsx.
 export type EstateChoice = string;
 export type ConcernChoice = string;
 
@@ -47,7 +56,19 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   const [expanded, setExpanded] = useState(true);
   const [seen, setSeen] = useState<Set<StageId>>(new Set());
 
-  const done = seen;
+  // Real signals. A step is complete when its real outcome exists OR the user
+  // has visited the page (an honest "you have been here", not fabricated success).
+  const { connected } = useIntegrations();
+  const { runs } = useRuns();
+  const hasConnection = connected.length > 0;
+  const hasCompletedRun = runs.some(r => r.status === 'completed');
+
+  const done = useMemo(() => {
+    const d = new Set<StageId>(seen);
+    if (hasConnection) d.add('connect');
+    if (hasCompletedRun) d.add('discover');
+    return d;
+  }, [seen, hasConnection, hasCompletedRun]);
 
   const currentStage = useMemo<StageId | null>(() => {
     for (const s of STAGE_ORDER) if (!done.has(s)) return s;
@@ -81,42 +102,64 @@ export function useOnboarding() {
   return c;
 }
 
-// ============================================================================
-// Strip
-// ============================================================================
+// Outcome-driven copy. The CTA states the business outcome; the page it opens
+// holds the rich detail (source catalog, recommended order, scan results, AI planner).
 const STAGE_META: Record<StageId, {
-  step: number; title: string; icon: React.ComponentType<{ className?: string }>;
-  todo: string; done: string; cta: string;
+  step: number;
+  icon: React.ComponentType<{ className?: string }>;
+  outcome: string;
+  todo: string;
+  cta: string;
 }> = {
   connect: {
-    step: 1, title: 'Connect a source', icon: Plug,
-    todo: 'Establish your first integration', done: 'Integration configured',
-    cta: 'Open Integrations',
+    step: 1, icon: Plug,
+    outcome: 'Connect your environment',
+    todo: 'Bring your certificate and key sources into view',
+    cta: 'Connect sources',
   },
   discover: {
-    step: 2, title: 'Run discovery', icon: Radar,
-    todo: 'Inventory certificates and keys', done: 'Discovery configured',
-    cta: 'Open Discovery',
+    step: 2, icon: Radar,
+    outcome: 'Inventory certificates and keys',
+    todo: 'Find what you have and what you are missing',
+    cta: 'Run discovery',
   },
   govern: {
-    step: 3, title: 'Define a policy', icon: ShieldCheck,
-    todo: 'Set posture and compliance rules', done: 'Policy configured',
-    cta: 'Open Policies',
+    step: 3, icon: ShieldCheck,
+    outcome: 'Protect your environment',
+    todo: 'Alert on expiry, weak crypto, and compliance gaps',
+    cta: 'Set up alerts',
   },
 };
 
 export function OnboardingStrip() {
   const o = useOnboarding();
-  const { setCurrentPage } = useNav();
+  const { setCurrentPage, setFilters, filters } = useNav();
+  const { connected } = useIntegrations();
 
   if (!o.visible) return null;
 
-  const goToStage = (id: StageId) => {
+  const goToStage = (id: StageId, withAI = false) => {
+    if (id === 'discover' && withAI) {
+      setFilters({ ...filters, discoveryIntent: 'ai' });
+    }
     setCurrentPage(STAGE_TO_PAGE[id]);
     o.markSeen(id);
   };
 
   const doneCount = STAGE_ORDER.filter(s => o.stageStatus(s) === 'done').length;
+  const connectedCount = connected.length;
+
+  const statusLine = (id: StageId, status: StageStatus): string => {
+    if (id === 'connect') {
+      return connectedCount > 0
+        ? `${connectedCount} source${connectedCount === 1 ? '' : 's'} connected`
+        : STAGE_META.connect.todo;
+    }
+    if (id === 'discover') {
+      return status === 'done' ? 'Inventory available' : STAGE_META.discover.todo;
+    }
+    return status === 'done' ? 'Protection active' : STAGE_META.govern.todo;
+  };
 
   // ---- Complete ----
   if (o.allComplete) {
@@ -126,14 +169,16 @@ export function OnboardingStrip() {
           <Check className="w-3.5 h-3.5 text-teal" />
         </div>
         <div className="text-[12px] text-foreground flex-1">
-          <span className="font-medium">Setup complete.</span>{' '}
-          <span className="text-muted-foreground">Your trust posture is now populated across the dashboard.</span>
+          <span className="font-medium">You are protected.</span>{' '}
+          <span className="text-muted-foreground">
+            Sources connected, inventory built, and alerting in place. Your posture is live on the dashboard.
+          </span>
         </div>
         <button
           onClick={() => setCurrentPage('dashboards')}
           className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-md bg-teal text-white font-medium hover:bg-teal/90 whitespace-nowrap flex-shrink-0"
         >
-          Go to dashboard <ArrowRight className="w-3 h-3" />
+          View posture <ArrowRight className="w-3 h-3" />
         </button>
         <button onClick={o.dismiss} className="text-muted-foreground hover:text-foreground p-1" aria-label="Dismiss">
           <X className="w-3.5 h-3.5" />
@@ -147,7 +192,7 @@ export function OnboardingStrip() {
     const cur = o.currentStage ? STAGE_META[o.currentStage] : null;
     return (
       <div className="flex items-center gap-3 px-4 py-2 border-b border-border bg-card/60">
-        <div className="text-[12px] font-medium text-foreground flex-shrink-0">Guided setup</div>
+        <div className="text-[12px] font-medium text-foreground flex-shrink-0">Getting started</div>
         <div className="text-[12px] text-muted-foreground flex-1">
           {doneCount} of 3 complete
         </div>
@@ -169,16 +214,14 @@ export function OnboardingStrip() {
     );
   }
 
-  // ---- Expanded ----
-  // Layout is overflow-safe: the steps area scrolls horizontally if the viewport
-  // is too narrow, and every fixed element is flex-shrink-0 so nothing clips.
+  // ---- Expanded (thin, outcome-driven, overflow-safe) ----
   return (
     <div className="border-b border-border bg-card/60">
       <div className="px-4 py-3 flex items-start gap-4">
         {/* Title block */}
         <div className="flex-shrink-0 pt-1">
-          <div className="text-[12px] font-semibold text-foreground leading-tight">Guided setup</div>
-          <div className="text-[10.5px] text-muted-foreground leading-tight">Three steps to your first trust posture</div>
+          <div className="text-[12px] font-semibold text-foreground leading-tight">Get to your first trust posture</div>
+          <div className="text-[10.5px] text-muted-foreground leading-tight">Connect, inventory, protect</div>
         </div>
 
         {/* Steps: horizontally scrollable safety net on narrow widths */}
@@ -190,6 +233,7 @@ export function OnboardingStrip() {
             const isLocked = status === 'locked';
             const isDone = status === 'done';
             const isActive = status === 'active';
+            const showAI = id === 'discover' && isActive;
             return (
               <React.Fragment key={id}>
                 <div
@@ -217,28 +261,39 @@ export function OnboardingStrip() {
                   {/* Label */}
                   <div className="min-w-0 flex-1">
                     <div className="text-[11px] font-medium text-foreground truncate">
-                      <span className="text-muted-foreground mr-1">Step {meta.step}.</span>{meta.title}
+                      <span className="text-muted-foreground mr-1">Step {meta.step}.</span>{meta.outcome}
                     </div>
                     <div className="text-[10px] text-muted-foreground truncate">
-                      {isDone ? meta.done : meta.todo}
+                      {statusLine(id, status)}
                     </div>
                   </div>
 
-                  {/* Action */}
+                  {/* Actions */}
                   {isActive && (
-                    <button
-                      onClick={() => goToStage(id)}
-                      className="flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-md bg-teal text-white font-medium hover:bg-teal/90 whitespace-nowrap flex-shrink-0 ml-1"
-                    >
-                      {meta.cta} <ArrowRight className="w-2.5 h-2.5" />
-                    </button>
+                    <div className="flex items-center gap-1.5 flex-shrink-0 ml-1">
+                      <button
+                        onClick={() => goToStage(id)}
+                        className="flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-md bg-teal text-white font-medium hover:bg-teal/90 whitespace-nowrap"
+                      >
+                        {meta.cta} <ArrowRight className="w-2.5 h-2.5" />
+                      </button>
+                      {showAI && (
+                        <button
+                          onClick={() => goToStage(id, true)}
+                          title="Plan this discovery with AI"
+                          className="flex items-center gap-1 text-[10px] px-2 py-1.5 rounded-md border border-teal/40 text-teal font-medium hover:bg-teal/10 whitespace-nowrap"
+                        >
+                          <Sparkles className="w-3 h-3" /> Use AI
+                        </button>
+                      )}
+                    </div>
                   )}
                   {isDone && (
                     <button
                       onClick={() => goToStage(id)}
                       className="text-[10px] px-2 py-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted/30 whitespace-nowrap flex-shrink-0 ml-1"
                     >
-                      Open
+                      Review
                     </button>
                   )}
                 </div>
@@ -266,5 +321,4 @@ export function OnboardingStrip() {
   );
 }
 
-// Default export too, so either import style works.
 export default OnboardingStrip;
