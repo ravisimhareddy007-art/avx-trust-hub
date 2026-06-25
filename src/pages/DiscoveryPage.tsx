@@ -516,6 +516,39 @@ function Advisory({ children }: { children: React.ReactNode }) {
 const DEFAULT_PORTS = '443, 8443, 22, 636, 993, 995, 3389, 500, 4500, 6443';
 const PORT_PRESETS = ['443', '8443', '22', '636', '993', '995', '3389', '500', '4500', '6443'];
 
+type ScanTuning = { pps: string; concurrency: string; rtt: string; retries: string; hostTimeout: string; probeDelay: string; batch: string; service: string; aliveDetect: boolean; sequential: boolean };
+const INTENSITY_PRESETS: Record<'Conservative' | 'Balanced' | 'Aggressive', ScanTuning> = {
+  Conservative: { pps: '100', concurrency: '20', rtt: '2000', retries: '2', hostTimeout: '30', probeDelay: '100', batch: '128', service: 'Normal', aliveDetect: true, sequential: true },
+  Balanced: { pps: '500', concurrency: '40', rtt: '1000', retries: '2', hostTimeout: '10', probeDelay: '10', batch: '256', service: 'Normal', aliveDetect: true, sequential: false },
+  Aggressive: { pps: '2000', concurrency: '80', rtt: '500', retries: '1', hostTimeout: '5', probeDelay: '0', batch: '512', service: 'Deep', aliveDetect: true, sequential: false },
+};
+
+function Modal({ title, onClose, children, footer }: { title: string; onClose: () => void; children: React.ReactNode; footer?: React.ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={onClose}>
+      <div className="w-full max-w-lg rounded-lg border border-border bg-card shadow-xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+        </div>
+        <div className="px-4 py-4 max-h-[70vh] overflow-y-auto">{children}</div>
+        {footer && <div className="flex justify-end gap-2 px-4 py-3 border-t border-border">{footer}</div>}
+      </div>
+    </div>
+  );
+}
+
+function MiniField({ label, value, onChange, options, unit }: { label: string; value: string; onChange: (v: string) => void; options: string[]; unit?: string }) {
+  return (
+    <div>
+      <label className="block text-[10px] text-muted-foreground mb-1">{label}</label>
+      <select value={value} onChange={e => onChange(e.target.value)} className="w-full px-2 py-1.5 bg-muted border border-border rounded text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal">
+        {options.map(o => <option key={o} value={o}>{o}{unit ? ` ${unit}` : ''}</option>)}
+      </select>
+    </div>
+  );
+}
+
 function NetworkConfig() {
   const [targets, setTargets] = useState('');
   const [sni, setSni] = useState('');
@@ -523,7 +556,12 @@ function NetworkConfig() {
   const [ports, setPorts] = useState(DEFAULT_PORTS);
   const [tlsVersions, setTlsVersions] = useState<string[]>(['TLS 1.0', 'TLS 1.1', 'TLS 1.2', 'TLS 1.3']);
   const [depth, setDepth] = useState<'Quick' | 'Deep' | 'Full'>('Deep');
-  const [intensity, setIntensity] = useState<'Conservative' | 'Balanced' | 'Aggressive'>('Balanced');
+  const [intensity, setIntensity] = useState<'Conservative' | 'Balanced' | 'Aggressive' | 'Custom'>('Balanced');
+  const [tuning, setTuning] = useState<ScanTuning>(INTENSITY_PRESETS.Balanced);
+  const [showSettings, setShowSettings] = useState(false);
+
+  const applyPreset = (name: 'Conservative' | 'Balanced' | 'Aggressive') => { setIntensity(name); setTuning(INTENSITY_PRESETS[name]); };
+  const setField = (patch: Partial<ScanTuning>) => { setTuning(t => ({ ...t, ...patch })); setIntensity('Custom'); };
 
   const portList = ports.split(',').map(s => s.trim()).filter(Boolean);
   const togglePort = (p: string) => {
@@ -587,19 +625,51 @@ function NetworkConfig() {
       </div>
 
       <div className="space-y-3">
-        <GroupHeader info="Preset for how aggressively the probe runs against the network. Detailed pacing, concurrency, retry and batch values use a platform-managed profile behind each preset.">Execution</GroupHeader>
+        <GroupHeader info="Preset for how aggressively the probe runs against the network. Each preset maps to specific pacing, concurrency and timeout values, shown under Advanced settings, where they can be overridden per scan.">Execution</GroupHeader>
         <FormRow label="Scan intensity">
-          <div className="flex gap-1.5">
-            {(['Conservative', 'Balanced', 'Aggressive'] as const).map(i => (
-              <button key={i} onClick={() => setIntensity(i)}
-                className={`px-3 py-1.5 rounded text-xs border ${intensity === i ? 'border-teal bg-teal/10 text-teal' : 'border-border text-muted-foreground hover:bg-secondary'}`}>{i}</button>
-            ))}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex gap-1.5">
+              {(['Conservative', 'Balanced', 'Aggressive'] as const).map(i => (
+                <button key={i} onClick={() => applyPreset(i)}
+                  className={`px-3 py-1.5 rounded text-xs border ${intensity === i ? 'border-teal bg-teal/10 text-teal' : 'border-border text-muted-foreground hover:bg-secondary'}`}>{i}</button>
+              ))}
+              {intensity === 'Custom' && <span className="px-3 py-1.5 rounded text-xs border border-teal bg-teal/10 text-teal">Custom</span>}
+            </div>
+            <button onClick={() => setShowSettings(true)} className="text-[11px] text-teal hover:underline ml-1">Advanced settings</button>
           </div>
         </FormRow>
       </div>
 
       {ipOnly && <div className="ml-44 max-w-md"><Advisory>IP-only targeting can miss SNI-served certificates. Add FQDN targets or SNI hostnames for complete TLS discovery; reduced coverage is not confirmed absence.</Advisory></div>}
       {broad && <div className="ml-44 max-w-md"><Advisory>Full depth across a broad port list multiplies handshakes and revocation lookups per endpoint and will take longer.</Advisory></div>}
+
+      {showSettings && (
+        <Modal title="Scan execution settings" onClose={() => setShowSettings(false)}
+          footer={<button onClick={() => setShowSettings(false)} className="px-4 py-2 rounded-lg bg-teal text-primary-foreground text-xs font-semibold hover:bg-teal-light">Done</button>}>
+          <p className="text-[11px] text-muted-foreground mb-3">Presets set these values. Adjusting any field switches intensity to Custom. Pacing applies to the scan engine only and does not change what is discovered.</p>
+          <div className="flex gap-1.5 mb-4">
+            {(['Conservative', 'Balanced', 'Aggressive'] as const).map(i => (
+              <button key={i} onClick={() => applyPreset(i)}
+                className={`px-3 py-1.5 rounded text-xs border ${intensity === i ? 'border-teal bg-teal/10 text-teal' : 'border-border text-muted-foreground hover:bg-secondary'}`}>{i}</button>
+            ))}
+            {intensity === 'Custom' && <span className="px-3 py-1.5 rounded text-xs border border-teal bg-teal/10 text-teal">Custom</span>}
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <MiniField label="Packets per second" value={tuning.pps} onChange={v => setField({ pps: v })} options={['100', '250', '500', '1000', '2000', '4000']} />
+            <MiniField label="Concurrent probes" value={tuning.concurrency} onChange={v => setField({ concurrency: v })} options={['20', '40', '60', '80', '100']} />
+            <MiniField label="RTT timeout" value={tuning.rtt} onChange={v => setField({ rtt: v })} options={['500', '1000', '2000', '5000']} unit="ms" />
+            <MiniField label="Max retries" value={tuning.retries} onChange={v => setField({ retries: v })} options={['0', '1', '2', '3']} />
+            <MiniField label="Host timeout" value={tuning.hostTimeout} onChange={v => setField({ hostTimeout: v })} options={['5', '10', '30', '60']} unit="s" />
+            <MiniField label="Probe delay" value={tuning.probeDelay} onChange={v => setField({ probeDelay: v })} options={['0', '10', '50', '100', '200']} unit="ms" />
+            <MiniField label="IPs per batch" value={tuning.batch} onChange={v => setField({ batch: v })} options={['64', '128', '256', '512']} />
+            <MiniField label="Service detection" value={tuning.service} onChange={v => setField({ service: v })} options={['Normal', 'Deep']} />
+          </div>
+          <div className="flex flex-col gap-2 mt-4 pt-3 border-t border-border">
+            <Toggle checked={tuning.aliveDetect} onChange={v => setField({ aliveDetect: v })} label="Alive host detection before port scan" />
+            <Toggle checked={tuning.sequential} onChange={v => setField({ sequential: v })} label="Execute batches sequentially" />
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -921,14 +991,14 @@ function SSHAuthConfig() {
       <div className="space-y-3">
         <GroupHeader>Discovery scope</GroupHeader>
         <FormRow label="Discover" required><CheckGroup options={['User Keys', 'Host Keys']} value={discover} onChange={setDiscover} /></FormRow>
-        <FormRow label="Scan type" required><Radios options={['Default', 'Full', 'Directory'] as const} value={scanType} onChange={v => setScanType(v as any)} /></FormRow>
+        <FormRow label="Scan type" required><Radios options={['Default', 'Full', 'Directory'] as const} value={scanType} onChange={setScanType} /></FormRow>
         <FormRow label="Recursive scan"><Toggle checked={recursive} onChange={setRecursive} label="Traverse subdirectories for keys" /></FormRow>
         <FormRow label="Intensive scan"><Toggle checked={intensive} onChange={setIntensive} label="Deeper scan, slower but more thorough" /></FormRow>
       </div>
 
       <div className="space-y-3">
         <GroupHeader>Access and credentials</GroupHeader>
-        <FormRow label="Access type" required><Radios options={['Key', 'Certificate'] as const} value={accessType} onChange={v => setAccessType(v as any)} /></FormRow>
+        <FormRow label="Access type" required><Radios options={['Key', 'Certificate'] as const} value={accessType} onChange={setAccessType} /></FormRow>
         <FormRow label="DataCenter" required>
           <select value={dataCenter} onChange={e => setDataCenter(e.target.value)} className={selectCls}>
             <option value="">Select…</option>{['absecon', 'us-east-1', 'us-west-2', 'eu-central-1'].map(d => <option key={d}>{d}</option>)}
@@ -937,7 +1007,7 @@ function SSHAuthConfig() {
         <FormRow label="Credential type" required>
           <select value={credentialType} onChange={e => setCredentialType(e.target.value)} className={selectCls}>{['Manual Entry', 'Stored Credential'].map(c => <option key={c}>{c}</option>)}</select>
         </FormRow>
-        <FormRow label="Login type" required><Radios options={['Password', 'Identity Key'] as const} value={loginType} onChange={v => setLoginType(v as any)} /></FormRow>
+        <FormRow label="Login type" required><Radios options={['Password', 'Identity Key'] as const} value={loginType} onChange={setLoginType} /></FormRow>
         <FormRow label="Username" required><input value={username} onChange={e => setUsername(e.target.value)} placeholder="svc-discovery" className={inputCls} /></FormRow>
         <FormRow label={loginType === 'Password' ? 'Password' : 'Identity key'} required>
           {loginType === 'Password'
@@ -956,7 +1026,7 @@ function SSHAuthConfig() {
         </FormRow>
         <FormRow label="Host Compliance Group"><select value={hostGroup} onChange={e => setHostGroup(e.target.value)} className={selectCls}>{['Default_Host_Group', 'Prod_Host_Group', 'PCI_Host_Group'].map(g => <option key={g}>{g}</option>)}</select></FormRow>
         <FormRow label="Key Compliance Group"><select value={keyGroup} onChange={e => setKeyGroup(e.target.value)} className={selectCls}>{['Default_Key_Group', 'Prod_Key_Group', 'PCI_Key_Group'].map(g => <option key={g}>{g}</option>)}</select></FormRow>
-        <FormRow label="Inventory action" required><Radios options={['Do Not Move', 'Manage', 'Monitor'] as const} value={inventoryAction} onChange={v => setInventoryAction(v as any)} /></FormRow>
+        <FormRow label="Inventory action" required><Radios options={['Do Not Move', 'Manage', 'Monitor'] as const} value={inventoryAction} onChange={setInventoryAction} /></FormRow>
       </div>
     </div>
   );
