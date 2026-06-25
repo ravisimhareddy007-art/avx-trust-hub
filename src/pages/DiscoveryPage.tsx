@@ -715,7 +715,7 @@ function NetworkConfig() {
             </div>
 
             <div className="space-y-3">
-              <GroupHeader info="Batching of the overall discovery run.">Advanced</GroupHeader>
+              <GroupHeader info="Batching of the overall discovery run.">Batching</GroupHeader>
               <div className="grid grid-cols-2 gap-3">
                 <MiniField label="IPs per batch" value={tuning.batch} onChange={v => setField({ batch: v })} options={BATCH_OPTS} />
               </div>
@@ -1168,7 +1168,7 @@ function InfoTip({ text }: { text: string }) {
   return (
     <span className="group relative inline-flex items-center align-middle ml-1">
       <Info className="w-3 h-3 text-muted-foreground/70 hover:text-teal cursor-help" />
-      <span className="pointer-events-none absolute left-1/2 top-full z-50 mt-1.5 w-60 -translate-x-1/2 rounded-md border border-border bg-popover px-2.5 py-1.5 text-[10.5px] leading-snug text-popover-foreground text-left normal-case font-normal tracking-normal opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
+      <span className="pointer-events-none absolute left-0 top-full z-50 mt-1.5 w-60 rounded-md border border-border bg-popover px-2.5 py-1.5 text-[10.5px] leading-snug text-popover-foreground text-left normal-case font-normal tracking-normal opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
         {text}
       </span>
     </span>
