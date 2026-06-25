@@ -10,7 +10,7 @@ import {
 import { toast } from 'sonner';
 import {
   Search, RefreshCw, Plus, Play, Database, Radar, ShieldCheck, Cloud, Lock,
-  Activity, Copy, Edit, Calendar, Filter, X, Check, AlertCircle, AlertTriangle, ArrowLeft, Info,
+  Activity, Copy, Edit, Calendar, Filter, X, Check, AlertCircle, AlertTriangle, ArrowLeft, Info, Sparkles,
 } from 'lucide-react';
 
 // ============================================================================
@@ -73,6 +73,207 @@ const scanCategories: ScanCategory[] = [
     }],
   },
 ];
+
+// ============================================================================
+// AI-NATIVE NL DISCOVERY: deterministic intent parser (MVP, offline)
+// Maps a natural-language sentence to a draft discovery config. Never runs a
+// scan. Pre-fills the existing form, which stays the source of truth.
+// v2 swap point: replace parseIntent's body with an in-artifact LLM call that
+// returns the same DiscoveryIntent shape behind this interface. Treat model
+// output as an untrusted draft the user still confirms. Do not build that here.
+// ============================================================================
+
+// Connections the parser is allowed to reference. These mirror what the config
+// panels and Integrations already expose. The parser never invents a connection
+// and never accepts a secret, endpoint or token inline.
+const NL_CLOUD_CONNECTIONS: { provider: 'AWS' | 'Azure'; name: string; env: 'prod' | 'nonprod' }[] = [
+  { provider: 'AWS', name: 'AWS - prod (123456789012)', env: 'prod' },
+  { provider: 'AWS', name: 'AWS - sandbox (987654321098)', env: 'nonprod' },
+  { provider: 'Azure', name: 'Azure - corp (corp-sub-01)', env: 'prod' },
+  { provider: 'Azure', name: 'Azure - sandbox (sandbox-sub-02)', env: 'nonprod' },
+];
+const NL_SECRET_CONNECTIONS: { name: string; type: string; kind: 'vault' | 'hsm'; env: 'prod' | 'nonprod'; aliases: string[] }[] = [
+  { name: 'HashiCorp Vault - prod', type: 'HashiCorp Vault', kind: 'vault', env: 'prod', aliases: ['hashicorp', 'vault'] },
+  { name: 'HashiCorp Vault - dev', type: 'HashiCorp Vault', kind: 'vault', env: 'nonprod', aliases: ['hashicorp', 'vault'] },
+  { name: 'CyberArk Conjur - prod', type: 'CyberArk Conjur', kind: 'vault', env: 'prod', aliases: ['cyberark', 'conjur'] },
+  { name: 'Crypto4A HSM - dc1', type: 'Crypto4A HSM', kind: 'hsm', env: 'prod', aliases: ['crypto4a', 'hsm'] },
+  { name: 'Utimaco HSM - dc1', type: 'Utimaco HSM', kind: 'hsm', env: 'prod', aliases: ['utimaco', 'hsm'] },
+];
+
+type PrefillNetwork = { kind: 'network'; tlsVersions?: string[]; objectsNote?: string };
+type PrefillCA = { kind: 'ca'; status?: string };
+type PrefillCloud = { kind: 'cloud'; provider?: 'AWS' | 'Azure'; connection?: string; objects?: string[] };
+type PrefillSecrets = { kind: 'secrets'; connectionName?: string; vaultType?: string; enumerate?: string[] };
+type PrefillThirdParty = { kind: 'thirdparty'; sourceType?: 'Vulnerability Scanner' | 'CBOM' };
+type Prefill = PrefillNetwork | PrefillCA | PrefillCloud | PrefillSecrets | PrefillThirdParty | null;
+
+interface DiscoveryIntent {
+  matched: boolean;            // false => keep form untouched
+  category: string;            // scanCategories[].category
+  type: string;                // ScanType.value
+  prefill: Prefill;            // panel-specific pre-fill payload
+  summary: string[];           // teal banner: what was set
+  flags: string[];             // amber lines: unresolved / dropped / scope notes
+  alternates: string[];        // "or did you mean" when method signal is weak
+}
+
+const LIFECYCLE_VERBS = /\b(rotate|rotat|renew|revoke|remediat|reissue|re-issue|delete|deprovision|decommission)\b/i;
+const OUT_OF_SCOPE = /\b(gcp|google cloud|oracle cloud|oci|ibm cloud|ot |ot device|scada|plc|firmware|iot device)\b/i;
+
+function parseIntent(raw: string): DiscoveryIntent {
+  const text = raw.trim();
+  const t = text.toLowerCase();
+  const none: DiscoveryIntent = { matched: false, category: '', type: '', prefill: null, summary: [], flags: [], alternates: [] };
+
+  if (text.length < 3 || !/[a-z0-9]/i.test(text)) {
+    return { ...none, flags: ['Nothing to interpret. Describe what to discover, for example "TLS certificates in AWS production".'] };
+  }
+
+  // Lifecycle verbs: discovery is monitor-only. Refuse, do not map.
+  if (LIFECYCLE_VERBS.test(t)) {
+    return { ...none, flags: ['Discovery is monitor-only. Lifecycle actions like rotate, renew, revoke or remediate run from the remediation module, not from a scan.'] };
+  }
+
+  const flags: string[] = [];
+
+  // Out-of-scope platforms: name the gap rather than mis-mapping.
+  if (OUT_OF_SCOPE.test(t)) {
+    flags.push('Part of this request is outside MVP scope (only AWS and Azure clouds, and the listed vaults, HSMs, CA and scanners are supported). The unsupported portion was ignored.');
+  }
+
+  // Method signals (scored; strongest wins).
+  const has = (re: RegExp) => re.test(t);
+  const scores: Record<string, number> = { network: 0, sshauth: 0, ca: 0, cloud: 0, secrets: 0, thirdparty: 0 };
+  if (has(/\b(tls|ssl|certificate|cert|endpoint|https|cipher)\b/)) scores.network += 1;
+  if (has(/\b(network|subnet|cidr|ip range|ip address|internal network|probe|scan the network)\b/)) scores.network += 2;
+  if (has(/\b(ssh|host key|user key|authorized key)\b/)) scores.sshauth += 3;
+  if (has(/\b(ca|issued|issuer|globalsign|atlas|chain of trust)\b/)) scores.ca += 2;
+  if (has(/\brevoked\b/) && has(/\b(ca|globalsign|atlas|issued|from)\b/)) scores.ca += 2;
+  if (has(/\b(aws|azure|cloud|kms|acm|key vault|keyvault|managed hsm|s3|ec2|account)\b/)) scores.cloud += 2;
+  if (has(/\b(vault|hsm|secret|secrets|hashicorp|conjur|cyberark|crypto4a|utimaco|key store|keystore)\b/)) scores.secrets += 2;
+  if (has(/\b(cbom|cyclonedx|qualys|tenable|vulnerability|scanner finding|bom)\b/)) scores.thirdparty += 3;
+
+  // Disambiguate vault/HSM vs cloud Key Vault: a named vault product beats generic cloud.
+  if (has(/\b(hashicorp|conjur|cyberark|crypto4a|utimaco)\b/)) scores.cloud = Math.max(0, scores.cloud - 2);
+  // "key vault" as Azure service should not over-trigger Secrets unless a vault product is named.
+  if (has(/\b(azure|key vault|keyvault)\b/) && !has(/\b(hashicorp|conjur|cyberark|crypto4a|utimaco)\b/)) scores.secrets = Math.max(0, scores.secrets - 1);
+
+  const ranked = Object.entries(scores).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+  if (ranked.length === 0) {
+    return { ...none, flags: ['Could not map that to a discovery method. Pick a method below to configure manually.'] };
+  }
+
+  const [topKey, topScore] = ranked[0];
+  const second = ranked[1];
+  const alternates: string[] = [];
+  // Only offer an alternate on a genuine tie. A clear lead does not prompt "did you mean".
+  if (second && second[1] === topScore) {
+    alternates.push(configToLabel(second[0] as ConfigKey));
+  }
+
+  // Multiple distinct strong methods named in one sentence: note the dropped one.
+  const strong = ranked.filter(([, v]) => v >= 2);
+  if (strong.length > 1) {
+    const dropped = strong.slice(1).map(([k]) => configToLabel(k as ConfigKey));
+    flags.push(`One method runs per discovery. Mapped to the strongest signal; not mapped this run: ${dropped.join(', ')}.`);
+  }
+
+  return buildIntent(topKey as ConfigKey, t, flags, alternates);
+}
+
+function configToLabel(key: ConfigKey): string {
+  for (const cat of scanCategories) for (const ty of cat.types) if (ty.config === key) return ty.value;
+  return key;
+}
+function categoryForConfig(key: ConfigKey): { category: string; type: string } {
+  for (const cat of scanCategories) for (const ty of cat.types) if (ty.config === key) return { category: cat.category, type: ty.value };
+  return { category: scanCategories[0].category, type: scanCategories[0].types[0].value };
+}
+
+function buildIntent(key: ConfigKey, t: string, flags: string[], alternates: string[]): DiscoveryIntent {
+  const { category, type } = categoryForConfig(key);
+  const summary: string[] = [`Method: ${type}`];
+  const wantsProd = /\b(prod|production)\b/.test(t);
+  const wantsNonProd = /\b(dev|sandbox|staging|non-prod|nonprod|test)\b/.test(t);
+
+  const objType = (): string[] => {
+    const o: string[] = [];
+    if (/\b(tls|ssl|certificate|cert)\b/.test(t)) o.push('Certificates');
+    if (/\b(key|keys|kms)\b/.test(t) && !/\b(host key|user key)\b/.test(t)) o.push('Keys');
+    if (/\bsecret/.test(t)) o.push('Secrets');
+    return o;
+  };
+
+  switch (key) {
+    case 'network': {
+      const pf: PrefillNetwork = { kind: 'network' };
+      const hasTarget = /\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\/\d{1,2}\b|cidr|subnet|[a-z0-9-]+\.[a-z]{2,})\b/.test(t);
+      if (/\b(weak|legacy|old protocol|tls 1\.0|tls 1\.1|deprecated)\b/.test(t)) { pf.tlsVersions = ['TLS 1.0', 'TLS 1.1', 'TLS 1.2', 'TLS 1.3']; summary.push('TLS versions: probe all four (surfaces weak protocol support)'); }
+      summary.push('Targets: left for you to confirm');
+      if (!hasTarget) flags.push('Network Scan needs an IP, CIDR or FQDN target. Add the target range before running; an address range is never assumed.');
+      pf.objectsNote = 'Network Scan reports TLS, SSH, IPsec/VPN and Kubernetes posture across the configured ports.';
+      return { matched: true, category, type, prefill: pf, summary, flags, alternates };
+    }
+    case 'sshauth': {
+      summary.push('Authenticated SSH onboarding: host and user keys');
+      flags.push('Authenticated SSH scan needs an IP range and stored credentials, set below. Credentials come from Integrations and are never entered through this prompt.');
+      return { matched: true, category, type, prefill: null, summary, flags, alternates };
+    }
+    case 'ca': {
+      const pf: PrefillCA = { kind: 'ca' };
+      if (/\brevoked\b/.test(t) && !/\bexpired\b/.test(t) && !/\bissued\b/.test(t)) { pf.status = 'Revoked only'; summary.push('Certificate status: Revoked only'); }
+      else if (/\bexpired\b/.test(t) && !/\brevoked\b/.test(t)) { pf.status = 'Expired only'; summary.push('Certificate status: Expired only'); }
+      else { summary.push('Certificate status: Issued + Revoked + Expired'); }
+      if (/\brevoked\b/.test(t) && /\bactive\b/.test(t)) flags.push('Conflicting status requested (revoked and active). Confirm the certificate status filter below; nothing was silently dropped.');
+      summary.push('Source: GlobalSign Atlas');
+      return { matched: true, category, type, prefill: pf, summary, flags, alternates };
+    }
+    case 'cloud': {
+      const pf: PrefillCloud = { kind: 'cloud' };
+      const provider: 'AWS' | 'Azure' | null = /\baws\b/.test(t) ? 'AWS' : /\bazure\b/.test(t) ? 'Azure' : null;
+      if (provider) { pf.provider = provider; summary.push(`Provider: ${provider}`); }
+      let objs = objType().filter(o => o !== 'Secrets');
+      if (/\bsecret/.test(t)) objs.push('Secrets handoff');
+      if (objs.length === 0) objs = ['Certificates', 'Keys'];
+      pf.objects = objs; summary.push(`Discover: ${objs.join(', ')}`);
+      if (provider) {
+        const envPref: 'prod' | 'nonprod' | null = wantsProd ? 'prod' : wantsNonProd ? 'nonprod' : null;
+        const pool = NL_CLOUD_CONNECTIONS.filter(c => c.provider === provider);
+        const pick = envPref ? pool.find(c => c.env === envPref) : null;
+        if (pick) { pf.connection = pick.name; summary.push(`Connection: ${pick.name}`); }
+        else if (envPref === 'prod') { flags.push(`No ${provider} production connection is configured. Provider set; pick a connection below or add one in Integrations.`); }
+        else { summary.push('Connection: first available, confirm below'); }
+      } else {
+        flags.push('Cloud provider not stated. Choose AWS or Azure below.');
+      }
+      if (/\bunsupported\b|\boauth token\b/.test(t)) flags.push('OAuth tokens are not a discovered object type; mapped to the nearest in-scope objects. Adjust below.');
+      return { matched: true, category, type, prefill: pf, summary, flags, alternates };
+    }
+    case 'secrets': {
+      const pf: PrefillSecrets = { kind: 'secrets' };
+      const envPref: 'prod' | 'nonprod' | null = wantsProd ? 'prod' : wantsNonProd ? 'nonprod' : null;
+      const named = NL_SECRET_CONNECTIONS.find(c => c.aliases.some(a => t.includes(a)) && (envPref ? c.env === envPref : true))
+        || NL_SECRET_CONNECTIONS.find(c => c.aliases.some(a => t.includes(a)));
+      if (named) {
+        pf.connectionName = named.name; pf.vaultType = named.type;
+        pf.enumerate = named.kind === 'hsm' ? ['Keys'] : (/\bsecret/.test(t) ? ['Secrets'] : /\bcert/.test(t) ? ['Certificates'] : ['Certificates', 'Keys']);
+        summary.push(`Connection: ${named.name}`);
+        summary.push(`Enumerate: ${pf.enumerate.join(', ')}`);
+        if (wantsProd && named.env !== 'prod') flags.push('No production connection matched the named store. Closest available was selected; confirm below.');
+      } else {
+        flags.push('No matching vault or HSM connection was found. Select one below; connections are managed in Integrations.');
+      }
+      if (/\boauth token\b|\bapi token\b/.test(t)) flags.push('Token objects are enumerated as Secrets metadata only; values are never extracted.');
+      return { matched: true, category, type, prefill: pf, summary, flags, alternates };
+    }
+    case 'thirdparty': {
+      const pf: PrefillThirdParty = { kind: 'thirdparty' };
+      if (/\b(cbom|cyclonedx|bom)\b/.test(t)) { pf.sourceType = 'CBOM'; summary.push('Source type: CBOM (CycloneDX 1.6)'); }
+      else { pf.sourceType = 'Vulnerability Scanner'; summary.push('Source type: Vulnerability Scanner'); }
+      return { matched: true, category, type, prefill: pf, summary, flags, alternates };
+    }
+  }
+}
 
 // ============================================================================
 // MAIN PAGE
@@ -273,6 +474,12 @@ function NewScanTab({ existing, onDone, onCancel }: { existing: DiscoveryProfile
   const [authMethod, setAuthMethod] = useState('AppRole');
   const [secretTypes, setSecretTypes] = useState<string[]>(existing?.includes ?? ['Certificates', 'Encryption Keys']);
 
+  // NL discovery: interpreted intent + a nonce so config panels re-apply prefill
+  const [nlText, setNlText] = useState('');
+  const [intent, setIntent] = useState<DiscoveryIntent | null>(null);
+  const [prefill, setPrefill] = useState<Prefill>(null);
+  const [prefillNonce, setPrefillNonce] = useState(0);
+
   const { addProfile, updateProfile } = useProfiles();
   const { addRun, updateRun } = useRuns();
 
@@ -317,12 +524,13 @@ function NewScanTab({ existing, onDone, onCancel }: { existing: DiscoveryProfile
       });
       profileId = prof.id; savedProfileName = prof.name;
     }
+    const fromNl = intent?.matched === true;
     const run = addRun({ profileId, profileName: savedProfileName, connectionId, connectionName, vaultType: resolvedVaultType, category: activeCategory, includes, triggeredBy: 'manual' });
     setTimeout(() => {
       const items = 50 + Math.floor(Math.random() * 451);
       updateRun(run.id, { status: 'completed', completedAt: Date.now(), itemsDiscovered: items });
     }, 2000);
-    toast.success('Discovery started. View progress in Discovery Runs.');
+    toast.success('Discovery started. View progress in Discovery Runs.', fromNl ? { description: 'Originated from a natural-language prompt; resolved config shown above.' } : undefined);
     resetForm(); onDone('runs');
   };
 
@@ -341,6 +549,26 @@ function NewScanTab({ existing, onDone, onCancel }: { existing: DiscoveryProfile
     resetForm(); onDone('profiles');
   };
 
+  const interpret = (text: string) => {
+    const result = parseIntent(text);
+    setIntent(result);
+    if (!result.matched) { setPrefill(null); return; }
+    const cat = scanCategories.find(c => c.category === result.category)!;
+    const ty = cat.types.find(x => x.value === result.type) ?? cat.types[0];
+    setActiveCategory(cat.category);
+    setSelectedType(ty);
+    setPrefill(result.prefill);
+    setPrefillNonce(n => n + 1);
+    // Secrets state is lifted; apply its prefill directly.
+    if (result.prefill?.kind === 'secrets') {
+      if (result.prefill.connectionName) { setVaultAccountId(result.prefill.connectionName); if (result.prefill.vaultType) setVaultType(result.prefill.vaultType); }
+      if (result.prefill.enumerate) setSecretTypes(result.prefill.enumerate);
+    }
+    setTimeout(() => document.getElementById('discovery-config-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+  };
+
+  const clearInterpretation = () => { setIntent(null); setPrefill(null); setNlText(''); };
+
   const handleUpdate = () => {
     if (!existing) return;
     if (!discoveryName.trim()) { toast.error('Profile name is required'); return; }
@@ -355,6 +583,72 @@ function NewScanTab({ existing, onDone, onCancel }: { existing: DiscoveryProfile
 
   return (
     <div className="space-y-4">
+      {/* AI-native NL discovery: describe intent, get a reviewable draft config */}
+      <div className="bg-card rounded-lg border border-border p-4 space-y-2.5">
+        <div className="flex items-center gap-1.5">
+          <Sparkles className="w-3.5 h-3.5 text-teal" />
+          <h2 className="text-sm font-semibold text-teal">Describe what to discover</h2>
+          <InfoTip text="Type the discovery you want in plain language. The assistant selects a method and pre-fills its configuration for you to review and edit. It never starts a scan on its own and runs only under your existing permissions." />
+        </div>
+        <p className="text-[11px] text-muted-foreground">Produces a draft you confirm. The form below stays the source of truth; nothing runs until you press Start Discovery.</p>
+        <div className="flex gap-2">
+          <input
+            value={nlText}
+            onChange={e => setNlText(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') interpret(nlText); }}
+            placeholder='e.g. Discover all TLS certificates in my AWS production accounts'
+            className="flex-1 px-3 py-2 bg-muted border border-border rounded text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal" />
+          <button onClick={() => interpret(nlText)} disabled={!nlText.trim()}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-teal text-primary-foreground text-xs font-semibold hover:bg-teal-light disabled:opacity-50">
+            <Sparkles className="w-3.5 h-3.5" /> Interpret
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {['Discover all TLS certificates in my AWS production accounts', 'Find revoked certs from GlobalSign', 'List secrets in HashiCorp prod vault'].map(ex => (
+            <button key={ex} onClick={() => { setNlText(ex); interpret(ex); }}
+              className="text-[10px] px-2 py-1 rounded-full border border-border bg-muted text-muted-foreground hover:border-teal/40 hover:text-teal">{ex}</button>
+          ))}
+        </div>
+        <p className="text-[10px] text-muted-foreground/80">Runs under your existing permissions. Interpretation maps intent only; it cannot widen access or accept credentials.</p>
+      </div>
+
+      {/* Interpretation result banner */}
+      {intent && (
+        <div className={`rounded-lg border p-3.5 space-y-2 ${intent.matched ? 'border-teal/40 bg-teal/5' : 'border-amber/40 bg-amber/10'}`}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-1.5">
+              {intent.matched
+                ? <Sparkles className="w-3.5 h-3.5 text-teal" />
+                : <AlertTriangle className="w-3.5 h-3.5 text-amber" />}
+              <p className={`text-xs font-semibold ${intent.matched ? 'text-teal' : 'text-amber'}`}>
+                {intent.matched ? 'Draft configuration ready for review' : 'Nothing was pre-filled'}
+              </p>
+            </div>
+            <button onClick={clearInterpretation} className="text-[10px] text-muted-foreground hover:text-foreground">Clear</button>
+          </div>
+          {intent.matched && intent.summary.length > 0 && (
+            <ul className="space-y-0.5">
+              {intent.summary.map((s, i) => (
+                <li key={i} className="flex items-start gap-1.5 text-[11px] text-foreground">
+                  <Check className="w-3 h-3 text-teal flex-shrink-0 mt-0.5" /><span>{s}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {intent.alternates.length > 0 && (
+            <p className="text-[11px] text-muted-foreground">Or did you mean: {intent.alternates.join(', ')}? Pick that method above to switch.</p>
+          )}
+          {intent.flags.map((f, i) => (
+            <div key={i} className="flex items-start gap-1.5 text-[11px] text-amber leading-snug">
+              <AlertTriangle className="w-3 h-3 flex-shrink-0 mt-0.5" /><span>{f}</span>
+            </div>
+          ))}
+          {intent.matched && (
+            <p className="text-[10px] text-muted-foreground/80 pt-0.5">Review and edit the fields below, then Start Discovery. Editing is never blocked by this summary.</p>
+          )}
+        </div>
+      )}
+
       {/* Method selector */}
       <div className="bg-card rounded-lg border border-border overflow-hidden">
         <div className="px-3 py-2 border-b border-border bg-secondary/30"><p className="text-[11px] font-semibold text-foreground">Select discovery method</p></div>
@@ -397,9 +691,9 @@ function NewScanTab({ existing, onDone, onCancel }: { existing: DiscoveryProfile
       </div>
 
       {/* Config panel */}
-      <div className="bg-card rounded-lg border border-border p-4 space-y-3">
+      <div id="discovery-config-panel" className="bg-card rounded-lg border border-border p-4 space-y-3">
         <h2 className="text-sm font-semibold text-teal">{selectedType.value} configuration</h2>
-        <ConfigPanel configKey={selectedType.config}
+        <ConfigPanel configKey={selectedType.config} prefill={prefill} prefillNonce={prefillNonce}
           secretsProps={{ vaultType, setVaultType, vaultAccountId, setVaultAccountId, authMethod, setAuthMethod, secretTypes, setSecretTypes }} />
       </div>
 
@@ -474,14 +768,14 @@ interface SecretsProps {
   secretTypes: string[]; setSecretTypes: (v: string[]) => void;
 }
 
-function ConfigPanel({ configKey, secretsProps }: { configKey: ConfigKey; secretsProps: SecretsProps }) {
+function ConfigPanel({ configKey, prefill, prefillNonce, secretsProps }: { configKey: ConfigKey; prefill: Prefill; prefillNonce: number; secretsProps: SecretsProps }) {
   switch (configKey) {
-    case 'network':    return <NetworkConfig />;
+    case 'network':    return <NetworkConfig prefill={prefill?.kind === 'network' ? prefill : null} nonce={prefillNonce} />;
     case 'sshauth':    return <SSHAuthConfig />;
-    case 'ca':         return <CAConfig />;
-    case 'cloud':      return <CloudConfig />;
+    case 'ca':         return <CAConfig prefill={prefill?.kind === 'ca' ? prefill : null} nonce={prefillNonce} />;
+    case 'cloud':      return <CloudConfig prefill={prefill?.kind === 'cloud' ? prefill : null} nonce={prefillNonce} />;
     case 'secrets':    return <SecretsConfig {...secretsProps} />;
-    case 'thirdparty': return <ThirdPartyConfig />;
+    case 'thirdparty': return <ThirdPartyConfig prefill={prefill?.kind === 'thirdparty' ? prefill : null} nonce={prefillNonce} />;
     default: return null;
   }
 }
@@ -572,7 +866,7 @@ function MiniField({ label, value, onChange, options, unit }: { label: string; v
   );
 }
 
-function NetworkConfig() {
+function NetworkConfig({ prefill, nonce }: { prefill: PrefillNetwork | null; nonce: number }) {
   const [targets, setTargets] = useState('');
   const [sni, setSni] = useState('');
   const [excludes, setExcludes] = useState('');
@@ -582,6 +876,11 @@ function NetworkConfig() {
   const [intensity, setIntensity] = useState<'Conservative' | 'Balanced' | 'Aggressive' | 'Custom'>('Balanced');
   const [tuning, setTuning] = useState<ScanTuning>(INTENSITY_PRESETS.Balanced);
   const [showSettings, setShowSettings] = useState(false);
+
+  useEffect(() => {
+    if (!prefill) return;
+    if (prefill.tlsVersions) setTlsVersions(prefill.tlsVersions);
+  }, [nonce]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const applyPreset = (name: 'Conservative' | 'Balanced' | 'Aggressive') => { setIntensity(name); setTuning(INTENSITY_PRESETS[name]); };
   const setField = (patch: Partial<ScanTuning>) => { setTuning(t => ({ ...t, ...patch })); setIntensity('Custom'); };
@@ -729,12 +1028,16 @@ function NetworkConfig() {
   );
 }
 
-function CAConfig() {
+function CAConfig({ prefill, nonce }: { prefill: PrefillCA | null; nonce: number }) {
   const GS_INSTANCES = ['GlobalSign Atlas - Production', 'GlobalSign Atlas - Staging'];
   const [instance, setInstance] = useState(GS_INSTANCES[0]);
   const [mode, setMode] = useState<'Incremental' | 'Full sync'>('Incremental');
   const [status, setStatus] = useState('Issued + Revoked + Expired');
   const [window, setWindow] = useState('Since last run');
+
+  useEffect(() => {
+    if (prefill?.status) setStatus(prefill.status);
+  }, [nonce]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="space-y-3">
@@ -772,7 +1075,7 @@ function CAConfig() {
   );
 }
 
-function CloudConfig() {
+function CloudConfig({ prefill, nonce }: { prefill: PrefillCloud | null; nonce: number }) {
   const CONN_BY_PROVIDER: Record<'AWS' | 'Azure', string[]> = {
     AWS: ['AWS - prod (123456789012)', 'AWS - sandbox (987654321098)'],
     Azure: ['Azure - corp (corp-sub-01)', 'Azure - sandbox (sandbox-sub-02)'],
@@ -784,6 +1087,15 @@ function CloudConfig() {
   const [tag, setTag] = useState('');
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ label: string; ok: boolean }[] | null>(null);
+
+  useEffect(() => {
+    if (!prefill) return;
+    const p = prefill.provider ?? 'AWS';
+    setProvider(p);
+    setConnection(prefill.connection && CONN_BY_PROVIDER[p].includes(prefill.connection) ? prefill.connection : CONN_BY_PROVIDER[p][0]);
+    if (prefill.objects) setObjects(prefill.objects);
+    setTestResult(null);
+  }, [nonce]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const changeProvider = (p: 'AWS' | 'Azure') => { setProvider(p); setConnection(CONN_BY_PROVIDER[p][0]); setTestResult(null); };
   const runTest = () => {
@@ -915,11 +1227,15 @@ function SecretsConfig({ vaultType, setVaultType, vaultAccountId, setVaultAccoun
   );
 }
 
-function ThirdPartyConfig() {
+function ThirdPartyConfig({ prefill, nonce }: { prefill: PrefillThirdParty | null; nonce: number }) {
   const [sourceType, setSourceType] = useState<'Vulnerability Scanner' | 'CBOM'>('Vulnerability Scanner');
   const [scanner, setScanner] = useState('Qualys Production');
   const [cbomInput, setCbomInput] = useState<'Upload' | 'Push endpoint'>('Upload');
   const [token, setToken] = useState('');
+
+  useEffect(() => {
+    if (prefill?.sourceType) { setSourceType(prefill.sourceType); setToken(''); }
+  }, [nonce]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const genToken = () => setToken(Array.from({ length: 24 }, () => '0123456789abcdef'[Math.floor(Math.random() * 16)]).join(''));
   const pickType = (t: 'Vulnerability Scanner' | 'CBOM') => { setSourceType(t); setToken(''); };
