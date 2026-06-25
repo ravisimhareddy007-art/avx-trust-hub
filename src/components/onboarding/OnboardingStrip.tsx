@@ -121,7 +121,6 @@ const STAGE_META: Record<StageId, {
 export function OnboardingStrip() {
   const o = useOnboarding();
   const { setCurrentPage, setFilters, filters } = useNav();
-  const { connected } = useIntegrations();
 
   if (!o.visible) return null;
 
