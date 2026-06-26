@@ -5,10 +5,10 @@ export type BusinessImpact = 'Critical' | 'High' | 'Moderate' | 'Low';
 
 // Business Impact multiplier used by RPS (sort key, never displayed as a score).
 export const BI_MULTIPLIER: Record<BusinessImpact, number> = {
-  Critical: 1.5,
-  High:     1.25,
-  Moderate: 1.0,
-  Low:      0.75,
+  Critical: 1.15,
+  High:     1.07,
+  Moderate: 1.00,
+  Low:      0.90,
 };
 
 // ECRS-style severity bands (re-used so dashboard + inventory speak one language).
