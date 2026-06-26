@@ -50,7 +50,7 @@ export default function GroupDetailView({ group, onBack, onOpenPolicyDrawer }: G
     id: `rem-${a.id}`, asset: a, violation: a.pqcRisk === 'Critical' ? 'Quantum-vulnerable algorithm' : a.daysToExpiry < 30 && a.daysToExpiry >= 0 ? 'Certificate expiring' : 'Policy violation',
     action: a.pqcRisk === 'Critical' ? 'Migrate to ML-KEM' : a.daysToExpiry < 30 ? 'Auto-renew' : 'Assign owner',
     severity: a.pqcRisk === 'Critical' ? 'Critical' : a.daysToExpiry < 7 ? 'Critical' : 'High',
-    status: Math.random() > 0.6 ? 'Pending' : Math.random() > 0.5 ? 'In Progress' : 'Completed',
+    status: ((a.id.charCodeAt(a.id.length - 1) % 3) === 0 ? 'Pending' : (a.id.charCodeAt(a.id.length - 1) % 3) === 1 ? 'In Progress' : 'Completed'),
   }));
   const completedPct = remTasks.length > 0 ? Math.round(remTasks.filter(t => t.status === 'Completed').length / remTasks.length * 100) : 100;
 
