@@ -20,7 +20,8 @@ export default function SecurityAdminDashboard() {
 
   return (
     <DashboardProvider>
-      <div className="space-y-0">
+      <RiskProvider>
+        <div className="space-y-0">
 
         {/* Page header */}
         <div className="flex items-end justify-between pt-1 pb-3 flex-shrink-0">
