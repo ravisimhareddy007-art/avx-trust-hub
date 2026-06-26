@@ -106,7 +106,7 @@ export default function SecurityAdminDashboard() {
           </div>
         </div>
       </div>
-
+      </RiskProvider>
     </DashboardProvider>
   );
 }
