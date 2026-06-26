@@ -5,7 +5,7 @@ import { useInventoryRegistry } from '@/context/InventoryRegistryContext';
 import { useAgent } from '@/context/AgentContext';
 import { useRisk } from '@/context/RiskContext';
 import { useNav } from '@/context/NavigationContext';
-import { arsFor } from '@/lib/risk/ars';
+import { arsFor, arsScore } from '@/lib/risk/ars';
 import { computeRPS } from '@/lib/risk/rps';
 import { StatusBadge, EnvBadge, DaysToExpiry, SeverityBadge } from '@/components/shared/UIComponents';
 import { Search, Server, Database, Globe, Shield, ShieldOff, ChevronDown, ChevronRight, MoreVertical, X, Ticket, RefreshCw, XCircle, RotateCcw, User, Plus, FileEdit, ArrowUpDown, AlertTriangle, Maximize2, FileBadge, KeyRound, Lock, Bot, Info, Atom, ArrowRight } from 'lucide-react';
@@ -115,7 +115,8 @@ function ITAssetDetailPanel({ asset, identities, violations, onClose, onBlastRad
   const classic = violations.filter(v => v.violationType === 'classic');
   const pqc = violations.filter(v => v.violationType === 'pqc');
   const totalViolations = classic.length + pqc.length;
-  const riskCol = asset.riskScore > 70 ? 'text-coral' : asset.riskScore > 40 ? 'text-amber' : 'text-teal';
+  const assetARS = arsScore(asset);
+  const riskCol = assetARS > 70 ? 'text-coral' : assetARS > 40 ? 'text-amber' : 'text-teal';
 
   return (
     <div className="fixed inset-0 z-50 flex">
@@ -150,7 +151,7 @@ function ITAssetDetailPanel({ asset, identities, violations, onClose, onBlastRad
           <div className="grid grid-cols-3 gap-2">
             <div className="bg-card rounded-lg px-3 py-2 border border-border/50">
               <div className="flex items-center gap-1">
-                <span className={`text-[18px] font-bold tabular-nums ${riskCol}`}>{asset.riskScore}</span>
+                <span className={`text-[18px] font-bold tabular-nums ${riskCol}`}>{assetARS}</span>
                 <button onClick={onRiskDrawer} className="p-0.5 mt-1">
                   <Info className="w-3 h-3 text-muted-foreground/50 hover:text-muted-foreground" />
                 </button>
