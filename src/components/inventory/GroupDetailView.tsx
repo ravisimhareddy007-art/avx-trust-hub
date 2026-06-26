@@ -40,14 +40,17 @@ export default function GroupDetailView({ group, onBack, onOpenPolicyDrawer }: G
     { label: 'AI Identity Trust (AIT)', score: 85, weight: 0.05 },
   ];
 
-  const trendData = Array.from({ length: 30 }, (_, i) => ({ day: i, score: Math.max(30, group.riskScore - 15 + Math.floor(Math.random() * 30) + Math.floor(i * 0.3)) }));
+  const trendData = Array.from({ length: 30 }, (_, i) => {
+    const wave = Math.round(7 * Math.sin(i * 0.6) + 5 * Math.sin(i * 0.21));
+    return { day: i, score: Math.max(30, Math.min(100, group.riskScore - 8 + wave + Math.floor(i * 0.3))) };
+  });
 
   // Remediation tasks
   const remTasks = violatingAssets.map(a => ({
     id: `rem-${a.id}`, asset: a, violation: a.pqcRisk === 'Critical' ? 'Quantum-vulnerable algorithm' : a.daysToExpiry < 30 && a.daysToExpiry >= 0 ? 'Certificate expiring' : 'Policy violation',
     action: a.pqcRisk === 'Critical' ? 'Migrate to ML-KEM' : a.daysToExpiry < 30 ? 'Auto-renew' : 'Assign owner',
     severity: a.pqcRisk === 'Critical' ? 'Critical' : a.daysToExpiry < 7 ? 'Critical' : 'High',
-    status: Math.random() > 0.6 ? 'Pending' : Math.random() > 0.5 ? 'In Progress' : 'Completed',
+    status: ((a.id.charCodeAt(a.id.length - 1) % 3) === 0 ? 'Pending' : (a.id.charCodeAt(a.id.length - 1) % 3) === 1 ? 'In Progress' : 'Completed'),
   }));
   const completedPct = remTasks.length > 0 ? Math.round(remTasks.filter(t => t.status === 'Completed').length / remTasks.length * 100) : 100;
 
