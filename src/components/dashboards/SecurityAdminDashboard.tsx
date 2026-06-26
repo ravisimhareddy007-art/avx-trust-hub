@@ -3,6 +3,7 @@ import { RefreshCw, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { useNotifications } from '@/context/NotificationContext';
 import { useNav } from '@/context/NavigationContext';
 import { DashboardProvider } from '@/context/DashboardContext';
+import { RiskProvider } from '@/context/RiskContext';
 import { toast } from 'sonner';
 import EnterpriseRiskScore from './ers/EnterpriseRiskScore';
 import CriticalActionFeed from './CriticalActionFeed';
@@ -19,7 +20,8 @@ export default function SecurityAdminDashboard() {
 
   return (
     <DashboardProvider>
-      <div className="space-y-0">
+      <RiskProvider>
+        <div className="space-y-0">
 
         {/* Page header */}
         <div className="flex items-end justify-between pt-1 pb-3 flex-shrink-0">
@@ -104,7 +106,7 @@ export default function SecurityAdminDashboard() {
           </div>
         </div>
       </div>
-
+      </RiskProvider>
     </DashboardProvider>
   );
 }
