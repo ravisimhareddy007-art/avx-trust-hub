@@ -35,21 +35,26 @@ export const mockITAssets: ITAsset[] = [
   { id: 'it-015', name: 'ai-platform.eks-prod', type: 'AI Platform', scanned: true, environment: 'Production', ownerTeam: 'AI Engineering', cryptoObjectIds: ['ai-001', 'ai-002', 'ai-003', 'ai-005'], riskScore: 55, criticalViolations: 1, policyCoverage: 50, lastSeen: '2026-04-14 09:09', managedBy: 'Kubernetes', infrastructure: 'aws-eks-ai-cluster', application: 'AI Platform' },
   { id: 'it-ai-01', name: 'mcp-server-platform.prod', type: 'AI Platform', scanned: true, environment: 'Production', ownerTeam: 'AI Engineering', cryptoObjectIds: ['ai-005', 'ai-006', 'ai-ns01'], riskScore: 72, criticalViolations: 2, policyCoverage: 40, lastSeen: '2026-04-14 09:10', managedBy: 'Kubernetes', infrastructure: 'gcp-cloud-run', application: 'MCP Server Platform' },
   { id: 'it-ai-02', name: 'llm-gateway.acmecorp.com', type: 'AI Platform', scanned: true, environment: 'Production', ownerTeam: 'AI Engineering', cryptoObjectIds: ['ai-007', 'ai-008', 'ai-adm01', 'ai-nr01'], riskScore: 68, criticalViolations: 2, policyCoverage: 60, lastSeen: '2026-04-14 09:08', managedBy: 'Terraform', infrastructure: 'aws-bedrock', application: 'LLM Gateway' },
+
   // ── API Gateways — unscanned, unowned, zero coverage ─────────────────────
   { id: 'it-gw-01', name: 'legacy-api-gw-01.internal', type: 'API Gateway', scanned: false, environment: 'Production', ownerTeam: 'Unassigned', cryptoObjectIds: [], riskScore: 0, criticalViolations: 0, policyCoverage: 0, lastSeen: 'Never', managedBy: 'Unknown', infrastructure: 'on-prem-dc2', application: 'Legacy API Gateway' },
   { id: 'it-gw-02', name: 'partner-api-gw.acmecorp.com', type: 'API Gateway', scanned: false, environment: 'Production', ownerTeam: 'Unassigned', cryptoObjectIds: [], riskScore: 0, criticalViolations: 0, policyCoverage: 0, lastSeen: 'Never', managedBy: 'Unknown', infrastructure: 'azure-westus', application: 'Partner API Gateway' },
   { id: 'it-gw-03', name: 'internal-api-gw-02.prod', type: 'API Gateway', scanned: true, environment: 'Production', ownerTeam: 'Unassigned', cryptoObjectIds: ['cert-005'], riskScore: 45, criticalViolations: 0, policyCoverage: 0, lastSeen: '2026-04-14 06:00', managedBy: 'Terraform', infrastructure: 'aws-us-west-2', application: 'Internal API v2' },
+
   // ── Application Servers ──────────────────────────────────────────────────
   { id: 'it-app-01', name: 'legacy-batch-server-01', type: 'Application Server', scanned: false, environment: 'Production', ownerTeam: 'Unassigned', cryptoObjectIds: [], riskScore: 0, criticalViolations: 0, policyCoverage: 0, lastSeen: 'Never', managedBy: 'Manual', infrastructure: 'on-prem-dc1', application: 'Batch Processing' },
   { id: 'it-app-02', name: 'reporting-server-02.internal', type: 'Application Server', scanned: false, environment: 'Production', ownerTeam: 'Unassigned', cryptoObjectIds: [], riskScore: 0, criticalViolations: 0, policyCoverage: 0, lastSeen: 'Never', managedBy: 'Manual', infrastructure: 'on-prem-dc2', application: 'Reporting Service' },
   { id: 'it-app-03', name: 'migration-tool-server', type: 'Application Server', scanned: true, environment: 'Production', ownerTeam: 'Unassigned', cryptoObjectIds: ['ssh-005'], riskScore: 62, criticalViolations: 1, policyCoverage: 0, lastSeen: '2026-04-13 12:00', managedBy: 'Manual', infrastructure: 'on-prem-dc2', application: 'Data Migration Tool' },
+
   // ── Kubernetes Clusters ──────────────────────────────────────────────────
   { id: 'it-k8s-01', name: 'dev-cluster-01.internal', type: 'K8s Cluster', scanned: false, environment: 'Development', ownerTeam: 'Unassigned', cryptoObjectIds: [], riskScore: 0, criticalViolations: 0, policyCoverage: 0, lastSeen: 'Never', managedBy: 'Unknown', infrastructure: 'gcp-dev', application: 'Dev Cluster' },
   { id: 'it-k8s-02', name: 'staging-eks-cluster', type: 'K8s Cluster', scanned: false, environment: 'Staging', ownerTeam: 'Unassigned', cryptoObjectIds: [], riskScore: 0, criticalViolations: 0, policyCoverage: 0, lastSeen: 'Never', managedBy: 'Terraform', infrastructure: 'aws-eks-stg', application: 'Staging EKS' },
   { id: 'it-k8s-03', name: 'analytics-k8s-cluster', type: 'K8s Cluster', scanned: true, environment: 'Production', ownerTeam: 'Unassigned', cryptoObjectIds: ['k8s-003'], riskScore: 58, criticalViolations: 1, policyCoverage: 0, lastSeen: '2026-04-14 07:30', managedBy: 'Kubernetes', infrastructure: 'azure-aks-prod', application: 'Analytics Platform' },
+
   // ── Vault Servers ────────────────────────────────────────────────────────
   { id: 'it-vlt-01', name: 'vault-dr-standby.internal', type: 'Vault Server', scanned: false, environment: 'Production', ownerTeam: 'Unassigned', cryptoObjectIds: [], riskScore: 0, criticalViolations: 0, policyCoverage: 0, lastSeen: 'Never', managedBy: 'Manual', infrastructure: 'on-prem-dc2', application: 'Vault DR Standby' },
   { id: 'it-vlt-02', name: 'dev-vault.internal', type: 'Vault Server', scanned: true, environment: 'Development', ownerTeam: 'Unassigned', cryptoObjectIds: ['secret-003'], riskScore: 44, criticalViolations: 0, policyCoverage: 0, lastSeen: '2026-04-13 15:00', managedBy: 'Manual', infrastructure: 'on-prem-dc1', application: 'Dev Vault' },
+
   // ── AI Platforms ─────────────────────────────────────────────────────────
   { id: 'it-ai-03', name: 'shadow-ai-platform-01', type: 'AI Platform', scanned: false, environment: 'Production', ownerTeam: 'Unassigned', cryptoObjectIds: [], riskScore: 0, criticalViolations: 0, policyCoverage: 0, lastSeen: 'Never', managedBy: 'Unknown', infrastructure: 'aws-lambda', application: 'Unknown AI Service' },
   { id: 'it-ai-04', name: 'dept-ai-tool.finance', type: 'AI Platform', scanned: false, environment: 'Production', ownerTeam: 'Unassigned', cryptoObjectIds: [], riskScore: 0, criticalViolations: 0, policyCoverage: 0, lastSeen: 'Never', managedBy: 'Unknown', infrastructure: 'azure-openai', application: 'Finance AI Tool' },
@@ -57,13 +62,41 @@ export const mockITAssets: ITAsset[] = [
 ];
 
 // Risk driver data for each IT asset
+// Deterministic per-asset driver hash. Seeded by the asset id so the same asset
+// always yields the same number; no Math.random, stable across renders.
+function seededInt(seed: string, lo: number, hi: number): number {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
+  const span = hi - lo + 1;
+  return lo + (Math.abs(h) % span);
+}
+
+// Risk drivers are derived deterministically from the asset's own fields. The
+// number of objects, the policy coverage gap, and a stable per-asset seed give
+// repeatable, realistic drivers without any randomness.
 export function getAssetRiskDrivers(asset: ITAsset) {
   const s = asset.riskScore;
+  const objCount = asset.cryptoObjectIds.length;
+  const weakCerts = s > 70 ? Math.max(1, seededInt(asset.id + 'wc', 1, 3)) : 0;
+  const nearestExpiry = s > 60 ? seededInt(asset.id + 'ex', 1, 14) : 0;
+  const coverageGap = 100 - asset.policyCoverage;
   return {
-    cryptoHealth: { score: Math.min(100, s + Math.floor(Math.random() * 15) - 7), driver: s > 70 ? `${Math.floor(Math.random() * 3) + 1} RSA-2048 certs with no migration plan` : 'All algorithms meet minimum standards' },
-    expiryExposure: { score: Math.min(100, s + Math.floor(Math.random() * 20) - 10), driver: s > 60 ? `Nearest expiry in ${Math.floor(Math.random() * 14) + 1} days` : 'No urgent expirations' },
-    policyCoverage: { score: 100 - asset.policyCoverage, driver: asset.policyCoverage < 80 ? `${100 - asset.policyCoverage}% of objects lack active policy` : 'All objects covered by policy' },
-    blastRadius: { score: Math.min(100, asset.cryptoObjectIds.length * 15), driver: `${asset.cryptoObjectIds.length} identity dependencies shared across infrastructure` },
+    cryptoHealth: {
+      score: Math.min(100, s + seededInt(asset.id + 'ch', 0, 14) - 7),
+      driver: weakCerts > 0 ? `${weakCerts} RSA-2048 certs with no migration plan` : 'All algorithms meet minimum standards',
+    },
+    expiryExposure: {
+      score: Math.min(100, s + seededInt(asset.id + 'ee', 0, 19) - 10),
+      driver: nearestExpiry > 0 ? `Nearest expiry in ${nearestExpiry} days` : 'No urgent expirations',
+    },
+    policyCoverage: {
+      score: coverageGap,
+      driver: asset.policyCoverage < 80 ? `${coverageGap}% of objects lack active policy` : 'All objects covered by policy',
+    },
+    blastRadius: {
+      score: Math.min(100, objCount * 15),
+      driver: `${objCount} identity dependencies shared across infrastructure`,
+    },
   };
 }
 
