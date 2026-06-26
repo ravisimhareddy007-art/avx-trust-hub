@@ -2,8 +2,8 @@
 // score — surfaced as a column / sort order to put high-business-impact
 // assets above low-impact ones with the same crypto risk.
 
-import { BI_MULTIPLIER, type BusinessImpact } from './types';
+import { type BusinessImpact } from './types';
 
-export function computeRPS(ars: number, bi: BusinessImpact): number {
-  return Math.round(ars * BI_MULTIPLIER[bi]);
+export function computeRPS(ars: number, _bi?: BusinessImpact): number {
+  return ars;
 }
