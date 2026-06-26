@@ -7,7 +7,7 @@
 import { mockAssets, type CryptoAsset } from '@/data/mockData';
 import type { ITAsset } from '@/data/inventoryMockData';
 import { computeCRS, getRiskClass } from './crs';
-import { severityFor } from './types';
+import { severityFor, BI_MULTIPLIER, type BusinessImpact } from './types';
 
 function percentile(sorted: number[], p: number): number {
   if (sorted.length === 0) return 0;
@@ -17,6 +17,8 @@ function percentile(sorted: number[], p: number): number {
 
 export interface ArsBreakdown {
   ars: number;
+  techARS: number;
+  bi: BusinessImpact;
   max: number;
   p90: number;
   p75: number;
@@ -28,13 +30,23 @@ export interface ArsBreakdown {
   topObjects: { id: string; name: string; crs: number; reason: string }[];
 }
 
+// Business impact from asset attributes only (mirrors defaultBI in ers.ts).
+// Kept local to avoid a circular import, since ers.ts already imports ars.ts.
+function biFor(asset: ITAsset): BusinessImpact {
+  if (asset.environment !== 'Production') return asset.environment === 'Staging' ? 'Moderate' : 'Low';
+  if (/Vault|HSM|Database|API Gateway/.test(asset.type)) return 'Critical';
+  if (asset.criticalViolations >= 2) return 'Critical';
+  if (asset.criticalViolations >= 1) return 'High';
+  return 'Moderate';
+}
+
 export function computeARS(asset: ITAsset, allObjects: CryptoAsset[] = mockAssets): ArsBreakdown {
   const objs = asset.cryptoObjectIds
     .map(id => allObjects.find(a => a.id === id))
     .filter(Boolean) as CryptoAsset[];
 
   if (objs.length === 0) {
-    return { ars: 0, max: 0, p90: 0, p75: 0, count: 0, critCount: 0, highCount: 0, operationalCount: 0, quantumCount: 0, topObjects: [] };
+    return { ars: 0, techARS: 0, bi: biFor(asset), max: 0, p90: 0, p75: 0, count: 0, critCount: 0, highCount: 0, operationalCount: 0, quantumCount: 0, topObjects: [] };
   }
 
   const scored = objs.map(o => ({ o, crs: computeCRS(o).crs }));
@@ -53,15 +65,16 @@ export function computeARS(asset: ITAsset, allObjects: CryptoAsset[] = mockAsset
     return rc === 'quantum' || rc === 'both';
   }).length;
 
-  const ars = Math.min(
-    100,
-    Math.round(
-      0.55 * max +
-      0.45 * (0.6 * p90 + 0.4 * p75) +
-      Math.log(1 + critCount) * 4 +
-      Math.log(1 + highCount) * 2
-    )
-  );
+  // Stage 1: technical score from object condition only.
+  const techARS =
+    0.55 * max +
+    0.45 * (0.6 * p90 + 0.4 * p75) +
+    Math.log(1 + critCount) * 4 +
+    Math.log(1 + highCount) * 2;
+
+  // Stage 2: apply the bounded business-impact multiplier, per the spec.
+  const bi = biFor(asset);
+  const ars = Math.min(100, Math.round(techARS * BI_MULTIPLIER[bi]));
 
   const topObjects = [...scored]
     .sort((a, b) => b.crs - a.crs)
@@ -80,7 +93,7 @@ export function computeARS(asset: ITAsset, allObjects: CryptoAsset[] = mockAsset
           : `${x.o.policyViolations} policy violations`,
     }));
 
-  return { ars, max, p90, p75, count: objs.length, critCount, highCount, operationalCount, quantumCount, topObjects };
+  return { ars, techARS: Math.round(techARS), bi, max, p90, p75, count: objs.length, critCount, highCount, operationalCount, quantumCount, topObjects };
 }
 
 // Memoised per-asset ARS — cheap enough to recompute, but cache so list sorts

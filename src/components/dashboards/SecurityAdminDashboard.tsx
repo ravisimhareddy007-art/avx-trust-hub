@@ -3,6 +3,7 @@ import { RefreshCw, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { useNotifications } from '@/context/NotificationContext';
 import { useNav } from '@/context/NavigationContext';
 import { DashboardProvider } from '@/context/DashboardContext';
+import { RiskProvider } from '@/context/RiskContext';
 import { toast } from 'sonner';
 import EnterpriseRiskScore from './ers/EnterpriseRiskScore';
 import CriticalActionFeed from './CriticalActionFeed';
