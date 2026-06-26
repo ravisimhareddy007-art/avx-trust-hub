@@ -40,7 +40,10 @@ export default function GroupDetailView({ group, onBack, onOpenPolicyDrawer }: G
     { label: 'AI Identity Trust (AIT)', score: 85, weight: 0.05 },
   ];
 
-  const trendData = Array.from({ length: 30 }, (_, i) => ({ day: i, score: Math.max(30, group.riskScore - 15 + Math.floor(Math.random() * 30) + Math.floor(i * 0.3)) }));
+  const trendData = Array.from({ length: 30 }, (_, i) => {
+    const wave = Math.round(7 * Math.sin(i * 0.6) + 5 * Math.sin(i * 0.21));
+    return { day: i, score: Math.max(30, Math.min(100, group.riskScore - 8 + wave + Math.floor(i * 0.3))) };
+  });
 
   // Remediation tasks
   const remTasks = violatingAssets.map(a => ({
