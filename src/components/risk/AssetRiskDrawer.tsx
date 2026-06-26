@@ -118,7 +118,7 @@ export default function AssetRiskDrawer({ asset, onClose, onOpenObject }: Props)
               </p>
               <BusinessImpactEditor value={bi} onChange={(v) => setPendingBI(v)} size="md" />
               <p className="text-[10px] text-muted-foreground mt-1">
-                ×{BI_MULTIPLIER[proposed]} weight in ERS
+                ×{BI_MULTIPLIER[proposed]} multiplier on ARS
               </p>
             </div>
 
