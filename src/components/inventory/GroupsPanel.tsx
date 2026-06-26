@@ -3,6 +3,13 @@ import { CryptoAsset, mockAssets } from '@/data/mockData';
 import { Sparkles, Plus, ChevronRight, Shield, AlertTriangle, Trash2, X, Wand2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+// Deterministic score for a newly created group, seeded by its name.
+function seededScore(seed: string, lo: number, hi: number): number {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return lo + (Math.abs(h) % (hi - lo + 1));
+}
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface GroupCondition {
