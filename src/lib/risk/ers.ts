@@ -5,7 +5,7 @@
 import { mockITAssets, type ITAsset } from '@/data/inventoryMockData';
 import { mockAssets } from '@/data/mockData';
 import { arsFor } from './ars';
-import { BI_MULTIPLIER, severityFor, type BusinessImpact, type Severity } from './types';
+import { severityFor, type BusinessImpact, type Severity } from './types';
 import { DASHBOARD_FILTERS } from '@/lib/filters/cryptoFilters';
 
 const BI_WEIGHT: Record<BusinessImpact, number> = {
@@ -105,7 +105,7 @@ export function computeERS(
       name: x.asset.name,
       ars: x.ars,
       bi: x.bi,
-      rps: Math.round(x.ars * BI_MULTIPLIER[x.bi]),
+      rps: x.ars,
       contribution: Math.round((x.ars * BI_WEIGHT[x.bi]) / totalW),
     }))
     .sort((a, b) => b.contribution - a.contribution)
@@ -129,8 +129,8 @@ export function computeERS(
 export function defaultBI(asset: ITAsset): BusinessImpact {
   if (asset.environment !== 'Production') return asset.environment === 'Staging' ? 'Moderate' : 'Low';
   if (/Vault|HSM|Database|API Gateway/.test(asset.type)) return 'Critical';
-  if (asset.criticalViolations >= 2 || asset.riskScore >= 80) return 'Critical';
-  if (asset.riskScore >= 60) return 'High';
+  if (asset.criticalViolations >= 2) return 'Critical';
+  if (asset.criticalViolations >= 1) return 'High';
   return 'Moderate';
 }
 
