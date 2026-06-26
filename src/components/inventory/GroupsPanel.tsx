@@ -3,6 +3,13 @@ import { CryptoAsset, mockAssets } from '@/data/mockData';
 import { Sparkles, Plus, ChevronRight, Shield, AlertTriangle, Trash2, X, Wand2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+// Deterministic score for a newly created group, seeded by its name.
+function seededScore(seed: string, lo: number, hi: number): number {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return lo + (Math.abs(h) % (hi - lo + 1));
+}
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface GroupCondition {
@@ -374,7 +381,7 @@ function CreateGroupFlow({ onClose, onCreate }: { onClose: () => void; onCreate:
       conditions: groupType === 'Dynamic' ? conditionSet : undefined,
       manualAssetIds: groupType === 'Manual' ? Array.from(manualIds) : undefined,
       ownerTeam: ownerTeam || undefined,
-      policyIds: [], riskScore: Math.floor(Math.random() * 40) + 40,
+      policyIds: [], riskScore: seededScore((name || 'group') + 'manual', 40, 79),
       lastEvaluated: 'Just now', createdAt: new Date().toISOString().split('T')[0],
     };
     onCreate(group);
@@ -541,7 +548,7 @@ export default function GroupsPanel({ onSelectGroup, selectedGroupId, onOpenPoli
     const newGroup: CryptoGroup = {
       id: `grp-ai-${Date.now()}`, name: s.name, description: s.reason,
       type: 'Dynamic', conditions: s.conditions,
-      policyIds: [], riskScore: Math.floor(Math.random() * 30) + 60,
+      policyIds: [], riskScore: seededScore(s.name + 'ai', 60, 89),
       aiSuggested: true, lastEvaluated: 'Just now', createdAt: new Date().toISOString().split('T')[0],
     };
     setGroups(prev => [newGroup, ...prev]);
