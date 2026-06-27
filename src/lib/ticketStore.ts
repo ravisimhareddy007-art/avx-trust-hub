@@ -17,6 +17,7 @@ export interface StoredTicket {
   created: string;
   updated: string;
   linkedAssets: number;
+  objectId?: string;
 }
 
 const KEY = 'trustplatform.tickets.v1';
@@ -51,6 +52,7 @@ export function addTicket(draft: TicketDraft, opts?: {
   externalId?: string;
   reporter?: string;
   linkedAssets?: number;
+  objectId?: string;
 }): StoredTicket {
   const today = new Date().toISOString().slice(0, 10);
   const ticket: StoredTicket = {
@@ -67,6 +69,7 @@ export function addTicket(draft: TicketDraft, opts?: {
     created: today,
     updated: today,
     linkedAssets: opts?.linkedAssets ?? 1,
+    objectId: opts?.objectId,
   };
   const list = load();
   list.unshift(ticket);
@@ -76,4 +79,9 @@ export function addTicket(draft: TicketDraft, opts?: {
 
 export function listTickets(): StoredTicket[] {
   return load();
+}
+
+// Most recent ticket raised for a given crypto object, if any.
+export function ticketForObject(objectId: string): StoredTicket | undefined {
+  return load().find(t => t.objectId === objectId);
 }
