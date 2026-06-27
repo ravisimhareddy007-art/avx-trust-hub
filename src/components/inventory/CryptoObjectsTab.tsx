@@ -820,7 +820,6 @@ function DetailPanel({
 }) {
   const isPqc = ['RSA-1024','RSA-2048','RSA-4096','ECDSA-P256','ECDSA-P384','ECC P-256','ECC P-384','SHA-1','MD5','DH-1024','DH-2048'].includes(co.algorithm);
   const isSecret = co.type === 'API Key / Secret';
-  const [riskTip, setRiskTip] = useState(false);
 
   // Single source of truth: real CRS engine (spec factors 31/24/19/15/11).
   const crsResult = computeCRS(co);
@@ -863,48 +862,56 @@ function DetailPanel({
             {isPqc && <PQCBadge risk={co.pqcRisk} />}
           </div>
 
-          {/* Stat strip */}
-          <div className="grid grid-cols-3 gap-2 mt-3">
-            <div className="bg-card rounded-lg px-3 py-2 border border-border/50">
-              <div className="flex items-center gap-1">
-                <span className={`text-[18px] font-bold tabular-nums ${riskCol}`}>{riskScore}</span>
-                <div className="relative">
-                  <button onMouseEnter={() => setRiskTip(true)} onMouseLeave={() => setRiskTip(false)} onClick={() => setRiskTip(v => !v)} className="flex items-center gap-0.5 mt-1 text-[8.5px] text-muted-foreground/60 hover:text-teal">
-                    <Info className="w-3 h-3" /> Explain
-                  </button>
-                  {riskTip && (
-                    <div className="absolute bottom-full left-0 mb-1 z-[9999] w-80 bg-card border border-border rounded-lg shadow-xl p-3 text-[10px] text-muted-foreground">
-                      <p className="font-semibold text-foreground mb-1.5">Crypto Risk Score: factors</p>
-                      <div className="space-y-1.5">
-                        {crsFactors.map(fac => (
-                          <div key={fac.id}>
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-foreground font-medium capitalize">{fac.label}</span>
-                              <span className="tabular-nums whitespace-nowrap">{fac.raw} × {Math.round((fac.weight / crsTotalW) * 100)}% = <span className="text-foreground font-medium">{Math.round(fac.raw * (fac.weight / crsTotalW))}</span></span>
-                            </div>
-                            <p className="text-[9px] text-muted-foreground/80 leading-snug">{fac.why}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+          {/* Risk-forward header: a real gauge + factor bars, not three flat tiles. */}
+          <div className="mt-3 bg-card rounded-lg border border-border/50 p-3">
+            <div className="flex items-center gap-3">
+              {/* Semicircle gauge */}
+              <div className="relative flex-shrink-0" style={{ width: 92, height: 56 }}>
+                <svg viewBox="0 0 100 60" className="w-[92px] h-[56px]">
+                  <path d="M 8 54 A 42 42 0 0 1 92 54" fill="none" stroke="hsl(var(--border))" strokeWidth="8" strokeLinecap="round" />
+                  <path d="M 8 54 A 42 42 0 0 1 92 54" fill="none"
+                    stroke={riskScore >= 80 ? 'hsl(var(--coral))' : riskScore >= 60 ? 'hsl(var(--coral))' : riskScore >= 30 ? 'hsl(var(--amber))' : 'hsl(var(--teal))'}
+                    strokeWidth="8" strokeLinecap="round"
+                    strokeDasharray={`${(riskScore / 100) * 132} 132`} />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-end pb-0.5">
+                  <span className={`text-[22px] font-bold tabular-nums leading-none ${riskCol}`}>{riskScore}</span>
                 </div>
               </div>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Risk score</p>
+              {/* Band + explain */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className={`text-[12px] font-semibold ${riskCol}`}>
+                    {riskScore >= 80 ? 'Critical' : riskScore >= 60 ? 'High' : riskScore >= 30 ? 'Medium' : 'Low'} risk
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">CRS</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">
+                  {totalViolations > 0
+                    ? <><span className="text-coral font-medium">{totalViolations} active violation{totalViolations !== 1 ? 's' : ''}</span>{exceptedCount > 0 && <span className="text-amber"> · {exceptedCount} excepted</span>}</>
+                    : rawViolations > 0
+                      ? <span className="text-amber">{rawViolations} violation{rawViolations !== 1 ? 's' : ''} · all excepted</span>
+                      : <span className="text-teal">No policy violations</span>}
+                </p>
+              </div>
             </div>
-            <div className="bg-card rounded-lg px-3 py-2 border border-border/50">
-              <p className={`text-[18px] font-bold tabular-nums ${expiryCol}`}>{expiryDisplay}</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">
-                {co.daysToExpiry >= 0 ? 'Expires in' : co.daysToExpiry === -1 ? 'Validity' : 'Expired'}
-              </p>
-            </div>
-            <div className="bg-card rounded-lg px-3 py-2 border border-border/50">
-              <p className={`text-[18px] font-bold tabular-nums ${totalViolations > 0 ? 'text-coral' : rawViolations > 0 ? 'text-amber' : 'text-teal'}`}>{totalViolations}</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">
-                Violations
-                {rawViolations > 0 && totalViolations === 0 && <span className="ml-1 text-amber">· Excepted</span>}
-                {exceptedCount > 0 && totalViolations > 0 && <span className="ml-1 text-amber">· {exceptedCount} excepted</span>}
-              </p>
+
+            {/* Factor breakdown as bars (the real CRS factors, weighted) */}
+            <div className="mt-2.5 space-y-1 border-t border-border/40 pt-2">
+              {crsFactors.map(fac => {
+                const contrib = Math.round(fac.raw * (fac.weight / crsTotalW));
+                const pct = Math.min(100, fac.raw);
+                return (
+                  <div key={fac.id} className="flex items-center gap-2" title={fac.why}>
+                    <span className="text-[9.5px] text-muted-foreground capitalize w-[88px] flex-shrink-0 truncate">{fac.label}</span>
+                    <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
+                      <div className="h-full rounded-full"
+                        style={{ width: `${pct}%`, background: fac.raw >= 70 ? 'hsl(var(--coral))' : fac.raw >= 40 ? 'hsl(var(--amber))' : 'hsl(var(--teal))' }} />
+                    </div>
+                    <span className="text-[9px] tabular-nums text-muted-foreground/70 w-[64px] text-right flex-shrink-0">+{contrib} ({Math.round((fac.weight / crsTotalW) * 100)}%)</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -954,21 +961,10 @@ function DetailPanel({
             <TypeMetadata co={co} />
           </div>
 
-          {/* Ownership and operations, compact and low-emphasis (fields, not headlines) */}
-          <div className="px-4 py-2.5">
-            <p className="text-[9px] uppercase tracking-wide text-muted-foreground/60 font-semibold mb-1.5">Ownership & operations</p>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10.5px]">
-              <div className="flex justify-between gap-2"><span className="text-muted-foreground">Owner</span><span className={`text-right truncate ${co.owner === 'Unassigned' ? 'text-coral' : 'text-foreground'}`}>{co.owner}</span></div>
-              <div className="flex justify-between gap-2"><span className="text-muted-foreground">Team</span><span className="text-foreground text-right truncate">{co.team}</span></div>
-              <div className="flex justify-between gap-2"><span className="text-muted-foreground">Application</span><span className="text-foreground text-right truncate">{co.application}</span></div>
-              <div className="flex justify-between gap-2"><span className="text-muted-foreground">Environment</span><span className="text-foreground text-right">{co.environment}</span></div>
-              <div className="flex justify-between gap-2 col-span-2"><span className="text-muted-foreground">Infrastructure</span><span className="text-foreground text-right truncate">{co.infrastructure}</span></div>
-            </div>
-            {(co.tags ?? []).length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-1.5">
-                {(co.tags ?? []).map(t => <span key={t} className="text-[9px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{t}</span>)}
-              </div>
-            )}
+          {/* Owner: one inline field. Not a section. */}
+          <div className="px-4 py-2 flex items-center gap-2 text-[10.5px]">
+            <span className="text-muted-foreground">Owner</span>
+            <span className={co.owner === 'Unassigned' ? 'text-coral' : 'text-foreground'}>{co.owner}</span>
           </div>
 
           {/* Violations, single unified list (policy + quantum), all policy-driven */}
@@ -1413,7 +1409,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
       r = r.filter(VIOLATION_FILTERS[filterIdActive].predicate);
     }
 
-    // Sorting — default risk_score DESC, with expiry tie-breaker
+    // Sorting: default risk_score DESC, with expiry tie-breaker
     const dir = sortDir === 'asc' ? 1 : -1;
     const expiryTs = (a: CryptoAsset) => {
       const t = a.expiryDate && a.expiryDate !== 'N/A' ? Date.parse(a.expiryDate) : NaN;
