@@ -13,6 +13,7 @@ import {
   Search, X, Info, Atom, FileEdit, ArrowRight,
   Ticket, Lock, ChevronUp, ChevronDown,
   Filter as FilterIcon,
+  Download,
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { toast } from 'sonner';
@@ -26,7 +27,7 @@ import { useExceptions, effectiveViolations } from '@/lib/exceptions/ExceptionsC
 import { RaiseExceptionModal } from '@/lib/exceptions/ExceptionComponents';
 
 // Map a violation label → its built-in policy (id + name). Returns null for
-// operational flags that don't correspond to a policy.
+// Returns null for labels with no backing policy.
 function violationToPolicy(label: string, co: CryptoAsset): { policyId: string; policyName: string } | null {
   const l = label.toLowerCase();
   if (l.includes('self-signed')) return { policyId: 'oob-003', policyName: 'Self-Signed Server Certificate' };
@@ -312,9 +313,8 @@ function MetaRow({ label, value }: { label: string; value: React.ReactNode }) {
 
 interface ViolationItem { label: string; severity: 'critical' | 'high' | 'medium'; action?: string; actionKey?: string; }
 
-function deriveViolations(co: CryptoAsset): { policy: ViolationItem[]; operational: ViolationItem[]; quantum: ViolationItem[] } {
+function deriveViolations(co: CryptoAsset): { policy: ViolationItem[]; quantum: ViolationItem[] } {
   const policy: ViolationItem[] = [];
-  const operational: ViolationItem[] = [];
   const quantum: ViolationItem[] = [];
 
   // ── POLICY violations (real policy breaches; eligible for exceptions) ──
@@ -323,27 +323,6 @@ function deriveViolations(co: CryptoAsset): { policy: ViolationItem[]; operation
 
   if (['RSA-512','RSA-1024','SHA-1','MD5'].includes(co.algorithm))
     policy.push({ label: `Weak algorithm (${co.algorithm})`, severity: 'critical' });
-
-  // ── OPERATIONAL alerts (informational; no actions, no exceptions) ──
-  if (co.status === 'Expired')
-    operational.push({ label: `Expired ${co.daysToExpiry < 0 ? Math.abs(co.daysToExpiry) + 'd ago' : ''}`, severity: 'critical' });
-  else if (co.status === 'Expiring' && co.daysToExpiry >= 0)
-    operational.push({ label: `Expires in ${co.daysToExpiry}d`, severity: co.daysToExpiry <= 7 ? 'critical' : 'high' });
-
-  if (!co.autoRenewal && co.daysToExpiry >= 0 && co.daysToExpiry <= 30 && co.type !== 'SSH Key' && co.type !== 'Encryption Key')
-    operational.push({ label: 'Auto-renewal disabled — manual action required', severity: 'high' });
-
-  if (co.owner === 'Unassigned' || co.status === 'Orphaned')
-    operational.push({ label: 'No owner assigned', severity: 'high' });
-
-  if (co.rotationFrequency === 'Never')
-    operational.push({ label: 'No rotation policy configured', severity: 'medium' });
-
-  if ((co.tags ?? []).includes('source-code') || (co.tags ?? []).includes('code-exposed') || (co.tags ?? []).includes('hardcoded'))
-    operational.push({ label: 'Secret detected in source code', severity: 'critical' });
-
-  if (co.agentMeta?.permissionRisk === 'Over-privileged')
-    operational.push({ label: 'Token is over-privileged — unused scopes detected', severity: 'high' });
 
   // ── QUANTUM violations (policy violation; eligible for exceptions) ──
   const isPqc = ['RSA-1024','RSA-2048','RSA-4096','ECDSA-P256','ECDSA-P384','ECC P-256','ECC P-384','SHA-1','MD5','DH-1024','DH-2048'].includes(co.algorithm);
@@ -356,7 +335,7 @@ function deriveViolations(co: CryptoAsset): { policy: ViolationItem[]; operation
     });
   }
 
-  return { policy, operational, quantum };
+  return { policy, quantum };
 }
 
 // ── Section heading ───────────────────────────────────────────────────────────
@@ -577,7 +556,7 @@ function DetailPanel({
   const crsTotalW = crsFactors.reduce((sw, fac) => sw + fac.weight, 0);
   const riskCol = riskScore >= 60 ? 'text-coral' : riskScore >= 30 ? 'text-amber' : 'text-teal';
 
-  const { policy, operational, quantum } = deriveViolations(co);
+  const { policy, quantum } = deriveViolations(co);
   const rawViolations = policy.length + quantum.length;
   const { activeForObject, isExcepted } = useExceptions();
   const exceptedCount = activeForObject(co.id).length;
@@ -662,9 +641,7 @@ function DetailPanel({
 
           {/* Actions */}
           {(() => {
-            const showDownload = co.type === 'TLS Certificate' || co.type === 'Code-Signing Certificate';
-            const hasOperational = operational.length > 0;
-            const hasAnyAction = showDownload || hasOperational || isPqc || (!hasOperational && !isPqc);
+            const hasPolicyViol = policy.length > 0;
             if (isSecret && !SECRETS_LICENSED) {
               return (
                 <div className="px-4 py-3">
@@ -677,29 +654,20 @@ function DetailPanel({
               <div className="px-4 py-3">
                 <SectionHeading label="Actions" />
                 <div className="flex flex-wrap gap-1.5">
-                  {showDownload && (
-                    <button onClick={() => toast.success('Certificate downloaded')}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-border text-foreground hover:bg-secondary/80 transition-colors">
-                      ↓ Download
-                    </button>
-                  )}
-                  {hasOperational && (
+                  {hasPolicyViol && (
                     <button onClick={() => onTicket('fix')}
                       className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-purple/30 text-purple-light hover:bg-purple/10 transition-colors">
-                      <Ticket className="w-3 h-3" /> Remediation ticket
+                      <Ticket className="w-3 h-3" /> Raise remediation ticket
                     </button>
                   )}
                   {isPqc && (
                     <button onClick={() => onTicket('pqc')}
                       className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-purple/30 text-purple-light hover:bg-purple/10 transition-colors">
-                      <Atom className="w-3 h-3" /> PQC ticket
+                      <Atom className="w-3 h-3" /> Raise PQC ticket
                     </button>
                   )}
-                  {!hasOperational && !isPqc && (
-                    <button onClick={() => onTicket('fix')}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-purple/30 text-purple-light hover:bg-purple/10 transition-colors">
-                      <Ticket className="w-3 h-3" /> Create ticket
-                    </button>
+                  {!hasPolicyViol && !isPqc && (
+                    <span className="text-[10px] text-muted-foreground">No policy violations. No action required.</span>
                   )}
                 </div>
               </div>
@@ -737,8 +705,8 @@ function DetailPanel({
             )}
           </div>
 
-          {/* Violations, single unified list (policy + quantum + operational) */}
-          {(policy.length + quantum.length + operational.length) > 0 && (
+          {/* Violations, single unified list (policy + quantum), all policy-driven */}
+          {(policy.length + quantum.length) > 0 && (
             <div className="px-4 py-3">
               <SectionHeading label="Violations & alerts" count={policy.length + quantum.length} />
               <div className="space-y-1.5">
@@ -774,16 +742,6 @@ function DetailPanel({
                     </div>
                   );
                 })}
-                {/* Operational alerts: informational, no policy id, no exception */}
-                {operational.map((v, i) => (
-                  <div key={`op-${i}`} className="flex items-start gap-2 py-1.5 border-b border-border/30 last:border-0">
-                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 ${v.severity === 'critical' ? 'bg-coral' : v.severity === 'high' ? 'bg-amber' : 'bg-muted-foreground'}`} />
-                    <div className="flex-1 min-w-0">
-                      <span className="text-[11px] text-foreground">{v.label}</span>
-                      <span className="block text-[9px] text-muted-foreground/60">Operational alert</span>
-                    </div>
-                  </div>
-                ))}
               </div>
             </div>
           )}
@@ -813,7 +771,7 @@ function DetailPanel({
               <div className="space-y-0.5">
                 {assoc.map(a => (
                   <button key={a.id}
-                    onClick={() => { setFilters({ tab: 'infrastructure', assetName: a.name }); setCurrentPage('inventory'); onClose(); }}
+                    onClick={() => { setFilters({ tab: 'infrastructure', assetId: a.id }); setCurrentPage('inventory'); onClose(); }}
                     className="w-full flex items-center gap-2 text-[11px] rounded px-2 py-1.5 hover:bg-secondary/50 transition-colors text-left group">
                     <span className="text-foreground font-medium flex-1 truncate group-hover:text-teal">{a.name}</span>
                     <span className="text-muted-foreground flex-shrink-0 text-[10px]">{a.type}</span>
@@ -964,6 +922,34 @@ function FilterPanel(props: FilterPanelProps) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
+
+
+// Export the given crypto objects to a CSV download (current filtered/visible set).
+function exportObjectsCsv(objs: CryptoAsset[], context: string) {
+  const cols: { h: string; get: (o: CryptoAsset) => string }[] = [
+    { h: 'Name', get: o => o.name },
+    { h: 'Type', get: o => o.type },
+    { h: 'Algorithm', get: o => (o as any).algorithm || '' },
+    { h: 'Status', get: o => o.status },
+    { h: 'PQC Risk', get: o => o.pqcRisk },
+    { h: 'CRS', get: o => String(computeCRS(o).crs) },
+    { h: 'Owner', get: o => o.owner },
+    { h: 'Team', get: o => o.team },
+    { h: 'Application', get: o => o.application },
+    { h: 'Environment', get: o => o.environment },
+    { h: 'Infrastructure', get: o => o.infrastructure },
+    { h: 'Expiry', get: o => o.expiryDate || '' },
+  ];
+  const esc = (v: string) => `"${(v ?? '').replace(/"/g, '""')}"`;
+  const rows = [cols.map(c => c.h).join(','), ...objs.map(o => cols.map(c => esc(c.get(o))).join(','))];
+  const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `crypto-inventory-${context}-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   const [typeFilter, setTypeFilter]     = useState('All');
@@ -1134,6 +1120,11 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                   )}
                 </button>
                 <span className="text-[10px] text-muted-foreground ml-auto">{filtered.length} identities</span>
+                <button
+                  onClick={() => { exportObjectsCsv(filtered, totalActive > 0 ? 'filtered' : 'all'); toast.success(`Exported ${filtered.length} objects to CSV`); }}
+                  className="flex items-center gap-1 text-[10px] px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors whitespace-nowrap">
+                  <Download className="w-3 h-3" /> Export{totalActive > 0 ? ` (${filtered.length})` : ''}
+                </button>
               </div>
               {totalActive > 0 && (
                 <div className="flex items-center gap-1.5 flex-wrap">
