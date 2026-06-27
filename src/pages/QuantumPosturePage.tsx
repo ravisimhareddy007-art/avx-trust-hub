@@ -25,10 +25,8 @@ export default function QuantumPosturePage() {
   // The estate this lens looks at: the shared inventory, with AI-identity objects
   // excluded while that capability is out of scope. Every downstream figure and
   // list derives from this one array.
-  const estate = useMemo<CryptoAsset[]>(
-    () => (FEATURES.AI_IDENTITY ? mockAssets : mockAssets.filter(a => a.type !== 'AI Agent Token')),
-    []
-  );
+  const estate = useMemo<CryptoAsset[]>(() => mockAssets, []);
+
   const vulnerable = useMemo(() => estate.filter(isQuantumVulnerable), [estate]);
 
   const goInventory = (extra: Record<string, string> = {}) => {
