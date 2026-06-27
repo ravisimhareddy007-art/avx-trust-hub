@@ -621,21 +621,34 @@ function SectionHeading({ label, count }: { label: string; count?: number }) {
 // ── Type-specific metadata ────────────────────────────────────────────────────
 
 function TypeMetadata({ co }: { co: CryptoAsset }) {
-  // Renders the type-specific enterprise fields from the data model. Falls back
-  // to derived values only where a field is absent, so sparse records still read.
+  // Type-specific posture detail. Reads the real data model; falls back only
+  // where a field is genuinely absent. Validity, quantum readiness, and
+  // discovery provenance are first-class for every relevant type.
   const c = co.cert, sk = co.sshKey, sc = co.sshCert, ek = co.encKey, se = co.secret;
+  const validity = `${co.issueDate}  ->  ${co.expiryDate}`;
+  const expiresIn = co.daysToExpiry < 0
+    ? <span className="text-coral">{Math.abs(co.daysToExpiry)} days ago</span>
+    : <span className={co.daysToExpiry <= 30 ? 'text-amber' : 'text-foreground'}>{co.daysToExpiry} days</span>;
+  const quantum = <span className={co.pqcRisk === 'Safe' ? 'text-teal' : co.pqcRisk === 'Low' ? 'text-foreground' : 'text-coral'}>
+    {co.pqcRisk === 'Safe' ? 'Quantum-safe' : co.pqcRisk === 'Low' ? 'Low exposure' : `Quantum-vulnerable (${co.pqcRisk})`}
+  </span>;
 
   if (co.type === 'TLS Certificate' || co.type === 'K8s Workload Cert') {
     const subjectDN = c
-      ? `CN=${co.commonName}, O=${c.subjectO ?? 'AcmeCorp'}, OU=${c.subjectOU ?? ''}, C=${c.subjectC ?? 'US'}`
+      ? `CN=${co.commonName}, O=${c.subjectO ?? 'AcmeCorp'}${c.subjectOU ? ', OU=' + c.subjectOU : ''}, C=${c.subjectC ?? 'US'}`
       : `CN=${co.commonName}, O=AcmeCorp, C=US`;
+    const selfSigned = c?.issuerDN ? c.issuerDN.includes(co.commonName) : false;
     return (
       <>
         <MetaRow label="Subject DN" value={<span className="font-mono text-[10px] break-all">{subjectDN}</span>} />
-        {c?.issuerDN && <MetaRow label="Issuer DN" value={<span className="font-mono text-[10px] break-all">{c.issuerDN}</span>} />}
+        <MetaRow label="Issuer DN" value={<span className="font-mono text-[10px] break-all">{c?.issuerDN ?? `CN=${co.caIssuer}`}</span>} />
+        {selfSigned && <MetaRow label="Trust" value={<span className="text-coral">Self-signed (untrusted)</span>} />}
         <MetaRow label="Serial number" value={<span className="font-mono text-[10px] break-all">{co.serial}</span>} />
         <MetaRow label="Signature algorithm" value={signatureAlgoFor(co.algorithm)} />
         <MetaRow label="Key algorithm / size" value={`${co.algorithm} · ${co.keyLength} bits`} />
+        <MetaRow label="Validity period" value={validity} />
+        <MetaRow label="Expires in" value={expiresIn} />
+        <MetaRow label="Quantum readiness" value={quantum} />
         {c?.sans && c.sans.length > 0 && (
           <MetaRow label="Subject Alternative Names" value={
             <div className="flex flex-wrap gap-1">{c.sans.map(s => <span key={s} className="font-mono text-[9.5px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{s}</span>)}</div>
@@ -647,10 +660,7 @@ function TypeMetadata({ co }: { co: CryptoAsset }) {
         {c?.subjectKeyId && <MetaRow label="Subject key identifier" value={<span className="font-mono text-[10px] break-all">{c.subjectKeyId}</span>} />}
         {c?.authorityKeyId && <MetaRow label="Authority key identifier" value={<span className="font-mono text-[10px] break-all">{c.authorityKeyId}</span>} />}
         {c?.thumbprint && <MetaRow label="Thumbprint (SHA-256)" value={<span className="font-mono text-[10px] break-all">{c.thumbprint}</span>} />}
-        <MetaRow label="Valid from / to" value={`${co.issueDate}  ->  ${co.expiryDate}`} />
-        {c?.complianceStatus && <MetaRow label="Compliance" value={
-          <span className={c.complianceStatus === 'Compliant' ? 'text-teal' : 'text-coral'}>{c.complianceStatus}</span>
-        } />}
+        {c?.complianceStatus && <MetaRow label="Compliance" value={<span className={c.complianceStatus === 'Compliant' ? 'text-teal' : 'text-coral'}>{c.complianceStatus}</span>} />}
         {c?.endpoints && c.endpoints.length > 0 && (
           <MetaRow label={`Deployed endpoints (${c.endpoints.length})`} value={
             <div className="space-y-1">{c.endpoints.slice(0,6).map((e,i) => (
@@ -659,6 +669,7 @@ function TypeMetadata({ co }: { co: CryptoAsset }) {
           } />
         )}
         <MetaRow label="Discovery source" value={co.discoverySource} />
+        <MetaRow label="First seen / last seen" value={`${co.issueDate}  ·  ${co.lastRotated}`} />
       </>
     );
   }
@@ -667,14 +678,16 @@ function TypeMetadata({ co }: { co: CryptoAsset }) {
     return (
       <>
         <MetaRow label="Subject" value={co.commonName} />
-        {c?.issuerDN && <MetaRow label="Issuer DN" value={<span className="font-mono text-[10px] break-all">{c.issuerDN}</span>} />}
+        <MetaRow label="Issuer DN" value={<span className="font-mono text-[10px] break-all">{c?.issuerDN ?? `CN=${co.caIssuer}`}</span>} />
         <MetaRow label="Serial number" value={<span className="font-mono text-[10px] break-all">{co.serial}</span>} />
         <MetaRow label="Signature algorithm" value={signatureAlgoFor(co.algorithm)} />
         <MetaRow label="Key algorithm / size" value={`${co.algorithm} · ${co.keyLength} bits`} />
         <MetaRow label="Extended key usage" value={c?.extendedKeyUsage?.join(', ') ?? 'Code Signing'} />
         {c?.thumbprint && <MetaRow label="Thumbprint (SHA-256)" value={<span className="font-mono text-[10px] break-all">{c.thumbprint}</span>} />}
         <MetaRow label="Protection store" value={co.infrastructure} />
-        <MetaRow label="Valid from / to" value={`${co.issueDate}  ->  ${co.expiryDate}`} />
+        <MetaRow label="Validity period" value={validity} />
+        <MetaRow label="Expires in" value={expiresIn} />
+        <MetaRow label="Quantum readiness" value={quantum} />
         {c?.complianceStatus && <MetaRow label="Compliance" value={<span className={c.complianceStatus === 'Compliant' ? 'text-teal' : 'text-coral'}>{c.complianceStatus}</span>} />}
         <MetaRow label="Discovery source" value={co.discoverySource} />
       </>
@@ -682,13 +695,15 @@ function TypeMetadata({ co }: { co: CryptoAsset }) {
   }
 
   if (co.type === 'SSH Key') {
+    const posture = co.status === 'Orphaned' || co.status === 'Revoked' ? 'Key Missing' : 'Active';
     return (
       <>
         <MetaRow label="Fingerprint" value={<span className="font-mono text-[10px] break-all">{sk?.fingerprint ?? co.serial}</span>} />
         <MetaRow label="Algorithm / bit length" value={`${co.algorithm} · ${co.keyLength} bits`} />
+        <MetaRow label="Status" value={<span className={posture === 'Key Missing' ? 'text-amber' : 'text-teal'}>{posture}</span>} />
+        {sk?.riskStatus && sk.riskStatus !== 'Clean' && <MetaRow label="Risk status" value={<span className="text-coral font-medium">{sk.riskStatus}</span>} />}
         {sk?.ageDays != null && <MetaRow label="Age" value={`${sk.ageDays} days`} />}
         {sk?.complianceGroup && <MetaRow label="Compliance group" value={sk.complianceGroup} />}
-        {sk?.riskStatus && sk.riskStatus !== 'Clean' && <MetaRow label="Risk status" value={<span className="text-coral font-medium">{sk.riskStatus}</span>} />}
         <MetaRow label="Rotation policy" value={<span className={co.rotationFrequency === 'Never' ? 'text-coral' : 'text-foreground'}>{co.rotationFrequency}</span>} />
         {sk?.associatedUsers && sk.associatedUsers.length > 0 && (
           <MetaRow label={`Associated users (${sk.associatedUsers.length})`} value={
@@ -708,7 +723,7 @@ function TypeMetadata({ co }: { co: CryptoAsset }) {
           } />
         )}
         {sk?.filePaths && sk.filePaths.length > 0 && (
-          <MetaRow label="File paths" value={
+          <MetaRow label={`File paths (${sk.filePaths.length})`} value={
             <div className="space-y-0.5">{sk.filePaths.map((p,i) => <div key={i} className="font-mono text-[9.5px] text-muted-foreground break-all">{p}</div>)}</div>
           } />
         )}
@@ -724,15 +739,17 @@ function TypeMetadata({ co }: { co: CryptoAsset }) {
         <MetaRow label="Key type" value={sc?.keyType ?? 'User'} />
         <MetaRow label="Signing CA" value={sc?.signingCA ?? co.caIssuer} />
         <MetaRow label="Algorithm / size" value={`${co.algorithm} · ${co.keyLength} bits`} />
+        {sc?.associatedKeyName && <MetaRow label="Associated SSH key" value={<span className="font-mono text-[10px]">{sc.associatedKeyName}</span>} />}
         {sc?.principals && sc.principals.length > 0 && (
           <MetaRow label={`Principals (${sc.principals.length})`} value={
             <div className="flex flex-wrap gap-1">{sc.principals.map(p => <span key={p} className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-foreground">{p}</span>)}</div>
           } />
         )}
         {sc?.extensions && sc.extensions.length > 0 && <MetaRow label="Extensions" value={sc.extensions.join(', ')} />}
-        {sc?.criticalOptions && sc.criticalOptions.length > 0 && <MetaRow label="Critical options" value={sc.criticalOptions.join(', ')} />}
-        {sc?.associatedKeyName && <MetaRow label="Associated SSH key" value={<span className="font-mono text-[10px]">{sc.associatedKeyName}</span>} />}
-        <MetaRow label="Valid to" value={co.expiryDate} />
+        <MetaRow label="Critical options" value={sc?.criticalOptions && sc.criticalOptions.length > 0 ? sc.criticalOptions.join(', ') : 'none'} />
+        <MetaRow label="Validity period" value={validity} />
+        <MetaRow label="Expires in" value={expiresIn} />
+        <MetaRow label="Quantum readiness" value={quantum} />
         <MetaRow label="Discovery source" value={co.discoverySource} />
       </>
     );
@@ -742,7 +759,7 @@ function TypeMetadata({ co }: { co: CryptoAsset }) {
     return (
       <>
         <MetaRow label="Key identifier" value={<span className="font-mono text-[10px] break-all">{co.serial}</span>} />
-        <MetaRow label="Protection" value={ek?.protection ?? 'Software'} />
+        <MetaRow label="Protection" value={<span className={ek?.protection === 'Software' ? 'text-coral' : 'text-foreground'}>{ek?.protection ?? 'Software'}</span>} />
         <MetaRow label="Key store" value={ek?.store ?? co.caIssuer} />
         <MetaRow label="Algorithm / size" value={`${co.algorithm} · ${co.keyLength} bits`} />
         {ek?.purpose && <MetaRow label="Purpose" value={ek.purpose} />}
@@ -750,14 +767,16 @@ function TypeMetadata({ co }: { co: CryptoAsset }) {
         {ek?.exportable != null && <MetaRow label="Exportable" value={<span className={ek.exportable ? 'text-coral' : 'text-teal'}>{ek.exportable ? 'Yes (risk)' : 'No'}</span>} />}
         {ek?.cryptoperiod && <MetaRow label="Cryptoperiod" value={ek.cryptoperiod} />}
         {ek?.wrappedBy && <MetaRow label="Wrapped by" value={<span className="font-mono text-[10px]">{ek.wrappedBy}</span>} />}
+        <MetaRow label="Quantum readiness" value={quantum} />
         <MetaRow label="Rotation policy" value={<span className={co.rotationFrequency === 'Never' ? 'text-coral' : 'text-foreground'}>{co.rotationFrequency}</span>} />
-        <MetaRow label="Last rotated" value={co.lastRotated} />
+        <MetaRow label="Created / last rotated" value={`${co.issueDate}  ·  ${co.lastRotated}`} />
         <MetaRow label="Discovery source" value={co.discoverySource} />
       </>
     );
   }
 
   if (co.type === 'API Key / Secret') {
+    const stale = co.rotationFrequency === 'Never' || (se?.lastUsed != null && se.lastUsed < '2025-06-01');
     return (
       <>
         <MetaRow label="Secret path" value={<span className="font-mono text-[10px] break-all">{se?.secretPath ?? co.serial}</span>} />
@@ -767,11 +786,12 @@ function TypeMetadata({ co }: { co: CryptoAsset }) {
         <MetaRow label="Exposure" value={
           <span className={se?.exposure && se.exposure !== 'Not detected' ? 'text-coral' : 'text-teal'}>{se?.exposure ?? 'Not detected'}</span>
         } />
-        {se?.lastUsed && <MetaRow label="Last used" value={se.lastUsed} />}
-        <MetaRow label="Last rotated" value={co.lastRotated} />
+        {se?.lastUsed && <MetaRow label="Last used" value={<span className={stale ? 'text-amber' : 'text-foreground'}>{se.lastUsed}</span>} />}
+        <MetaRow label="Last rotated" value={<span className={stale ? 'text-amber' : 'text-foreground'}>{co.lastRotated}</span>} />
         <MetaRow label="Rotation policy" value={<span className={co.rotationFrequency === 'Never' ? 'text-coral' : 'text-foreground'}>{co.rotationFrequency}</span>} />
-        {se?.noExpiry && <MetaRow label="Expiry" value={<span className="text-amber">No expiry set (risk)</span>} />}
+        <MetaRow label="Expiry" value={se?.noExpiry ? <span className="text-amber">No expiry set (risk)</span> : co.expiryDate} />
         {se?.consumers && se.consumers.length > 0 && <MetaRow label="Consumers" value={se.consumers.join(', ')} />}
+        <MetaRow label="Created / first seen" value={co.issueDate} />
         <MetaRow label="Discovery source" value={co.discoverySource} />
       </>
     );
@@ -1167,16 +1187,19 @@ function ColumnsPanel({ open, onClose, allCols, alwaysOn, visibleColKeys, setVis
 
 // Status options are type-correct. SSH keys and secrets use posture states, not
 // lifecycle/CLM states. (Monitoring-only product: no Managed/Monitored.)
-function STATUS_OPTIONS_FOR(type: string): string[] {
+// Option values MUST equal the stored a.status values (the filter matches raw
+// status). Display-friendly relabeling happens in the cells, not here.
+function STATUS_OPTIONS_FOR(type: string): { v: string; l: string }[] {
   switch (type) {
-    case 'SSH Key':          return ['Active', 'Key Missing'];
-    case 'API Key / Secret': return ['Active', 'Stale', 'Orphaned'];
-    case 'Encryption Key':   return ['Active', 'Disabled'];
+    // SSH keys never expire; Orphaned renders as "Key Missing" in the table.
+    case 'SSH Key':          return [{ v: 'Active', l: 'Active' }, { v: 'Orphaned', l: 'Key Missing' }];
+    case 'API Key / Secret': return [{ v: 'Active', l: 'Active' }, { v: 'Orphaned', l: 'Orphaned' }];
+    case 'Encryption Key':   return [{ v: 'Active', l: 'Active' }, { v: 'Revoked', l: 'Disabled' }];
     case 'SSH Certificate':
     case 'TLS Certificate':
     case 'Code-Signing Certificate':
-    case 'K8s Workload Cert': return ['Active', 'Healthy', 'Expiring', 'Expired', 'Revoked'];
-    default:                 return ['Active', 'Healthy', 'Expiring', 'Expired', 'Revoked'];
+    case 'K8s Workload Cert': return ['Active', 'Healthy', 'Expiring', 'Expired', 'Revoked'].map(v => ({ v, l: v }));
+    default:                 return ['Active', 'Healthy', 'Expiring', 'Expired', 'Revoked'].map(v => ({ v, l: v }));
   }
 }
 
@@ -1244,7 +1267,7 @@ function FilterPanel(props: FilterPanelProps) {
             <h3 className="text-[11px] font-semibold text-foreground">Status</h3>
             <FilterSection title="Status" onReset={statusFilter.length ? () => setStatusFilter([]) : undefined}>
               <FilterChips
-                options={STATUS_OPTIONS_FOR(typeFilter).map(v => ({ v, l: v }))}
+                options={STATUS_OPTIONS_FOR(typeFilter)}
                 selected={statusFilter} onToggle={toggle(setStatusFilter)} />
             </FilterSection>
           </div>
@@ -1658,7 +1681,3 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
     </div>
   );
 }
-
-
-
-
