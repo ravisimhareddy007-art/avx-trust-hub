@@ -67,7 +67,7 @@ const TYPE_FILTERS = [
 
 // ── Column definitions per type ───────────────────────────────────────────────
 
-interface ColDef { key: string; label: string; cls: string; }
+interface ColDef { key: string; label: string; cls: string; defaultOn?: boolean; }
 
 const COLS: Record<string, ColDef[]> = {
   // Posture-relevant columns only. Most-important facts in the table; full
@@ -157,6 +157,197 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'status',       label: 'Status',           cls: 'w-24' },
     { key: 'riskScore',    label: 'Risk',             cls: 'w-20' },
   ],
+};
+
+// ── Available columns superset per type ───────────────────────────────────────
+// Everything a user can surface as a table column, including the richer
+// attributes that otherwise live only in the side panel. The columns marked
+// defaultOn are shown by default (they mirror the curated posture table); the
+// rest are opt-in via the Columns chooser. Name and Risk are mandatory.
+
+const CERT_AVAILABLE: ColDef[] = [
+  { key: 'name',          label: 'Common Name',              cls: 'min-w-[180px] flex-1', defaultOn: true },
+  { key: 'caIssuer',      label: 'CA / Issuer',              cls: 'w-32', defaultOn: true },
+  { key: 'certAlgSize',   label: 'Algorithm / Size',         cls: 'w-32', defaultOn: true },
+  { key: 'expiryDate',    label: 'Valid To',                 cls: 'w-24', defaultOn: true },
+  { key: 'daysToExpiry',  label: 'Expires In',               cls: 'w-20', defaultOn: true },
+  { key: 'status',        label: 'Status',                   cls: 'w-24', defaultOn: true },
+  { key: 'certEndpoints', label: 'Endpoints',                cls: 'w-20', defaultOn: true },
+  { key: 'certCompliance',label: 'Compliance',               cls: 'w-28', defaultOn: true },
+  { key: 'riskScore',     label: 'Risk',                     cls: 'w-20', defaultOn: true },
+  // opt-in (from side panel)
+  { key: 'issueDate',     label: 'Valid From',               cls: 'w-24' },
+  { key: 'serial',        label: 'Serial Number',            cls: 'w-40' },
+  { key: 'certSigAlg',    label: 'Signature Algorithm',      cls: 'w-32' },
+  { key: 'certSubjectDN', label: 'Subject DN',               cls: 'w-56' },
+  { key: 'certIssuerDN',  label: 'Issuer DN',                cls: 'w-56' },
+  { key: 'certSans',      label: 'Subject Alternative Names',cls: 'w-56' },
+  { key: 'certKeyUsage',  label: 'Key Usage',                cls: 'w-40' },
+  { key: 'certEku',       label: 'Extended Key Usage',       cls: 'w-40' },
+  { key: 'certBasic',     label: 'Basic Constraints',        cls: 'w-28' },
+  { key: 'certSki',       label: 'Subject Key Identifier',   cls: 'w-40' },
+  { key: 'certAki',       label: 'Authority Key Identifier', cls: 'w-40' },
+  { key: 'certThumb',     label: 'Thumbprint (SHA-256)',     cls: 'w-44' },
+  { key: 'pqcRisk',       label: 'PQC / Quantum Readiness',  cls: 'w-24' },
+  { key: 'owner',         label: 'Owner',                    cls: 'w-32' },
+  { key: 'team',          label: 'Team',                     cls: 'w-32' },
+  { key: 'environment',   label: 'Environment',              cls: 'w-24' },
+  { key: 'application',   label: 'Application',              cls: 'w-32' },
+  { key: 'infrastructure',label: 'Infrastructure',           cls: 'w-32' },
+  { key: 'discoverySource',label: 'Discovery Source',        cls: 'w-32' },
+  { key: 'violations',    label: 'Violations',               cls: 'w-20' },
+];
+
+const K8S_AVAILABLE: ColDef[] = [
+  { key: 'name',          label: 'Workload',                 cls: 'min-w-[180px] flex-1', defaultOn: true },
+  { key: 'application',   label: 'Namespace / App',          cls: 'w-36', defaultOn: true },
+  { key: 'certAlgSize',   label: 'Algorithm / Size',         cls: 'w-32', defaultOn: true },
+  { key: 'expiryDate',    label: 'Valid To',                 cls: 'w-24', defaultOn: true },
+  { key: 'daysToExpiry',  label: 'Expires In',               cls: 'w-20', defaultOn: true },
+  { key: 'status',        label: 'Status',                   cls: 'w-24', defaultOn: true },
+  { key: 'certCompliance',label: 'Compliance',               cls: 'w-28', defaultOn: true },
+  { key: 'riskScore',     label: 'Risk',                     cls: 'w-20', defaultOn: true },
+  { key: 'caIssuer',      label: 'CA / Issuer',              cls: 'w-32' },
+  { key: 'serial',        label: 'Serial Number',            cls: 'w-40' },
+  { key: 'certSigAlg',    label: 'Signature Algorithm',      cls: 'w-32' },
+  { key: 'certSubjectDN', label: 'Subject DN',               cls: 'w-56' },
+  { key: 'certIssuerDN',  label: 'Issuer DN',                cls: 'w-56' },
+  { key: 'certSans',      label: 'Subject Alternative Names',cls: 'w-56' },
+  { key: 'certKeyUsage',  label: 'Key Usage',                cls: 'w-40' },
+  { key: 'certEku',       label: 'Extended Key Usage',       cls: 'w-40' },
+  { key: 'certThumb',     label: 'Thumbprint (SHA-256)',     cls: 'w-44' },
+  { key: 'pqcRisk',       label: 'PQC / Quantum Readiness',  cls: 'w-24' },
+  { key: 'owner',         label: 'Owner',                    cls: 'w-32' },
+  { key: 'environment',   label: 'Environment',              cls: 'w-24' },
+  { key: 'discoverySource',label: 'Discovery Source',        cls: 'w-32' },
+];
+
+const CS_AVAILABLE: ColDef[] = [
+  { key: 'name',          label: 'Cert Name',                cls: 'min-w-[180px] flex-1', defaultOn: true },
+  { key: 'caIssuer',      label: 'CA / Issuer',              cls: 'w-32', defaultOn: true },
+  { key: 'certAlgSize',   label: 'Algorithm / Size',         cls: 'w-32', defaultOn: true },
+  { key: 'expiryDate',    label: 'Valid To',                 cls: 'w-24', defaultOn: true },
+  { key: 'daysToExpiry',  label: 'Expires In',               cls: 'w-20', defaultOn: true },
+  { key: 'csStore',       label: 'Protection Store',         cls: 'w-32', defaultOn: true },
+  { key: 'status',        label: 'Status',                   cls: 'w-24', defaultOn: true },
+  { key: 'certCompliance',label: 'Compliance',               cls: 'w-28', defaultOn: true },
+  { key: 'riskScore',     label: 'Risk',                     cls: 'w-20', defaultOn: true },
+  { key: 'serial',        label: 'Serial Number',            cls: 'w-40' },
+  { key: 'certSigAlg',    label: 'Signature Algorithm',      cls: 'w-32' },
+  { key: 'certIssuerDN',  label: 'Issuer DN',                cls: 'w-56' },
+  { key: 'certEku',       label: 'Extended Key Usage',       cls: 'w-40' },
+  { key: 'certThumb',     label: 'Thumbprint (SHA-256)',     cls: 'w-44' },
+  { key: 'pqcRisk',       label: 'PQC / Quantum Readiness',  cls: 'w-24' },
+  { key: 'owner',         label: 'Owner',                    cls: 'w-32' },
+  { key: 'discoverySource',label: 'Discovery Source',        cls: 'w-32' },
+];
+
+const SSHKEY_AVAILABLE: ColDef[] = [
+  { key: 'name',          label: 'Key Name',                 cls: 'min-w-[170px] flex-1', defaultOn: true },
+  { key: 'sshFingerprint',label: 'Fingerprint',              cls: 'w-40', defaultOn: true },
+  { key: 'sshUsers',      label: 'Users',                    cls: 'w-16', defaultOn: true },
+  { key: 'sshFiles',      label: 'File Paths',               cls: 'w-20', defaultOn: true },
+  { key: 'sshGroup',      label: 'Compliance Group',         cls: 'w-32', defaultOn: true },
+  { key: 'sshMgmt',       label: 'Status',                   cls: 'w-24', defaultOn: true },
+  { key: 'sshRisk',       label: 'Risk Status',              cls: 'w-24', defaultOn: true },
+  { key: 'riskScore',     label: 'Risk',                     cls: 'w-20', defaultOn: true },
+  // opt-in
+  { key: 'algorithm',     label: 'Algorithm',                cls: 'w-24' },
+  { key: 'keyLength',     label: 'Bit Length',               cls: 'w-20' },
+  { key: 'sshAge',        label: 'Age',                      cls: 'w-20' },
+  { key: 'sshClient',     label: 'Client Endpoints',         cls: 'w-44' },
+  { key: 'sshHost',       label: 'Host Endpoints',           cls: 'w-44' },
+  { key: 'lastRotated',   label: 'Last Rotated',             cls: 'w-28' },
+  { key: 'rotationFrequency', label: 'Rotation Policy',      cls: 'w-28' },
+  { key: 'pqcRisk',       label: 'PQC',                      cls: 'w-20' },
+  { key: 'owner',         label: 'Owner',                    cls: 'w-32' },
+  { key: 'environment',   label: 'Environment',              cls: 'w-24' },
+  { key: 'discoverySource',label: 'Discovery Source',        cls: 'w-32' },
+];
+
+const SSHCERT_AVAILABLE: ColDef[] = [
+  { key: 'name',          label: 'Cert ID / Name',           cls: 'min-w-[170px] flex-1', defaultOn: true },
+  { key: 'sshcAssocKey',  label: 'Associated Key',           cls: 'w-32', defaultOn: true },
+  { key: 'sshcPrincipals',label: 'Principals',               cls: 'w-24', defaultOn: true },
+  { key: 'sshcSigningCA', label: 'Signing CA',               cls: 'w-24', defaultOn: true },
+  { key: 'sshcKeyType',   label: 'Key Type',                 cls: 'w-20', defaultOn: true },
+  { key: 'expiryDate',    label: 'Valid To',                 cls: 'w-24', defaultOn: true },
+  { key: 'daysToExpiry',  label: 'Expires In',               cls: 'w-20', defaultOn: true },
+  { key: 'status',        label: 'Status',                   cls: 'w-24', defaultOn: true },
+  { key: 'riskScore',     label: 'Risk',                     cls: 'w-20', defaultOn: true },
+  { key: 'sshcKeyId',     label: 'Key ID',                   cls: 'w-40' },
+  { key: 'algorithm',     label: 'Algorithm',                cls: 'w-24' },
+  { key: 'sshcExtensions',label: 'Extensions',               cls: 'w-44' },
+  { key: 'sshcCritOpts',  label: 'Critical Options',         cls: 'w-40' },
+  { key: 'owner',         label: 'Owner',                    cls: 'w-32' },
+  { key: 'environment',   label: 'Environment',              cls: 'w-24' },
+  { key: 'discoverySource',label: 'Discovery Source',        cls: 'w-32' },
+];
+
+const ENC_AVAILABLE: ColDef[] = [
+  { key: 'name',          label: 'Key Name',                 cls: 'min-w-[180px] flex-1', defaultOn: true },
+  { key: 'certAlgSize',   label: 'Algorithm / Size',         cls: 'w-32', defaultOn: true },
+  { key: 'encProtection', label: 'Protection',               cls: 'w-24', defaultOn: true },
+  { key: 'encStore',      label: 'Store',                    cls: 'w-36', defaultOn: true },
+  { key: 'encPurpose',    label: 'Purpose',                  cls: 'w-24', defaultOn: true },
+  { key: 'lastRotated',   label: 'Last Rotated',             cls: 'w-28', defaultOn: true },
+  { key: 'pqcRisk',       label: 'PQC',                      cls: 'w-20', defaultOn: true },
+  { key: 'riskScore',     label: 'Risk',                     cls: 'w-20', defaultOn: true },
+  { key: 'encState',      label: 'Key State',                cls: 'w-24' },
+  { key: 'encExportable', label: 'Exportable',               cls: 'w-24' },
+  { key: 'encCryptoperiod',label: 'Cryptoperiod',            cls: 'w-28' },
+  { key: 'encWrappedBy',  label: 'Wrapped By',               cls: 'w-32' },
+  { key: 'rotationFrequency', label: 'Rotation Policy',      cls: 'w-28' },
+  { key: 'owner',         label: 'Owner',                    cls: 'w-32' },
+  { key: 'environment',   label: 'Environment',              cls: 'w-24' },
+  { key: 'discoverySource',label: 'Discovery Source',        cls: 'w-32' },
+];
+
+const SEC_AVAILABLE: ColDef[] = [
+  { key: 'name',          label: 'Secret Name',              cls: 'min-w-[180px] flex-1', defaultOn: true },
+  { key: 'secretType',    label: 'Type',                     cls: 'w-28', defaultOn: true },
+  { key: 'secStore',      label: 'Store / Vault',            cls: 'w-36', defaultOn: true },
+  { key: 'secLastRotated',label: 'Last Rotated',             cls: 'w-28', defaultOn: true },
+  { key: 'secLastUsed',   label: 'Last Used',                cls: 'w-28', defaultOn: true },
+  { key: 'secExposure',   label: 'Exposure',                 cls: 'w-24', defaultOn: true },
+  { key: 'status',        label: 'Status',                   cls: 'w-24', defaultOn: true },
+  { key: 'riskScore',     label: 'Risk',                     cls: 'w-20', defaultOn: true },
+  { key: 'secPath',       label: 'Secret Path',              cls: 'w-56' },
+  { key: 'secVersion',    label: 'Version',                  cls: 'w-20' },
+  { key: 'secConsumers',  label: 'Consumers',                cls: 'w-40' },
+  { key: 'secNoExpiry',   label: 'Expiry',                   cls: 'w-24' },
+  { key: 'rotationFrequency', label: 'Rotation Policy',      cls: 'w-28' },
+  { key: 'owner',         label: 'Owner',                    cls: 'w-32' },
+  { key: 'environment',   label: 'Environment',              cls: 'w-24' },
+  { key: 'discoverySource',label: 'Discovery Source',        cls: 'w-32' },
+];
+
+const ALL_AVAILABLE: ColDef[] = [
+  { key: 'name',          label: 'Name',                     cls: 'min-w-[180px] flex-1', defaultOn: true },
+  { key: 'type',          label: 'Type',                     cls: 'w-36', defaultOn: true },
+  { key: 'keyAttribute',  label: 'Key Attribute',            cls: 'w-32', defaultOn: true },
+  { key: 'status',        label: 'Status',                   cls: 'w-24', defaultOn: true },
+  { key: 'pqcRisk',       label: 'PQC',                      cls: 'w-20', defaultOn: true },
+  { key: 'owner',         label: 'Owner',                    cls: 'w-32', defaultOn: true },
+  { key: 'environment',   label: 'Env',                      cls: 'w-24', defaultOn: true },
+  { key: 'violations',    label: 'Violations',               cls: 'w-20', defaultOn: true },
+  { key: 'riskScore',     label: 'Risk',                     cls: 'w-20', defaultOn: true },
+  { key: 'algorithm',     label: 'Algorithm',                cls: 'w-24' },
+  { key: 'team',          label: 'Team',                     cls: 'w-32' },
+  { key: 'application',   label: 'Application',              cls: 'w-32' },
+  { key: 'infrastructure',label: 'Infrastructure',           cls: 'w-32' },
+  { key: 'discoverySource',label: 'Discovery Source',        cls: 'w-32' },
+];
+
+const AVAILABLE_COLS: Record<string, ColDef[]> = {
+  All: ALL_AVAILABLE,
+  'TLS Certificate': CERT_AVAILABLE,
+  'K8s Workload Cert': K8S_AVAILABLE,
+  'Code-Signing Certificate': CS_AVAILABLE,
+  'SSH Key': SSHKEY_AVAILABLE,
+  'SSH Certificate': SSHCERT_AVAILABLE,
+  'Encryption Key': ENC_AVAILABLE,
+  'API Key / Secret': SEC_AVAILABLE,
 };
 
 // ── Derived field helpers ─────────────────────────────────────────────────────
@@ -328,6 +519,46 @@ function CellValue({ col, co }: { col: ColDef; co: CryptoAsset }) {
       if (co.type === 'Encryption Key') return <span className="text-muted-foreground text-[10px]">{co.encKey?.protection ?? 'Software'}</span>;
       return <DaysToExpiry days={co.daysToExpiry} />;
     }
+    // ── Cert opt-in (panel-derived) cells ──
+    case 'certSigAlg':     return <span className="text-[10px] text-muted-foreground">{signatureAlgoFor(co.algorithm)}</span>;
+    case 'certSubjectDN':  return <span className="font-mono text-[9.5px] text-muted-foreground truncate">{co.cert ? `CN=${co.commonName}, O=${co.cert.subjectO ?? 'AcmeCorp'}, C=${co.cert.subjectC ?? 'US'}` : `CN=${co.commonName}`}</span>;
+    case 'certIssuerDN':   return <span className="font-mono text-[9.5px] text-muted-foreground truncate">{co.cert?.issuerDN ?? co.caIssuer}</span>;
+    case 'certSans':       return <span className="font-mono text-[9.5px] text-muted-foreground truncate">{co.cert?.sans?.join(', ') ?? '-'}</span>;
+    case 'certKeyUsage':   return <span className="text-[10px] text-muted-foreground truncate">{co.cert?.keyUsage?.join(', ') ?? '-'}</span>;
+    case 'certEku':        return <span className="text-[10px] text-muted-foreground truncate">{co.cert?.extendedKeyUsage?.join(', ') ?? '-'}</span>;
+    case 'certBasic':      return <span className="text-[10px] text-muted-foreground">{co.cert?.basicConstraints ?? '-'}</span>;
+    case 'certSki':        return <span className="font-mono text-[9.5px] text-muted-foreground truncate">{co.cert?.subjectKeyId ?? '-'}</span>;
+    case 'certAki':        return <span className="font-mono text-[9.5px] text-muted-foreground truncate">{co.cert?.authorityKeyId ?? '-'}</span>;
+    case 'certThumb':      return <span className="font-mono text-[9.5px] text-muted-foreground truncate">{co.cert?.thumbprint ?? '-'}</span>;
+    // ── SSH key opt-in cells ──
+    case 'sshAge':         return <span className="text-[10px] text-muted-foreground">{co.sshKey?.ageDays != null ? `${co.sshKey.ageDays}d` : '-'}</span>;
+    case 'sshClient':      return <span className="font-mono text-[9.5px] text-muted-foreground truncate">{co.sshKey?.clientEndpoints?.join(', ') ?? '-'}</span>;
+    case 'sshHost':        return <span className="font-mono text-[9.5px] text-muted-foreground truncate">{co.sshKey?.hostEndpoints?.join(', ') ?? '-'}</span>;
+    // ── SSH cert opt-in cells ──
+    case 'sshcKeyId':      return <span className="font-mono text-[9.5px] text-muted-foreground truncate">{co.sshCert?.keyId ?? co.serial}</span>;
+    case 'sshcExtensions': return <span className="text-[10px] text-muted-foreground truncate">{co.sshCert?.extensions?.join(', ') ?? '-'}</span>;
+    case 'sshcCritOpts':   return <span className="text-[10px] text-muted-foreground truncate">{co.sshCert?.criticalOptions?.join(', ') || 'none'}</span>;
+    // ── Enc key opt-in cells ──
+    case 'encState':       return <span className={`text-[10px] font-medium ${co.encKey?.keyState === 'Disabled' ? 'text-amber' : 'text-teal'}`}>{co.encKey?.keyState ?? 'Enabled'}</span>;
+    case 'encExportable':  return <span className={`text-[10px] font-medium ${co.encKey?.exportable ? 'text-coral' : 'text-teal'}`}>{co.encKey?.exportable ? 'Yes' : 'No'}</span>;
+    case 'encCryptoperiod':return <span className="text-[10px] text-muted-foreground">{co.encKey?.cryptoperiod ?? '-'}</span>;
+    case 'encWrappedBy':   return <span className="font-mono text-[9.5px] text-muted-foreground truncate">{co.encKey?.wrappedBy ?? '-'}</span>;
+    // ── Secret opt-in cells ──
+    case 'secPath':        return <span className="font-mono text-[9.5px] text-muted-foreground truncate">{co.secret?.secretPath ?? co.serial}</span>;
+    case 'secVersion':     return <span className="text-[10px] text-muted-foreground">{co.secret?.version ?? '-'}</span>;
+    case 'secConsumers':   return <span className="text-[10px] text-muted-foreground truncate">{co.secret?.consumers?.join(', ') ?? '-'}</span>;
+    case 'secNoExpiry':    return <span className={`text-[10px] font-medium ${co.secret?.noExpiry ? 'text-amber' : 'text-foreground'}`}>{co.secret?.noExpiry ? 'No expiry' : co.expiryDate}</span>;
+    // ── Shared opt-in cells ──
+    case 'team':           return <span className="text-[10px] text-muted-foreground truncate">{co.team}</span>;
+    case 'application':    return <span className="text-[10px] text-muted-foreground truncate">{co.application}</span>;
+    case 'infrastructure': return <span className="text-[10px] text-muted-foreground truncate">{co.infrastructure}</span>;
+    case 'discoverySource':return <span className="text-[10px] text-muted-foreground truncate">{co.discoverySource}</span>;
+    case 'keyLength':      return <span className="text-[10px] text-muted-foreground">{co.keyLength}</span>;
+    case 'algorithm':      return <span className="text-[10px] text-muted-foreground">{co.algorithm}</span>;
+    case 'issueDate':      return <span className="text-muted-foreground">{co.issueDate}</span>;
+    case 'lastRotated':    return <span className="text-muted-foreground">{co.lastRotated}</span>;
+    case 'rotationFrequency': return <span className={`text-[10px] ${co.rotationFrequency === 'Never' ? 'text-coral' : 'text-muted-foreground'}`}>{co.rotationFrequency}</span>;
+    case 'caIssuer':       return <span className="text-[10px] text-muted-foreground truncate">{co.caIssuer}</span>;
     default:
       return <span className="text-muted-foreground truncate">{val != null && val !== '' ? String(val) : '—'}</span>;
   }
@@ -878,21 +1109,19 @@ interface ColumnsPanelProps {
 }
 
 function ColumnsPanel({ open, onClose, allCols, alwaysOn, visibleColKeys, setVisibleColKeys }: ColumnsPanelProps) {
-  const effective = visibleColKeys ?? allCols.map(c => c.key);
+  // Default (null) = curated defaultOn columns. Otherwise the explicit selection.
+  const defaults = allCols.filter(c => c.defaultOn).map(c => c.key);
+  const effective = visibleColKeys ?? defaults;
   const isOn = (key: string) => alwaysOn.includes(key) || effective.includes(key);
   const toggle = (key: string) => {
     if (alwaysOn.includes(key)) return;
-    setVisibleColKeys(() => {
-      const base = effective.filter(k => !alwaysOn.includes(k));
-      const next = base.includes(key) ? base.filter(k => k !== key) : [...base, key];
-      return next;
-    });
+    const base = effective.filter(k => !alwaysOn.includes(k));
+    const next = base.includes(key) ? base.filter(k => k !== key) : [...base, key];
+    setVisibleColKeys(next);
   };
-  const selectAll = () => setVisibleColKeys(null);
+  const selectAll = () => setVisibleColKeys(allCols.map(c => c.key));
   const reset = () => setVisibleColKeys(null);
-  const optional = allCols.filter(c => !alwaysOn.includes(c.key));
   const shownCount = allCols.filter(c => isOn(c.key)).length;
-  const allShown = visibleColKeys == null || optional.every(c => effective.includes(c.key));
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
@@ -1186,12 +1415,12 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   }, [allAssets, typeFilter, search, algFilter, envFilter, statusFilter, typeAttrFilter, pqcFilter, ownerFilter, qvOnly, sortKey, sortDir, filterIdActive]);
 
   const getAssoc = (co: CryptoAsset) => mockITAssets.filter(a => a.cryptoObjectIds.includes(co.id));
-  const allCols = COLS[typeFilter] ?? COLS['All'];
+  const allCols = AVAILABLE_COLS[typeFilter] ?? AVAILABLE_COLS['All'];
   React.useEffect(() => { setVisibleColKeys(null); }, [typeFilter]);
-  // null means "all visible"; otherwise honor the user's selection (plus always-on).
-  const cols = visibleColKeys == null
-    ? allCols
-    : allCols.filter(c => ALWAYS_ON.includes(c.key) || visibleColKeys.includes(c.key));
+  // null means "use the curated defaults"; otherwise honor the user's selection.
+  // Preserve the superset's order so columns stay in a sensible sequence.
+  const selectedKeys = visibleColKeys ?? allCols.filter(c => c.defaultOn).map(c => c.key);
+  const cols = allCols.filter(c => ALWAYS_ON.includes(c.key) || selectedKeys.includes(c.key));
   React.useEffect(() => { setTypeAttrFilter([]); }, [typeFilter]);
 
   const openTicket = (co: CryptoAsset, action: string) => {
@@ -1317,8 +1546,8 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
 
         {/* Table */}
         <div className="bg-card rounded-lg border border-border overflow-hidden flex-1 min-h-0 flex flex-col">
-          <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto scrollbar-thin">
-            <table className="w-full text-xs table-auto">
+          <div className="flex-1 min-h-0 overflow-auto scrollbar-thin">
+            <table className="w-full min-w-max text-xs table-auto">
               <thead className="bg-secondary/50 sticky top-0 z-10">
                 <tr className="border-b border-border">
                   {cols.map(col => (
@@ -1429,6 +1658,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
     </div>
   );
 }
+
 
 
 
