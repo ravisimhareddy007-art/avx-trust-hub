@@ -49,16 +49,6 @@ function accessRaw(a: CryptoAsset): { v: number; why: string } {
 }
 
 function complianceRaw(a: CryptoAsset): { v: number; why: string } {
-  if (a.type === 'AI Agent Token') {
-    const noActivity = !a.agentMeta?.lastActivity || a.agentMeta.lastActivity.includes('days ago');
-    const highVolume = (a.agentMeta?.actionsPerDay || 0) > 10000;
-    const expired = a.status === 'Expired';
-    if (expired && noActivity) return { v: 88, why: 'Expired token with no recent activity trace — audit gap, NIS2 Art. 21 non-compliant' };
-    if (highVolume && a.policyViolations > 0) return { v: 70, why: `High-volume agent (${a.agentMeta?.actionsPerDay?.toLocaleString()} actions/day) with policy violations — incomplete audit coverage` };
-    if (noActivity) return { v: 55, why: 'No recent activity recorded — audit trail incomplete' };
-    if (a.autoRenewal && (a.agentMeta?.actionsPerDay || 0) > 0) return { v: 15, why: 'Active agent with auto-rotation — audit trail traceable' };
-    return { v: 35, why: 'Partial audit trail — activity logged but rotation is manual' };
-  }
   // Use pqcRisk as a proxy for compliance posture vs PQC mandates.
   switch (a.pqcRisk) {
     case 'Critical': return { v: 90, why: 'PQC-vulnerable · NIST 2030 deadline' };
