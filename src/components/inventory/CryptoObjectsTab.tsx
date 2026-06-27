@@ -498,37 +498,6 @@ function TypeMetadata({ co }: { co: CryptoAsset }) {
     );
   }
 
-  if (co.type === 'AI Agent Token') {
-    const m = co.agentMeta;
-    return (
-      <>
-        <MetaRow label="Token ID" value={<span className="font-mono text-[10px] break-all">{co.serial}</span>} />
-        <MetaRow label="Agent type" value={m?.agentType ?? '—'} />
-        <MetaRow label="Framework" value={m?.framework ?? '—'} />
-        <MetaRow label="Issuing platform" value={co.caIssuer} />
-        <MetaRow label="Actions / day" value={<span className="tabular-nums">{m?.actionsPerDay?.toLocaleString() ?? '—'}</span>} />
-        <MetaRow label="Last activity" value={m?.lastActivity ?? '—'} />
-        <MetaRow label="Permission risk" value={<span className={permRiskStyle(m?.permissionRisk)}>{m?.permissionRisk ?? '—'}</span>} />
-        <MetaRow label="Rotation policy" value={co.rotationFrequency} />
-        <MetaRow label="Human sponsor" value={<span className={co.owner === 'Unassigned' ? 'text-coral' : 'text-foreground'}>{co.owner}</span>} />
-        {m?.permissions && m.permissions.length > 0 && (
-          <MetaRow label={`Permissions (${m.permissions.length})`} value={
-            <div className="space-y-0.5">
-              {m.permissions.map((p, i) => <div key={i} className="font-mono text-[10px] text-muted-foreground">{p}</div>)}
-            </div>
-          } />
-        )}
-        {m?.servicesAccessed && m.servicesAccessed.length > 0 && (
-          <MetaRow label="Services accessed" value={
-            <div className="flex flex-wrap gap-1">
-              {m.servicesAccessed.map((s, i) => <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{s}</span>)}
-            </div>
-          } />
-        )}
-        {m?.mcpTools && <MetaRow label="MCP tools" value={m.mcpTools.join(', ')} />}
-      </>
-    );
-  }
 
   if (co.type === 'API Key / Secret') {
     const ei = exposedInFor(co);
