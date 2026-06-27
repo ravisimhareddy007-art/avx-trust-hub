@@ -352,74 +352,41 @@ function SectionHeading({ label, count }: { label: string; count?: number }) {
 // ── Type-specific metadata ────────────────────────────────────────────────────
 
 function TypeMetadata({ co }: { co: CryptoAsset }) {
-  if (co.type === 'TLS Certificate') {
-    return (
-      <>
-        <MetaRow label="Subject DN" value={<span className="font-mono text-[10px]">CN={co.commonName}, O=Acme Corp, C=US</span>} />
-        <MetaRow label="CA type" value={caTypeFor(co.caIssuer)} />
-        <MetaRow label="Serial" value={<span className="font-mono text-[10px] break-all">{co.serial}</span>} />
-        <MetaRow label="Signature algorithm" value={signatureAlgoFor(co.algorithm)} />
-        <MetaRow label="Key size" value={`${co.keyLength} bits`} />
-        <MetaRow label="Key usage" value={keyUsageFor(co.type)} />
-        <MetaRow label="Extended key usage" value={extKeyUsageFor(co.type)} />
-        <MetaRow label="Last renewed" value={co.lastRotated} />
-        <MetaRow label="Auto-renewal" value={co.autoRenewal
-          ? <span className="text-teal">Enabled — {co.rotationFrequency}</span>
-          : <span className="text-coral">Disabled — manual required</span>} />
-        <MetaRow label="Managed via" value={co.discoverySource} />
-      </>
-    );
-  }
+  // Renders the type-specific enterprise fields from the data model. Falls back
+  // to derived values only where a field is absent, so sparse records still read.
+  const c = co.cert, sk = co.sshKey, sc = co.sshCert, ek = co.encKey, se = co.secret;
 
-  if (co.type === 'SSH Key') {
+  if (co.type === 'TLS Certificate' || co.type === 'K8s Workload Cert') {
+    const subjectDN = c
+      ? `CN=${co.commonName}, O=${c.subjectO ?? 'AcmeCorp'}, OU=${c.subjectOU ?? ''}, C=${c.subjectC ?? 'US'}`
+      : `CN=${co.commonName}, O=AcmeCorp, C=US`;
     return (
       <>
-        <MetaRow label="Fingerprint" value={<span className="font-mono text-[10px] break-all">{co.serial}</span>} />
-        <MetaRow label="Key size" value={`${co.keyLength} bits`} />
-        <MetaRow label="Privilege level" value={
-          <span className={privilegeLevelFor(co) === 'root' ? 'text-coral' : privilegeLevelFor(co) === 'admin' ? 'text-amber' : 'text-foreground'}>
-            {privilegeLevelFor(co)}
-          </span>
-        } />
-        <MetaRow label="Auth method" value="Public key authentication" />
-        <MetaRow label="Rotation policy" value={<span className={co.rotationFrequency === 'Never' ? 'text-coral' : 'text-foreground'}>{co.rotationFrequency}</span>} />
-        <MetaRow label="Last rotated" value={co.lastRotated} />
-        {co.sshEndpoints && co.sshEndpoints.length > 0 && (
-          <MetaRow label={`Authorized endpoints (${co.sshEndpoints.length})`} value={
-            <div className="space-y-1">
-              {co.sshEndpoints.slice(0, 5).map((ep, i) => (
-                <div key={i} className="text-[10px]">
-                  <span className="font-mono text-foreground">{ep.host}</span>
-                  <span className="text-muted-foreground"> · {ep.ip} · {ep.role} · {ep.lastSeen.split(' ')[0]}</span>
-                </div>
-              ))}
-              {co.sshEndpoints.length > 5 && <span className="text-[10px] text-muted-foreground">+{co.sshEndpoints.length - 5} more</span>}
-            </div>
+        <MetaRow label="Subject DN" value={<span className="font-mono text-[10px] break-all">{subjectDN}</span>} />
+        {c?.issuerDN && <MetaRow label="Issuer DN" value={<span className="font-mono text-[10px] break-all">{c.issuerDN}</span>} />}
+        <MetaRow label="Serial number" value={<span className="font-mono text-[10px] break-all">{co.serial}</span>} />
+        <MetaRow label="Signature algorithm" value={signatureAlgoFor(co.algorithm)} />
+        <MetaRow label="Key algorithm / size" value={`${co.algorithm} · ${co.keyLength} bits`} />
+        {c?.sans && c.sans.length > 0 && (
+          <MetaRow label="Subject Alternative Names" value={
+            <div className="flex flex-wrap gap-1">{c.sans.map(s => <span key={s} className="font-mono text-[9.5px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{s}</span>)}</div>
           } />
         )}
-        <MetaRow label="Discovery source" value={co.discoverySource} />
-      </>
-    );
-  }
-
-  if (co.type === 'SSH Certificate') {
-    return (
-      <>
-        <MetaRow label="KRL serial" value={<span className="font-mono text-[10px]">{co.serial}</span>} />
-        <MetaRow label="Principals" value={co.commonName} />
-        <MetaRow label="Key algorithm" value={co.algorithm} />
-        <MetaRow label="Key size" value={`${co.keyLength} bits`} />
-        <MetaRow label="Auto-renewal" value={co.autoRenewal
-          ? <span className="text-teal">Enabled — {co.rotationFrequency}</span>
-          : <span className="text-coral">Disabled</span>} />
-        <MetaRow label="CA" value={co.caIssuer} />
-        {co.sshEndpoints && co.sshEndpoints.length > 0 && (
-          <MetaRow label={`Authorized hosts (${co.sshEndpoints.length})`} value={
-            <div className="space-y-1">
-              {co.sshEndpoints.map((ep, i) => (
-                <div key={i} className="font-mono text-[10px] text-foreground">{ep.host} <span className="text-muted-foreground">· {ep.role}</span></div>
-              ))}
-            </div>
+        {c?.keyUsage && <MetaRow label="Key usage" value={c.keyUsage.join(', ')} />}
+        {c?.extendedKeyUsage && <MetaRow label="Extended key usage" value={c.extendedKeyUsage.join(', ')} />}
+        {c?.basicConstraints && <MetaRow label="Basic constraints" value={c.basicConstraints} />}
+        {c?.subjectKeyId && <MetaRow label="Subject key identifier" value={<span className="font-mono text-[10px] break-all">{c.subjectKeyId}</span>} />}
+        {c?.authorityKeyId && <MetaRow label="Authority key identifier" value={<span className="font-mono text-[10px] break-all">{c.authorityKeyId}</span>} />}
+        {c?.thumbprint && <MetaRow label="Thumbprint (SHA-256)" value={<span className="font-mono text-[10px] break-all">{c.thumbprint}</span>} />}
+        <MetaRow label="Valid from / to" value={`${co.issueDate}  ->  ${co.expiryDate}`} />
+        {c?.complianceStatus && <MetaRow label="Compliance" value={
+          <span className={c.complianceStatus === 'Compliant' ? 'text-teal' : 'text-coral'}>{c.complianceStatus}</span>
+        } />}
+        {c?.endpoints && c.endpoints.length > 0 && (
+          <MetaRow label={`Deployed endpoints (${c.endpoints.length})`} value={
+            <div className="space-y-1">{c.endpoints.slice(0,6).map((e,i) => (
+              <div key={i} className="text-[10px]"><span className="font-mono text-foreground">{e.host}</span><span className="text-muted-foreground"> · {e.ip}:{e.port}</span></div>
+            ))}</div>
           } />
         )}
         <MetaRow label="Discovery source" value={co.discoverySource} />
@@ -430,30 +397,74 @@ function TypeMetadata({ co }: { co: CryptoAsset }) {
   if (co.type === 'Code-Signing Certificate') {
     return (
       <>
-        <MetaRow label="Serial" value={<span className="font-mono text-[10px] break-all">{co.serial}</span>} />
         <MetaRow label="Subject" value={co.commonName} />
-        <MetaRow label="CA type" value={caTypeFor(co.caIssuer)} />
-        <MetaRow label="Key size" value={`${co.keyLength} bits`} />
-        <MetaRow label="Key usage" value="Digital Signature" />
-        <MetaRow label="Code signing OID" value="1.3.6.1.5.5.7.3.3" />
-        <MetaRow label="HSM / Store" value={co.infrastructure} />
-        <MetaRow label="Auto-renewal" value={co.autoRenewal ? <span className="text-teal">Enabled</span> : <span className="text-coral">Disabled — {co.rotationFrequency}</span>} />
-        <MetaRow label="Managed via" value={co.discoverySource} />
+        {c?.issuerDN && <MetaRow label="Issuer DN" value={<span className="font-mono text-[10px] break-all">{c.issuerDN}</span>} />}
+        <MetaRow label="Serial number" value={<span className="font-mono text-[10px] break-all">{co.serial}</span>} />
+        <MetaRow label="Signature algorithm" value={signatureAlgoFor(co.algorithm)} />
+        <MetaRow label="Key algorithm / size" value={`${co.algorithm} · ${co.keyLength} bits`} />
+        <MetaRow label="Extended key usage" value={c?.extendedKeyUsage?.join(', ') ?? 'Code Signing'} />
+        {c?.thumbprint && <MetaRow label="Thumbprint (SHA-256)" value={<span className="font-mono text-[10px] break-all">{c.thumbprint}</span>} />}
+        <MetaRow label="Protection store" value={co.infrastructure} />
+        <MetaRow label="Valid from / to" value={`${co.issueDate}  ->  ${co.expiryDate}`} />
+        {c?.complianceStatus && <MetaRow label="Compliance" value={<span className={c.complianceStatus === 'Compliant' ? 'text-teal' : 'text-coral'}>{c.complianceStatus}</span>} />}
+        <MetaRow label="Discovery source" value={co.discoverySource} />
       </>
     );
   }
 
-  if (co.type === 'K8s Workload Cert') {
+  if (co.type === 'SSH Key') {
     return (
       <>
-        <MetaRow label="SPIFFE ID" value={<span className="font-mono text-[10px] break-all">{co.serial}</span>} />
-        <MetaRow label="Workload" value={co.commonName} />
-        <MetaRow label="Key algorithm" value={co.algorithm} />
-        <MetaRow label="Key size" value={`${co.keyLength} bits`} />
-        <MetaRow label="Auto-rotation" value={co.autoRenewal
-          ? <span className="text-teal">cert-manager — {co.rotationFrequency}</span>
-          : <span className="text-coral">Manual — not automated</span>} />
-        <MetaRow label="Namespace" value={co.application} />
+        <MetaRow label="Fingerprint" value={<span className="font-mono text-[10px] break-all">{sk?.fingerprint ?? co.serial}</span>} />
+        <MetaRow label="Algorithm / bit length" value={`${co.algorithm} · ${co.keyLength} bits`} />
+        {sk?.ageDays != null && <MetaRow label="Age" value={`${sk.ageDays} days`} />}
+        {sk?.complianceGroup && <MetaRow label="Compliance group" value={sk.complianceGroup} />}
+        {sk?.managementStatus && <MetaRow label="Management status" value={sk.managementStatus} />}
+        {sk?.riskStatus && sk.riskStatus !== 'Clean' && <MetaRow label="Risk status" value={<span className="text-coral font-medium">{sk.riskStatus}</span>} />}
+        <MetaRow label="Rotation policy" value={<span className={co.rotationFrequency === 'Never' ? 'text-coral' : 'text-foreground'}>{co.rotationFrequency}</span>} />
+        {sk?.associatedUsers && sk.associatedUsers.length > 0 && (
+          <MetaRow label={`Associated users (${sk.associatedUsers.length})`} value={
+            <div className="space-y-0.5">{sk.associatedUsers.map((u,i) => (
+              <div key={i} className="font-mono text-[10px]"><span className="text-foreground">{u.user}</span><span className="text-muted-foreground"> @ {u.ip}</span></div>
+            ))}</div>
+          } />
+        )}
+        {sk?.clientEndpoints && sk.clientEndpoints.length > 0 && (
+          <MetaRow label="Client endpoints (private key)" value={
+            <div className="space-y-0.5">{sk.clientEndpoints.map((h,i) => <div key={i} className="font-mono text-[10px] text-foreground">{h}</div>)}</div>
+          } />
+        )}
+        {sk?.hostEndpoints && sk.hostEndpoints.length > 0 && (
+          <MetaRow label="Host endpoints (authorized)" value={
+            <div className="space-y-0.5">{sk.hostEndpoints.map((h,i) => <div key={i} className="font-mono text-[10px] text-foreground">{h}</div>)}</div>
+          } />
+        )}
+        {sk?.filePaths && sk.filePaths.length > 0 && (
+          <MetaRow label="File paths" value={
+            <div className="space-y-0.5">{sk.filePaths.map((p,i) => <div key={i} className="font-mono text-[9.5px] text-muted-foreground break-all">{p}</div>)}</div>
+          } />
+        )}
+        <MetaRow label="Discovery source" value={co.discoverySource} />
+      </>
+    );
+  }
+
+  if (co.type === 'SSH Certificate') {
+    return (
+      <>
+        <MetaRow label="Key ID" value={<span className="font-mono text-[10px] break-all">{sc?.keyId ?? co.serial}</span>} />
+        <MetaRow label="Key type" value={sc?.keyType ?? 'User'} />
+        <MetaRow label="Signing CA" value={sc?.signingCA ?? co.caIssuer} />
+        <MetaRow label="Algorithm / size" value={`${co.algorithm} · ${co.keyLength} bits`} />
+        {sc?.principals && sc.principals.length > 0 && (
+          <MetaRow label={`Principals (${sc.principals.length})`} value={
+            <div className="flex flex-wrap gap-1">{sc.principals.map(p => <span key={p} className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-foreground">{p}</span>)}</div>
+          } />
+        )}
+        {sc?.extensions && sc.extensions.length > 0 && <MetaRow label="Extensions" value={sc.extensions.join(', ')} />}
+        {sc?.criticalOptions && sc.criticalOptions.length > 0 && <MetaRow label="Critical options" value={sc.criticalOptions.join(', ')} />}
+        {sc?.associatedKeyName && <MetaRow label="Associated SSH key" value={<span className="font-mono text-[10px]">{sc.associatedKeyName}</span>} />}
+        <MetaRow label="Valid to" value={co.expiryDate} />
         <MetaRow label="Discovery source" value={co.discoverySource} />
       </>
     );
@@ -462,35 +473,38 @@ function TypeMetadata({ co }: { co: CryptoAsset }) {
   if (co.type === 'Encryption Key') {
     return (
       <>
-        <MetaRow label="Key ID / ARN" value={<span className="font-mono text-[10px] break-all">{co.serial}</span>} />
-        <MetaRow label="Key store" value={co.caIssuer} />
-        <MetaRow label="Key size" value={`${co.keyLength} bits`} />
-        <MetaRow label="Key usage" value="ENCRYPT_DECRYPT" />
-        <MetaRow label="Key state" value={<span className={co.status === 'Active' ? 'text-teal' : 'text-amber'}>{co.status === 'Active' ? 'Active / Enabled' : co.status}</span>} />
-        <MetaRow label="Auto-rotation" value={co.autoRenewal
-          ? <span className="text-teal">Enabled — {co.rotationFrequency}</span>
-          : <span className="text-coral">Disabled</span>} />
-        <MetaRow label="Created" value={co.issueDate} />
+        <MetaRow label="Key identifier" value={<span className="font-mono text-[10px] break-all">{co.serial}</span>} />
+        <MetaRow label="Protection" value={ek?.protection ?? 'Software'} />
+        <MetaRow label="Key store" value={ek?.store ?? co.caIssuer} />
+        <MetaRow label="Algorithm / size" value={`${co.algorithm} · ${co.keyLength} bits`} />
+        {ek?.purpose && <MetaRow label="Purpose" value={ek.purpose} />}
+        <MetaRow label="Key state" value={<span className={ek?.keyState === 'Disabled' ? 'text-amber' : 'text-teal'}>{ek?.keyState ?? 'Enabled'}</span>} />
+        {ek?.exportable != null && <MetaRow label="Exportable" value={<span className={ek.exportable ? 'text-coral' : 'text-teal'}>{ek.exportable ? 'Yes (risk)' : 'No'}</span>} />}
+        {ek?.cryptoperiod && <MetaRow label="Cryptoperiod" value={ek.cryptoperiod} />}
+        {ek?.wrappedBy && <MetaRow label="Wrapped by" value={<span className="font-mono text-[10px]">{ek.wrappedBy}</span>} />}
+        <MetaRow label="Rotation policy" value={<span className={co.rotationFrequency === 'Never' ? 'text-coral' : 'text-foreground'}>{co.rotationFrequency}</span>} />
         <MetaRow label="Last rotated" value={co.lastRotated} />
-        <MetaRow label="Managed via" value={co.discoverySource} />
+        <MetaRow label="Discovery source" value={co.discoverySource} />
       </>
     );
   }
 
-
   if (co.type === 'API Key / Secret') {
-    const ei = exposedInFor(co);
     return (
       <>
-        <MetaRow label="Secret path" value={<span className="font-mono text-[10px] break-all">{co.serial}</span>} />
-        <MetaRow label="Secret store" value={co.caIssuer} />
-        <MetaRow label="Secret type" value={secretTypeFor(co)} />
-        <MetaRow label="Algorithm" value={co.algorithm} />
-        <MetaRow label="Exposure" value={<span className={ei.color}>{ei.label}</span>} />
+        <MetaRow label="Secret path" value={<span className="font-mono text-[10px] break-all">{se?.secretPath ?? co.serial}</span>} />
+        <MetaRow label="Secret store" value={se?.store ?? co.caIssuer} />
+        <MetaRow label="Secret type" value={se?.secretType ?? secretTypeFor(co)} />
+        {se?.version && <MetaRow label="Version" value={se.version} />}
+        <MetaRow label="Exposure" value={
+          <span className={se?.exposure && se.exposure !== 'Not detected' ? 'text-coral' : 'text-teal'}>{se?.exposure ?? 'Not detected'}</span>
+        } />
+        {se?.lastUsed && <MetaRow label="Last used" value={se.lastUsed} />}
         <MetaRow label="Last rotated" value={co.lastRotated} />
         <MetaRow label="Rotation policy" value={<span className={co.rotationFrequency === 'Never' ? 'text-coral' : 'text-foreground'}>{co.rotationFrequency}</span>} />
-        <MetaRow label="Auto-rotation" value={co.autoRenewal ? <span className="text-teal">Enabled</span> : <span className="text-coral">Disabled</span>} />
-        <MetaRow label="Managed via" value={co.discoverySource} />
+        {se?.noExpiry && <MetaRow label="Expiry" value={<span className="text-amber">No expiry set (risk)</span>} />}
+        {se?.consumers && se.consumers.length > 0 && <MetaRow label="Consumers" value={se.consumers.join(', ')} />}
+        <MetaRow label="Discovery source" value={co.discoverySource} />
       </>
     );
   }
@@ -500,36 +514,7 @@ function TypeMetadata({ co }: { co: CryptoAsset }) {
 
 // ── Secrets upsell ────────────────────────────────────────────────────────────
 
-const SECRETS_LICENSED = false;
 
-function SecretsUpsell({ co }: { co: CryptoAsset }) {
-  const daysOld = Math.floor((Date.now() - new Date(co.lastRotated).getTime()) / 86_400_000);
-  const inCode = (co.tags ?? []).includes('source-code');
-  return (
-    <div className="rounded-xl border border-amber/30 bg-amber/5 p-4 space-y-2">
-      <div className="flex items-center gap-2 mb-1">
-        <Lock className="w-4 h-4 text-amber flex-shrink-0" />
-        <div>
-          <p className="text-[11px] font-semibold text-amber">Secrets Lifecycle Management — Not Licensed</p>
-          <p className="text-[9.5px] text-muted-foreground">AVX Trust Platform — Secrets Module</p>
-        </div>
-      </div>
-      <p className="text-[10px] text-muted-foreground leading-relaxed">
-        {inCode
-          ? `This secret was detected in source code. Secrets Lifecycle Management would have detected this immediately, auto-rotated the key, and opened a remediation PR. Current exposure window: ${daysOld} days.`
-          : `This secret has not been rotated in ${daysOld} days. Secrets Lifecycle Management provides auto-rotation, vault sync, exposure scanning across code repos and CI/CD pipelines, and policy enforcement.`}
-      </p>
-      <div className="flex gap-2 pt-1">
-        <button onClick={() => toast.info('Redirecting to Secrets module...')} className="text-[10px] font-semibold px-3 py-1.5 rounded bg-amber/20 text-amber hover:bg-amber/30 transition-colors">
-          Learn More →
-        </button>
-        <button onClick={() => toast.info('Opening sales contact form...')} className="text-[10px] px-3 py-1.5 rounded border border-amber/30 text-amber/80 hover:bg-amber/10 transition-colors">
-          Talk to Sales
-        </button>
-      </div>
-    </div>
-  );
-}
 
 // ── Side panel (38%) ──────────────────────────────────────────────────────────
 
@@ -642,14 +627,7 @@ function DetailPanel({
           {/* Actions */}
           {(() => {
             const hasPolicyViol = policy.length > 0;
-            if (isSecret && !SECRETS_LICENSED) {
-              return (
-                <div className="px-4 py-3">
-                  <SectionHeading label="Actions" />
-                  <SecretsUpsell co={co} />
-                </div>
-              );
-            }
+
             return (
               <div className="px-4 py-3">
                 <SectionHeading label="Actions" />
@@ -771,7 +749,7 @@ function DetailPanel({
               <div className="space-y-0.5">
                 {assoc.map(a => (
                   <button key={a.id}
-                    onClick={() => { setFilters({ tab: 'infrastructure', assetId: a.id }); setCurrentPage('inventory'); onClose(); }}
+                    onClick={() => { setFilters({ tab: 'infrastructure', assetName: a.name }); setCurrentPage('inventory'); onClose(); }}
                     className="w-full flex items-center gap-2 text-[11px] rounded px-2 py-1.5 hover:bg-secondary/50 transition-colors text-left group">
                     <span className="text-foreground font-medium flex-1 truncate group-hover:text-teal">{a.name}</span>
                     <span className="text-muted-foreground flex-shrink-0 text-[10px]">{a.type}</span>
