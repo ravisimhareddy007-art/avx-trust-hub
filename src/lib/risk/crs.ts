@@ -30,13 +30,6 @@ function lifecycleRaw(a: CryptoAsset): { v: number; why: string } {
   if (a.daysToExpiry > 7 && a.daysToExpiry <= 30)  return { v: 70, why: `Expires in ${a.daysToExpiry}d (≤30)` };
   if (a.daysToExpiry > 30 && a.daysToExpiry <= 90) return { v: 45, why: `Expires in ${a.daysToExpiry}d (≤90)` };
   if (!a.autoRenewal && a.daysToExpiry > 0)        return { v: 30, why: 'No auto-renewal' };
-  if (a.type === 'AI Agent Token') {
-    if (!a.autoRenewal && a.rotationFrequency?.includes('365')) return { v: 90, why: 'Static long-lived credential — never auto-rotated, high exposure window' };
-    if (!a.autoRenewal && a.rotationFrequency?.includes('90'))  return { v: 70, why: 'Long rotation cycle (90d) without auto-renewal — manual rotation risk' };
-    if (!a.autoRenewal && a.rotationFrequency?.includes('30'))  return { v: 50, why: '30-day rotation without auto-renewal — moderate staleness risk' };
-    if (a.autoRenewal  && a.rotationFrequency?.includes('7'))   return { v: 20, why: 'Weekly auto-rotation — good credential hygiene' };
-    if (a.autoRenewal  && a.rotationFrequency?.includes('24'))  return { v: 8,  why: 'JIT / 24-hour auto-rotation — best practice credential lifecycle' };
-  }
   return { v: 15, why: 'Healthy lifecycle' };
 }
 
