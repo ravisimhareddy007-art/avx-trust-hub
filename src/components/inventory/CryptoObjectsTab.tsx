@@ -813,7 +813,7 @@ function DetailPanel({
               <div className="space-y-0.5">
                 {assoc.map(a => (
                   <button key={a.id}
-                    onClick={() => { setFilters({ tab: 'infrastructure', assetId: a.id }); setCurrentPage('inventory'); onClose(); }}
+                    onClick={() => { setFilters({ tab: 'infrastructure', assetName: a.name }); setCurrentPage('inventory'); onClose(); }}
                     className="w-full flex items-center gap-2 text-[11px] rounded px-2 py-1.5 hover:bg-secondary/50 transition-colors text-left group">
                     <span className="text-foreground font-medium flex-1 truncate group-hover:text-teal">{a.name}</span>
                     <span className="text-muted-foreground flex-shrink-0 text-[10px]">{a.type}</span>
