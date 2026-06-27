@@ -1013,7 +1013,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
 
   const filtered = useMemo(() => {
     let r = [...allAssets];
-    if (!FEATURES.AI_IDENTITY) r = r.filter(a => a.type !== 'AI Agent Token');
+    
     if (qvOnly) r = r.filter(a => algVuln(a.algorithm) >= 90); // canonical quantum-vulnerable, matches Quantum Readiness
     if (typeFilter !== 'All') r = r.filter(a => a.type === typeFilter);
     if (search) {
