@@ -36,16 +36,6 @@ function lifecycleRaw(a: CryptoAsset): { v: number; why: string } {
 function exposureRaw(a: CryptoAsset): { v: number; why: string } {
   if (a.environment === 'Production' && a.tags.some(t => /pci|production|edge|wildcard/i.test(t)))
     return { v: 80, why: 'Prod-facing / wildcard / regulated scope' };
-  if (a.type === 'AI Agent Token') {
-    const sensitiveServices = ['Active Directory', 'Firewall', 'PII', 'CrowdStrike', 'HSM', 'Splunk'];
-    const matched = sensitiveServices.filter(s => a.agentMeta?.servicesAccessed?.some(svc => svc.includes(s)));
-    const hasSensitive = matched.length > 0;
-    const serviceCount = a.agentMeta?.servicesAccessed?.length || 0;
-    if (hasSensitive && a.environment === 'Production') return { v: 85, why: `Accesses high-sensitivity resources (${matched.join(', ')}) in production` };
-    if (hasSensitive) return { v: 65, why: 'Accesses high-sensitivity resources' };
-    if (serviceCount > 6 && a.environment === 'Production') return { v: 60, why: `Wide service access (${serviceCount} services) in production` };
-    if (a.environment === 'Production') return { v: 50, why: 'Production AI agent' };
-  }
   if (a.environment === 'Production') return { v: 55, why: 'Production exposure' };
   if (a.environment === 'Staging')    return { v: 30, why: 'Staging exposure' };
   return { v: 15, why: 'Internal / dev only' };
