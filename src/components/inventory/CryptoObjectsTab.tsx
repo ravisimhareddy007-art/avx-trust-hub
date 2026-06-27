@@ -1230,13 +1230,8 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
         </div>
       </div>
 
-      {/* AI Agent panel */}
-      {detailAsset?.type === 'AI Agent Token' && (
-        <AgentDetailPanel agent={detailAsset} onClose={() => setDetailAsset(null)} onCreateTicket={onCreateTicket} licensed={true} />
-      )}
-
       {/* Detail side panel */}
-      {detailAsset && detailAsset.type !== 'AI Agent Token' && (
+      {detailAsset && (
         <DetailPanel
           co={detailAsset}
           onClose={() => setDetailAsset(null)}
