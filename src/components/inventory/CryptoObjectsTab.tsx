@@ -827,6 +827,7 @@ function DetailPanel({
   const crsFactors = crsResult.factors;
   const crsTotalW = crsFactors.reduce((sw, fac) => sw + fac.weight, 0);
   const riskCol = riskScore >= 60 ? 'text-coral' : riskScore >= 30 ? 'text-amber' : 'text-teal';
+  const [explainOpen, setExplainOpen] = useState(false);
 
   const { policy, quantum } = deriveViolations(co);
   const rawViolations = policy.length + quantum.length;
@@ -885,6 +886,11 @@ function DetailPanel({
                     {riskScore >= 80 ? 'Critical' : riskScore >= 60 ? 'High' : riskScore >= 30 ? 'Medium' : 'Low'} risk
                   </span>
                   <span className="text-[10px] text-muted-foreground">CRS</span>
+                  <button onClick={() => setExplainOpen(v => !v)}
+                    className="ml-auto inline-flex items-center gap-0.5 text-[10px] text-muted-foreground/70 hover:text-teal transition-colors">
+                    <Info className="w-3 h-3" /> Explain
+                    {explainOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  </button>
                 </div>
                 <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">
                   {totalViolations > 0
@@ -896,7 +902,8 @@ function DetailPanel({
               </div>
             </div>
 
-            {/* Factor breakdown as bars (the real CRS factors, weighted) */}
+            {/* Factor breakdown, collapsible; opens on Explain. */}
+            {explainOpen && (
             <div className="mt-2.5 space-y-1 border-t border-border/40 pt-2">
               {crsFactors.map(fac => {
                 const contrib = Math.round(fac.raw * (fac.weight / crsTotalW));
@@ -913,6 +920,7 @@ function DetailPanel({
                 );
               })}
             </div>
+            )}
           </div>
         </div>
 
