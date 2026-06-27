@@ -178,6 +178,7 @@ export const VIOLATION_FILTERS: Record<string, DashboardFilter> = {
     pts: 6,
     filters: { type: 'API Key / Secret', owner: 'Unassigned', tab: 'identities' },
   },
+};
 
 
 // ERS drivers — subset of VIOLATION_FILTERS used on the ERS driver bar
@@ -190,7 +191,7 @@ export const DASHBOARD_FILTERS: Record<string, DashboardFilter> = {
     enterpriseCount: ESTATE_SUMMARY.sshSuspicious + ESTATE_SUMMARY.sshRogue,
     pts: 10,
   },
-  'ai-over-priv':   VIOLATION_FILTERS.ai_over_privileged,
+
   'weak-algos': {
     id: 'weak-algos',
     label: 'Weak algorithms (certs + SSH)',
