@@ -14,6 +14,7 @@ import {
   Ticket, Lock, ChevronUp, ChevronDown,
   Filter as FilterIcon,
   Download,
+  Columns3,
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { toast } from 'sonner';
@@ -863,6 +864,78 @@ function FilterSection({ title, onReset, children }: { title: string; onReset?: 
   );
 }
 
+// ── Column chooser ────────────────────────────────────────────────────────────
+// Lets the user pick which of the type's posture columns are shown. Name and
+// Risk are mandatory. Selection resets when the active type changes.
+
+interface ColumnsPanelProps {
+  open: boolean;
+  onClose: () => void;
+  allCols: ColDef[];
+  alwaysOn: string[];
+  visibleColKeys: string[] | null;
+  setVisibleColKeys: React.Dispatch<React.SetStateAction<string[] | null>>;
+}
+
+function ColumnsPanel({ open, onClose, allCols, alwaysOn, visibleColKeys, setVisibleColKeys }: ColumnsPanelProps) {
+  const effective = visibleColKeys ?? allCols.map(c => c.key);
+  const isOn = (key: string) => alwaysOn.includes(key) || effective.includes(key);
+  const toggle = (key: string) => {
+    if (alwaysOn.includes(key)) return;
+    setVisibleColKeys(() => {
+      const base = effective.filter(k => !alwaysOn.includes(k));
+      const next = base.includes(key) ? base.filter(k => k !== key) : [...base, key];
+      return next;
+    });
+  };
+  const selectAll = () => setVisibleColKeys(null);
+  const reset = () => setVisibleColKeys(null);
+  const optional = allCols.filter(c => !alwaysOn.includes(c.key));
+  const shownCount = allCols.filter(c => isOn(c.key)).length;
+  const allShown = visibleColKeys == null || optional.every(c => effective.includes(c.key));
+
+  return (
+    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent side="right" className="w-[340px] sm:w-[380px] p-0 flex flex-col">
+        <SheetHeader className="px-4 py-3 border-b border-border flex-row items-center justify-between space-y-0">
+          <SheetTitle className="text-sm">Columns</SheetTitle>
+          <div className="flex items-center gap-3">
+            <button onClick={selectAll} className="text-[11px] text-teal hover:underline">Select all</button>
+            <button onClick={reset} className="text-[11px] text-muted-foreground hover:underline">Reset</button>
+          </div>
+        </SheetHeader>
+
+        <div className="px-4 py-2 border-b border-border">
+          <span className="text-[11px] text-muted-foreground">Selected columns </span>
+          <span className="text-[11px] font-semibold text-foreground tabular-nums">{shownCount}</span>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-2">
+          {allCols.map(col => {
+            const mandatory = alwaysOn.includes(col.key);
+            return (
+              <label key={col.key}
+                className={`flex items-center gap-2.5 px-2 py-2 rounded text-xs cursor-pointer hover:bg-muted ${mandatory ? 'opacity-60 cursor-not-allowed' : ''}`}>
+                <input type="checkbox" checked={isOn(col.key)} disabled={mandatory} onChange={() => toggle(col.key)}
+                  className="accent-teal w-3.5 h-3.5" />
+                <span className="text-foreground">{col.label}</span>
+                {mandatory && <span className="ml-auto text-[9px] text-muted-foreground uppercase tracking-wide">required</span>}
+              </label>
+            );
+          })}
+        </div>
+
+        <div className="px-4 py-3 border-t border-border">
+          <button onClick={onClose}
+            className="w-full py-2 rounded bg-teal text-primary-foreground hover:bg-teal-light text-xs font-semibold">
+            Done
+          </button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 // Status options are type-correct. SSH keys and secrets use posture states, not
 // lifecycle/CLM states. (Monitoring-only product: no Managed/Monitored.)
 function STATUS_OPTIONS_FOR(type: string): string[] {
@@ -907,7 +980,6 @@ function FilterPanel(props: FilterPanelProps) {
   };
 
   const algOptions = [{ v: 'weak', l: 'Weak (RSA/SHA-1)' }, ...algorithms.map(a => ({ v: a, l: a }))];
-  const ownerOptions = owners.map(o => ({ v: o, l: o }));
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
@@ -936,9 +1008,6 @@ function FilterPanel(props: FilterPanelProps) {
               <FilterChips
                 options={['Production','Staging','Development'].map(v => ({ v, l: v }))}
                 selected={envFilter} onToggle={toggle(setEnvFilter)} />
-            </FilterSection>
-            <FilterSection title="Owner" onReset={ownerFilter.length ? () => setOwnerFilter([]) : undefined}>
-              <FilterChips options={ownerOptions} selected={ownerFilter} onToggle={toggle(setOwnerFilter)} />
             </FilterSection>
           </div>
 
@@ -1019,6 +1088,10 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   const [ownerFilter, setOwnerFilter]   = useState<string[]>([]);
   const [filterIdActive, setFilterIdActive] = useState<string>('');
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+  const [colPanelOpen, setColPanelOpen] = useState(false);
+  // Column visibility per the active type. Name and Risk are always shown.
+  const ALWAYS_ON = ['name', 'riskScore'];
+  const [visibleColKeys, setVisibleColKeys] = useState<string[] | null>(null);
   const [detailAsset, setDetailAsset]   = useState<CryptoAsset | null>(null);
   const [ticketAsset, setTicketAsset]   = useState<CryptoAsset | null>(null);
   const [ticketAction, setTicketAction] = useState('fix');
@@ -1113,7 +1186,12 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   }, [allAssets, typeFilter, search, algFilter, envFilter, statusFilter, typeAttrFilter, pqcFilter, ownerFilter, qvOnly, sortKey, sortDir, filterIdActive]);
 
   const getAssoc = (co: CryptoAsset) => mockITAssets.filter(a => a.cryptoObjectIds.includes(co.id));
-  const cols = COLS[typeFilter] ?? COLS['All'];
+  const allCols = COLS[typeFilter] ?? COLS['All'];
+  React.useEffect(() => { setVisibleColKeys(null); }, [typeFilter]);
+  // null means "all visible"; otherwise honor the user's selection (plus always-on).
+  const cols = visibleColKeys == null
+    ? allCols
+    : allCols.filter(c => ALWAYS_ON.includes(c.key) || visibleColKeys.includes(c.key));
   React.useEffect(() => { setTypeAttrFilter([]); }, [typeFilter]);
 
   const openTicket = (co: CryptoAsset, action: string) => {
@@ -1167,7 +1245,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                 <div className="relative flex-1 max-w-sm">
                   <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                   <input value={search} onChange={e => setSearch(e.target.value)}
-                    placeholder="Search name, owner, application, algorithm..."
+                    placeholder="Search name, application, algorithm..."
                     className="w-full pl-7 pr-3 py-1.5 bg-muted border border-border rounded text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal" />
                 </div>
                 <button
@@ -1182,6 +1260,16 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                   Filters
                   {totalActive > 0 && (
                     <span className="ml-1 px-1.5 py-0.5 rounded-full bg-teal/20 text-teal text-[9px] font-bold tabular-nums">{totalActive}</span>
+                  )}
+                </button>
+                <button
+                  onClick={() => setColPanelOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[11px] font-medium border border-border text-foreground hover:bg-muted transition-colors"
+                >
+                  <Columns3 className="w-3.5 h-3.5" />
+                  Columns
+                  {visibleColKeys != null && (
+                    <span className="ml-1 px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground text-[9px] font-bold tabular-nums">{cols.length}</span>
                   )}
                 </button>
                 <span className="text-[10px] text-muted-foreground ml-auto">{filtered.length} identities</span>
@@ -1316,6 +1404,15 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
       <CryptoObjectRiskDrawer object={riskDrawer} onClose={() => setRiskDrawer(null)} />
       <DeployToDeviceModal open={!!deployAsset} onClose={() => setDeployAsset(null)} cert={deployAsset} />
 
+      <ColumnsPanel
+        open={colPanelOpen}
+        onClose={() => setColPanelOpen(false)}
+        allCols={allCols}
+        alwaysOn={ALWAYS_ON}
+        visibleColKeys={visibleColKeys}
+        setVisibleColKeys={setVisibleColKeys}
+      />
+
       <FilterPanel
         open={filterPanelOpen}
         typeFilter={typeFilter}
@@ -1332,5 +1429,6 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
     </div>
   );
 }
+
 
 
