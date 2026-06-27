@@ -139,7 +139,7 @@ export default function ViolationsPage() {
     // Crypto-object violations come from the one canonical source, so the named
     // violations and counts here match exactly what each object shows in the
     // Inventory, the risk drawer, and the Quantum Readiness surface.
-    const objects = FEATURES.AI_IDENTITY ? mockAssets : mockAssets.filter(a => a.type !== 'AI Agent Token');
+    const objects = mockAssets;
     objects.forEach(co => {
       const vs = getCryptoViolations(co);
       vs.forEach((v, idx) => {
