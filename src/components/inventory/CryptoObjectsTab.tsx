@@ -69,106 +69,92 @@ const TYPE_FILTERS = [
 interface ColDef { key: string; label: string; cls: string; }
 
 const COLS: Record<string, ColDef[]> = {
+  // Posture-relevant columns only. Most-important facts in the table; full
+  // context lives in the side panel. Lifecycle-ops columns (auto-renewal) are
+  // intentionally excluded; this is a posture product, not CLM.
   All: [
     { key: 'name',         label: 'Name',             cls: 'min-w-[180px] flex-1' },
     { key: 'type',         label: 'Type',             cls: 'w-36' },
+    { key: 'keyAttribute', label: 'Key Attribute',    cls: 'w-32' },
     { key: 'status',       label: 'Status',           cls: 'w-24' },
     { key: 'pqcRisk',      label: 'PQC',              cls: 'w-20' },
     { key: 'owner',        label: 'Owner',            cls: 'w-32' },
     { key: 'environment',  label: 'Env',              cls: 'w-24' },
-    { key: 'lastActivity', label: 'Last Activity',    cls: 'w-28' },
     { key: 'violations',   label: 'Violations',       cls: 'w-20' },
-    { key: 'riskScore',    label: 'Risk', cls: 'w-20' },
+    { key: 'riskScore',    label: 'Risk',             cls: 'w-20' },
   ],
   'TLS Certificate': [
     { key: 'name',         label: 'Common Name',      cls: 'min-w-[180px] flex-1' },
-    { key: 'caIssuer',     label: 'CA / Issuer',      cls: 'w-36' },
-    { key: 'algorithm',    label: 'Algorithm',        cls: 'w-24' },
-    { key: 'issueDate',    label: 'Valid From',       cls: 'w-24' },
-    { key: 'expiryDate',   label: 'Expiry',           cls: 'w-24' },
-    { key: 'daysToExpiry', label: 'Days',             cls: 'w-16' },
-    { key: 'autoRenewal',  label: 'Auto',             cls: 'w-14' },
+    { key: 'caIssuer',     label: 'CA / Issuer',      cls: 'w-32' },
+    { key: 'certAlgSize',  label: 'Algorithm / Size', cls: 'w-32' },
+    { key: 'expiryDate',   label: 'Valid To',         cls: 'w-24' },
+    { key: 'daysToExpiry', label: 'Expires In',       cls: 'w-20' },
     { key: 'status',       label: 'Status',           cls: 'w-24' },
-    { key: 'pqcRisk',      label: 'PQC',              cls: 'w-20' },
-    { key: 'violations',   label: 'Violations',       cls: 'w-20' },
-    { key: 'riskScore',    label: 'Risk', cls: 'w-20' },
+    { key: 'certEndpoints',label: 'Endpoints',        cls: 'w-20' },
+    { key: 'certCompliance',label: 'Compliance',      cls: 'w-28' },
+    { key: 'riskScore',    label: 'Risk',             cls: 'w-20' },
   ],
   'SSH Key': [
-    { key: 'name',         label: 'Key Name',         cls: 'min-w-[180px] flex-1' },
-    { key: 'algorithm',    label: 'Key Type',         cls: 'w-24' },
-    { key: 'serial',       label: 'Fingerprint',      cls: 'w-40' },
-    { key: 'owner',        label: 'Owner',            cls: 'w-28' },
-    { key: 'sshLastUsed',  label: 'Last Used',        cls: 'w-28' },
-    { key: 'lastRotated',  label: 'Last Rotated',     cls: 'w-28' },
-    { key: 'sshHosts',     label: 'Hosts',            cls: 'w-16' },
-    { key: 'status',       label: 'Status',           cls: 'w-24' },
-    { key: 'pqcRisk',      label: 'PQC',              cls: 'w-20' },
-    { key: 'riskScore',    label: 'Risk', cls: 'w-20' },
+    { key: 'name',         label: 'Key Name',         cls: 'min-w-[170px] flex-1' },
+    { key: 'sshFingerprint', label: 'Fingerprint',    cls: 'w-40' },
+    { key: 'sshUsers',     label: 'Users',            cls: 'w-16' },
+    { key: 'sshFiles',     label: 'File Paths',       cls: 'w-20' },
+    { key: 'sshGroup',     label: 'Compliance Group', cls: 'w-32' },
+    { key: 'sshMgmt',      label: 'Status',           cls: 'w-24' },
+    { key: 'sshRisk',      label: 'Risk Status',      cls: 'w-24' },
+    { key: 'riskScore',    label: 'Risk',             cls: 'w-20' },
   ],
   'SSH Certificate': [
-    { key: 'name',         label: 'Cert Name',        cls: 'min-w-[180px] flex-1' },
-    { key: 'caIssuer',     label: 'CA',               cls: 'w-36' },
-    { key: 'commonName',   label: 'Principals',       cls: 'w-36' },
-    { key: 'expiryDate',   label: 'Expiry',           cls: 'w-24' },
-    { key: 'daysToExpiry', label: 'Days',             cls: 'w-16' },
-    { key: 'autoRenewal',  label: 'Auto',             cls: 'w-14' },
-    { key: 'status',       label: 'Status',           cls: 'w-24' },
-    { key: 'riskScore',    label: 'Risk', cls: 'w-20' },
+    { key: 'name',          label: 'Cert ID / Name',  cls: 'min-w-[170px] flex-1' },
+    { key: 'sshcAssocKey',  label: 'Associated Key',  cls: 'w-32' },
+    { key: 'sshcPrincipals',label: 'Principals',      cls: 'w-24' },
+    { key: 'sshcSigningCA', label: 'Signing CA',      cls: 'w-24' },
+    { key: 'sshcKeyType',   label: 'Key Type',        cls: 'w-20' },
+    { key: 'expiryDate',    label: 'Valid To',        cls: 'w-24' },
+    { key: 'daysToExpiry',  label: 'Expires In',      cls: 'w-20' },
+    { key: 'status',        label: 'Status',          cls: 'w-24' },
+    { key: 'riskScore',     label: 'Risk',            cls: 'w-20' },
   ],
   'Code-Signing Certificate': [
     { key: 'name',          label: 'Cert Name',        cls: 'min-w-[180px] flex-1' },
-    { key: 'caIssuer',      label: 'CA',               cls: 'w-36' },
-    { key: 'algorithm',     label: 'Algorithm',        cls: 'w-24' },
-    { key: 'keyLength',     label: 'Key Size',         cls: 'w-20' },
-    { key: 'expiryDate',    label: 'Expiry',           cls: 'w-24' },
-    { key: 'daysToExpiry',  label: 'Days',             cls: 'w-16' },
-    { key: 'infrastructure',label: 'HSM',              cls: 'w-28' },
+    { key: 'caIssuer',      label: 'CA / Issuer',      cls: 'w-32' },
+    { key: 'certAlgSize',   label: 'Algorithm / Size', cls: 'w-32' },
+    { key: 'expiryDate',    label: 'Valid To',         cls: 'w-24' },
+    { key: 'daysToExpiry',  label: 'Expires In',       cls: 'w-20' },
+    { key: 'csStore',       label: 'Protection Store', cls: 'w-32' },
     { key: 'status',        label: 'Status',           cls: 'w-24' },
-    { key: 'pqcRisk',       label: 'PQC',              cls: 'w-20' },
-    { key: 'riskScore',     label: 'Risk', cls: 'w-20' },
+    { key: 'certCompliance',label: 'Compliance',       cls: 'w-28' },
+    { key: 'riskScore',     label: 'Risk',             cls: 'w-20' },
   ],
   'K8s Workload Cert': [
     { key: 'name',              label: 'Workload',         cls: 'min-w-[180px] flex-1' },
     { key: 'application',       label: 'Namespace / App',  cls: 'w-36' },
-    { key: 'caIssuer',          label: 'CA',               cls: 'w-28' },
-    { key: 'rotationFrequency', label: 'Rotation',         cls: 'w-24' },
-    { key: 'expiryDate',        label: 'Expiry',           cls: 'w-24' },
-    { key: 'daysToExpiry',      label: 'Days',             cls: 'w-16' },
-    { key: 'autoRenewal',       label: 'Auto',             cls: 'w-14' },
+    { key: 'certAlgSize',       label: 'Algorithm / Size', cls: 'w-32' },
+    { key: 'expiryDate',        label: 'Valid To',         cls: 'w-24' },
+    { key: 'daysToExpiry',      label: 'Expires In',       cls: 'w-20' },
     { key: 'status',            label: 'Status',           cls: 'w-24' },
-    { key: 'riskScore',         label: 'Risk', cls: 'w-20' },
+    { key: 'certCompliance',    label: 'Compliance',       cls: 'w-28' },
+    { key: 'riskScore',         label: 'Risk',             cls: 'w-20' },
   ],
   'Encryption Key': [
     { key: 'name',              label: 'Key Name',         cls: 'min-w-[180px] flex-1' },
-    { key: 'caIssuer',          label: 'Key Store',        cls: 'w-36' },
-    { key: 'algorithm',         label: 'Algorithm',        cls: 'w-24' },
-    { key: 'rotationFrequency', label: 'Rotation Policy',  cls: 'w-28' },
+    { key: 'certAlgSize',       label: 'Algorithm / Size', cls: 'w-32' },
+    { key: 'encProtection',     label: 'Protection',       cls: 'w-24' },
+    { key: 'encStore',          label: 'Store',            cls: 'w-36' },
+    { key: 'encPurpose',        label: 'Purpose',          cls: 'w-24' },
     { key: 'lastRotated',       label: 'Last Rotated',     cls: 'w-28' },
-    { key: 'autoRenewal',       label: 'Auto-Rotation',    cls: 'w-24' },
-    { key: 'status',            label: 'State',            cls: 'w-24' },
-    { key: 'riskScore',         label: 'Risk', cls: 'w-20' },
-  ],
-  'AI Agent Token': [
-    { key: 'name',         label: 'Token / Agent',    cls: 'min-w-[180px] flex-1' },
-    { key: 'agentFw',      label: 'Framework',        cls: 'w-32' },
-    { key: 'actionsDay',   label: 'Actions/Day',      cls: 'w-24' },
-    { key: 'permRisk',     label: 'Permission Risk',  cls: 'w-28' },
-    { key: 'expiryDate',   label: 'Expiry',           cls: 'w-24' },
-    { key: 'daysToExpiry', label: 'Days',             cls: 'w-16' },
-    { key: 'status',       label: 'Status',           cls: 'w-24' },
-    { key: 'violations',   label: 'Violations',       cls: 'w-20' },
-    { key: 'riskScore',    label: 'Risk', cls: 'w-20' },
+    { key: 'pqcRisk',           label: 'PQC',              cls: 'w-20' },
+    { key: 'riskScore',         label: 'Risk',             cls: 'w-20' },
   ],
   'API Key / Secret': [
     { key: 'name',         label: 'Secret Name',      cls: 'min-w-[180px] flex-1' },
-    { key: 'caIssuer',     label: 'Secret Store',     cls: 'w-32' },
     { key: 'secretType',   label: 'Type',             cls: 'w-28' },
-    { key: 'owner',        label: 'Owner',            cls: 'w-28' },
-    { key: 'lastRotated',  label: 'Last Rotated',     cls: 'w-28' },
-    { key: 'exposedIn',    label: 'Exposed In',       cls: 'w-32' },
+    { key: 'secStore',     label: 'Store / Vault',    cls: 'w-36' },
+    { key: 'secLastRotated', label: 'Last Rotated',   cls: 'w-28' },
+    { key: 'secLastUsed',  label: 'Last Used',        cls: 'w-28' },
+    { key: 'secExposure',  label: 'Exposure',         cls: 'w-24' },
     { key: 'status',       label: 'Status',           cls: 'w-24' },
-    { key: 'violations',   label: 'Violations',       cls: 'w-20' },
-    { key: 'riskScore',    label: 'Risk', cls: 'w-20' },
+    { key: 'riskScore',    label: 'Risk',             cls: 'w-20' },
   ],
 };
 
@@ -289,6 +275,52 @@ function CellValue({ col, co }: { col: ColDef; co: CryptoAsset }) {
     case 'exposedIn': {
       const ei = exposedInFor(co);
       return <span className={`text-[10px] font-medium ${ei.color}`}>{ei.label}</span>;
+    }
+    // ── Shared cert cells ──
+    case 'certAlgSize':    return <span className="text-muted-foreground text-[11px]">{co.algorithm} / {co.keyLength}</span>;
+    case 'certEndpoints':  return <span className="tabular-nums text-foreground font-medium">{co.cert?.endpoints?.length ?? 0}</span>;
+    case 'certCompliance': {
+      const cc = co.cert?.complianceStatus;
+      if (!cc) return <span className="text-muted-foreground text-[10px]">-</span>;
+      return <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${cc === 'Compliant' ? 'text-teal bg-teal/10' : 'text-coral bg-coral/10'}`}>{cc}</span>;
+    }
+    case 'csStore':        return <span className="text-[10px] text-muted-foreground truncate">{co.infrastructure}</span>;
+    // ── SSH key cells ──
+    case 'sshFingerprint': return <span className="font-mono text-[10px] text-muted-foreground truncate">{co.sshKey?.fingerprint ?? co.serial}</span>;
+    case 'sshUsers':       return <span className="tabular-nums text-foreground font-medium">{co.sshKey?.associatedUsers?.length ?? 0}</span>;
+    case 'sshFiles':       return <span className="tabular-nums text-muted-foreground">{co.sshKey?.filePaths?.length ?? 0}</span>;
+    case 'sshGroup':       return <span className="text-[10px] text-muted-foreground truncate">{co.sshKey?.complianceGroup ?? '-'}</span>;
+    case 'sshMgmt':        return <span className={`text-[10px] font-medium ${co.sshKey?.managementStatus === 'Monitored' ? 'text-amber' : 'text-teal'}`}>{co.sshKey?.managementStatus ?? 'Managed'}</span>;
+    case 'sshRisk': {
+      const rs = co.sshKey?.riskStatus ?? 'Clean';
+      return <span className={`text-[10px] font-medium ${rs === 'Clean' ? 'text-muted-foreground' : 'text-coral'}`}>{rs}</span>;
+    }
+    // ── SSH cert cells ──
+    case 'sshcAssocKey':   return <span className="font-mono text-[10px] text-teal truncate">{co.sshCert?.associatedKeyName ?? '-'}</span>;
+    case 'sshcPrincipals': {
+      const ps = co.sshCert?.principals ?? [];
+      return <span className="text-[10px] text-foreground">{ps[0] ?? '-'}{ps.length > 1 && <span className="ml-1 px-1 rounded bg-secondary text-muted-foreground">+{ps.length - 1}</span>}</span>;
+    }
+    case 'sshcSigningCA':  return <span className="text-[10px] text-muted-foreground truncate">{co.sshCert?.signingCA ?? co.caIssuer}</span>;
+    case 'sshcKeyType':    return <span className="text-[10px] text-foreground">{co.sshCert?.keyType ?? 'User'}</span>;
+    // ── Encryption key cells ──
+    case 'encProtection':  return <span className={`text-[10px] font-medium ${co.encKey?.protection === 'Software' ? 'text-coral' : co.encKey?.protection === 'HSM' ? 'text-teal' : 'text-foreground'}`}>{co.encKey?.protection ?? 'Software'}</span>;
+    case 'encStore':       return <span className="text-[10px] text-muted-foreground truncate">{co.encKey?.store ?? co.caIssuer}</span>;
+    case 'encPurpose':     return <span className="text-[10px] text-muted-foreground">{co.encKey?.purpose ?? '-'}</span>;
+    // ── Secret cells ──
+    case 'secStore':       return <span className="text-[10px] text-muted-foreground truncate">{co.secret?.store ?? co.caIssuer}</span>;
+    case 'secLastRotated': return <span className="text-muted-foreground">{co.lastRotated}</span>;
+    case 'secLastUsed':    return <span className="text-muted-foreground">{co.secret?.lastUsed ?? '-'}</span>;
+    case 'secExposure': {
+      const ex = co.secret?.exposure ?? 'Not detected';
+      return <span className={`text-[10px] font-medium ${ex === 'Not detected' ? 'text-teal' : 'text-coral'}`}>{ex}</span>;
+    }
+    // ── All Identities adaptive Key Attribute ──
+    case 'keyAttribute': {
+      if (co.type === 'API Key / Secret') return <span className="text-muted-foreground text-[10px]">Used {co.secret?.lastUsed ?? co.lastRotated}</span>;
+      if (co.type === 'SSH Key') return <span className="text-muted-foreground text-[10px]">{co.sshKey?.ageDays != null ? co.sshKey.ageDays + 'd old' : co.lastRotated}</span>;
+      if (co.type === 'Encryption Key') return <span className="text-muted-foreground text-[10px]">{co.encKey?.protection ?? 'Software'}</span>;
+      return <DaysToExpiry days={co.daysToExpiry} />;
     }
     default:
       return <span className="text-muted-foreground truncate">{val != null && val !== '' ? String(val) : '—'}</span>;
@@ -1243,3 +1275,4 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
     </div>
   );
 }
+
