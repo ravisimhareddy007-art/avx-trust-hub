@@ -41,7 +41,7 @@ export function deriveLifespanYears(a: CryptoAsset): number {
   if (/phi|health|pii/.test(t)) return 12;
   if (a.type === 'Code-Signing Certificate') return 6;
   if (a.type === 'SSH Key' || a.type === 'SSH Certificate') return 3;
-  if (a.type === 'API Key / Secret' || a.type === 'AI Agent Token') return 0.5;
+  if (a.type === 'API Key / Secret') return 0.5;
   if (a.type === 'Encryption Key') return 7;
   if (a.type === 'TLS Certificate') return 2;
   return 1;
@@ -54,7 +54,7 @@ function exposureScore(a: CryptoAsset): number {
     || /\bCA\b/.test(a.name)
     || (a.tags || []).some(t => /root|trust-anchor|issuing-ca|intermediate/i.test(t));
   if (isTrustAnchor) return 100;
-  const ephemeral = a.type === 'API Key / Secret' || a.type === 'AI Agent Token'
+  const ephemeral = a.type === 'API Key / Secret'
     || (a.rotationFrequency?.includes('7') ?? false) || (a.rotationFrequency?.includes('24') ?? false);
   const longLived = deriveLifespanYears(a) >= 2;
   const facing = a.environment === 'Production'

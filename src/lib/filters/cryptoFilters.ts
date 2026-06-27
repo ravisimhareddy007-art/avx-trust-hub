@@ -179,48 +179,6 @@ export const VIOLATION_FILTERS: Record<string, DashboardFilter> = {
     filters: { type: 'API Key / Secret', owner: 'Unassigned', tab: 'identities' },
   },
 
-  // ── AI Agent Tokens ───────────────────────────────────────────────────────
-
-  ai_admin_no_rotation: {
-    id: 'ai_admin_no_rotation',
-    label: 'Admin privilege — not rotated >30d',
-    countNoun: 'AI tokens',
-    predicate: (a) => a.type === 'AI Agent Token' && a.agentMeta?.permissionRisk === 'Over-privileged',
-    enterpriseCount: ESTATE_SUMMARY.aiTokensAdminPriv,
-    pts: 14,
-    filters: { type: 'AI Agent Token', privilege: 'admin', tab: 'identities' },
-  },
-
-  ai_over_privileged: {
-    id: 'ai_over_privileged',
-    label: 'Over-privileged — unused scopes',
-    countNoun: 'AI tokens',
-    predicate: (a) => a.type === 'AI Agent Token' && a.agentMeta?.permissionRisk === 'Over-privileged',
-    enterpriseCount: ESTATE_SUMMARY.aiTokensOverPriv,
-    pts: 10,
-    filters: { type: 'AI Agent Token', privilege: 'over', tab: 'identities' },
-  },
-
-  ai_no_sponsor: {
-    id: 'ai_no_sponsor',
-    label: 'No human sponsor assigned',
-    countNoun: 'AI tokens',
-    predicate: (a) => a.type === 'AI Agent Token' && (a.owner === 'Unassigned' || a.tags?.includes('no-sponsor')),
-    enterpriseCount: ESTATE_SUMMARY.aiTokensNoSponsor,
-    pts: 8,
-    filters: { type: 'AI Agent Token', owner: 'Unassigned', tab: 'identities' },
-  },
-
-  ai_no_rotation_policy: {
-    id: 'ai_no_rotation_policy',
-    label: 'No rotation policy configured',
-    countNoun: 'AI tokens',
-    predicate: (a) => a.type === 'AI Agent Token' && (a.rotationFrequency === 'Never' || a.rotationFrequency === '365 days'),
-    enterpriseCount: ESTATE_SUMMARY.aiTokensNoRotationPolicy,
-    pts: 6,
-    filters: { type: 'AI Agent Token', rotation: 'none', tab: 'identities' },
-  },
-};
 
 // ERS drivers — subset of VIOLATION_FILTERS used on the ERS driver bar
 export const DASHBOARD_FILTERS: Record<string, DashboardFilter> = {

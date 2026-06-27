@@ -43,8 +43,6 @@ function exposureRaw(a: CryptoAsset): { v: number; why: string } {
 
 function accessRaw(a: CryptoAsset): { v: number; why: string } {
   if (a.owner === 'Unassigned') return { v: 80, why: 'No owner assigned' };
-  if (a.agentMeta?.permissionRisk === 'Over-privileged')
-    return { v: 70, why: 'Over-privileged AI agent token' };
   if (a.policyViolations >= 2) return { v: 60, why: `${a.policyViolations} policy violations` };
   if (a.policyViolations === 1) return { v: 40, why: '1 policy violation' };
   return { v: 15, why: 'Access controls in good standing' };
