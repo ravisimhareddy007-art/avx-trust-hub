@@ -249,7 +249,6 @@ export const criticalAlerts = [
   { id: 5, severity: 'High', asset: 'gitlab-deploy-key', policy: 'Orphaned SSH key > 90d', time: '5 hours ago', assetId: 'ssh-005' },
   { id: 6, severity: 'Critical', asset: 'mail.acmecorp.com', policy: 'Cert expiry < 7 days', time: '6 hours ago', assetId: 'cert-009' },
   { id: 7, severity: 'High', asset: 'codesign-prod-hsm', policy: 'Weak algorithm in prod', time: '8 hours ago', assetId: 'cs-002' },
-  { id: 8, severity: 'Medium', asset: 'copilot-code-review-agent', policy: 'AI token > 7 days', time: '10 hours ago', assetId: 'ai-003' },
 ];
 
 export const upcomingExpirations = [
@@ -267,7 +266,6 @@ export const trustOpsActions = [
   { id: 'action-004', priority: 'P2', asset: 'prod-db-01-authorized-key', assetId: 'ssh-001', type: 'SSH Key', action: 'Rotate', reason: 'Orphaned key — no rotation in 308 days', assignee: 'Unassigned', assigneeAvatar: 'UA', dueDate: '2026-04-21', module: 'SSH', aiRisk: 'High — unattended SSH key to production database' },
   { id: 'action-005', priority: 'P2', asset: 'gitlab-deploy-key', assetId: 'ssh-005', type: 'SSH Key', action: 'Rotate', reason: 'Orphaned key — no rotation in 395 days', assignee: 'Unassigned', assigneeAvatar: 'UA', dueDate: '2026-04-21', module: 'SSH', aiRisk: 'High — stale CI/CD deploy key in production' },
   { id: 'action-006', priority: 'P2', asset: 'codesign-prod-hsm', assetId: 'cs-002', type: 'Code-Signing', action: 'Re-issue', reason: 'Weak algorithm (RSA-2048) for code signing', assignee: 'Security Team', assigneeAvatar: 'ST', dueDate: '2026-04-30', module: 'Sign', aiRisk: 'High — production release pipeline uses this cert' },
-  { id: 'action-007', priority: 'P3', asset: 'copilot-code-review-agent', assetId: 'ai-003', type: 'AI Agent Token', action: 'Rotate', reason: 'AI token approaching expiry', assignee: 'AI Platform Team', assigneeAvatar: 'AI', dueDate: '2026-04-15', module: 'CLM', aiRisk: 'Medium — code review agent will stop functioning' },
   { id: 'action-008', priority: 'P3', asset: 'self-signed-legacy-app', assetId: 'cert-010', type: 'TLS Certificate', action: 'Escalate', reason: 'Self-signed cert in production', assignee: 'IT Operations', assigneeAvatar: 'IO', dueDate: '2026-05-01', module: 'CLM', aiRisk: 'Medium — legacy app with no auto-renewal' },
 ];
 
