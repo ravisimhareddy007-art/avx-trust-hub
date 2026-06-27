@@ -290,7 +290,12 @@ function CellValue({ col, co }: { col: ColDef; co: CryptoAsset }) {
     case 'sshUsers':       return <span className="tabular-nums text-foreground font-medium">{co.sshKey?.associatedUsers?.length ?? 0}</span>;
     case 'sshFiles':       return <span className="tabular-nums text-muted-foreground">{co.sshKey?.filePaths?.length ?? 0}</span>;
     case 'sshGroup':       return <span className="text-[10px] text-muted-foreground truncate">{co.sshKey?.complianceGroup ?? '-'}</span>;
-    case 'sshMgmt':        return <span className={`text-[10px] font-medium ${co.sshKey?.managementStatus === 'Monitored' ? 'text-amber' : 'text-teal'}`}>{co.sshKey?.managementStatus ?? 'Managed'}</span>;
+    case 'sshMgmt': {
+      // Posture status only (monitoring-only product). Active, or Key Missing if
+      // the key was seen before but absent in the latest scan.
+      const st = co.status === 'Orphaned' || co.status === 'Revoked' ? 'Key Missing' : 'Active';
+      return <span className={`text-[10px] font-medium ${st === 'Key Missing' ? 'text-amber' : 'text-teal'}`}>{st}</span>;
+    }
     case 'sshRisk': {
       const rs = co.sshKey?.riskStatus ?? 'Clean';
       return <span className={`text-[10px] font-medium ${rs === 'Clean' ? 'text-muted-foreground' : 'text-coral'}`}>{rs}</span>;
@@ -451,7 +456,6 @@ function TypeMetadata({ co }: { co: CryptoAsset }) {
         <MetaRow label="Algorithm / bit length" value={`${co.algorithm} · ${co.keyLength} bits`} />
         {sk?.ageDays != null && <MetaRow label="Age" value={`${sk.ageDays} days`} />}
         {sk?.complianceGroup && <MetaRow label="Compliance group" value={sk.complianceGroup} />}
-        {sk?.managementStatus && <MetaRow label="Management status" value={sk.managementStatus} />}
         {sk?.riskStatus && sk.riskStatus !== 'Clean' && <MetaRow label="Risk status" value={<span className="text-coral font-medium">{sk.riskStatus}</span>} />}
         <MetaRow label="Rotation policy" value={<span className={co.rotationFrequency === 'Never' ? 'text-coral' : 'text-foreground'}>{co.rotationFrequency}</span>} />
         {sk?.associatedUsers && sk.associatedUsers.length > 0 && (
@@ -807,6 +811,7 @@ function DetailPanel({
 // ── Filter Panel (side sheet) ─────────────────────────────────────────────────
 
 interface FilterPanelProps {
+  typeFilter: string;
   open: boolean;
   onClose: () => void;
   algorithms: string[];
@@ -814,6 +819,7 @@ interface FilterPanelProps {
   algFilter: string[];   setAlgFilter:    React.Dispatch<React.SetStateAction<string[]>>;
   envFilter: string[];   setEnvFilter:    React.Dispatch<React.SetStateAction<string[]>>;
   statusFilter: string[];setStatusFilter: React.Dispatch<React.SetStateAction<string[]>>;
+  typeAttrFilter: string[]; setTypeAttrFilter: React.Dispatch<React.SetStateAction<string[]>>;
   pqcFilter: string[];   setPqcFilter:    React.Dispatch<React.SetStateAction<string[]>>;
   ownerFilter: string[]; setOwnerFilter:  React.Dispatch<React.SetStateAction<string[]>>;
 }
@@ -857,11 +863,39 @@ function FilterSection({ title, onReset, children }: { title: string; onReset?: 
   );
 }
 
+// Status options are type-correct. SSH keys and secrets use posture states, not
+// lifecycle/CLM states. (Monitoring-only product: no Managed/Monitored.)
+function STATUS_OPTIONS_FOR(type: string): string[] {
+  switch (type) {
+    case 'SSH Key':          return ['Active', 'Key Missing'];
+    case 'API Key / Secret': return ['Active', 'Stale', 'Orphaned'];
+    case 'Encryption Key':   return ['Active', 'Disabled'];
+    case 'SSH Certificate':
+    case 'TLS Certificate':
+    case 'Code-Signing Certificate':
+    case 'K8s Workload Cert': return ['Active', 'Healthy', 'Expiring', 'Expired', 'Revoked'];
+    default:                 return ['Active', 'Healthy', 'Expiring', 'Expired', 'Revoked'];
+  }
+}
+
+// One extra posture filter that only makes sense for a given type.
+function TYPE_ATTR_FOR(type: string): { title: string; label: string; options: string[] } | null {
+  switch (type) {
+    case 'SSH Key':          return { title: 'SSH Risk', label: 'Risk Status', options: ['Shared', 'Weak', 'Rogue', 'Misplaced', 'Suspicious', 'Clean'] };
+    case 'API Key / Secret': return { title: 'Exposure', label: 'Exposure', options: ['Not detected', 'Code repo', 'CI/CD', 'Log'] };
+    case 'Encryption Key':   return { title: 'Protection', label: 'Protection', options: ['HSM', 'Cloud KMS', 'Software'] };
+    case 'TLS Certificate':
+    case 'Code-Signing Certificate':
+    case 'K8s Workload Cert': return { title: 'Compliance', label: 'Compliance', options: ['Compliant', 'Non-Compliant'] };
+    default:                 return null;
+  }
+}
+
 function FilterPanel(props: FilterPanelProps) {
   const {
-    open, onClose, algorithms, owners,
+    open, onClose, typeFilter, algorithms, owners,
     algFilter, setAlgFilter, envFilter, setEnvFilter,
-    statusFilter, setStatusFilter, pqcFilter, setPqcFilter,
+    statusFilter, setStatusFilter, typeAttrFilter, setTypeAttrFilter, pqcFilter, setPqcFilter,
     ownerFilter, setOwnerFilter,
   } = props;
 
@@ -869,7 +903,7 @@ function FilterPanel(props: FilterPanelProps) {
     setter(prev => prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v]);
 
   const clearAll = () => {
-    setAlgFilter([]); setEnvFilter([]); setStatusFilter([]); setPqcFilter([]); setOwnerFilter([]);
+    setAlgFilter([]); setEnvFilter([]); setStatusFilter([]); setTypeAttrFilter([]); setPqcFilter([]); setOwnerFilter([]);
   };
 
   const algOptions = [{ v: 'weak', l: 'Weak (RSA/SHA-1)' }, ...algorithms.map(a => ({ v: a, l: a }))];
@@ -912,10 +946,22 @@ function FilterPanel(props: FilterPanelProps) {
             <h3 className="text-[11px] font-semibold text-foreground">Status</h3>
             <FilterSection title="Status" onReset={statusFilter.length ? () => setStatusFilter([]) : undefined}>
               <FilterChips
-                options={['Active','Expiring','Expired','Orphaned','Revoked'].map(v => ({ v, l: v }))}
+                options={STATUS_OPTIONS_FOR(typeFilter).map(v => ({ v, l: v }))}
                 selected={statusFilter} onToggle={toggle(setStatusFilter)} />
             </FilterSection>
           </div>
+
+          {/* Type-specific posture filter (only on the relevant tab) */}
+          {TYPE_ATTR_FOR(typeFilter) && (
+            <div className="space-y-3">
+              <h3 className="text-[11px] font-semibold text-foreground">{TYPE_ATTR_FOR(typeFilter)!.title}</h3>
+              <FilterSection title={TYPE_ATTR_FOR(typeFilter)!.label} onReset={typeAttrFilter.length ? () => setTypeAttrFilter([]) : undefined}>
+                <FilterChips
+                  options={TYPE_ATTR_FOR(typeFilter)!.options.map(v => ({ v, l: v }))}
+                  selected={typeAttrFilter} onToggle={toggle(setTypeAttrFilter)} />
+              </FilterSection>
+            </div>
+          )}
         </div>
 
         <div className="px-4 py-3 border-t border-border">
@@ -967,6 +1013,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   const [algFilter, setAlgFilter]       = useState<string[]>([]);
   const [envFilter, setEnvFilter]       = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [typeAttrFilter, setTypeAttrFilter] = useState<string[]>([]);
   const [pqcFilter, setPqcFilter]       = useState<string[]>([]);
   const [qvOnly, setQvOnly]             = useState(false);
   const [ownerFilter, setOwnerFilter]   = useState<string[]>([]);
@@ -1005,7 +1052,10 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   }, [detailAsset, setSelectedEntity]);
 
   const allAssets  = useMemo(() => [...manualIdentities, ...mockAssets], [manualIdentities]);
-  const algorithms = useMemo(() => [...new Set(allAssets.map(a => a.algorithm))].sort(), [allAssets]);
+  const algorithms = useMemo(() => {
+    const pool = typeFilter === 'All' ? allAssets : allAssets.filter(a => a.type === typeFilter);
+    return [...new Set(pool.map(a => a.algorithm))].sort();
+  }, [allAssets, typeFilter]);
 
   const filtered = useMemo(() => {
     let r = [...allAssets];
@@ -1027,6 +1077,10 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
     }
     if (envFilter.length)    r = r.filter(a => envFilter.includes(a.environment));
     if (statusFilter.length) r = r.filter(a => statusFilter.includes(a.status));
+    if (typeAttrFilter.length) r = r.filter(a => {
+      const vals = [a.sshKey?.riskStatus, a.secret?.exposure, a.cert?.complianceStatus, a.encKey?.protection].filter(Boolean) as string[];
+      return typeAttrFilter.some(v => vals.includes(v));
+    });
     if (pqcFilter.length)    r = r.filter(a => pqcFilter.includes(a.pqcRisk));
     if (ownerFilter.length)  r = r.filter(a => ownerFilter.includes('Unassigned') ? a.owner === 'Unassigned' : true);
     // filterId — dashboard drill-down predicate (highest specificity, applied last)
@@ -1056,10 +1110,11 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
       r.sort((a, b) => (a.daysToExpiry - b.daysToExpiry) * dir);
     }
     return r;
-  }, [allAssets, typeFilter, search, algFilter, envFilter, statusFilter, pqcFilter, ownerFilter, qvOnly, sortKey, sortDir, filterIdActive]);
+  }, [allAssets, typeFilter, search, algFilter, envFilter, statusFilter, typeAttrFilter, pqcFilter, ownerFilter, qvOnly, sortKey, sortDir, filterIdActive]);
 
   const getAssoc = (co: CryptoAsset) => mockITAssets.filter(a => a.cryptoObjectIds.includes(co.id));
   const cols = COLS[typeFilter] ?? COLS['All'];
+  React.useEffect(() => { setTypeAttrFilter([]); }, [typeFilter]);
 
   const openTicket = (co: CryptoAsset, action: string) => {
     setTicketAsset(co);
@@ -1263,16 +1318,19 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
 
       <FilterPanel
         open={filterPanelOpen}
+        typeFilter={typeFilter}
         onClose={() => setFilterPanelOpen(false)}
         algorithms={algorithms}
         owners={[...new Set(allAssets.map(a => a.owner))].sort()}
         algFilter={algFilter} setAlgFilter={setAlgFilter}
         envFilter={envFilter} setEnvFilter={setEnvFilter}
         statusFilter={statusFilter} setStatusFilter={setStatusFilter}
+        typeAttrFilter={typeAttrFilter} setTypeAttrFilter={setTypeAttrFilter}
         pqcFilter={pqcFilter} setPqcFilter={setPqcFilter}
         ownerFilter={ownerFilter} setOwnerFilter={setOwnerFilter}
       />
     </div>
   );
 }
+
 
