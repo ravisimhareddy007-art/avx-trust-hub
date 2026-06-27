@@ -51,9 +51,8 @@ export const mockITAssets: ITAsset[] = [
   // ── Vault Servers ────────────────────────────────────────────────────────
   { id: 'it-vlt-01', name: 'vault-dr-standby.internal', type: 'Vault Server', scanned: false, environment: 'Production', ownerTeam: 'Unassigned', cryptoObjectIds: [], riskScore: 0, criticalViolations: 0, policyCoverage: 0, lastSeen: 'Never', managedBy: 'Manual', infrastructure: 'on-prem-dc2', application: 'Vault DR Standby' },
   { id: 'it-vlt-02', name: 'dev-vault.internal', type: 'Vault Server', scanned: true, environment: 'Development', ownerTeam: 'Unassigned', cryptoObjectIds: ['secret-003'], riskScore: 44, criticalViolations: 0, policyCoverage: 0, lastSeen: '2026-04-13 15:00', managedBy: 'Manual', infrastructure: 'on-prem-dc1', application: 'Dev Vault' },
-
-  // ── AI Platforms ─────────────────────────────────────────────────────────
 ];
+
 
 // Risk driver data for each IT asset
 // Deterministic per-asset driver hash. Seeded by the asset id so the same asset
