@@ -1,4 +1,3 @@
-import { FEATURES } from '@/config/features';
 import { algVuln } from '@/lib/risk/qes';
 import { getCryptoViolations, cryptoViolationCount } from '@/lib/violations';
 import React, { useState, useMemo, useEffect } from 'react';
@@ -16,7 +15,6 @@ import {
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { toast } from 'sonner';
-import AgentDetailPanel from '@/components/inventory/AgentDetailPanel';
 import CryptoObjectRiskDrawer from '@/components/risk/CryptoObjectRiskDrawer';
 import DeployToDeviceModal from '@/components/integrations/DeployToDeviceModal';
 import TicketDraftModal, { TicketDraft } from '@/components/inventory/TicketDraftModal';
@@ -58,7 +56,6 @@ const TYPE_FILTERS = [
   { key: 'Code-Signing Certificate', label: 'Code Signing'   },
   { key: 'K8s Workload Cert',        label: 'K8s Certs'      },
   { key: 'Encryption Key',           label: 'Enc Keys'        },
-  { key: 'AI Agent Token',           label: 'AI Tokens'      },
   { key: 'API Key / Secret',         label: 'Secrets'        },
 ];
 
@@ -145,17 +142,6 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'autoRenewal',       label: 'Auto-Rotation',    cls: 'w-24' },
     { key: 'status',            label: 'State',            cls: 'w-24' },
     { key: 'riskScore',         label: 'Risk', cls: 'w-20' },
-  ],
-  'AI Agent Token': [
-    { key: 'name',         label: 'Token / Agent',    cls: 'min-w-[180px] flex-1' },
-    { key: 'agentFw',      label: 'Framework',        cls: 'w-32' },
-    { key: 'actionsDay',   label: 'Actions/Day',      cls: 'w-24' },
-    { key: 'permRisk',     label: 'Permission Risk',  cls: 'w-28' },
-    { key: 'expiryDate',   label: 'Expiry',           cls: 'w-24' },
-    { key: 'daysToExpiry', label: 'Days',             cls: 'w-16' },
-    { key: 'status',       label: 'Status',           cls: 'w-24' },
-    { key: 'violations',   label: 'Violations',       cls: 'w-20' },
-    { key: 'riskScore',    label: 'Risk', cls: 'w-20' },
   ],
   'API Key / Secret': [
     { key: 'name',         label: 'Secret Name',      cls: 'min-w-[180px] flex-1' },
@@ -530,37 +516,6 @@ function TypeMetadata({ co }: { co: CryptoAsset }) {
     );
   }
 
-  if (co.type === 'AI Agent Token') {
-    const m = co.agentMeta;
-    return (
-      <>
-        <MetaRow label="Token ID" value={<span className="font-mono text-[10px] break-all">{co.serial}</span>} />
-        <MetaRow label="Agent type" value={m?.agentType ?? '—'} />
-        <MetaRow label="Framework" value={m?.framework ?? '—'} />
-        <MetaRow label="Issuing platform" value={co.caIssuer} />
-        <MetaRow label="Actions / day" value={<span className="tabular-nums">{m?.actionsPerDay?.toLocaleString() ?? '—'}</span>} />
-        <MetaRow label="Last activity" value={m?.lastActivity ?? '—'} />
-        <MetaRow label="Permission risk" value={<span className={permRiskStyle(m?.permissionRisk)}>{m?.permissionRisk ?? '—'}</span>} />
-        <MetaRow label="Rotation policy" value={co.rotationFrequency} />
-        <MetaRow label="Human sponsor" value={<span className={co.owner === 'Unassigned' ? 'text-coral' : 'text-foreground'}>{co.owner}</span>} />
-        {m?.permissions && m.permissions.length > 0 && (
-          <MetaRow label={`Permissions (${m.permissions.length})`} value={
-            <div className="space-y-0.5">
-              {m.permissions.map((p, i) => <div key={i} className="font-mono text-[10px] text-muted-foreground">{p}</div>)}
-            </div>
-          } />
-        )}
-        {m?.servicesAccessed && m.servicesAccessed.length > 0 && (
-          <MetaRow label="Services accessed" value={
-            <div className="flex flex-wrap gap-1">
-              {m.servicesAccessed.map((s, i) => <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{s}</span>)}
-            </div>
-          } />
-        )}
-        {m?.mcpTools && <MetaRow label="MCP tools" value={m.mcpTools.join(', ')} />}
-      </>
-    );
-  }
 
   if (co.type === 'API Key / Secret') {
     const ei = exposedInFor(co);
@@ -774,7 +729,6 @@ function DetailPanel({
               co.type === 'Code-Signing Certificate' ? 'Certificate details' :
               co.type === 'K8s Workload Cert' ? 'Workload details' :
               co.type === 'Encryption Key' ? 'Key details' :
-              co.type === 'AI Agent Token' ? 'Token & agent details' :
               'Secret details'
             } />
             <TypeMetadata co={co} />
@@ -1142,7 +1096,6 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
 
   const filtered = useMemo(() => {
     let r = [...allAssets];
-    if (!FEATURES.AI_IDENTITY) r = r.filter(a => a.type !== 'AI Agent Token');
     if (qvOnly) r = r.filter(a => algVuln(a.algorithm) >= 90); // canonical quantum-vulnerable, matches Quantum Readiness
     if (typeFilter !== 'All') r = r.filter(a => a.type === typeFilter);
     if (search) {
@@ -1206,7 +1159,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
 
         {/* Type tabs */}
         <div className="flex items-center gap-1 border-b border-border pb-2 flex-shrink-0 overflow-x-auto">
-          {TYPE_FILTERS.filter(t => FEATURES.AI_IDENTITY || t.key !== 'AI Agent Token').map(t => {
+          {TYPE_FILTERS.map(t => {
             const cnt = t.key === 'All' ? allAssets.length : allAssets.filter(a => a.type === t.key).length;
             return (
               <button key={t.key} onClick={() => { setTypeFilter(t.key); }}
@@ -1359,13 +1312,9 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
         </div>
       </div>
 
-      {/* AI Agent panel */}
-      {detailAsset?.type === 'AI Agent Token' && (
-        <AgentDetailPanel agent={detailAsset} onClose={() => setDetailAsset(null)} onCreateTicket={onCreateTicket} licensed={true} />
-      )}
 
       {/* Detail side panel */}
-      {detailAsset && detailAsset.type !== 'AI Agent Token' && (
+      {detailAsset && (
         <DetailPanel
           co={detailAsset}
           onClose={() => setDetailAsset(null)}

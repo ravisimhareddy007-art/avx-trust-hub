@@ -2,7 +2,7 @@
 export interface ITAsset {
   id: string;
   name: string;
-  type: 'Web Server' | 'Application Server' | 'Database Server' | 'Load Balancer' | 'API Gateway' | 'K8s Cluster' | 'CI/CD Pipeline' | 'Mail Server' | 'Bastion Host' | 'CDN' | 'HSM' | 'Vault Server' | 'AI Platform';
+  type: 'Web Server' | 'Application Server' | 'Database Server' | 'Load Balancer' | 'API Gateway' | 'K8s Cluster' | 'CI/CD Pipeline' | 'Mail Server' | 'Bastion Host' | 'CDN' | 'HSM' | 'Vault Server';
   scanned: boolean;
   environment: 'Production' | 'Staging' | 'Development';
   ownerTeam: string;
@@ -17,7 +17,7 @@ export interface ITAsset {
 }
 
 export const mockITAssets: ITAsset[] = [
-  { id: 'it-pay-01', name: 'payments-api.acmecorp.com', type: 'API Gateway', scanned: true, environment: 'Production', ownerTeam: 'Payments Engineering', cryptoObjectIds: ['cert-001', 'secret-001', 'ai-001'], riskScore: 91, criticalViolations: 3, policyCoverage: 60, lastSeen: '2026-04-14 09:15', managedBy: 'Terraform', infrastructure: 'aws-us-east-1-prod', application: 'Payments API' },
+  { id: 'it-pay-01', name: 'payments-api.acmecorp.com', type: 'API Gateway', scanned: true, environment: 'Production', ownerTeam: 'Payments Engineering', cryptoObjectIds: ['cert-001', 'secret-001'], riskScore: 91, criticalViolations: 3, policyCoverage: 60, lastSeen: '2026-04-14 09:15', managedBy: 'Terraform', infrastructure: 'aws-us-east-1-prod', application: 'Payments API' },
   { id: 'it-001', name: 'prod-gateway-01.acmecorp.com', type: 'API Gateway', scanned: true, environment: 'Production', ownerTeam: 'Infrastructure', cryptoObjectIds: ['cert-001', 'cert-003', 'cert-006'], riskScore: 82, criticalViolations: 3, policyCoverage: 67, lastSeen: '2026-04-14 09:12', managedBy: 'Terraform', infrastructure: 'aws-us-east-1', application: 'Edge Gateway' },
   { id: 'it-002', name: 'payments-api.eks-prod', type: 'Application Server', scanned: true, environment: 'Production', ownerTeam: 'Payments Engineering', cryptoObjectIds: ['cert-001', 'k8s-001', 'enc-001', 'secret-001'], riskScore: 76, criticalViolations: 2, policyCoverage: 75, lastSeen: '2026-04-14 09:10', managedBy: 'Kubernetes', infrastructure: 'aws-eks-prod', application: 'Payment Gateway' },
   { id: 'it-003', name: 'prod-db-primary.internal', type: 'Database Server', scanned: true, environment: 'Production', ownerTeam: 'Database Operations', cryptoObjectIds: ['ssh-001', 'enc-001', 'enc-003'], riskScore: 71, criticalViolations: 2, policyCoverage: 33, lastSeen: '2026-04-14 08:55', managedBy: 'Ansible', infrastructure: 'aws-us-east-1', application: 'PostgreSQL Primary' },
@@ -32,9 +32,6 @@ export const mockITAssets: ITAsset[] = [
   { id: 'it-012', name: 'staging-api.acmecorp.com', type: 'API Gateway', scanned: true, environment: 'Staging', ownerTeam: 'Platform Engineering', cryptoObjectIds: ['cert-005', 'cert-007'], riskScore: 38, criticalViolations: 1, policyCoverage: 50, lastSeen: '2026-04-14 08:45', managedBy: 'Terraform', infrastructure: 'azure-eastus-stg', application: 'Staging API' },
   { id: 'it-013', name: 'hsm-signing-cluster', type: 'HSM', scanned: true, environment: 'Production', ownerTeam: 'Security Operations', cryptoObjectIds: ['cs-001', 'cs-002', 'enc-002'], riskScore: 42, criticalViolations: 1, policyCoverage: 67, lastSeen: '2026-04-14 09:02', managedBy: 'Manual', infrastructure: 'thales-luna-hsm', application: 'Code Signing HSM' },
   { id: 'it-014', name: 'gitlab-runner-01.internal', type: 'CI/CD Pipeline', scanned: true, environment: 'Production', ownerTeam: 'DevOps', cryptoObjectIds: ['ssh-005', 'secret-004'], riskScore: 68, criticalViolations: 2, policyCoverage: 25, lastSeen: '2026-04-14 08:20', managedBy: 'Manual', infrastructure: 'on-prem-dc2', application: 'GitLab CI' },
-  { id: 'it-015', name: 'ai-platform.eks-prod', type: 'AI Platform', scanned: true, environment: 'Production', ownerTeam: 'AI Engineering', cryptoObjectIds: ['ai-001', 'ai-002', 'ai-003', 'ai-005'], riskScore: 55, criticalViolations: 1, policyCoverage: 50, lastSeen: '2026-04-14 09:09', managedBy: 'Kubernetes', infrastructure: 'aws-eks-ai-cluster', application: 'AI Platform' },
-  { id: 'it-ai-01', name: 'mcp-server-platform.prod', type: 'AI Platform', scanned: true, environment: 'Production', ownerTeam: 'AI Engineering', cryptoObjectIds: ['ai-005', 'ai-006', 'ai-ns01'], riskScore: 72, criticalViolations: 2, policyCoverage: 40, lastSeen: '2026-04-14 09:10', managedBy: 'Kubernetes', infrastructure: 'gcp-cloud-run', application: 'MCP Server Platform' },
-  { id: 'it-ai-02', name: 'llm-gateway.acmecorp.com', type: 'AI Platform', scanned: true, environment: 'Production', ownerTeam: 'AI Engineering', cryptoObjectIds: ['ai-007', 'ai-008', 'ai-adm01', 'ai-nr01'], riskScore: 68, criticalViolations: 2, policyCoverage: 60, lastSeen: '2026-04-14 09:08', managedBy: 'Terraform', infrastructure: 'aws-bedrock', application: 'LLM Gateway' },
 
   // ── API Gateways — unscanned, unowned, zero coverage ─────────────────────
   { id: 'it-gw-01', name: 'legacy-api-gw-01.internal', type: 'API Gateway', scanned: false, environment: 'Production', ownerTeam: 'Unassigned', cryptoObjectIds: [], riskScore: 0, criticalViolations: 0, policyCoverage: 0, lastSeen: 'Never', managedBy: 'Unknown', infrastructure: 'on-prem-dc2', application: 'Legacy API Gateway' },
@@ -54,12 +51,8 @@ export const mockITAssets: ITAsset[] = [
   // ── Vault Servers ────────────────────────────────────────────────────────
   { id: 'it-vlt-01', name: 'vault-dr-standby.internal', type: 'Vault Server', scanned: false, environment: 'Production', ownerTeam: 'Unassigned', cryptoObjectIds: [], riskScore: 0, criticalViolations: 0, policyCoverage: 0, lastSeen: 'Never', managedBy: 'Manual', infrastructure: 'on-prem-dc2', application: 'Vault DR Standby' },
   { id: 'it-vlt-02', name: 'dev-vault.internal', type: 'Vault Server', scanned: true, environment: 'Development', ownerTeam: 'Unassigned', cryptoObjectIds: ['secret-003'], riskScore: 44, criticalViolations: 0, policyCoverage: 0, lastSeen: '2026-04-13 15:00', managedBy: 'Manual', infrastructure: 'on-prem-dc1', application: 'Dev Vault' },
-
-  // ── AI Platforms ─────────────────────────────────────────────────────────
-  { id: 'it-ai-03', name: 'shadow-ai-platform-01', type: 'AI Platform', scanned: false, environment: 'Production', ownerTeam: 'Unassigned', cryptoObjectIds: [], riskScore: 0, criticalViolations: 0, policyCoverage: 0, lastSeen: 'Never', managedBy: 'Unknown', infrastructure: 'aws-lambda', application: 'Unknown AI Service' },
-  { id: 'it-ai-04', name: 'dept-ai-tool.finance', type: 'AI Platform', scanned: false, environment: 'Production', ownerTeam: 'Unassigned', cryptoObjectIds: [], riskScore: 0, criticalViolations: 0, policyCoverage: 0, lastSeen: 'Never', managedBy: 'Unknown', infrastructure: 'azure-openai', application: 'Finance AI Tool' },
-  { id: 'it-ai-05', name: 'hr-ai-copilot-prod', type: 'AI Platform', scanned: true, environment: 'Production', ownerTeam: 'Unassigned', cryptoObjectIds: ['ai-008'], riskScore: 66, criticalViolations: 1, policyCoverage: 0, lastSeen: '2026-04-14 08:00', managedBy: 'Azure AD', infrastructure: 'azure-openai', application: 'HR AI Copilot' },
 ];
+
 
 // Risk driver data for each IT asset
 // Deterministic per-asset driver hash. Seeded by the asset id so the same asset
@@ -368,7 +361,7 @@ export const mockGroups: DynamicGroup[] = [
   },
   {
     id: 'grp-002', name: 'Expiring < 30 Days', type: 'Dynamic', objectCount: 12,
-    objectIds: ['cert-001', 'cert-008', 'cert-009', 'sshcert-002', 'ai-001', 'ai-002', 'ai-003', 'k8s-001', 'k8s-002', 'ai-007'],
+    objectIds: ['cert-001', 'cert-008', 'cert-009', 'sshcert-002', 'k8s-001', 'k8s-002'],
     conditions: [
       { id: 'c1', attribute: 'Days to Expiry', operator: 'less_than', value: '30' },
     ],
@@ -451,19 +444,12 @@ export const aiSuggestedGroups: Partial<DynamicGroup>[] = [
     aiRationale: '12 self-signed certificates in production with zero policy coverage. These bypass trust chain validation entirely.',
     riskScore: 88,
   },
-  {
-    id: 'ai-grp-003', name: 'Over-Privileged AI Agents', aiSuggested: true, objectCount: 4, type: 'Dynamic',
-    conditions: [{ id: 'ac5', attribute: 'Object Type', operator: 'equals', value: 'AI Agent Token', logic: 'AND' }, { id: 'ac6', attribute: 'Permission Risk', operator: 'equals', value: 'Over-privileged' }],
-    conditionSummary: 'AI Agent Tokens flagged as over-privileged',
-    aiRationale: '4 AI agents have excessive permissions across 22 services. One expired agent still holds active firewall modification access.',
-    riskScore: 79,
-  },
 ];
 
 // Condition builder attributes catalog
 export const conditionAttributes = {
   identity: [
-    { label: 'Object Type', values: ['TLS Certificate', 'SSH Key', 'SSH Certificate', 'Code-Signing Certificate', 'K8s Workload Cert', 'Encryption Key', 'AI Agent Token', 'API Key / Secret'] },
+    { label: 'Object Type', values: ['TLS Certificate', 'SSH Key', 'SSH Certificate', 'Code-Signing Certificate', 'K8s Workload Cert', 'Encryption Key', 'API Key / Secret'] },
     { label: 'Algorithm', values: ['RSA-2048', 'RSA-4096', 'ECC P-256', 'ECC P-384', 'Ed25519', 'AES-256', 'HMAC-SHA256', 'ML-KEM', 'ML-DSA', 'SLH-DSA'] },
     { label: 'Key Size', values: ['256', '384', '2048', '4096'] },
     { label: 'Issuing CA', values: ['DigiCert Global G2', 'Entrust L1K', 'Let\'s Encrypt R3', 'MSCA Enterprise', 'Self-Signed', 'Internal SSH CA', 'Istio Citadel CA', 'AWS KMS', 'Azure Key Vault', 'HashiCorp Vault'] },

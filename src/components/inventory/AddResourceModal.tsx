@@ -48,7 +48,7 @@ const IDENTITY_TYPE_MAP: Record<string, CryptoAsset['type']> = {
   'TLS Certificate': 'TLS Certificate',
   'SSH Key': 'SSH Key',
   'API Token': 'API Key / Secret',
-  'AI Agent Identity': 'AI Agent Token',
+  
 };
 
 const ASSET_TYPE_MAP: Record<string, ITAsset['type']> = {

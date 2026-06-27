@@ -37,9 +37,6 @@ function buildItems(): TriageItem[] {
     if (a.owner === 'Unassigned' || a.status === 'Orphaned') {
       items.push({ type: 'orphaned', label: a.name, detail: `No owner · ${a.type}`, severity: 'High', action: 'Assign Owner', page: 'remediation' });
     }
-    if (FEATURES.AI_IDENTITY && a.type === 'AI Agent Token' && a.agentMeta?.permissionRisk === 'Over-privileged') {
-      items.push({ type: 'overprivileged', label: a.name, detail: 'Over-privileged · unused scopes detected', severity: 'High', action: 'Review Scopes', page: 'remediation' });
-    }
     if (a.type === 'API Key / Secret' && a.policyViolations > 0) {
       items.push({ type: 'secret', label: a.name, detail: 'Policy violation · rotation overdue', severity: 'Critical', action: 'Rotate Now', page: 'remediation' });
     }
