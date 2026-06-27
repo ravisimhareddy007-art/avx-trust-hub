@@ -79,7 +79,7 @@ export default function InventoryPage() {
 
       {/* Tab content — full replacement */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        {activeTab === 'it-assets' && <ITAssetsTab onCreateTicket={openTicketDrawer} onOpenPolicyDrawer={openPolicyDrawer} />}
+        {activeTab === 'it-assets' && <ITAssetsTab onCreateTicket={openTicketDrawer} />}
         {activeTab === 'crypto-objects' && <CryptoObjectsTab onCreateTicket={openTicketDrawer} />}
         {activeTab === 'groups' && <GroupsTab onCreateTicket={openTicketDrawer} onOpenPolicyDrawer={openPolicyDrawer} />}
       </div>
