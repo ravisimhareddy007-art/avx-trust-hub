@@ -1,3 +1,4 @@
+import { FEATURES } from '@/config/features';
 import { algVuln } from '@/lib/risk/qes';
 import { getCryptoViolations, cryptoViolationCount } from '@/lib/violations';
 import React, { useState, useMemo, useEffect } from 'react';
@@ -15,9 +16,11 @@ import {
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { toast } from 'sonner';
+import AgentDetailPanel from '@/components/inventory/AgentDetailPanel';
 import CryptoObjectRiskDrawer from '@/components/risk/CryptoObjectRiskDrawer';
 import DeployToDeviceModal from '@/components/integrations/DeployToDeviceModal';
 import TicketDraftModal, { TicketDraft } from '@/components/inventory/TicketDraftModal';
+import { ticketForObject } from '@/lib/ticketStore';
 import { computeCRS } from '@/lib/risk/crs';
 import { useExceptions, effectiveViolations } from '@/lib/exceptions/ExceptionsContext';
 import { RaiseExceptionModal } from '@/lib/exceptions/ExceptionComponents';
@@ -56,6 +59,7 @@ const TYPE_FILTERS = [
   { key: 'Code-Signing Certificate', label: 'Code Signing'   },
   { key: 'K8s Workload Cert',        label: 'K8s Certs'      },
   { key: 'Encryption Key',           label: 'Enc Keys'        },
+  { key: 'AI Agent Token',           label: 'AI Tokens'      },
   { key: 'API Key / Secret',         label: 'Secrets'        },
 ];
 
@@ -142,6 +146,17 @@ const COLS: Record<string, ColDef[]> = {
     { key: 'autoRenewal',       label: 'Auto-Rotation',    cls: 'w-24' },
     { key: 'status',            label: 'State',            cls: 'w-24' },
     { key: 'riskScore',         label: 'Risk', cls: 'w-20' },
+  ],
+  'AI Agent Token': [
+    { key: 'name',         label: 'Token / Agent',    cls: 'min-w-[180px] flex-1' },
+    { key: 'agentFw',      label: 'Framework',        cls: 'w-32' },
+    { key: 'actionsDay',   label: 'Actions/Day',      cls: 'w-24' },
+    { key: 'permRisk',     label: 'Permission Risk',  cls: 'w-28' },
+    { key: 'expiryDate',   label: 'Expiry',           cls: 'w-24' },
+    { key: 'daysToExpiry', label: 'Days',             cls: 'w-16' },
+    { key: 'status',       label: 'Status',           cls: 'w-24' },
+    { key: 'violations',   label: 'Violations',       cls: 'w-20' },
+    { key: 'riskScore',    label: 'Risk', cls: 'w-20' },
   ],
   'API Key / Secret': [
     { key: 'name',         label: 'Secret Name',      cls: 'min-w-[180px] flex-1' },
@@ -292,39 +307,6 @@ function MetaRow({ label, value }: { label: string; value: React.ReactNode }) {
 
 // ── Risk score row ────────────────────────────────────────────────────────────
 
-function RiskScoreAttr({ co, assocCount }: { co: CryptoAsset; assocCount: number }) {
-  const [tip, setTip] = useState(false);
-  const alg = co.pqcRisk === 'Critical' ? 90 : co.pqcRisk === 'High' ? 65 : co.pqcRisk === 'Medium' ? 40 : 15;
-  const exp = co.daysToExpiry >= 0 && co.daysToExpiry <= 7 ? 95 : co.daysToExpiry >= 0 && co.daysToExpiry <= 30 ? 60 : 15;
-  const env = co.environment === 'Production' ? 70 : 30;
-  const dep = Math.min(100, assocCount * 20);
-  const own = co.owner === 'Unassigned' ? 90 : 5;
-  const score = Math.round(alg * 0.30 + exp * 0.20 + env * 0.20 + dep * 0.15 + own * 0.15);
-  const col = score > 70 ? 'text-coral' : score > 40 ? 'text-amber' : 'text-teal';
-  return (
-    <span className="flex items-center gap-1.5">
-      <span className={`text-sm font-bold tabular-nums ${col}`}>{score}</span>
-      <span className="text-[9px] text-muted-foreground">/100</span>
-      <div className="relative">
-        <button onMouseEnter={() => setTip(true)} onMouseLeave={() => setTip(false)} className="p-0.5">
-          <Info className="w-3 h-3 text-muted-foreground/50 hover:text-muted-foreground" />
-        </button>
-        {tip && (
-          <div className="absolute bottom-full left-0 mb-1 z-[9999] w-72 bg-card border border-border rounded-lg shadow-xl p-3 text-[9.5px] text-muted-foreground leading-relaxed space-y-1">
-            <p className="font-semibold text-foreground text-[10px] mb-1">Crypto Risk Score breakdown</p>
-            <div className="grid grid-cols-[1fr_auto] gap-x-2 gap-y-0.5">
-              <span>Algorithm vulnerability</span><span className="tabular-nums font-medium text-foreground">{alg} × 30%</span>
-              <span>Expiry urgency</span><span className="tabular-nums font-medium text-foreground">{exp} × 20%</span>
-              <span>Environment exposure</span><span className="tabular-nums font-medium text-foreground">{env} × 20%</span>
-              <span>Dependent assets</span><span className="tabular-nums font-medium text-foreground">{dep} × 15%</span>
-              <span>Ownership gap</span><span className="tabular-nums font-medium text-foreground">{own} × 15%</span>
-            </div>
-          </div>
-        )}
-      </div>
-    </span>
-  );
-}
 
 // ── Derive violations from real data ─────────────────────────────────────────
 
@@ -588,13 +570,12 @@ function DetailPanel({
   const isSecret = co.type === 'API Key / Secret';
   const [riskTip, setRiskTip] = useState(false);
 
-  const alg = co.pqcRisk === 'Critical' ? 90 : co.pqcRisk === 'High' ? 65 : co.pqcRisk === 'Medium' ? 40 : 15;
-  const exp = co.daysToExpiry >= 0 && co.daysToExpiry <= 7 ? 95 : co.daysToExpiry >= 0 && co.daysToExpiry <= 30 ? 60 : 15;
-  const env = co.environment === 'Production' ? 70 : 30;
-  const dep = Math.min(100, assoc.length * 20);
-  const own = co.owner === 'Unassigned' ? 90 : 5;
-  const riskScore = Math.round(alg * 0.30 + exp * 0.20 + env * 0.20 + dep * 0.15 + own * 0.15);
-  const riskCol = riskScore > 70 ? 'text-coral' : riskScore > 40 ? 'text-amber' : 'text-teal';
+  // Single source of truth: real CRS engine (spec factors 31/24/19/15/11).
+  const crsResult = computeCRS(co);
+  const riskScore = crsResult.crs;
+  const crsFactors = crsResult.factors;
+  const crsTotalW = crsFactors.reduce((sw, fac) => sw + fac.weight, 0);
+  const riskCol = riskScore >= 60 ? 'text-coral' : riskScore >= 30 ? 'text-amber' : 'text-teal';
 
   const { policy, operational, quantum } = deriveViolations(co);
   const rawViolations = policy.length + quantum.length;
@@ -604,6 +585,7 @@ function DetailPanel({
   const shownPolicyViolations = effectiveViolations((co as any).policyViolations ?? 0, exceptedCount);
   const parentAsset = (co as any).host || co.application || co.infrastructure;
   const [exceptCtx, setExceptCtx] = useState<{ policyId: string; policyName: string } | null>(null);
+  const objectTicket = ticketForObject(co.id);
 
   const expiryDisplay = co.daysToExpiry >= 0
     ? co.daysToExpiry === 0 ? 'Today' : `${co.daysToExpiry}d`
@@ -635,18 +617,22 @@ function DetailPanel({
               <div className="flex items-center gap-1">
                 <span className={`text-[18px] font-bold tabular-nums ${riskCol}`}>{riskScore}</span>
                 <div className="relative">
-                  <button onMouseEnter={() => setRiskTip(true)} onMouseLeave={() => setRiskTip(false)} className="p-0.5 mt-1">
-                    <Info className="w-3 h-3 text-muted-foreground/50 hover:text-muted-foreground" />
+                  <button onMouseEnter={() => setRiskTip(true)} onMouseLeave={() => setRiskTip(false)} onClick={() => setRiskTip(v => !v)} className="flex items-center gap-0.5 mt-1 text-[8.5px] text-muted-foreground/60 hover:text-teal">
+                    <Info className="w-3 h-3" /> Explain
                   </button>
                   {riskTip && (
-                    <div className="absolute bottom-full left-0 mb-1 z-[9999] w-64 bg-card border border-border rounded-lg shadow-xl p-3 text-[10px] text-muted-foreground space-y-1">
-                      <p className="font-semibold text-foreground mb-1">Risk score breakdown</p>
-                      <div className="grid grid-cols-[1fr_auto] gap-x-2 gap-y-0.5">
-                        <span>Algorithm vulnerability</span><span className="tabular-nums text-foreground">{alg} × 30%</span>
-                        <span>Expiry urgency</span><span className="tabular-nums text-foreground">{exp} × 20%</span>
-                        <span>Environment exposure</span><span className="tabular-nums text-foreground">{env} × 20%</span>
-                        <span>Dependent assets</span><span className="tabular-nums text-foreground">{dep} × 15%</span>
-                        <span>Ownership gap</span><span className="tabular-nums text-foreground">{own} × 15%</span>
+                    <div className="absolute bottom-full left-0 mb-1 z-[9999] w-80 bg-card border border-border rounded-lg shadow-xl p-3 text-[10px] text-muted-foreground">
+                      <p className="font-semibold text-foreground mb-1.5">Crypto Risk Score: factors</p>
+                      <div className="space-y-1.5">
+                        {crsFactors.map(fac => (
+                          <div key={fac.id}>
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-foreground font-medium capitalize">{fac.label}</span>
+                              <span className="tabular-nums whitespace-nowrap">{fac.raw} × {Math.round((fac.weight / crsTotalW) * 100)}% = <span className="text-foreground font-medium">{Math.round(fac.raw * (fac.weight / crsTotalW))}</span></span>
+                            </div>
+                            <p className="text-[9px] text-muted-foreground/80 leading-snug">{fac.why}</p>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
@@ -734,142 +720,73 @@ function DetailPanel({
             <TypeMetadata co={co} />
           </div>
 
-          {/* Ownership */}
-          <div className="px-4 py-3">
-            <SectionHeading label="Ownership & operations" />
-            <MetaRow label="Owner" value={<span className={co.owner === 'Unassigned' ? 'text-coral' : 'text-foreground'}>{co.owner}</span>} />
-            <MetaRow label="Team" value={co.team} />
-            <MetaRow label="Application" value={co.application} />
-            <MetaRow label="Environment" value={<EnvBadge env={co.environment} />} />
-            <MetaRow label="Infrastructure" value={co.infrastructure} />
+          {/* Ownership and operations, compact and low-emphasis (fields, not headlines) */}
+          <div className="px-4 py-2.5">
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground/60 font-semibold mb-1.5">Ownership & operations</p>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10.5px]">
+              <div className="flex justify-between gap-2"><span className="text-muted-foreground">Owner</span><span className={`text-right truncate ${co.owner === 'Unassigned' ? 'text-coral' : 'text-foreground'}`}>{co.owner}</span></div>
+              <div className="flex justify-between gap-2"><span className="text-muted-foreground">Team</span><span className="text-foreground text-right truncate">{co.team}</span></div>
+              <div className="flex justify-between gap-2"><span className="text-muted-foreground">Application</span><span className="text-foreground text-right truncate">{co.application}</span></div>
+              <div className="flex justify-between gap-2"><span className="text-muted-foreground">Environment</span><span className="text-foreground text-right">{co.environment}</span></div>
+              <div className="flex justify-between gap-2 col-span-2"><span className="text-muted-foreground">Infrastructure</span><span className="text-foreground text-right truncate">{co.infrastructure}</span></div>
+            </div>
             {(co.tags ?? []).length > 0 && (
-              <MetaRow label="Tags" value={
-                <div className="flex flex-wrap gap-1">
-                  {(co.tags ?? []).map(t => <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{t}</span>)}
-                </div>
-              } />
+              <div className="flex flex-wrap gap-1 mt-1.5">
+                {(co.tags ?? []).map(t => <span key={t} className="text-[9px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{t}</span>)}
+              </div>
             )}
           </div>
 
-          {/* Policy Violations (policy + quantum) */}
-          {(policy.length + quantum.length) > 0 && (
+          {/* Violations, single unified list (policy + quantum + operational) */}
+          {(policy.length + quantum.length + operational.length) > 0 && (
             <div className="px-4 py-3">
-              <SectionHeading label="Violations" count={totalViolations} />
-
-              {policy.length > 0 && (
-                <div className="mb-3">
-                  <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Policy Violations</p>
-                  <div className="space-y-1.5">
-                    {policy.map((v, i) => {
-                      const mapped = violationToPolicy(v.label, co);
-                      const excepted = mapped ? isExcepted(co.id, mapped.policyId) : false;
-                      return (
-                      <div key={i} className="flex items-start gap-2 py-1 border-b border-border/30 last:border-0">
-                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 ${v.severity === 'critical' ? 'bg-coral' : v.severity === 'high' ? 'bg-amber' : 'bg-muted-foreground'}`} />
-                        <span className="text-[11px] text-foreground flex-1">{v.label}</span>
-                        {mapped && (excepted ? (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber/10 text-amber font-medium">Excepted</span>
-                        ) : (
-                          <button onClick={() => setExceptCtx({ policyId: mapped.policyId, policyName: mapped.policyName })}
-                            className="text-[10px] px-2 py-0.5 rounded border border-amber/30 text-amber hover:bg-amber/10">Add exception</button>
-                        ))}
-                      </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {quantum.length > 0 && (
-                <div>
-                  <p className="text-[10px] text-purple-light mb-1.5 font-medium flex items-center gap-1">
-                    <Atom className="w-3 h-3" /> Quantum / PQC
-                    <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-purple/15 text-purple-light">NIST 2030</span>
-                  </p>
-                  <div className="space-y-1.5">
-                    {quantum.map((v, i) => {
-                      const mapped = violationToPolicy(v.label, co);
-                      const excepted = mapped ? isExcepted(co.id, mapped.policyId) : false;
-                      return (
-                      <div key={i} className="flex items-start gap-2 py-1 border-b border-border/30 last:border-0">
-                        <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 bg-purple/60" />
-                        <span className="text-[11px] text-foreground flex-1">{v.label}</span>
-                        {mapped && (excepted ? (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber/10 text-amber font-medium">Excepted</span>
-                        ) : (
-                          <button onClick={() => setExceptCtx({ policyId: mapped.policyId, policyName: mapped.policyName })}
-                            className="text-[10px] px-2 py-0.5 rounded border border-amber/30 text-amber hover:bg-amber/10">Add exception</button>
-                        ))}
-                      </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Operational Alerts (informational; no actions, no exceptions) */}
-          {operational.length > 0 && (
-            <div className="px-4 py-3">
-              <SectionHeading label="Operational Alerts" count={operational.length} />
+              <SectionHeading label="Violations & alerts" count={policy.length + quantum.length} />
               <div className="space-y-1.5">
+                {/* Policy + quantum: traceable to a policy, eligible for ticket or exception */}
+                {[...policy.map(v => ({ v, kind: 'policy' as const })), ...quantum.map(v => ({ v, kind: 'quantum' as const }))].map(({ v, kind }, i) => {
+                  const mapped = violationToPolicy(v.label, co);
+                  const policyId = mapped?.policyId;
+                  const excepted = policyId ? isExcepted(co.id, policyId) : false;
+                  const ticket = objectTicket && policyId ? objectTicket : undefined;
+                  return (
+                    <div key={`pv-${i}`} className="flex items-start gap-2 py-1.5 border-b border-border/30 last:border-0">
+                      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 ${kind === 'quantum' ? 'bg-purple/60' : v.severity === 'critical' ? 'bg-coral' : v.severity === 'high' ? 'bg-amber' : 'bg-muted-foreground'}`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[11px] text-foreground">{v.label}</span>
+                          {kind === 'quantum' && <span className="text-[8.5px] px-1 py-0.5 rounded bg-purple/15 text-purple-light font-medium">PQC</span>}
+                        </div>
+                        {policyId && <span className="text-[9.5px] font-mono text-muted-foreground/70">{policyId}</span>}
+                      </div>
+                      {/* Act-or-except: ticket state if raised, else a single exception control */}
+                      {ticket ? (
+                        <span className="flex items-center gap-1 text-[9.5px] px-1.5 py-0.5 rounded bg-teal/10 text-teal font-medium whitespace-nowrap">
+                          <Ticket className="w-2.5 h-2.5" />
+                          {ticket.externalSystem === 'ServiceNow' ? (ticket.externalId || ticket.id) : ticket.externalSystem === 'Jira' ? (ticket.externalId || ticket.id) : ticket.id}
+                          <span className="text-teal/60">· {ticket.status}</span>
+                        </span>
+                      ) : excepted ? (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber/10 text-amber font-medium whitespace-nowrap">Excepted</span>
+                      ) : policyId ? (
+                        <button onClick={() => setExceptCtx({ policyId, policyName: mapped!.policyName })}
+                          className="text-[10px] px-2 py-0.5 rounded border border-amber/30 text-amber hover:bg-amber/10 whitespace-nowrap">Add exception</button>
+                      ) : null}
+                    </div>
+                  );
+                })}
+                {/* Operational alerts: informational, no policy id, no exception */}
                 {operational.map((v, i) => (
-                  <div key={i} className="flex items-start gap-2 py-1 border-b border-border/30 last:border-0">
+                  <div key={`op-${i}`} className="flex items-start gap-2 py-1.5 border-b border-border/30 last:border-0">
                     <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 ${v.severity === 'critical' ? 'bg-coral' : v.severity === 'high' ? 'bg-amber' : 'bg-muted-foreground'}`} />
-                    <span className="text-[11px] text-foreground flex-1">{v.label}</span>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[11px] text-foreground">{v.label}</span>
+                      <span className="block text-[9px] text-muted-foreground/60">Operational alert</span>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
           )}
-
-          {/* Ticketing & exceptions (per violating policy) */}
-          {rawViolations > 0 && (() => {
-            const vps = violatedPoliciesForObject(co.id);
-            if (!vps.length) return null;
-            return (
-              <div className="px-4 py-3">
-                <SectionHeading label="Ticketing" count={vps.length} />
-                <p className="text-[10px] text-muted-foreground mb-2">Configuration inherited from the violating policy. Set on the policy, not the asset.</p>
-                <div className="space-y-1.5">
-                  {vps.map(p => {
-                    const t: any = (p as any).ticket;
-                    const enabled = t && t.enabled;
-                    const excepted = isExcepted(co.id, p.id);
-                    return (
-                      <div key={p.id} className="flex items-start gap-2 py-1.5 border-b border-border/30 last:border-0">
-                        <Ticket className="w-3 h-3 mt-0.5 text-muted-foreground flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[11px] text-foreground truncate">{p.name || p.id}</p>
-                          {enabled ? (
-                            t.system === 'jira' ? (
-                              <p className="text-[10px] text-muted-foreground">Jira {t.projectKey || '—'} · {t.issueType || 'Task'} · Priority {t.jiraPriority || '—'}</p>
-                            ) : (
-                              <p className="text-[10px] text-muted-foreground">ServiceNow Incident → {t.assignmentGroup || '—'} · Priority {t.snowPriority || '—'}</p>
-                            )
-                          ) : (
-                            <p className="text-[10px] text-muted-foreground italic">No ticket configured</p>
-                          )}
-                        </div>
-                        {excepted ? (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded-full font-medium bg-amber/15 text-amber">Excepted</span>
-                        ) : (
-                          <button
-                            onClick={() => setExceptCtx({ policyId: p.id, policyName: p.name || p.id })}
-                            className="text-[10px] px-2 py-0.5 rounded border border-amber/30 text-amber hover:bg-amber/10"
-                          >
-                            Add exception
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })()}
-
 
 
 
@@ -896,7 +813,7 @@ function DetailPanel({
               <div className="space-y-0.5">
                 {assoc.map(a => (
                   <button key={a.id}
-                    onClick={() => { setFilters({ tab: 'infrastructure', assetName: a.name }); setCurrentPage('inventory'); onClose(); }}
+                    onClick={() => { setFilters({ tab: 'infrastructure', assetId: a.id }); setCurrentPage('inventory'); onClose(); }}
                     className="w-full flex items-center gap-2 text-[11px] rounded px-2 py-1.5 hover:bg-secondary/50 transition-colors text-left group">
                     <span className="text-foreground font-medium flex-1 truncate group-hover:text-teal">{a.name}</span>
                     <span className="text-muted-foreground flex-shrink-0 text-[10px]">{a.type}</span>
@@ -1096,6 +1013,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
 
   const filtered = useMemo(() => {
     let r = [...allAssets];
+    
     if (qvOnly) r = r.filter(a => algVuln(a.algorithm) >= 90); // canonical quantum-vulnerable, matches Quantum Readiness
     if (typeFilter !== 'All') r = r.filter(a => a.type === typeFilter);
     if (search) {
@@ -1159,7 +1077,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
 
         {/* Type tabs */}
         <div className="flex items-center gap-1 border-b border-border pb-2 flex-shrink-0 overflow-x-auto">
-          {TYPE_FILTERS.map(t => {
+          {TYPE_FILTERS.filter(t => FEATURES.AI_IDENTITY || t.key !== 'AI Agent Token').map(t => {
             const cnt = t.key === 'All' ? allAssets.length : allAssets.filter(a => a.type === t.key).length;
             return (
               <button key={t.key} onClick={() => { setTypeFilter(t.key); }}
@@ -1311,7 +1229,6 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
           </div>
         </div>
       </div>
-
 
       {/* Detail side panel */}
       {detailAsset && (
