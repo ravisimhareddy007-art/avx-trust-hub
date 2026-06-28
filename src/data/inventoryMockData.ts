@@ -1732,15 +1732,6 @@ export function getAssetViolations(
           violationType: "classic",
         });
       }
-      if (o.owner === "Unassigned") {
-        violations.push({
-          objectName: o.name,
-          objectId: o.id,
-          severity: "Medium",
-          type: "No assigned owner",
-          violationType: "classic",
-        });
-      }
       if (
         o.rotationFrequency === "Never" &&
         (o.type === "SSH Key" || o.type === "API Key / Secret" || o.type === "Encryption Key")
