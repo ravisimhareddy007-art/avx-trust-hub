@@ -1,30 +1,30 @@
-import React, { useState, useEffect } from 'react';
-import { useNav } from '@/context/NavigationContext';
-import ITAssetsTab from '@/components/inventory/ITAssetsTab';
-import CryptoObjectsTab from '@/components/inventory/CryptoObjectsTab';
-import GroupsTab from '@/components/inventory/GroupsTab';
-import PolicyDrawer from '@/components/inventory/PolicyDrawer';
-import TicketDrawer from '@/components/inventory/TicketDrawer';
-import AddResourceModal from '@/components/inventory/AddResourceModal';
-import { Server, Key, LayoutGrid, Plus } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { useNav } from "@/context/NavigationContext";
+import ITAssetsTab from "@/components/inventory/ITAssetsTab";
+import CryptoObjectsTab from "@/components/inventory/CryptoObjectsTab";
+import GroupsTab from "@/components/inventory/GroupsTab";
+import PolicyDrawer from "@/components/inventory/PolicyDrawer";
+import TicketDrawer from "@/components/inventory/TicketDrawer";
+import AddResourceModal from "@/components/inventory/AddResourceModal";
+import { Server, Key, LayoutGrid, Plus } from "lucide-react";
 
 const tabs = [
-  { key: 'it-assets', label: 'Infrastructure', icon: Server },
-  { key: 'crypto-objects', label: 'Identities', icon: Key },
-  { key: 'groups', label: 'Groups', icon: LayoutGrid },
+  { key: "it-assets", label: "Infrastructure", icon: Server },
+  { key: "crypto-objects", label: "Identities", icon: Key },
+  { key: "groups", label: "Groups", icon: LayoutGrid },
 ] as const;
 
-type TabKey = typeof tabs[number]['key'];
+type TabKey = (typeof tabs)[number]["key"];
 
 export default function InventoryPage() {
   const { filters } = useNav();
-  const [activeTab, setActiveTab] = useState<TabKey>('it-assets');
+  const [activeTab, setActiveTab] = useState<TabKey>("it-assets");
 
   // Read tab from navigation filters
   useEffect(() => {
-    if (filters.tab === 'identities') setActiveTab('crypto-objects');
-    else if (filters.tab === 'infrastructure') setActiveTab('it-assets');
-    else if (filters.tab === 'groups') setActiveTab('groups');
+    if (filters.tab === "identities") setActiveTab("crypto-objects");
+    else if (filters.tab === "infrastructure") setActiveTab("it-assets");
+    else if (filters.tab === "groups") setActiveTab("groups");
   }, [filters]);
 
   // Policy Drawer state
@@ -58,11 +58,16 @@ export default function InventoryPage() {
       {/* Top-level tab bar */}
       <div className="flex items-center border-b border-border bg-card px-4 flex-shrink-0">
         <div className="flex items-center gap-0">
-          {tabs.map(tab => (
-            <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
               className={`flex items-center gap-2 px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
-                activeTab === tab.key ? 'border-teal text-teal' : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}>
+                activeTab === tab.key
+                  ? "border-teal text-teal"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
               <tab.icon className="w-3.5 h-3.5" />
               {tab.label}
             </button>
@@ -79,15 +84,22 @@ export default function InventoryPage() {
 
       {/* Tab content — full replacement */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        {activeTab === 'it-assets' && <ITAssetsTab onCreateTicket={openTicketDrawer} />}
-        {activeTab === 'crypto-objects' && <CryptoObjectsTab onCreateTicket={openTicketDrawer} />}
-        {activeTab === 'groups' && <GroupsTab onCreateTicket={openTicketDrawer} onOpenPolicyDrawer={openPolicyDrawer} />}
+        {activeTab === "it-assets" && (
+          <ITAssetsTab onCreateTicket={openTicketDrawer} onOpenPolicyDrawer={openPolicyDrawer} />
+        )}
+        {activeTab === "crypto-objects" && <CryptoObjectsTab onCreateTicket={openTicketDrawer} />}
+        {activeTab === "groups" && (
+          <GroupsTab onCreateTicket={openTicketDrawer} onOpenPolicyDrawer={openPolicyDrawer} />
+        )}
       </div>
 
       {/* Policy Builder Drawer */}
       <PolicyDrawer
         open={policyDrawerOpen}
-        onClose={() => { setPolicyDrawerOpen(false); setPolicyDrawerCtx({}); }}
+        onClose={() => {
+          setPolicyDrawerOpen(false);
+          setPolicyDrawerCtx({});
+        }}
         groupId={policyDrawerCtx.groupId}
         groupName={policyDrawerCtx.groupName}
       />
@@ -95,15 +107,15 @@ export default function InventoryPage() {
       {/* Ticket Drawer */}
       <TicketDrawer
         open={ticketDrawerOpen}
-        onClose={() => { setTicketDrawerOpen(false); setTicketCtx(null); }}
+        onClose={() => {
+          setTicketDrawerOpen(false);
+          setTicketCtx(null);
+        }}
         context={ticketCtx}
       />
 
       {/* Add Resource Modal */}
-      <AddResourceModal
-        open={addOpen}
-        onClose={() => setAddOpen(false)}
-      />
+      <AddResourceModal open={addOpen} onClose={() => setAddOpen(false)} />
     </div>
   );
 }
