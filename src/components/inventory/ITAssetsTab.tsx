@@ -915,7 +915,7 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                     <td className="py-2 px-2 text-muted-foreground">{asset.ownerTeam}</td>
                     <td className="py-2 px-2 text-center" onClick={(e) => e.stopPropagation()}>
                       {(() => {
-                        const vs = getAssetViolations(asset);
+                        const vs = getAssetViolations(asset, getIdentities(asset));
                         const crit = vs.filter((v) => v.severity === "Critical").length;
                         if (vs.length === 0) {
                           return <span className="text-[10px] text-muted-foreground">—</span>;
@@ -950,7 +950,7 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
         <ITAssetDetailPanel
           asset={selectedAsset}
           identities={getIdentities(selectedAsset)}
-          violations={getAssetViolations(selectedAsset)}
+          violations={getAssetViolations(selectedAsset, getIdentities(selectedAsset))}
           onClose={goBack}
           onBlastRadius={() => setBlastModalOpen(true)}
           onRiskDrawer={() => setRiskDrawerAsset(selectedAsset)}
