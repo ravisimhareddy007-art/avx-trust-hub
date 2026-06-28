@@ -2,7 +2,6 @@ import React, { useState, useMemo, useEffect } from "react";
 import {
   mockITAssets,
   ITAsset,
-  getAssetRiskDrivers,
   getAssetAINarrative,
   getAssetViolations,
   getBlastRadius,
@@ -234,39 +233,43 @@ function ITAssetDetailPanel({
   const assetARS = arsScore(asset);
   const riskCol = assetARS > 70 ? "text-coral" : assetARS > 40 ? "text-amber" : "text-teal";
   const [explainOpen, setExplainOpen] = useState(false);
-  const drivers = getAssetRiskDrivers(asset);
-  // Weighted ARS drivers (mirror of the CRS factor breakdown on the Identities panel).
-  const driverRows = [
+  // Real ARS breakdown from the scoring engine (spec, not invented weights):
+  //   techARS = 0.55·max(CRS) + 0.45·(0.6·P90 + 0.4·P75) + ln(1+crit)·4 + ln(1+high)·2
+  //   ARS     = min(100, round(techARS · businessImpactMultiplier))
+  const ars = arsFor(asset);
+  const termWorst = 0.55 * ars.max;
+  const termSpread = 0.45 * (0.6 * ars.p90 + 0.4 * ars.p75);
+  const termCrit = Math.log(1 + ars.critCount) * 4;
+  const termHigh = Math.log(1 + ars.highCount) * 2;
+  const biMult = ars.techARS > 0 ? ars.ars / ars.techARS : 1;
+  // Each term's share of the technical score, for the bar widths.
+  const arsTerms = [
     {
-      id: "crypto",
-      label: "Crypto health",
-      score: drivers.cryptoHealth.score,
-      weight: 35,
-      why: drivers.cryptoHealth.driver,
+      id: "worst",
+      label: "Worst object (max CRS)",
+      value: termWorst,
+      detail: `0.55 × ${ars.max} = ${termWorst.toFixed(1)}`,
     },
     {
-      id: "expiry",
-      label: "Expiry exposure",
-      score: drivers.expiryExposure.score,
-      weight: 25,
-      why: drivers.expiryExposure.driver,
+      id: "spread",
+      label: "Object spread (P90/P75)",
+      value: termSpread,
+      detail: `0.45 × (0.6×${ars.p90} + 0.4×${ars.p75}) = ${termSpread.toFixed(1)}`,
     },
     {
-      id: "coverage",
-      label: "Policy coverage",
-      score: drivers.policyCoverage.score,
-      weight: 25,
-      why: drivers.policyCoverage.driver,
+      id: "crit",
+      label: `Critical objects (${ars.critCount})`,
+      value: termCrit,
+      detail: `ln(1+${ars.critCount}) × 4 = ${termCrit.toFixed(1)}`,
     },
     {
-      id: "blast",
-      label: "Blast radius",
-      score: drivers.blastRadius.score,
-      weight: 15,
-      why: drivers.blastRadius.driver,
+      id: "high",
+      label: `High objects (${ars.highCount})`,
+      value: termHigh,
+      detail: `ln(1+${ars.highCount}) × 2 = ${termHigh.toFixed(1)}`,
     },
   ];
-  const driverTotalW = driverRows.reduce((a, d) => a + d.weight, 0);
+  const arsTermMax = Math.max(...arsTerms.map((t) => t.value), 1);
 
   return (
     <div className="fixed inset-0 z-50 flex">
@@ -369,40 +372,62 @@ function ITAssetDetailPanel({
               </div>
             </div>
 
-            {/* ARS driver breakdown, collapsible; opens on Explain. */}
+            {/* Real ARS breakdown (spec terms + the actual objects driving it). */}
             {explainOpen && (
-              <div className="mt-2.5 space-y-1 border-t border-border/40 pt-2">
-                {driverRows.map((d) => {
-                  const contrib = Math.round(d.score * (d.weight / driverTotalW));
-                  const pct = Math.min(100, d.score);
-                  return (
-                    <div key={d.id} className="flex items-center gap-2" title={d.why}>
-                      <span className="text-[9.5px] text-muted-foreground w-[80px] flex-shrink-0 truncate">
-                        {d.label}
+              <div className="mt-2.5 border-t border-border/40 pt-2 space-y-2">
+                <div className="space-y-1">
+                  {arsTerms.map((t) => (
+                    <div key={t.id} className="flex items-center gap-2" title={t.detail}>
+                      <span className="text-[9.5px] text-muted-foreground w-[120px] flex-shrink-0 truncate">
+                        {t.label}
                       </span>
                       <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
                         <div
-                          className="h-full rounded-full"
-                          style={{
-                            width: `${pct}%`,
-                            background:
-                              d.score >= 70
-                                ? "hsl(var(--coral))"
-                                : d.score >= 40
-                                  ? "hsl(var(--amber))"
-                                  : "hsl(var(--teal))",
-                          }}
+                          className="h-full rounded-full bg-teal"
+                          style={{ width: `${(t.value / arsTermMax) * 100}%` }}
                         />
                       </div>
-                      <span className="text-[9px] tabular-nums text-muted-foreground/70 w-[60px] text-right flex-shrink-0">
-                        +{contrib} ({Math.round((d.weight / driverTotalW) * 100)}%)
+                      <span className="text-[9px] tabular-nums text-muted-foreground/70 w-[34px] text-right flex-shrink-0">
+                        +{t.value.toFixed(1)}
                       </span>
                     </div>
-                  );
-                })}
-                <p className="text-[9px] text-muted-foreground/60 pt-1 leading-snug">
-                  {driverRows.find((d) => d.score >= 70)?.why ?? driverRows[0].why}
+                  ))}
+                </div>
+                <p className="text-[9px] text-muted-foreground/70 leading-snug">
+                  Technical score <span className="text-foreground tabular-nums">{ars.techARS}</span>
+                  <span className="text-muted-foreground/50"> · business impact </span>
+                  <span className="text-foreground">{ars.bi}</span>
+                  <span className="text-muted-foreground/50"> (×{biMult.toFixed(2)}) = </span>
+                  <span className={`font-semibold ${riskCol}`}>{ars.ars}</span>
                 </p>
+                {ars.topObjects.length > 0 && (
+                  <div className="pt-1.5 border-t border-border/30">
+                    <p className="text-[9px] uppercase tracking-wide text-muted-foreground/60 font-semibold mb-1">
+                      Top contributing objects
+                    </p>
+                    <div className="space-y-0.5">
+                      {ars.topObjects.slice(0, 3).map((o) => (
+                        <button
+                          key={o.id}
+                          onClick={() => {
+                            setFilters({ tab: "identities", search: o.name });
+                            setCurrentPage("inventory");
+                            onClose();
+                          }}
+                          className="w-full flex items-center gap-2 text-[9.5px] rounded px-1.5 py-1 hover:bg-secondary/50 transition-colors text-left group"
+                        >
+                          <span className="text-foreground truncate flex-1 group-hover:text-teal">{o.name}</span>
+                          <span className="text-muted-foreground/70 truncate flex-shrink-0">{o.reason}</span>
+                          <span
+                            className={`tabular-nums font-medium flex-shrink-0 ${o.crs >= 80 ? "text-coral" : o.crs >= 60 ? "text-amber" : "text-muted-foreground"}`}
+                          >
+                            CRS {o.crs}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
