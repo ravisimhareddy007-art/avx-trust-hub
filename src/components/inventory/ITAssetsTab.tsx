@@ -245,20 +245,22 @@ function ITAssetDetailPanel({
       .join(" · ");
   })();
   const findingsFor = (co: (typeof identities)[number]) => {
-    const f: { label: string; tone: "coral" | "amber" | "purple" }[] = [];
-    if (co.status === "Expired" || co.daysToExpiry < 0) f.push({ label: "Expired", tone: "coral" });
+    // sev: 1 = highest operational urgency, used to order badges (most severe first).
+    const f: { label: string; tone: "coral" | "amber" | "purple"; sev: number }[] = [];
+    if (co.status === "Expired" || co.daysToExpiry < 0) f.push({ label: "Expired", tone: "coral", sev: 1 });
     else if (co.daysToExpiry >= 0 && co.daysToExpiry <= 7)
-      f.push({ label: `Expiring ${co.daysToExpiry}d`, tone: "coral" });
+      f.push({ label: `Expiring ${co.daysToExpiry}d`, tone: "coral", sev: 2 });
     else if (co.daysToExpiry > 7 && co.daysToExpiry <= 30)
-      f.push({ label: `Expiring ${co.daysToExpiry}d`, tone: "amber" });
-    if (co.pqcRisk === "Critical" || co.pqcRisk === "High") f.push({ label: "Quantum", tone: "purple" });
-    if (co.owner === "Unassigned") f.push({ label: "No owner", tone: "amber" });
+      f.push({ label: `Expiring ${co.daysToExpiry}d`, tone: "amber", sev: 4 });
+    if (co.pqcRisk === "Critical" || co.pqcRisk === "High")
+      f.push({ label: "Quantum-vulnerable", tone: "purple", sev: 3 });
+    if (co.owner === "Unassigned") f.push({ label: "No owner", tone: "amber", sev: 5 });
     if (
       co.rotationFrequency === "Never" &&
       (co.type === "SSH Key" || co.type === "API Key / Secret" || co.type === "Encryption Key")
     )
-      f.push({ label: "No rotation", tone: "amber" });
-    return f;
+      f.push({ label: "No rotation", tone: "amber", sev: 6 });
+    return f.sort((a, b) => a.sev - b.sev);
   };
   const assetARS = arsScore(asset);
   const riskCol = assetARS > 70 ? "text-coral" : assetARS > 40 ? "text-amber" : "text-teal";
@@ -302,42 +304,75 @@ function ITAssetDetailPanel({
   ];
   const arsTermMax = Math.max(...arsTerms.map((t) => t.value), 1);
 
-  // #16 AI-native explainability. Counts come from the asset's real objects;
-  // the reduction estimate is a genuine recompute of ARS with the expired
-  // objects hypothetically renewed (CRS capped to a healthy band), not a guess.
+  // #16 + actionability: rank concrete remediation actions, each with a REAL
+  // impact delta (recompute ARS with just that fix applied). Operators want
+  // "what to fix first", not a description.
   const [showCalc, setShowCalc] = useState(false);
+  const [hideHealthy, setHideHealthy] = useState(false);
   const expiredObjs = identities.filter((o) => o.status === "Expired" || o.daysToExpiry < 0);
+  const expiringObjs = identities.filter((o) => o.status !== "Expired" && o.daysToExpiry >= 0 && o.daysToExpiry <= 30);
   const quantumObjs = identities.filter((o) => o.pqcRisk === "Critical" || o.pqcRisk === "High");
   const unownedObjs = identities.filter((o) => o.owner === "Unassigned");
-  const riskReduction = (() => {
-    if (expiredObjs.length === 0) return 0;
-    // Build a hypothetical object set where this asset's expired objects are renewed:
-    // give them a healthy validity window so their CRS drops, then recompute ARS.
-    const expiredIds = new Set(expiredObjs.map((o) => o.id));
-    const hypothetical: CryptoAsset[] = mockAssets.map((o) =>
-      expiredIds.has(o.id) ? { ...o, status: "Active", daysToExpiry: 365, expiryDate: "2027-06-30" } : o,
-    );
-    const fixedARS = computeARS(asset, hypothetical).ars;
-    return Math.max(0, ars.ars - fixedARS);
-  })();
-  // Compose the plain-language sentence from whatever is actually true.
-  const narrativeParts: string[] = [];
-  if (expiredObjs.length > 0)
-    narrativeParts.push(`${expiredObjs.length} ${expiredObjs.length === 1 ? "asset is" : "assets are"} expired`);
-  if (quantumObjs.length > 0) narrativeParts.push(`${quantumObjs.length} use quantum-vulnerable algorithms`);
-  if (unownedObjs.length > 0) narrativeParts.push(`${unownedObjs.length} lack ownership`);
-  const reasonText =
-    narrativeParts.length > 0
-      ? narrativeParts.slice(0, -1).join(", ") +
-        (narrativeParts.length > 1 ? ", and " : "") +
-        narrativeParts[narrativeParts.length - 1]
-      : "its linked objects carry elevated cryptographic risk";
-  const bandWord = ars.ars >= 71 ? "critical" : ars.ars >= 40 ? "moderate" : "low";
-  const aiNarrative =
-    `This ${asset.type.toLowerCase()} carries ${bandWord} crypto risk because ${reasonText}.` +
-    (riskReduction > 0
-      ? ` Renewing the expired ${expiredObjs.length === 1 ? "object" : "objects"} would reduce the score by approximately ${riskReduction} point${riskReduction === 1 ? "" : "s"}.`
-      : "");
+  const noRotationObjs = identities.filter(
+    (o) =>
+      o.rotationFrequency === "Never" &&
+      (o.type === "SSH Key" || o.type === "API Key / Secret" || o.type === "Encryption Key"),
+  );
+  const healthyCount = identities.filter((o) => findingsFor(o).length === 0).length;
+
+  // Recompute ARS with a given set of objects "fixed", return the point drop.
+  const deltaIfFixed = (fix: (o: CryptoAsset) => CryptoAsset | null, ids: Set<string>): number => {
+    if (ids.size === 0) return 0;
+    const hypothetical: CryptoAsset[] = mockAssets.map((o) => (ids.has(o.id) ? (fix(o) ?? o) : o));
+    return Math.max(0, ars.ars - computeARS(asset, hypothetical).ars);
+  };
+  const certWord = (n: number, t: string) => `${n} ${t}${n === 1 ? "" : "s"}`;
+  const remediations = [
+    expiredObjs.length > 0 && {
+      id: "renew",
+      label: `Renew ${certWord(expiredObjs.length, "expired object")}`,
+      delta: deltaIfFixed(
+        (o) => ({ ...o, status: "Active", daysToExpiry: 365, expiryDate: "2027-06-30" }),
+        new Set(expiredObjs.map((o) => o.id)),
+      ),
+      tone: "coral" as const,
+      nav: { status: "Expired" },
+    },
+    quantumObjs.length > 0 && {
+      id: "pqc",
+      label: `Replace ${certWord(quantumObjs.length, "quantum-vulnerable algorithm")}`,
+      delta: deltaIfFixed(
+        (o) => ({ ...o, pqcRisk: "Safe", algorithm: "ML-DSA-65" }),
+        new Set(quantumObjs.map((o) => o.id)),
+      ),
+      tone: "purple" as const,
+      nav: { pqcRisk: "Critical" },
+    },
+    unownedObjs.length > 0 && {
+      id: "owner",
+      label: `Assign owners to ${certWord(unownedObjs.length, "unmanaged object")}`,
+      delta: deltaIfFixed((o) => ({ ...o, owner: "assigned-team" }), new Set(unownedObjs.map((o) => o.id))),
+      tone: "amber" as const,
+      nav: { owner: "Unassigned" },
+    },
+    noRotationObjs.length > 0 && {
+      id: "rotation",
+      label: `Enable rotation on ${certWord(noRotationObjs.length, "key")}`,
+      delta: deltaIfFixed((o) => ({ ...o, rotationFrequency: "90 days" }), new Set(noRotationObjs.map((o) => o.id))),
+      tone: "amber" as const,
+      nav: {},
+    },
+  ].filter(Boolean) as {
+    id: string;
+    label: string;
+    delta: number;
+    tone: "coral" | "purple" | "amber";
+    nav: Record<string, string>;
+  }[];
+  // Highest-impact action first; ties keep severity order (expired before others).
+  remediations.sort((a, b) => b.delta - a.delta);
+  const topReduction = remediations.length > 0 ? remediations[0].delta : 0;
+  const projectedScore = Math.max(0, ars.ars - topReduction);
 
   return (
     <div className="fixed inset-0 z-50 flex">
@@ -415,7 +450,7 @@ function ITAssetDetailPanel({
                     onClick={() => setExplainOpen((v) => !v)}
                     className="ml-auto inline-flex items-center gap-0.5 text-[10px] text-muted-foreground/70 hover:text-teal transition-colors"
                   >
-                    <Info className="w-3 h-3" /> Why {assetARS}?
+                    <Info className="w-3 h-3" /> How do I reduce this?
                     {explainOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                   </button>
                 </div>
@@ -443,16 +478,65 @@ function ITAssetDetailPanel({
             {/* AI-native explanation, lead with plain language; math on demand. */}
             {explainOpen && (
               <div className="mt-2.5 border-t border-border/40 pt-2.5 space-y-2.5">
-                <div className="flex items-start gap-2">
-                  <Bot className="w-3.5 h-3.5 text-teal flex-shrink-0 mt-0.5" />
-                  <p className="text-[11px] text-foreground leading-relaxed">{aiNarrative}</p>
+                {/* Ranked remediation: highest-impact action first, real deltas. */}
+                <div className="flex items-center gap-1.5">
+                  <Bot className="w-3.5 h-3.5 text-teal flex-shrink-0" />
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground/70 font-semibold">
+                    Top remediation
+                  </p>
                 </div>
+                {remediations.length > 0 ? (
+                  <div className="space-y-1">
+                    {remediations.map((r) => (
+                      <button
+                        key={r.id}
+                        onClick={() => {
+                          setFilters({ tab: "identities", search: asset.infrastructure, ...r.nav });
+                          setCurrentPage("inventory");
+                          onClose();
+                        }}
+                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg border border-border/50 hover:border-teal/30 hover:bg-secondary/40 transition-colors text-left group"
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${r.tone === "coral" ? "bg-coral" : r.tone === "purple" ? "bg-purple/70" : "bg-amber"}`}
+                        />
+                        <span className="text-[11px] text-foreground flex-1 group-hover:text-teal">{r.label}</span>
+                        {r.delta > 0 && (
+                          <span className="text-[10px] font-semibold tabular-nums text-teal flex-shrink-0">
+                            -{r.delta} pts
+                          </span>
+                        )}
+                        <ArrowRight className="w-3 h-3 text-muted-foreground/40 group-hover:text-teal flex-shrink-0" />
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-teal">No outstanding remediation. All linked objects are healthy.</p>
+                )}
+                {topReduction > 0 && (
+                  <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-secondary/40">
+                    <span className="text-[9px] uppercase tracking-wide text-muted-foreground/70 font-semibold">
+                      Estimated impact
+                    </span>
+                    <span className="ml-auto flex items-center gap-1.5 text-[12px] font-bold tabular-nums">
+                      <span className={riskCol}>{ars.ars}</span>
+                      <ArrowRight className="w-3 h-3 text-muted-foreground/50" />
+                      <span
+                        className={
+                          projectedScore >= 71 ? "text-coral" : projectedScore >= 40 ? "text-amber" : "text-teal"
+                        }
+                      >
+                        {projectedScore}
+                      </span>
+                    </span>
+                  </div>
+                )}
                 <button
                   onClick={() => setShowCalc((v) => !v)}
                   className="inline-flex items-center gap-1 text-[9.5px] text-muted-foreground/70 hover:text-teal transition-colors"
                 >
                   {showCalc ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                  {showCalc ? "Hide calculation" : "Show calculation"}
+                  {showCalc ? "Hide score breakdown" : "View score breakdown"}
                 </button>
                 {showCalc && (
                   <div className="space-y-2 pt-0.5">
@@ -504,7 +588,17 @@ function ITAssetDetailPanel({
               )}
               <span className="ml-auto text-[9px] text-muted-foreground/60">Open in Identity Inventory →</span>
             </div>
-            {typeRollup && <p className="text-[9.5px] text-muted-foreground/70 mb-2">{typeRollup}</p>}
+            <div className="flex items-center gap-2 mb-2">
+              {typeRollup && <p className="text-[9.5px] text-muted-foreground/70">{typeRollup}</p>}
+              {healthyCount > 0 && totalViolations > 0 && (
+                <button
+                  onClick={() => setHideHealthy((v) => !v)}
+                  className="ml-auto text-[9px] text-muted-foreground/70 hover:text-teal transition-colors"
+                >
+                  {hideHealthy ? `Show ${healthyCount} healthy` : "Hide healthy"}
+                </button>
+              )}
+            </div>
 
             {identities.length > 0 ? (
               <div className="rounded-lg border border-border/50 overflow-hidden">
@@ -512,12 +606,13 @@ function ITAssetDetailPanel({
                 <div className="flex items-center gap-2 px-2.5 py-1.5 bg-secondary/50 border-b border-border/50 text-[9px] uppercase tracking-wide text-muted-foreground/70 font-semibold">
                   <span className="flex-1">Object</span>
                   <span className="w-[88px] flex-shrink-0">Algorithm</span>
-                  <span className="w-[150px] flex-shrink-0">Status / Violations</span>
+                  <span className="w-[168px] flex-shrink-0">Violations</span>
                   <span className="w-3 flex-shrink-0" />
                 </div>
                 {/* Rows, sorted so objects with findings surface first */}
                 <div className="divide-y divide-border/30">
                   {[...identities]
+                    .filter((co) => !hideHealthy || findingsFor(co).length > 0)
                     .sort((a, b) => findingsFor(b).length - findingsFor(a).length)
                     .map((co) => {
                       const meta = objectTypeMeta(co.type);
@@ -542,7 +637,7 @@ function ITAssetDetailPanel({
                           <span className="w-[88px] flex-shrink-0 text-[10px] text-muted-foreground truncate">
                             {co.algorithm}
                           </span>
-                          <span className="w-[150px] flex-shrink-0 flex flex-wrap gap-1">
+                          <span className="w-[168px] flex-shrink-0 flex flex-wrap gap-1">
                             {fs.length === 0 ? (
                               <span className="text-[9px] px-1.5 py-0.5 rounded font-medium bg-teal/10 text-teal">
                                 {co.status === "Healthy" ? "Healthy" : "Active"}
@@ -600,22 +695,6 @@ function ITAssetDetailPanel({
                   { label: "Managed by", value: asset.managedBy },
                   { label: "Application", value: asset.application },
                   { label: "Last seen", value: asset.lastSeen },
-                  {
-                    label: "Policy coverage",
-                    value: (
-                      <span
-                        className={
-                          asset.policyCoverage < 50
-                            ? "text-coral"
-                            : asset.policyCoverage < 80
-                              ? "text-amber"
-                              : "text-teal"
-                        }
-                      >
-                        {asset.policyCoverage}%
-                      </span>
-                    ),
-                  },
                   {
                     label: "Discovery scan",
                     value: asset.scanned ? (
