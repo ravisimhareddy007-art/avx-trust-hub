@@ -228,54 +228,42 @@ function ITAssetDetailPanel({
   const totalViolations = classic.length + pqc.length;
   // Roll-up by category so the panel summarises rather than re-listing objects.
   // Each bucket routes to the filtered Identities view, where actions live.
-  const expiringCount = identities.filter(
-    (o) => o.status === "Expired" || (o.daysToExpiry >= 0 && o.daysToExpiry <= 30),
-  ).length;
-  const pqcCount = identities.filter((o) => o.pqcRisk === "Critical" || o.pqcRisk === "High").length;
-  const unownedCount = identities.filter((o) => o.owner === "Unassigned").length;
-  const rotationCount = identities.filter(
-    (o) =>
-      o.rotationFrequency === "Never" &&
-      (o.type === "SSH Key" || o.type === "API Key / Secret" || o.type === "Encryption Key"),
-  ).length;
-  const routeToIdentities = (extra: Record<string, string>) => {
-    setFilters({ tab: "identities", search: asset.infrastructure, ...extra });
-    setCurrentPage("inventory");
-    onClose();
+  // Per-object findings, derived from each object's real state (same logic as the
+  // faithful asset violations). Lets each table row carry its own findings inline.
+  // #8: object-type rollup for mental context (certs / keys / secrets).
+  const typeRollup = (() => {
+    const certTypes = ["TLS Certificate", "Code-Signing Certificate", "K8s Workload Cert", "SSH Certificate"];
+    const certs = identities.filter((o) => certTypes.includes(o.type)).length;
+    const keys = identities.filter((o) => o.type === "SSH Key" || o.type === "Encryption Key").length;
+    const secrets = identities.filter((o) => o.type === "API Key / Secret").length;
+    return [
+      certs > 0 && `${certs} cert${certs !== 1 ? "s" : ""}`,
+      keys > 0 && `${keys} key${keys !== 1 ? "s" : ""}`,
+      secrets > 0 && `${secrets} secret${secrets !== 1 ? "s" : ""}`,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+  })();
+  const findingsFor = (co: (typeof identities)[number]) => {
+    const f: { label: string; tone: "coral" | "amber" | "purple" }[] = [];
+    if (co.status === "Expired" || co.daysToExpiry < 0) f.push({ label: "Expired", tone: "coral" });
+    else if (co.daysToExpiry >= 0 && co.daysToExpiry <= 7)
+      f.push({ label: `Expiring ${co.daysToExpiry}d`, tone: "coral" });
+    else if (co.daysToExpiry > 7 && co.daysToExpiry <= 30)
+      f.push({ label: `Expiring ${co.daysToExpiry}d`, tone: "amber" });
+    if (co.pqcRisk === "Critical" || co.pqcRisk === "High") f.push({ label: "Quantum", tone: "purple" });
+    if (co.owner === "Unassigned") f.push({ label: "No owner", tone: "amber" });
+    if (
+      co.rotationFrequency === "Never" &&
+      (co.type === "SSH Key" || co.type === "API Key / Secret" || co.type === "Encryption Key")
+    )
+      f.push({ label: "No rotation", tone: "amber" });
+    return f;
   };
-  const violationBuckets = [
-    {
-      id: "expiring",
-      label: "Expiring or expired",
-      count: expiringCount,
-      tone: "coral",
-      nav: { status: "Expiring" } as Record<string, string>,
-    },
-    {
-      id: "pqc",
-      label: "Quantum-vulnerable",
-      count: pqcCount,
-      tone: "purple",
-      nav: { pqcRisk: "Critical" } as Record<string, string>,
-    },
-    {
-      id: "unowned",
-      label: "No assigned owner",
-      count: unownedCount,
-      tone: "amber",
-      nav: { owner: "Unassigned" } as Record<string, string>,
-    },
-    {
-      id: "rotation",
-      label: "Rotation not set",
-      count: rotationCount,
-      tone: "amber",
-      nav: {} as Record<string, string>,
-    },
-  ].filter((b) => b.count > 0);
   const assetARS = arsScore(asset);
   const riskCol = assetARS > 70 ? "text-coral" : assetARS > 40 ? "text-amber" : "text-teal";
   const [explainOpen, setExplainOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   // Real ARS breakdown from the scoring engine (spec, not invented weights):
   //   techARS = 0.55·max(CRS) + 0.45·(0.6·P90 + 0.4·P75) + ln(1+crit)·4 + ln(1+high)·2
   //   ARS     = min(100, round(techARS · businessImpactMultiplier))
@@ -384,19 +372,19 @@ function ITAssetDetailPanel({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className={`text-[12px] font-semibold ${riskCol}`}>
-                    {assetARS >= 71 ? "Critical" : assetARS >= 40 ? "Moderate" : "Low"} risk
+                    {assetARS >= 71 ? "Critical" : assetARS >= 40 ? "Moderate" : "Low"} crypto risk
                   </span>
-                  <span className="text-[10px] text-muted-foreground">ARS</span>
                   <button
                     onClick={() => setExplainOpen((v) => !v)}
                     className="ml-auto inline-flex items-center gap-0.5 text-[10px] text-muted-foreground/70 hover:text-teal transition-colors"
                   >
-                    <Info className="w-3 h-3" /> Explain
+                    <Info className="w-3 h-3" /> Why {assetARS}?
                     {explainOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                   </button>
                 </div>
                 <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">
-                  <span className="text-foreground font-medium">{identities.length}</span> linked identities
+                  Derived from <span className="text-foreground font-medium">{identities.length}</span> linked crypto
+                  object{identities.length !== 1 ? "s" : ""}
                   {totalViolations > 0 ? (
                     <>
                       {" "}
@@ -450,87 +438,78 @@ function ITAssetDetailPanel({
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto scrollbar-thin divide-y divide-border/40">
-          {/* Asset details */}
+          {/* One table: the asset's crypto objects, each with its own findings. */}
           <div className="px-4 py-3">
-            <p className="text-[11px] font-semibold text-muted-foreground mb-2">Asset details</p>
-            {[
-              { label: "Type", value: asset.type },
-              { label: "Infrastructure", value: asset.infrastructure },
-              { label: "Managed by", value: asset.managedBy },
-              { label: "Application", value: asset.application },
-              { label: "Last seen", value: asset.lastSeen },
-              {
-                label: "Policy coverage",
-                value: (
-                  <span
-                    className={
-                      asset.policyCoverage < 50 ? "text-coral" : asset.policyCoverage < 80 ? "text-amber" : "text-teal"
-                    }
-                  >
-                    {asset.policyCoverage}%
-                  </span>
-                ),
-              },
-              {
-                label: "Discovery scan",
-                value: asset.scanned ? (
-                  <span className="text-teal">Scanned</span>
-                ) : (
-                  <span className="text-amber">Not scanned</span>
-                ),
-              },
-            ].map(({ label, value }) => (
-              <div
-                key={label}
-                className="grid grid-cols-[130px_1fr] gap-2 py-1.5 border-b border-border/30 last:border-0 items-start"
-              >
-                <span className="text-[11px] text-muted-foreground">{label}</span>
-                <span className="text-[11px] text-foreground font-medium">{value}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Associated crypto objects */}
-          <div className="px-4 py-3">
-            <div className="flex items-center gap-2 mb-2">
-              <p className="text-[11px] font-semibold text-muted-foreground">
-                Associated crypto objects ({identities.length})
-              </p>
-              {identities.length > 0 && <span className="text-[10px] text-amber ml-auto">failure affects all</span>}
+            <div className="flex items-center gap-2 mb-0.5">
+              <p className="text-[11px] font-semibold text-muted-foreground">Crypto objects</p>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground font-medium tabular-nums">
+                {identities.length}
+              </span>
+              {totalViolations > 0 && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-coral/15 text-coral font-medium">
+                  {totalViolations} violation{totalViolations !== 1 ? "s" : ""}
+                </span>
+              )}
+              <span className="ml-auto text-[9px] text-muted-foreground/60">open to act</span>
             </div>
+            {typeRollup && <p className="text-[9.5px] text-muted-foreground/70 mb-2">{typeRollup}</p>}
+
             {identities.length > 0 ? (
-              <div className="space-y-0.5">
-                {identities.map((co) => {
-                  const meta = objectTypeMeta(co.type);
-                  const expCol =
-                    co.daysToExpiry >= 0 && co.daysToExpiry <= 7
-                      ? "text-coral"
-                      : co.daysToExpiry >= 0 && co.daysToExpiry <= 30
-                        ? "text-amber"
-                        : "text-muted-foreground";
-                  return (
-                    <button
-                      key={co.id}
-                      onClick={() => {
-                        setFilters({ tab: "identities", search: co.name });
-                        setCurrentPage("inventory");
-                        onClose();
-                      }}
-                      className="w-full flex items-center gap-2 text-[11px] rounded px-2 py-1.5 hover:bg-secondary/50 transition-colors text-left group"
-                    >
-                      <meta.Icon className={`w-3 h-3 flex-shrink-0 ${meta.color}`} />
-                      <span className="text-foreground font-medium flex-1 truncate group-hover:text-teal">
-                        {co.name}
-                      </span>
-                      <span className="text-muted-foreground text-[10px] flex-shrink-0">{co.algorithm}</span>
-                      {co.daysToExpiry >= 0 && (
-                        <span className={`text-[10px] flex-shrink-0 tabular-nums ${expCol}`}>{co.daysToExpiry}d</span>
-                      )}
-                      <StatusBadge status={co.status} />
-                      <ArrowRight className="w-3 h-3 text-muted-foreground/40 group-hover:text-teal flex-shrink-0" />
-                    </button>
-                  );
-                })}
+              <div className="rounded-lg border border-border/50 overflow-hidden">
+                {/* Column headers */}
+                <div className="flex items-center gap-2 px-2.5 py-1.5 bg-secondary/50 border-b border-border/50 text-[9px] uppercase tracking-wide text-muted-foreground/70 font-semibold">
+                  <span className="flex-1">Object</span>
+                  <span className="w-[88px] flex-shrink-0">Algorithm</span>
+                  <span className="w-[64px] flex-shrink-0">Status</span>
+                  <span className="w-[120px] flex-shrink-0">Violations</span>
+                  <span className="w-3 flex-shrink-0" />
+                </div>
+                {/* Rows, sorted so objects with findings surface first */}
+                <div className="divide-y divide-border/30">
+                  {[...identities]
+                    .sort((a, b) => findingsFor(b).length - findingsFor(a).length)
+                    .map((co) => {
+                      const meta = objectTypeMeta(co.type);
+                      const fs = findingsFor(co);
+                      return (
+                        <button
+                          key={co.id}
+                          onClick={() => {
+                            setFilters({ tab: "identities", search: co.name });
+                            setCurrentPage("inventory");
+                            onClose();
+                          }}
+                          className="w-full flex items-center gap-2 px-2.5 py-2 hover:bg-secondary/40 transition-colors text-left group"
+                        >
+                          <meta.Icon className={`w-3 h-3 flex-shrink-0 ${meta.color}`} />
+                          <span className="text-[11px] text-foreground font-medium flex-1 truncate group-hover:text-teal">
+                            {co.name}
+                          </span>
+                          <span className="w-[88px] flex-shrink-0 text-[10px] text-muted-foreground truncate">
+                            {co.algorithm}
+                          </span>
+                          <span className="w-[64px] flex-shrink-0">
+                            <StatusBadge status={co.status} />
+                          </span>
+                          <span className="w-[120px] flex-shrink-0 flex flex-wrap gap-1">
+                            {fs.length === 0 ? (
+                              <span className="text-[9px] text-teal">Clean</span>
+                            ) : (
+                              fs.map((x, i) => (
+                                <span
+                                  key={i}
+                                  className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${x.tone === "coral" ? "bg-coral/15 text-coral" : x.tone === "purple" ? "bg-purple/15 text-purple-light" : "bg-amber/15 text-amber"}`}
+                                >
+                                  {x.label}
+                                </span>
+                              ))
+                            )}
+                          </span>
+                          <ArrowRight className="w-3 h-3 text-muted-foreground/40 group-hover:text-teal flex-shrink-0" />
+                        </button>
+                      );
+                    })}
+                </div>
               </div>
             ) : (
               <div className="rounded-lg border border-border/40 px-3 py-3 text-[11px] text-muted-foreground">
@@ -538,44 +517,72 @@ function ITAssetDetailPanel({
                 <span className="block text-[10px] mt-0.5">Discovered identities will appear here after a scan.</span>
               </div>
             )}
+
+            {totalViolations > 0 && (
+              <p className="text-[9px] text-muted-foreground/60 mt-2 leading-snug">
+                Violations are derived from each object's real state. Open an object to raise a ticket or exception in
+                Identities.
+              </p>
+            )}
           </div>
 
-          {/* Posture roll-up: summarise by category, route to Identities to act. */}
-          {violationBuckets.length > 0 && (
-            <div className="px-4 py-3">
-              <div className="flex items-center gap-2 mb-2">
-                <p className="text-[11px] font-semibold text-muted-foreground">Posture findings</p>
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-coral/15 text-coral font-medium">
-                  {totalViolations}
-                </span>
-                <span className="ml-auto text-[9px] text-muted-foreground/60">act in Identities</span>
-              </div>
-              <div className="space-y-1">
-                {violationBuckets.map((b) => (
-                  <button
-                    key={b.id}
-                    onClick={() => routeToIdentities(b.nav)}
-                    className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg border border-border/50 hover:border-teal/30 hover:bg-secondary/40 transition-colors text-left group"
+          {/* Asset metadata, demoted + collapsible (progressive disclosure). */}
+          <div className="px-4 py-3">
+            <button
+              onClick={() => setDetailsOpen((v) => !v)}
+              className="w-full flex items-center gap-2 text-left group"
+            >
+              <p className="text-[11px] font-semibold text-muted-foreground group-hover:text-foreground">
+                Asset details
+              </p>
+              <span className="ml-auto text-muted-foreground/50 group-hover:text-foreground">
+                {detailsOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </span>
+            </button>
+            {detailsOpen && (
+              <div className="mt-2">
+                {[
+                  { label: "Type", value: asset.type },
+                  { label: "Infrastructure", value: asset.infrastructure },
+                  { label: "Managed by", value: asset.managedBy },
+                  { label: "Application", value: asset.application },
+                  { label: "Last seen", value: asset.lastSeen },
+                  {
+                    label: "Policy coverage",
+                    value: (
+                      <span
+                        className={
+                          asset.policyCoverage < 50
+                            ? "text-coral"
+                            : asset.policyCoverage < 80
+                              ? "text-amber"
+                              : "text-teal"
+                        }
+                      >
+                        {asset.policyCoverage}%
+                      </span>
+                    ),
+                  },
+                  {
+                    label: "Discovery scan",
+                    value: asset.scanned ? (
+                      <span className="text-teal">Scanned</span>
+                    ) : (
+                      <span className="text-amber">Not scanned</span>
+                    ),
+                  },
+                ].map(({ label, value }) => (
+                  <div
+                    key={label}
+                    className="grid grid-cols-[130px_1fr] gap-2 py-1.5 border-b border-border/30 last:border-0 items-start"
                   >
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${b.tone === "coral" ? "bg-coral" : b.tone === "purple" ? "bg-purple/70" : "bg-amber"}`}
-                    />
-                    <span className="text-[11px] text-foreground flex-1">{b.label}</span>
-                    <span
-                      className={`text-[11px] font-semibold tabular-nums ${b.tone === "coral" ? "text-coral" : b.tone === "purple" ? "text-purple-light" : "text-amber"}`}
-                    >
-                      {b.count}
-                    </span>
-                    <ArrowRight className="w-3 h-3 text-muted-foreground/40 group-hover:text-teal flex-shrink-0" />
-                  </button>
+                    <span className="text-[11px] text-muted-foreground">{label}</span>
+                    <span className="text-[11px] text-foreground font-medium">{value}</span>
+                  </div>
                 ))}
               </div>
-              <p className="text-[9px] text-muted-foreground/60 mt-2 leading-snug">
-                Findings roll up from this asset's {identities.length} linked objects. Open any object in Identities to
-                raise a ticket or exception.
-              </p>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>
