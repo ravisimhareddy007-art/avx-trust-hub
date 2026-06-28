@@ -318,34 +318,35 @@ function ITAssetDetailPanel({
   );
   const healthyCount = identities.filter((o) => findingsFor(o).length === 0).length;
   const certWord = (n: number, t: string) => `${n} ${t}${n === 1 ? "" : "s"}`;
+  const idsOf = (objs: typeof identities) => objs.map((o) => o.id).join(",");
   const remediations = [
     expiredObjs.length > 0 && {
       id: "renew",
       label: `Renew ${certWord(expiredObjs.length, "expired object")}`,
       tone: "coral" as const,
-      nav: { status: "Expired" } as Record<string, string>,
+      nav: { objectIds: idsOf(expiredObjs) } as Record<string, string>,
       routable: true,
     },
     expiringObjs.length > 0 && {
       id: "expiring",
       label: `Review ${certWord(expiringObjs.length, "object")} expiring soon`,
       tone: "amber" as const,
-      nav: { status: "Expiring" } as Record<string, string>,
+      nav: { objectIds: idsOf(expiringObjs) } as Record<string, string>,
       routable: true,
     },
     quantumObjs.length > 0 && {
       id: "pqc",
       label: `Migrate ${certWord(quantumObjs.length, "object")} to PQ-safe algorithms`,
       tone: "purple" as const,
-      nav: { quantumVulnerable: "true" } as Record<string, string>,
+      nav: { objectIds: idsOf(quantumObjs) } as Record<string, string>,
       routable: true,
     },
     noRotationObjs.length > 0 && {
       id: "rotation",
       label: `Enable rotation on ${certWord(noRotationObjs.length, "key")}`,
       tone: "amber" as const,
-      nav: {} as Record<string, string>,
-      routable: false,
+      nav: { objectIds: idsOf(noRotationObjs) } as Record<string, string>,
+      routable: true,
     },
   ].filter(Boolean) as {
     id: string;
@@ -586,7 +587,7 @@ function ITAssetDetailPanel({
                             <button
                               key={co.id}
                               onClick={() => {
-                                setFilters({ tab: "identities", search: co.name, infrastructure: "" });
+                                setFilters({ tab: "identities", objectIds: co.id });
                                 setCurrentPage("inventory");
                                 onClose();
                               }}
