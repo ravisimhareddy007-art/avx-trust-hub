@@ -23,6 +23,7 @@ import {
   Shield,
   ShieldOff,
   ChevronDown,
+  ChevronUp,
   ChevronRight,
   MoreVertical,
   X,
@@ -232,6 +233,40 @@ function ITAssetDetailPanel({
   const totalViolations = classic.length + pqc.length;
   const assetARS = arsScore(asset);
   const riskCol = assetARS > 70 ? "text-coral" : assetARS > 40 ? "text-amber" : "text-teal";
+  const [explainOpen, setExplainOpen] = useState(false);
+  const drivers = getAssetRiskDrivers(asset);
+  // Weighted ARS drivers (mirror of the CRS factor breakdown on the Identities panel).
+  const driverRows = [
+    {
+      id: "crypto",
+      label: "Crypto health",
+      score: drivers.cryptoHealth.score,
+      weight: 35,
+      why: drivers.cryptoHealth.driver,
+    },
+    {
+      id: "expiry",
+      label: "Expiry exposure",
+      score: drivers.expiryExposure.score,
+      weight: 25,
+      why: drivers.expiryExposure.driver,
+    },
+    {
+      id: "coverage",
+      label: "Policy coverage",
+      score: drivers.policyCoverage.score,
+      weight: 25,
+      why: drivers.policyCoverage.driver,
+    },
+    {
+      id: "blast",
+      label: "Blast radius",
+      score: drivers.blastRadius.score,
+      weight: 15,
+      why: drivers.blastRadius.driver,
+    },
+  ];
+  const driverTotalW = driverRows.reduce((a, d) => a + d.weight, 0);
 
   return (
     <div className="fixed inset-0 z-50 flex">
@@ -271,27 +306,105 @@ function ITAssetDetailPanel({
             )}
           </div>
 
-          {/* Stat strip */}
-          <div className="grid grid-cols-3 gap-2">
-            <div className="bg-card rounded-lg px-3 py-2 border border-border/50">
-              <div className="flex items-center gap-1">
-                <span className={`text-[18px] font-bold tabular-nums ${riskCol}`}>{assetARS}</span>
-                <button onClick={onRiskDrawer} className="p-0.5 mt-1">
-                  <Info className="w-3 h-3 text-muted-foreground/50 hover:text-muted-foreground" />
-                </button>
+          {/* Risk-forward header: ARS gauge + driver bars (consistent with Identities). */}
+          <div className="bg-card rounded-lg border border-border/50 p-3">
+            <div className="flex items-center gap-3">
+              {/* Semicircle gauge */}
+              <div className="relative flex-shrink-0" style={{ width: 92, height: 56 }}>
+                <svg viewBox="0 0 100 60" className="w-[92px] h-[56px]">
+                  <path
+                    d="M 8 54 A 42 42 0 0 1 92 54"
+                    fill="none"
+                    stroke="hsl(var(--border))"
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M 8 54 A 42 42 0 0 1 92 54"
+                    fill="none"
+                    stroke={
+                      assetARS >= 71 ? "hsl(var(--coral))" : assetARS >= 40 ? "hsl(var(--amber))" : "hsl(var(--teal))"
+                    }
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                    strokeDasharray={`${(assetARS / 100) * 132} 132`}
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-end pb-0.5">
+                  <span className={`text-[22px] font-bold tabular-nums leading-none ${riskCol}`}>{assetARS}</span>
+                </div>
               </div>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Asset risk score</p>
+              {/* Band + facts + explain */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className={`text-[12px] font-semibold ${riskCol}`}>
+                    {assetARS >= 71 ? "Critical" : assetARS >= 40 ? "Moderate" : "Low"} risk
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">ARS</span>
+                  <button
+                    onClick={() => setExplainOpen((v) => !v)}
+                    className="ml-auto inline-flex items-center gap-0.5 text-[10px] text-muted-foreground/70 hover:text-teal transition-colors"
+                  >
+                    <Info className="w-3 h-3" /> Explain
+                    {explainOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  </button>
+                </div>
+                <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">
+                  <span className="text-foreground font-medium">{identities.length}</span> linked identities
+                  {totalViolations > 0 ? (
+                    <>
+                      {" "}
+                      ·{" "}
+                      <span className="text-coral font-medium">
+                        {totalViolations} violation{totalViolations !== 1 ? "s" : ""}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      {" "}
+                      · <span className="text-teal">no violations</span>
+                    </>
+                  )}
+                </p>
+              </div>
             </div>
-            <div className="bg-card rounded-lg px-3 py-2 border border-border/50">
-              <p className="text-[18px] font-bold tabular-nums text-foreground">{identities.length}</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Linked identities</p>
-            </div>
-            <div className="bg-card rounded-lg px-3 py-2 border border-border/50">
-              <p className={`text-[18px] font-bold tabular-nums ${totalViolations > 0 ? "text-coral" : "text-teal"}`}>
-                {totalViolations}
-              </p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Violations</p>
-            </div>
+
+            {/* ARS driver breakdown, collapsible; opens on Explain. */}
+            {explainOpen && (
+              <div className="mt-2.5 space-y-1 border-t border-border/40 pt-2">
+                {driverRows.map((d) => {
+                  const contrib = Math.round(d.score * (d.weight / driverTotalW));
+                  const pct = Math.min(100, d.score);
+                  return (
+                    <div key={d.id} className="flex items-center gap-2" title={d.why}>
+                      <span className="text-[9.5px] text-muted-foreground w-[80px] flex-shrink-0 truncate">
+                        {d.label}
+                      </span>
+                      <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${pct}%`,
+                            background:
+                              d.score >= 70
+                                ? "hsl(var(--coral))"
+                                : d.score >= 40
+                                  ? "hsl(var(--amber))"
+                                  : "hsl(var(--teal))",
+                          }}
+                        />
+                      </div>
+                      <span className="text-[9px] tabular-nums text-muted-foreground/70 w-[60px] text-right flex-shrink-0">
+                        +{contrib} ({Math.round((d.weight / driverTotalW) * 100)}%)
+                      </span>
+                    </div>
+                  );
+                })}
+                <p className="text-[9px] text-muted-foreground/60 pt-1 leading-snug">
+                  {driverRows.find((d) => d.score >= 70)?.why ?? driverRows[0].why}
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
