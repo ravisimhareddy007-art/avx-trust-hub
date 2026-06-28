@@ -80,8 +80,6 @@ import { toast } from "sonner";
 import BlastRadiusTopology from "./BlastRadiusTopology";
 import BusinessImpactEditor from "@/components/risk/BusinessImpactEditor";
 import ArsBadge from "@/components/risk/ArsBadge";
-import AssetRiskDrawer from "@/components/risk/AssetRiskDrawer";
-import CryptoObjectRiskDrawer from "@/components/risk/CryptoObjectRiskDrawer";
 import ViolationsDrawer from "@/components/risk/ViolationsDrawer";
 
 interface Props {
@@ -205,7 +203,6 @@ interface DetailPanelProps {
   violations: ReturnType<typeof getAssetViolations>;
   onClose: () => void;
   onBlastRadius: () => void;
-  onRiskDrawer: () => void;
   onViolations: () => void;
   setFilters: (f: Record<string, string>) => void;
   setCurrentPage: (p: string) => void;
@@ -218,7 +215,6 @@ function ITAssetDetailPanel({
   violations,
   onClose,
   onBlastRadius,
-  onRiskDrawer,
   onViolations,
   setFilters,
   setCurrentPage,
@@ -735,8 +731,6 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
   const [filterOpen, setFilterOpen] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("rps");
   const [selectedAsset, setSelectedAsset] = useState<ITAsset | null>(null);
-  const [riskDrawerAsset, setRiskDrawerAsset] = useState<ITAsset | null>(null);
-  const [riskDrawerObject, setRiskDrawerObject] = useState<CryptoAsset | null>(null);
   const [violationsAsset, setViolationsAsset] = useState<ITAsset | null>(null);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [assetStack, setAssetStack] = useState<ITAsset[]>([]);
@@ -754,11 +748,11 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
     };
   }, [selectedAsset, setSelectedEntity]);
 
-  // Open risk drawer when navigated with assetId (e.g. from ERS dashboard).
+  // Open the asset side panel when navigated with assetId (e.g. from ERS dashboard).
   useEffect(() => {
     if (navFilters.assetId) {
       const target = mockITAssets.find((a) => a.id === navFilters.assetId);
-      if (target) setRiskDrawerAsset(target);
+      if (target) openAssetDetail(target);
     }
   }, [navFilters.assetId]);
 
@@ -994,7 +988,7 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                       className="py-2 px-2 text-center"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setRiskDrawerAsset(asset);
+                        openAssetDetail(asset);
                       }}
                     >
                       <ArsBadge score={ars} label="" />
@@ -1003,7 +997,7 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                       <BusinessImpactEditor
                         value={bi}
                         onChange={(v) => setBI(asset.id, v)}
-                        onOpenJustification={() => setRiskDrawerAsset(asset)}
+                        onOpenJustification={() => openAssetDetail(asset)}
                       />
                     </td>
                     <td className="py-2 px-2 text-muted-foreground">{asset.ownerTeam}</td>
@@ -1047,7 +1041,6 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
           violations={getAssetViolations(selectedAsset, getIdentities(selectedAsset))}
           onClose={goBack}
           onBlastRadius={() => setBlastModalOpen(true)}
-          onRiskDrawer={() => setRiskDrawerAsset(selectedAsset)}
           onViolations={() => setViolationsAsset(selectedAsset)}
           setFilters={setFilters}
           setCurrentPage={setCurrentPage}
@@ -1055,15 +1048,6 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
         />
       )}
 
-      <AssetRiskDrawer
-        asset={riskDrawerAsset}
-        onClose={() => setRiskDrawerAsset(null)}
-        onOpenObject={(id) => {
-          const obj = mockAssets.find((a) => a.id === id);
-          if (obj) setRiskDrawerObject(obj);
-        }}
-      />
-      <CryptoObjectRiskDrawer object={riskDrawerObject} onClose={() => setRiskDrawerObject(null)} />
       <ViolationsDrawer asset={violationsAsset} onClose={() => setViolationsAsset(null)} />
 
       {/* Blast Radius Full-Screen Modal */}
