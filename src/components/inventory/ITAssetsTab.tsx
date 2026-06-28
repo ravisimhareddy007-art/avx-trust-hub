@@ -11,7 +11,7 @@ import { useInventoryRegistry } from "@/context/InventoryRegistryContext";
 import { useAgent } from "@/context/AgentContext";
 import { useRisk } from "@/context/RiskContext";
 import { useNav } from "@/context/NavigationContext";
-import { arsFor, arsScore } from "@/lib/risk/ars";
+import { arsFor, arsScore, computeARS } from "@/lib/risk/ars";
 import { computeRPS } from "@/lib/risk/rps";
 import { StatusBadge, EnvBadge, DaysToExpiry, SeverityBadge } from "@/components/shared/UIComponents";
 import {
@@ -302,6 +302,43 @@ function ITAssetDetailPanel({
   ];
   const arsTermMax = Math.max(...arsTerms.map((t) => t.value), 1);
 
+  // #16 AI-native explainability. Counts come from the asset's real objects;
+  // the reduction estimate is a genuine recompute of ARS with the expired
+  // objects hypothetically renewed (CRS capped to a healthy band), not a guess.
+  const [showCalc, setShowCalc] = useState(false);
+  const expiredObjs = identities.filter((o) => o.status === "Expired" || o.daysToExpiry < 0);
+  const quantumObjs = identities.filter((o) => o.pqcRisk === "Critical" || o.pqcRisk === "High");
+  const unownedObjs = identities.filter((o) => o.owner === "Unassigned");
+  const riskReduction = (() => {
+    if (expiredObjs.length === 0) return 0;
+    // Build a hypothetical object set where this asset's expired objects are renewed:
+    // give them a healthy validity window so their CRS drops, then recompute ARS.
+    const expiredIds = new Set(expiredObjs.map((o) => o.id));
+    const hypothetical: CryptoAsset[] = mockAssets.map((o) =>
+      expiredIds.has(o.id) ? { ...o, status: "Active", daysToExpiry: 365, expiryDate: "2027-06-30" } : o,
+    );
+    const fixedARS = computeARS(asset, hypothetical).ars;
+    return Math.max(0, ars.ars - fixedARS);
+  })();
+  // Compose the plain-language sentence from whatever is actually true.
+  const narrativeParts: string[] = [];
+  if (expiredObjs.length > 0)
+    narrativeParts.push(`${expiredObjs.length} ${expiredObjs.length === 1 ? "asset is" : "assets are"} expired`);
+  if (quantumObjs.length > 0) narrativeParts.push(`${quantumObjs.length} use quantum-vulnerable algorithms`);
+  if (unownedObjs.length > 0) narrativeParts.push(`${unownedObjs.length} lack ownership`);
+  const reasonText =
+    narrativeParts.length > 0
+      ? narrativeParts.slice(0, -1).join(", ") +
+        (narrativeParts.length > 1 ? ", and " : "") +
+        narrativeParts[narrativeParts.length - 1]
+      : "its linked objects carry elevated cryptographic risk";
+  const bandWord = ars.ars >= 71 ? "critical" : ars.ars >= 40 ? "moderate" : "low";
+  const aiNarrative =
+    `This ${asset.type.toLowerCase()} carries ${bandWord} crypto risk because ${reasonText}.` +
+    (riskReduction > 0
+      ? ` Renewing the expired ${expiredObjs.length === 1 ? "object" : "objects"} would reduce the score by approximately ${riskReduction} point${riskReduction === 1 ? "" : "s"}.`
+      : "");
+
   return (
     <div className="fixed inset-0 z-50 flex">
       <div className="flex-1 bg-foreground/10 backdrop-blur-sm" onClick={onClose} />
@@ -403,34 +440,49 @@ function ITAssetDetailPanel({
               </div>
             </div>
 
-            {/* Real ARS breakdown (spec terms + the actual objects driving it). */}
+            {/* AI-native explanation, lead with plain language; math on demand. */}
             {explainOpen && (
-              <div className="mt-2.5 border-t border-border/40 pt-2 space-y-2">
-                <div className="space-y-1">
-                  {arsTerms.map((t) => (
-                    <div key={t.id} className="flex items-center gap-2" title={t.detail}>
-                      <span className="text-[9.5px] text-muted-foreground w-[120px] flex-shrink-0 truncate">
-                        {t.label}
-                      </span>
-                      <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-teal"
-                          style={{ width: `${(t.value / arsTermMax) * 100}%` }}
-                        />
-                      </div>
-                      <span className="text-[9px] tabular-nums text-muted-foreground/70 w-[34px] text-right flex-shrink-0">
-                        +{t.value.toFixed(1)}
-                      </span>
-                    </div>
-                  ))}
+              <div className="mt-2.5 border-t border-border/40 pt-2.5 space-y-2.5">
+                <div className="flex items-start gap-2">
+                  <Bot className="w-3.5 h-3.5 text-teal flex-shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-foreground leading-relaxed">{aiNarrative}</p>
                 </div>
-                <p className="text-[9px] text-muted-foreground/70 leading-snug">
-                  Technical score <span className="text-foreground tabular-nums">{ars.techARS}</span>
-                  <span className="text-muted-foreground/50"> · business impact </span>
-                  <span className="text-foreground">{ars.bi}</span>
-                  <span className="text-muted-foreground/50"> (×{biMult.toFixed(2)}) = </span>
-                  <span className={`font-semibold ${riskCol}`}>{ars.ars}</span>
-                </p>
+                <button
+                  onClick={() => setShowCalc((v) => !v)}
+                  className="inline-flex items-center gap-1 text-[9.5px] text-muted-foreground/70 hover:text-teal transition-colors"
+                >
+                  {showCalc ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  {showCalc ? "Hide calculation" : "Show calculation"}
+                </button>
+                {showCalc && (
+                  <div className="space-y-2 pt-0.5">
+                    <div className="space-y-1">
+                      {arsTerms.map((t) => (
+                        <div key={t.id} className="flex items-center gap-2" title={t.detail}>
+                          <span className="text-[9.5px] text-muted-foreground w-[120px] flex-shrink-0 truncate">
+                            {t.label}
+                          </span>
+                          <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-teal"
+                              style={{ width: `${(t.value / arsTermMax) * 100}%` }}
+                            />
+                          </div>
+                          <span className="text-[9px] tabular-nums text-muted-foreground/70 w-[34px] text-right flex-shrink-0">
+                            +{t.value.toFixed(1)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-[9px] text-muted-foreground/70 leading-snug">
+                      Technical score <span className="text-foreground tabular-nums">{ars.techARS}</span>
+                      <span className="text-muted-foreground/50"> · business impact </span>
+                      <span className="text-foreground">{ars.bi}</span>
+                      <span className="text-muted-foreground/50"> (×{biMult.toFixed(2)}) = </span>
+                      <span className={`font-semibold ${riskCol}`}>{ars.ars}</span>
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -450,7 +502,7 @@ function ITAssetDetailPanel({
                   {totalViolations} violation{totalViolations !== 1 ? "s" : ""}
                 </span>
               )}
-              <span className="ml-auto text-[9px] text-muted-foreground/60">open to act</span>
+              <span className="ml-auto text-[9px] text-muted-foreground/60">Open in Identity Inventory →</span>
             </div>
             {typeRollup && <p className="text-[9.5px] text-muted-foreground/70 mb-2">{typeRollup}</p>}
 
@@ -460,8 +512,7 @@ function ITAssetDetailPanel({
                 <div className="flex items-center gap-2 px-2.5 py-1.5 bg-secondary/50 border-b border-border/50 text-[9px] uppercase tracking-wide text-muted-foreground/70 font-semibold">
                   <span className="flex-1">Object</span>
                   <span className="w-[88px] flex-shrink-0">Algorithm</span>
-                  <span className="w-[64px] flex-shrink-0">Status</span>
-                  <span className="w-[120px] flex-shrink-0">Violations</span>
+                  <span className="w-[150px] flex-shrink-0">Status / Violations</span>
                   <span className="w-3 flex-shrink-0" />
                 </div>
                 {/* Rows, sorted so objects with findings surface first */}
@@ -481,19 +532,21 @@ function ITAssetDetailPanel({
                           }}
                           className="w-full flex items-center gap-2 px-2.5 py-2 hover:bg-secondary/40 transition-colors text-left group"
                         >
-                          <meta.Icon className={`w-3 h-3 flex-shrink-0 ${meta.color}`} />
-                          <span className="text-[11px] text-foreground font-medium flex-1 truncate group-hover:text-teal">
-                            {co.name}
+                          <meta.Icon className={`w-3.5 h-3.5 flex-shrink-0 ${meta.color}`} />
+                          <span className="flex-1 min-w-0">
+                            <span className="text-[11px] text-foreground font-medium truncate block group-hover:text-teal">
+                              {co.name}
+                            </span>
+                            <span className={`text-[9px] font-medium ${meta.color}`}>{meta.label}</span>
                           </span>
                           <span className="w-[88px] flex-shrink-0 text-[10px] text-muted-foreground truncate">
                             {co.algorithm}
                           </span>
-                          <span className="w-[64px] flex-shrink-0">
-                            <StatusBadge status={co.status} />
-                          </span>
-                          <span className="w-[120px] flex-shrink-0 flex flex-wrap gap-1">
+                          <span className="w-[150px] flex-shrink-0 flex flex-wrap gap-1">
                             {fs.length === 0 ? (
-                              <span className="text-[9px] text-teal">Clean</span>
+                              <span className="text-[9px] px-1.5 py-0.5 rounded font-medium bg-teal/10 text-teal">
+                                {co.status === "Healthy" ? "Healthy" : "Active"}
+                              </span>
                             ) : (
                               fs.map((x, i) => (
                                 <span
