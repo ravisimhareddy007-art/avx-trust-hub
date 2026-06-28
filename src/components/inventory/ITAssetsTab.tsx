@@ -41,7 +41,6 @@ import {
   Lock,
   Bot,
   Info,
-  Atom,
   ArrowRight,
   Filter as FilterIcon,
 } from "lucide-react";
@@ -84,7 +83,6 @@ import ArsBadge from "@/components/risk/ArsBadge";
 import AssetRiskDrawer from "@/components/risk/AssetRiskDrawer";
 import CryptoObjectRiskDrawer from "@/components/risk/CryptoObjectRiskDrawer";
 import ViolationsDrawer from "@/components/risk/ViolationsDrawer";
-import TicketDraftModal, { TicketDraft } from "@/components/inventory/TicketDraftModal";
 
 interface Props {
   onCreateTicket: (ctx: any) => void;
@@ -209,7 +207,6 @@ interface DetailPanelProps {
   onBlastRadius: () => void;
   onRiskDrawer: () => void;
   onViolations: () => void;
-  onPqcTicket: () => void;
   setFilters: (f: Record<string, string>) => void;
   setCurrentPage: (p: string) => void;
   setCurrentPanel: (a: ITAsset | null) => void;
@@ -223,13 +220,59 @@ function ITAssetDetailPanel({
   onBlastRadius,
   onRiskDrawer,
   onViolations,
-  onPqcTicket,
   setFilters,
   setCurrentPage,
 }: DetailPanelProps) {
   const classic = violations.filter((v) => v.violationType === "classic");
   const pqc = violations.filter((v) => v.violationType === "pqc");
   const totalViolations = classic.length + pqc.length;
+  // Roll-up by category so the panel summarises rather than re-listing objects.
+  // Each bucket routes to the filtered Identities view, where actions live.
+  const expiringCount = identities.filter(
+    (o) => o.status === "Expired" || (o.daysToExpiry >= 0 && o.daysToExpiry <= 30),
+  ).length;
+  const pqcCount = identities.filter((o) => o.pqcRisk === "Critical" || o.pqcRisk === "High").length;
+  const unownedCount = identities.filter((o) => o.owner === "Unassigned").length;
+  const rotationCount = identities.filter(
+    (o) =>
+      o.rotationFrequency === "Never" &&
+      (o.type === "SSH Key" || o.type === "API Key / Secret" || o.type === "Encryption Key"),
+  ).length;
+  const routeToIdentities = (extra: Record<string, string>) => {
+    setFilters({ tab: "identities", search: asset.infrastructure, ...extra });
+    setCurrentPage("inventory");
+    onClose();
+  };
+  const violationBuckets = [
+    {
+      id: "expiring",
+      label: "Expiring or expired",
+      count: expiringCount,
+      tone: "coral",
+      nav: { status: "Expiring" } as Record<string, string>,
+    },
+    {
+      id: "pqc",
+      label: "Quantum-vulnerable",
+      count: pqcCount,
+      tone: "purple",
+      nav: { pqcRisk: "Critical" } as Record<string, string>,
+    },
+    {
+      id: "unowned",
+      label: "No assigned owner",
+      count: unownedCount,
+      tone: "amber",
+      nav: { owner: "Unassigned" } as Record<string, string>,
+    },
+    {
+      id: "rotation",
+      label: "Rotation not set",
+      count: rotationCount,
+      tone: "amber",
+      nav: {} as Record<string, string>,
+    },
+  ].filter((b) => b.count > 0);
   const assetARS = arsScore(asset);
   const riskCol = assetARS > 70 ? "text-coral" : assetARS > 40 ? "text-amber" : "text-teal";
   const [explainOpen, setExplainOpen] = useState(false);
@@ -400,34 +443,6 @@ function ITAssetDetailPanel({
                   <span className="text-muted-foreground/50"> (×{biMult.toFixed(2)}) = </span>
                   <span className={`font-semibold ${riskCol}`}>{ars.ars}</span>
                 </p>
-                {ars.topObjects.length > 0 && (
-                  <div className="pt-1.5 border-t border-border/30">
-                    <p className="text-[9px] uppercase tracking-wide text-muted-foreground/60 font-semibold mb-1">
-                      Top contributing objects
-                    </p>
-                    <div className="space-y-0.5">
-                      {ars.topObjects.slice(0, 3).map((o) => (
-                        <button
-                          key={o.id}
-                          onClick={() => {
-                            setFilters({ tab: "identities", search: o.name });
-                            setCurrentPage("inventory");
-                            onClose();
-                          }}
-                          className="w-full flex items-center gap-2 text-[9.5px] rounded px-1.5 py-1 hover:bg-secondary/50 transition-colors text-left group"
-                        >
-                          <span className="text-foreground truncate flex-1 group-hover:text-teal">{o.name}</span>
-                          <span className="text-muted-foreground/70 truncate flex-shrink-0">{o.reason}</span>
-                          <span
-                            className={`tabular-nums font-medium flex-shrink-0 ${o.crs >= 80 ? "text-coral" : o.crs >= 60 ? "text-amber" : "text-muted-foreground"}`}
-                          >
-                            CRS {o.crs}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             )}
           </div>
@@ -435,19 +450,6 @@ function ITAssetDetailPanel({
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto scrollbar-thin divide-y divide-border/40">
-          {/* Actions — PQC ticket only when relevant */}
-          {pqc.length > 0 && (
-            <div className="px-4 py-3">
-              <p className="text-[11px] font-semibold text-muted-foreground mb-2">Actions</p>
-              <button
-                onClick={onPqcTicket}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-purple/30 text-purple-light hover:bg-purple/10 transition-colors"
-              >
-                <Atom className="w-3 h-3" /> PQC Migration Ticket
-              </button>
-            </div>
-          )}
-
           {/* Asset details */}
           <div className="px-4 py-3">
             <p className="text-[11px] font-semibold text-muted-foreground mb-2">Asset details</p>
@@ -538,56 +540,40 @@ function ITAssetDetailPanel({
             )}
           </div>
 
-          {/* Violations */}
-          {totalViolations > 0 && (
+          {/* Posture roll-up: summarise by category, route to Identities to act. */}
+          {violationBuckets.length > 0 && (
             <div className="px-4 py-3">
               <div className="flex items-center gap-2 mb-2">
-                <p className="text-[11px] font-semibold text-muted-foreground">Violations</p>
+                <p className="text-[11px] font-semibold text-muted-foreground">Posture findings</p>
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-coral/15 text-coral font-medium">
                   {totalViolations}
                 </span>
+                <span className="ml-auto text-[9px] text-muted-foreground/60">act in Identities</span>
               </div>
-
-              {classic.length > 0 && (
-                <div className="mb-3">
-                  <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Operational</p>
-                  <div className="space-y-1.5">
-                    {classic.map((v, i) => (
-                      <div key={i} className="flex items-start gap-2 py-1 border-b border-border/30 last:border-0">
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 ${v.severity === "Critical" ? "bg-coral" : v.severity === "High" ? "bg-amber" : "bg-muted-foreground"}`}
-                        />
-                        <span className="text-[11px] text-foreground flex-1">{v.type}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {pqc.length > 0 && (
-                <div>
-                  <p className="text-[10px] text-purple-light mb-1.5 font-medium flex items-center gap-1">
-                    <Atom className="w-3 h-3" /> Quantum / PQC
-                    <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-purple/15 text-purple-light">
-                      NIST 2030
+              <div className="space-y-1">
+                {violationBuckets.map((b) => (
+                  <button
+                    key={b.id}
+                    onClick={() => routeToIdentities(b.nav)}
+                    className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg border border-border/50 hover:border-teal/30 hover:bg-secondary/40 transition-colors text-left group"
+                  >
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${b.tone === "coral" ? "bg-coral" : b.tone === "purple" ? "bg-purple/70" : "bg-amber"}`}
+                    />
+                    <span className="text-[11px] text-foreground flex-1">{b.label}</span>
+                    <span
+                      className={`text-[11px] font-semibold tabular-nums ${b.tone === "coral" ? "text-coral" : b.tone === "purple" ? "text-purple-light" : "text-amber"}`}
+                    >
+                      {b.count}
                     </span>
-                  </p>
-                  <div className="space-y-1.5">
-                    {pqc.map((v, i) => (
-                      <div key={i} className="flex items-start gap-2 py-1 border-b border-border/30 last:border-0">
-                        <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 bg-purple/60" />
-                        <div className="flex-1">
-                          <span className="text-[11px] font-mono text-foreground">{v.algorithm}</span>
-                          <span className="text-[10px] text-muted-foreground ml-1.5">
-                            · Expires {v.expiryYear} ·{" "}
-                            {(v.yearsPastDeadline ?? 0) > 0 ? `+${v.yearsPastDeadline}yr past` : "at"} NIST deadline
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                    <ArrowRight className="w-3 h-3 text-muted-foreground/40 group-hover:text-teal flex-shrink-0" />
+                  </button>
+                ))}
+              </div>
+              <p className="text-[9px] text-muted-foreground/60 mt-2 leading-snug">
+                Findings roll up from this asset's {identities.length} linked objects. Open any object in Identities to
+                raise a ticket or exception.
+              </p>
             </div>
           )}
         </div>
@@ -646,7 +632,6 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [assetStack, setAssetStack] = useState<ITAsset[]>([]);
   const [blastModalOpen, setBlastModalOpen] = useState(false);
-  const [itTicketAsset, setItTicketAsset] = useState<ITAsset | null>(null);
   const { manualITAssets } = useInventoryRegistry();
   const { setSelectedEntity } = useAgent();
   const { biMap, setBI } = useRisk();
@@ -815,9 +800,9 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
           <div className="flex items-center gap-2 px-3 py-2 bg-secondary/40 border border-border rounded-md text-[10.5px] text-foreground flex-shrink-0">
             <span className="text-muted-foreground">Filtered to:</span>
             <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-teal/15 text-teal font-semibold">
-              {coverageFilter === "unscanned" && "Discovery Coverage Gap — Not scanned by platform"}
-              {coverageFilter === "no-policy" && "Control Gap — No active policy coverage"}
-              {coverageFilter === "unowned" && "Ownership Gap — No owner assigned"}
+              {coverageFilter === "unscanned" && "Discovery Coverage Gap: Not scanned by platform"}
+              {coverageFilter === "no-policy" && "Control Gap: No active policy coverage"}
+              {coverageFilter === "unowned" && "Ownership Gap: No owner assigned"}
               <button onClick={() => setCoverageFilter("")} className="ml-1 hover:text-coral" aria-label="Clear filter">
                 ×
               </button>
@@ -918,13 +903,13 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                         const vs = getAssetViolations(asset, getIdentities(asset));
                         const crit = vs.filter((v) => v.severity === "Critical").length;
                         if (vs.length === 0) {
-                          return <span className="text-[10px] text-muted-foreground">—</span>;
+                          return <span className="text-[10px] text-muted-foreground">-</span>;
                         }
                         return (
                           <button
                             onClick={() => setViolationsAsset(asset)}
                             className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold tabular-nums bg-coral/15 text-coral hover:bg-coral hover:text-primary-foreground transition-colors"
-                            title={`${vs.length} violation${vs.length === 1 ? "" : "s"} — click to view & remediate`}
+                            title={`${vs.length} violation${vs.length === 1 ? "" : "s"} - click to view & remediate`}
                           >
                             {vs.length}
                             {crit > 0 && <span className="text-[8.5px] font-bold opacity-80">·{crit} crit</span>}
@@ -945,7 +930,7 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
         </div>
       </div>
 
-      {/* Asset Detail Panel — 38% right overlay */}
+      {/* Asset Detail Panel - 38% right overlay */}
       {selectedAsset && (
         <ITAssetDetailPanel
           asset={selectedAsset}
@@ -955,7 +940,6 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
           onBlastRadius={() => setBlastModalOpen(true)}
           onRiskDrawer={() => setRiskDrawerAsset(selectedAsset)}
           onViolations={() => setViolationsAsset(selectedAsset)}
-          onPqcTicket={() => setItTicketAsset(selectedAsset)}
           setFilters={setFilters}
           setCurrentPage={setCurrentPage}
           setCurrentPanel={setSelectedAsset}
@@ -988,7 +972,7 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-border flex-shrink-0">
                   <div>
-                    <h2 className="text-sm font-semibold">Blast Radius — {selectedAsset.name}</h2>
+                    <h2 className="text-sm font-semibold">Blast Radius - {selectedAsset.name}</h2>
                     <p className="text-[10px] text-muted-foreground mt-0.5">
                       Impact analysis if this asset or its cryptographic identities fail
                     </p>
@@ -998,7 +982,7 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                   </button>
                 </div>
 
-                {/* Body — graph left, details right */}
+                {/* Body - graph left, details right */}
                 <div className="flex flex-1 overflow-hidden">
                   {/* Graph */}
                   <div className="flex-1 p-6 flex flex-col items-center justify-center overflow-auto">
@@ -1094,21 +1078,6 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
             </>
           );
         })()}
-      {itTicketAsset && (
-        <TicketDraftModal
-          asset={null}
-          action="fix"
-          onClose={() => setItTicketAsset(null)}
-          onConfirm={(draft: TicketDraft) => {
-            onCreateTicket({
-              objectName: itTicketAsset.name,
-              objectType: itTicketAsset.type,
-              environment: itTicketAsset.environment,
-              draft,
-            });
-          }}
-        />
-      )}
       {/* Consolidated Filters panel (single entry point, replaces inline dropdowns) */}
       {filterOpen && (
         <div className="fixed inset-0 z-50 flex">
