@@ -1684,76 +1684,104 @@ export function pqcSeverity(opts: {
   return "Low";
 }
 
-export function getAssetViolations(asset: ITAsset): AssetViolation[] {
+export function getAssetViolations(
+  asset: ITAsset,
+  objects?: {
+    id: string;
+    name: string;
+    type: string;
+    algorithm: string;
+    daysToExpiry: number;
+    owner: string;
+    status: string;
+    pqcRisk: string;
+    rotationFrequency: string;
+    policyViolations: number;
+  }[],
+): AssetViolation[] {
   const violations: AssetViolation[] = [];
 
-  // ── Classic / operational violations ─────────────────────────────────
-  if (asset.riskScore > 70) {
-    violations.push({
-      objectName: asset.cryptoObjectIds[0],
-      objectId: asset.cryptoObjectIds[0],
-      severity: "Critical",
-      type: "Certificate expiring in < 7 days",
-      violationType: "classic",
-    });
-  }
-  if (asset.criticalViolations > 1) {
-    violations.push({
-      objectName: asset.cryptoObjectIds[1] || asset.cryptoObjectIds[0],
-      objectId: asset.cryptoObjectIds[1] || asset.cryptoObjectIds[0],
-      severity: "High",
-      type: "Rotation overdue (>180 days)",
-      violationType: "classic",
-    });
-  }
-  if (asset.policyCoverage < 50) {
-    violations.push({
-      objectName: asset.cryptoObjectIds[0],
-      objectId: asset.cryptoObjectIds[0],
-      severity: "Medium",
-      type: "No assigned owner",
-      violationType: "classic",
-    });
-  }
-  if (asset.criticalViolations > 2) {
-    violations.push({
-      objectName: asset.cryptoObjectIds[2] || asset.cryptoObjectIds[0],
-      objectId: asset.cryptoObjectIds[2] || asset.cryptoObjectIds[0],
-      severity: "High",
-      type: "Key stored outside HSM",
-      violationType: "classic",
-    });
-  }
-
-  // ── PQC / quantum-risk violations ────────────────────────────────────
-  // Synthesised based on asset profile so demo data shows the duality.
-  const isProd = asset.environment === "Production";
-  const seedAlgs = ["RSA-2048", "ECC P-256", "SHA-1"];
-  const expiryYears = [2031, 2029, 2032];
-  asset.cryptoObjectIds.slice(0, 2).forEach((cid, idx) => {
-    const algorithm = seedAlgs[idx % seedAlgs.length];
-    const expiryYear = expiryYears[idx % expiryYears.length];
-    const sev = pqcSeverity({
-      algorithm,
-      expiryYear,
-      isProduction: isProd,
-      isDataEncryption: idx === 0,
-    });
-    if (sev !== "none") {
-      violations.push({
-        objectName: cid,
-        objectId: cid,
-        severity: sev,
-        type: `Quantum-vulnerable: ${algorithm} past NIST 2030`,
-        violationType: "pqc",
-        algorithm,
-        expiryYear,
-        yearsPastDeadline: Math.max(0, expiryYear - 2030),
-        harvestRisk: idx === 0 ? "Active" : "Passive",
-      });
+  // Faithful path: when the asset's real linked crypto objects are supplied,
+  // derive every violation from each object's actual state (expiry, owner,
+  // rotation, algorithm, PQC risk). No asset-level thresholds, no fake algos.
+  if (objects && objects.length > 0) {
+    for (const o of objects) {
+      // ── Operational (classic) ──
+      if (o.status === "Expired" || o.daysToExpiry < 0) {
+        violations.push({
+          objectName: o.name,
+          objectId: o.id,
+          severity: "Critical",
+          type: "Certificate expired",
+          violationType: "classic",
+        });
+      } else if (o.daysToExpiry >= 0 && o.daysToExpiry <= 7) {
+        violations.push({
+          objectName: o.name,
+          objectId: o.id,
+          severity: "Critical",
+          type: `Expiring in ${o.daysToExpiry} day${o.daysToExpiry === 1 ? "" : "s"}`,
+          violationType: "classic",
+        });
+      } else if (o.daysToExpiry > 7 && o.daysToExpiry <= 30) {
+        violations.push({
+          objectName: o.name,
+          objectId: o.id,
+          severity: "High",
+          type: `Expiring in ${o.daysToExpiry} days`,
+          violationType: "classic",
+        });
+      }
+      if (o.owner === "Unassigned") {
+        violations.push({
+          objectName: o.name,
+          objectId: o.id,
+          severity: "Medium",
+          type: "No assigned owner",
+          violationType: "classic",
+        });
+      }
+      if (
+        o.rotationFrequency === "Never" &&
+        (o.type === "SSH Key" || o.type === "API Key / Secret" || o.type === "Encryption Key")
+      ) {
+        violations.push({
+          objectName: o.name,
+          objectId: o.id,
+          severity: "High",
+          type: "Rotation policy not set",
+          violationType: "classic",
+        });
+      }
+      // ── PQC / quantum ──
+      if (o.pqcRisk === "Critical" || o.pqcRisk === "High") {
+        violations.push({
+          objectName: o.name,
+          objectId: o.id,
+          severity: o.pqcRisk === "Critical" ? "Critical" : "High",
+          type: `Quantum-vulnerable: ${o.algorithm}`,
+          violationType: "pqc",
+          algorithm: o.algorithm,
+          expiryYear: o.daysToExpiry > 0 ? new Date(Date.now() + o.daysToExpiry * 86400000).getFullYear() : 2030,
+          yearsPastDeadline: 0,
+          harvestRisk: o.pqcRisk === "Critical" ? "Active" : "Passive",
+        });
+      }
     }
-  });
+    return violations;
+  }
 
+  // Fallback (no objects supplied): keep a minimal asset-level summary so the
+  // count badge still works, but this path is no longer used by the panel.
+  if (asset.criticalViolations > 0) {
+    violations.push({
+      objectName: asset.cryptoObjectIds[0] ?? asset.name,
+      objectId: asset.cryptoObjectIds[0],
+      severity: "High",
+      type: `${asset.criticalViolations} critical finding${asset.criticalViolations === 1 ? "" : "s"}`,
+      violationType: "classic",
+    });
+  }
   return violations;
 }
 
