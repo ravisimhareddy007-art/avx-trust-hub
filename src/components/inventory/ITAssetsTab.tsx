@@ -538,7 +538,7 @@ function ITAssetDetailPanel({
               className="w-full flex items-center gap-2 mb-0.5 text-left group"
             >
               <p className="text-[11px] font-semibold text-muted-foreground group-hover:text-foreground">
-                Crypto objects
+                Linked Identities
               </p>
               <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground font-medium tabular-nums">
                 {identities.length}
