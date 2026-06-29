@@ -571,7 +571,7 @@ export const mockITAssets: ITAsset[] = [
     policyCoverage: 55,
     lastSeen: "2026-06-27 09:05",
     managedBy: "Terraform",
-    infrastructure: "aws-us-west-2-prod",
+    infrastructure: "aws-us-west-2-stg",
     application: "Backup System",
   },
   {
@@ -725,7 +725,7 @@ export const mockITAssets: ITAsset[] = [
     policyCoverage: 70,
     lastSeen: "2026-06-27 09:14",
     managedBy: "Kubernetes",
-    infrastructure: "aws-eks-prod",
+    infrastructure: "aws-eks-dev",
     application: "Ingress Controller",
   },
   {
@@ -799,7 +799,7 @@ export const mockITAssets: ITAsset[] = [
     policyCoverage: 25,
     lastSeen: "2026-06-27 09:18",
     managedBy: "Terraform",
-    infrastructure: "dev-eks-cluster",
+    infrastructure: "eks-prod-cluster",
     application: "Vault Cluster",
   },
   {
@@ -825,7 +825,7 @@ export const mockITAssets: ITAsset[] = [
     policyCoverage: 0,
     lastSeen: "2026-06-27 09:19",
     managedBy: "Kubernetes",
-    infrastructure: "dev-eks-cluster",
+    infrastructure: "eks-prod-cluster",
     application: "Analytics Cluster",
   },
   {
@@ -841,7 +841,7 @@ export const mockITAssets: ITAsset[] = [
     policyCoverage: 0,
     lastSeen: "2026-06-27 09:20",
     managedBy: "Manual",
-    infrastructure: "dev-eks-cluster",
+    infrastructure: "eks-prod-cluster",
     application: "Backup System",
   },
   {
@@ -857,7 +857,7 @@ export const mockITAssets: ITAsset[] = [
     policyCoverage: 0,
     lastSeen: "2026-06-27 09:21",
     managedBy: "Manual",
-    infrastructure: "dev-eks-cluster",
+    infrastructure: "eks-prod-cluster",
     application: "Email Server",
   },
   {
@@ -873,7 +873,7 @@ export const mockITAssets: ITAsset[] = [
     policyCoverage: 45,
     lastSeen: "2026-06-27 09:22",
     managedBy: "Manual",
-    infrastructure: "dev-eks-cluster",
+    infrastructure: "eks-stg-cluster",
     application: "Analytics Cluster",
   },
   {
@@ -979,7 +979,7 @@ export const mockITAssets: ITAsset[] = [
     policyCoverage: 0,
     lastSeen: "2026-06-27 09:28",
     managedBy: "Manual",
-    infrastructure: "azure-eastus-stg",
+    infrastructure: "azure-eastus-prod",
     application: "Artifact Registry",
   },
   {
@@ -995,7 +995,7 @@ export const mockITAssets: ITAsset[] = [
     policyCoverage: 35,
     lastSeen: "2026-06-27 09:29",
     managedBy: "Kubernetes",
-    infrastructure: "azure-eastus-stg",
+    infrastructure: "azure-eastus-prod",
     application: "Monitoring Stack",
   },
   {
@@ -1037,7 +1037,7 @@ export const mockITAssets: ITAsset[] = [
     policyCoverage: 10,
     lastSeen: "2026-06-27 09:31",
     managedBy: "Manual",
-    infrastructure: "crypto4a-hsm-prod",
+    infrastructure: "crypto4a-hsm-dev",
     application: "Monitoring Stack",
   },
   {
