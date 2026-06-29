@@ -44,6 +44,7 @@ import {
   Info,
   ArrowRight,
   Filter as FilterIcon,
+  Copy,
 } from "lucide-react";
 
 // Object type → icon + short label, for compact rendering in tables/lists
@@ -374,7 +375,22 @@ function ITAssetDetailPanel({
         {/* Header */}
         <div className="px-4 py-3 border-b border-border flex-shrink-0 bg-secondary/30">
           <div className="flex items-start justify-between gap-2 mb-1">
-            <p className="text-[13px] font-semibold text-foreground truncate">{asset.name}</p>
+            <div className="min-w-0">
+              {/* Primary: FQDN-class identifier (recognizable AND unique). */}
+              <p className="text-[13px] font-semibold text-foreground truncate">{asset.name}</p>
+              {/* Secondary identity: the disambiguator + immutable system id (copyable). */}
+              <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-muted-foreground/80">
+                <span className="font-mono truncate">{asset.infrastructure}</span>
+                <span className="text-muted-foreground/40">·</span>
+                <button
+                  onClick={() => navigator.clipboard?.writeText(asset.id)}
+                  title="Copy system asset ID"
+                  className="font-mono text-muted-foreground/50 hover:text-teal transition-colors inline-flex items-center gap-1"
+                >
+                  {asset.id} <Copy className="w-2.5 h-2.5" />
+                </button>
+              </div>
+            </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               <button
                 onClick={onBlastRadius}
@@ -836,7 +852,16 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
 
   const filtered = useMemo(() => {
     let result = enriched;
-    if (search) result = result.filter((x) => x.asset.name.toLowerCase().includes(search.toLowerCase()));
+    if (search) {
+      const q = search.toLowerCase();
+      result = result.filter(
+        (x) =>
+          x.asset.name.toLowerCase().includes(q) ||
+          x.asset.infrastructure.toLowerCase().includes(q) ||
+          x.asset.id.toLowerCase().includes(q) ||
+          x.asset.application.toLowerCase().includes(q),
+      );
+    }
     if (envFilter) result = result.filter((x) => x.asset.environment === envFilter);
     if (typeFilter) result = result.filter((x) => x.asset.type === typeFilter);
     if (teamFilter) result = result.filter((x) => x.asset.ownerTeam === teamFilter);
@@ -900,7 +925,7 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search infrastructure..."
+              placeholder="Search name, infrastructure, ID, app..."
               className="w-full pl-7 pr-3 py-1.5 bg-muted border border-border rounded text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal"
             />
           </div>
@@ -1019,7 +1044,12 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                     <td className="py-2 px-3">
                       <div className="flex items-center gap-2">
                         <span>{assetTypeIcons[asset.type] || "📋"}</span>
-                        <span className="font-medium text-foreground truncate max-w-[200px]">{asset.name}</span>
+                        <span className="min-w-0">
+                          <span className="font-medium text-foreground truncate max-w-[220px] block">{asset.name}</span>
+                          <span className="text-[10px] text-muted-foreground/70 font-mono truncate max-w-[220px] block">
+                            {asset.infrastructure}
+                          </span>
+                        </span>
                         {isManual(asset) && (
                           <span
                             className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-teal/15 text-teal text-[9px] font-semibold"
