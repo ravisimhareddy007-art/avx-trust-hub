@@ -2222,37 +2222,21 @@ export const conditionAttributes = {
         "Utimaco HSM",
       ],
     },
-    { label: "Self-Signed", values: ["Yes", "No"] },
-    { label: "Wildcard", values: ["Yes", "No"] },
-    { label: "CA Type", values: ["Public", "Private", "Self-Signed"] },
   ],
-  lifecycle: [
-    { label: "Days to Expiry", values: ["< 7", "< 30", "< 90", "Expired", "No expiry"] },
-    { label: "Validity Period", values: ["< 90 days", "< 365 days", "> 365 days", "> 825 days"] },
-    { label: "Last Rotation", values: ["Never", "> 90 days", "> 180 days", "> 365 days"] },
-    { label: "Renewal Method", values: ["Manual", "ACME", "Auto-enrolled", "Unknown"] },
+  posture: [
+    { label: "PQC Risk", values: ["Critical", "High", "Medium", "Low", "Safe"] },
+    { label: "Status", values: ["Active", "Healthy", "Expiring", "Expired", "Revoked", "Pending", "Orphaned"] },
   ],
+  lifecycle: [{ label: "Days to Expiry", values: ["< 7", "< 30", "< 90", "Expired", "No expiry"] }],
   infrastructure: [
     { label: "Environment", values: ["Production", "Staging", "Development"] },
     { label: "Cloud Provider", values: ["AWS", "Azure", "GCP", "On-prem"] },
-    { label: "K8s Namespace", values: ["payments", "api", "monitoring", "default", "security"] },
   ],
   discovery: [
     {
-      label: "Discovery Vector",
-      values: [
-        "CT Log",
-        "Network Scan",
-        "Endpoint Agent",
-        "Cloud API",
-        "Kubernetes API",
-        "Source Code Scan",
-        "SSH Host Scan",
-        "CA Connector",
-        "CMDB Import",
-      ],
+      label: "Discovery Source",
+      values: ["Network Scan", "CA Scan", "Cloud Crypto Posture Scan", "Secrets and Key Store Discovery"],
     },
-    { label: "Shadow Certificate", values: ["Yes", "No"] },
   ],
   ownership: [
     {
@@ -2270,6 +2254,5 @@ export const conditionAttributes = {
       ],
     },
     { label: "Has Owner", values: ["Yes", "No"] },
-    { label: "Managed By", values: ["Terraform", "Kubernetes", "Ansible", "Manual", "Cloudflare"] },
   ],
 };
