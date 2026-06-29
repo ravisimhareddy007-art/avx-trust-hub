@@ -1081,12 +1081,34 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
               <thead className="bg-secondary/50">
                 <tr className="border-b border-border">
                   <th className="text-left py-2 px-3 font-medium text-muted-foreground">
-                    <button
-                      onClick={() => setSortKey("name")}
-                      className={`inline-flex items-center gap-1 hover:text-foreground ${sortKey === "name" ? "text-foreground" : ""}`}
-                    >
-                      Asset Name <ArrowUpDown className="w-2.5 h-2.5" />
-                    </button>
+                    <span className="inline-flex items-center gap-1">
+                      <button
+                        onClick={() => setSortKey("name")}
+                        className={`inline-flex items-center gap-1 hover:text-foreground ${sortKey === "name" ? "text-foreground" : ""}`}
+                      >
+                        Asset Name <ArrowUpDown className="w-2.5 h-2.5" />
+                      </button>
+                      {/* Header-only info: explains the two-line asset identity. */}
+                      <span className="relative group/idinfo inline-flex">
+                        <Info className="w-3 h-3 text-muted-foreground/50 hover:text-teal cursor-help" />
+                        <span className="invisible group-hover/idinfo:visible absolute left-0 top-full mt-1 z-[9999] w-[260px] bg-card border border-border rounded-lg shadow-xl p-2.5 text-left font-normal normal-case">
+                          <span className="block text-[10px] font-semibold text-foreground mb-1.5">
+                            How an asset is identified
+                          </span>
+                          <span className="block text-[10px] text-muted-foreground leading-relaxed mb-1">
+                            <span className="text-foreground font-medium">Line 1</span> · the network identity (FQDN),
+                            what you recognize the asset by, and unique together with its context.
+                          </span>
+                          <span className="block text-[10px] text-muted-foreground leading-relaxed mb-1">
+                            <span className="text-foreground font-medium">Line 2</span> · where it lives: provider,
+                            region or service, and environment (e.g. AWS · us-east-1 · Prod).
+                          </span>
+                          <span className="block text-[10px] text-muted-foreground leading-relaxed">
+                            An immutable system ID is shown in the asset detail panel for canonical reference.
+                          </span>
+                        </span>
+                      </span>
+                    </span>
                   </th>
                   <th className="text-left py-2 px-2 font-medium text-muted-foreground">Type</th>
                   <th className="text-left py-2 px-2 font-medium text-muted-foreground">Env</th>
