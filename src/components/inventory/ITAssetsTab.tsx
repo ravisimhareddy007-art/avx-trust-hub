@@ -13,6 +13,7 @@ import { useRisk } from "@/context/RiskContext";
 import { useNav } from "@/context/NavigationContext";
 import { arsFor, arsScore, computeARS } from "@/lib/risk/ars";
 import { computeRPS } from "@/lib/risk/rps";
+import { computeCRS } from "@/lib/risk/crs";
 import { StatusBadge, EnvBadge, DaysToExpiry, SeverityBadge } from "@/components/shared/UIComponents";
 import {
   Search,
@@ -313,6 +314,16 @@ function ITAssetDetailPanel({
       (o.type === "SSH Key" || o.type === "API Key / Secret" || o.type === "Encryption Key"),
   );
   const healthyCount = identities.filter((o) => findingsFor(o).length === 0).length;
+
+  // Per-object risk score (CRS) and its single most severe issue, so the list
+  // ranks objects by risk and tells the user which one to act on first. Uses the
+  // existing scoring engine and findingsFor severity order; no new logic.
+  const crsOf = (co: (typeof identities)[number]) => computeCRS(co).crs;
+  const topIssueOf = (co: (typeof identities)[number]) => {
+    const fs = findingsFor(co); // already severity-sorted (sev 1 = worst)
+    return fs.length > 0 ? fs[0] : null;
+  };
+  const crsTier = (crs: number) => (crs >= 71 ? "coral" : crs >= 40 ? "amber" : "teal");
   const certWord = (n: number, t: string) => `${n} ${t}${n === 1 ? "" : "s"}`;
   const idsOf = (objs: typeof identities) => objs.map((o) => o.id).join(",");
   const remediations = [
@@ -566,19 +577,22 @@ function ITAssetDetailPanel({
                   <div className="rounded-lg border border-border/50 overflow-hidden">
                     {/* Column headers */}
                     <div className="flex items-center gap-2 px-2.5 py-1.5 bg-secondary/50 border-b border-border/50 text-[9px] uppercase tracking-wide text-muted-foreground/70 font-semibold">
+                      <span className="w-5 flex-shrink-0 text-center">#</span>
                       <span className="flex-1">Object</span>
-                      <span className="w-[88px] flex-shrink-0">Algorithm</span>
-                      <span className="w-[168px] flex-shrink-0">Violations</span>
+                      <span className="w-[44px] flex-shrink-0 text-center">Risk</span>
+                      <span className="w-[150px] flex-shrink-0">Top issue</span>
                       <span className="w-3 flex-shrink-0" />
                     </div>
                     {/* Rows, sorted so objects with findings surface first */}
                     <div className="divide-y divide-border/30">
                       {[...identities]
                         .filter((co) => !hideHealthy || findingsFor(co).length > 0)
-                        .sort((a, b) => findingsFor(b).length - findingsFor(a).length)
-                        .map((co) => {
+                        .sort((a, b) => crsOf(b) - crsOf(a))
+                        .map((co, idx) => {
                           const meta = objectTypeMeta(co.type);
-                          const fs = findingsFor(co);
+                          const crs = crsOf(co);
+                          const tier = crsTier(crs);
+                          const issue = topIssueOf(co);
                           return (
                             <button
                               key={co.id}
@@ -589,30 +603,36 @@ function ITAssetDetailPanel({
                               }}
                               className="w-full flex items-center gap-2 px-2.5 py-2 hover:bg-secondary/40 transition-colors text-left group"
                             >
-                              <meta.Icon className={`w-3.5 h-3.5 flex-shrink-0 ${meta.color}`} />
-                              <span className="flex-1 min-w-0">
-                                <span className="text-[11px] text-foreground font-medium truncate block group-hover:text-teal">
-                                  {co.name}
+                              <span className="w-5 flex-shrink-0 text-center text-[10px] tabular-nums text-muted-foreground/50 font-semibold">
+                                {idx + 1}
+                              </span>
+                              <span className="flex-1 min-w-0 flex items-center gap-1.5">
+                                <meta.Icon className={`w-3.5 h-3.5 flex-shrink-0 ${meta.color}`} />
+                                <span className="min-w-0">
+                                  <span className="text-[11px] text-foreground font-medium truncate block group-hover:text-teal">
+                                    {co.name}
+                                  </span>
+                                  <span className={`text-[9px] font-medium ${meta.color}`}>{meta.label}</span>
                                 </span>
-                                <span className={`text-[9px] font-medium ${meta.color}`}>{meta.label}</span>
                               </span>
-                              <span className="w-[88px] flex-shrink-0 text-[10px] text-muted-foreground truncate">
-                                {co.algorithm}
+                              <span className="w-[44px] flex-shrink-0 text-center">
+                                <span
+                                  className={`text-[12px] font-bold tabular-nums ${tier === "coral" ? "text-coral" : tier === "amber" ? "text-amber" : "text-teal"}`}
+                                >
+                                  {crs}
+                                </span>
                               </span>
-                              <span className="w-[168px] flex-shrink-0 flex flex-wrap gap-1">
-                                {fs.length === 0 ? (
-                                  <span className="text-[9px] px-1.5 py-0.5 rounded font-medium bg-teal/10 text-teal">
-                                    {co.status === "Healthy" ? "Healthy" : "Active"}
+                              <span className="w-[150px] flex-shrink-0">
+                                {issue ? (
+                                  <span
+                                    className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${issue.tone === "coral" ? "bg-coral/15 text-coral" : issue.tone === "purple" ? "bg-purple/15 text-purple-light" : "bg-amber/15 text-amber"}`}
+                                  >
+                                    {issue.label}
                                   </span>
                                 ) : (
-                                  fs.map((x, i) => (
-                                    <span
-                                      key={i}
-                                      className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${x.tone === "coral" ? "bg-coral/15 text-coral" : x.tone === "purple" ? "bg-purple/15 text-purple-light" : "bg-amber/15 text-amber"}`}
-                                    >
-                                      {x.label}
-                                    </span>
-                                  ))
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded font-medium bg-teal/10 text-teal">
+                                    No issues
+                                  </span>
                                 )}
                               </span>
                               <ArrowRight className="w-3 h-3 text-muted-foreground/40 group-hover:text-teal flex-shrink-0" />
@@ -630,10 +650,10 @@ function ITAssetDetailPanel({
                   </div>
                 )}
 
-                {totalViolations > 0 && (
+                {identities.length > 0 && (
                   <p className="text-[9px] text-muted-foreground/60 mt-2 leading-snug">
-                    Violations are derived from each object's real state. Open an object to raise a ticket or exception
-                    in Identities.
+                    Ranked by object risk (CRS), highest first. Open an object to see its full risk breakdown and
+                    remediate in Identities.
                   </p>
                 )}
               </>
