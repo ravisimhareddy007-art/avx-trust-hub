@@ -88,9 +88,7 @@ export default function InventoryPage() {
           <ITAssetsTab onCreateTicket={openTicketDrawer} onOpenPolicyDrawer={openPolicyDrawer} />
         )}
         {activeTab === "crypto-objects" && <CryptoObjectsTab onCreateTicket={openTicketDrawer} />}
-        {activeTab === "groups" && (
-          <GroupsTab onCreateTicket={openTicketDrawer} onOpenPolicyDrawer={openPolicyDrawer} />
-        )}
+        {activeTab === "groups" && <GroupsTab onCreateTicket={openTicketDrawer} />}
       </div>
 
       {/* Policy Builder Drawer */}
