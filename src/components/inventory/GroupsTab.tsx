@@ -49,6 +49,27 @@ function evalConditionOnAsset(a: CryptoAsset, c: GroupCondition): boolean | null
       const n = c.value === "< 7" ? 7 : c.value === "< 30" ? 30 : c.value === "< 90" ? 90 : NaN;
       return Number.isNaN(n) ? null : d >= 0 && d < n;
     }
+    case "PQC Risk":
+      return eq(a.pqcRisk);
+    case "Status":
+      return eq(a.status);
+    case "Discovery Source":
+      return eq(a.discoverySource);
+    case "Cloud Provider": {
+      // Derive provider from the infrastructure slug prefix; only the four real
+      // providers map, anything else is simply not that provider.
+      const slug = (a.infrastructure || "").toLowerCase();
+      const provider = slug.startsWith("aws")
+        ? "AWS"
+        : slug.startsWith("azure")
+          ? "Azure"
+          : slug.startsWith("gcp")
+            ? "GCP"
+            : slug.startsWith("on-prem") || slug.startsWith("on_prem")
+              ? "On-prem"
+              : "";
+      return eq(provider);
+    }
     default:
       return null;
   }
