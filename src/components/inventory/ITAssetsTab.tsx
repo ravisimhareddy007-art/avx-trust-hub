@@ -89,6 +89,88 @@ interface Props {
   onOpenPolicyDrawer: (groupId: string, groupName: string) => void;
 }
 
+// Parse the raw infrastructure string (e.g. "aws-us-east-1-prod") into structured,
+// human-readable tokens so the secondary identity line is self-explanatory rather
+// than a cryptic slug. Falls back gracefully for values that don't match a pattern.
+function parseInfra(infra: string): string[] {
+  if (!infra) return [];
+  const PROVIDER: Record<string, string> = {
+    aws: "AWS",
+    azure: "Azure",
+    gcp: "GCP",
+    "on-prem": "On-prem",
+    cloudflare: "Cloudflare",
+    hashicorp: "HashiCorp",
+    cyberark: "CyberArk",
+    crypto4a: "Crypto4A",
+    thales: "Thales",
+    utimaco: "Utimaco",
+    software: "Software",
+  };
+  const ENV: Record<string, string> = { prod: "Prod", stg: "Staging", dev: "Dev" };
+  const REGION: Record<string, string> = {
+    "us-east-1": "us-east-1",
+    "us-west-2": "us-west-2",
+    eastus: "eastus",
+    westus: "westus",
+    "us-central1": "us-central1",
+  };
+  const SERVICE: Record<string, string> = {
+    eks: "EKS",
+    aks: "AKS",
+    gke: "GKE",
+    kms: "KMS",
+    rds: "RDS",
+    "secrets-manager": "Secrets Manager",
+    "key-vault": "Key Vault",
+    vault: "Vault",
+    conjur: "Conjur",
+    hsm: "HSM",
+    cdn: "CDN",
+    keystore: "Keystore",
+    "luna-hsm": "Luna HSM",
+    dc1: "DC1",
+    dc2: "DC2",
+    cluster: "Cluster",
+  };
+  const tokens: string[] = [];
+  let rest = infra;
+  // Provider (longest-prefix match so "on-prem" wins over "on")
+  const prov = Object.keys(PROVIDER)
+    .sort((a, b) => b.length - a.length)
+    .find((p) => rest.startsWith(p));
+  if (prov) {
+    tokens.push(PROVIDER[prov]);
+    rest = rest.slice(prov.length).replace(/^-/, "");
+  }
+  // Region (multi-segment, match before generic splitting)
+  const reg = Object.keys(REGION)
+    .sort((a, b) => b.length - a.length)
+    .find((r) => rest.includes(r));
+  if (reg) {
+    tokens.push(REGION[reg]);
+    rest = rest.replace(reg, "").replace(/--/g, "-").replace(/^-|-$/g, "");
+  }
+  // Multi-segment services first (so "secrets-manager" isn't split into two tokens)
+  const MULTI: Record<string, string> = {
+    "secrets-manager": "Secrets Manager",
+    "key-vault": "Key Vault",
+    "luna-hsm": "Luna HSM",
+  };
+  const multi = Object.keys(MULTI).find((k) => rest.includes(k));
+  if (multi) {
+    tokens.push(MULTI[multi]);
+    rest = rest.replace(multi, "").replace(/--/g, "-").replace(/^-|-$/g, "");
+  }
+  // Remaining hyphen segments: service or environment
+  for (const seg of rest.split("-").filter(Boolean)) {
+    if (ENV[seg]) tokens.push(ENV[seg]);
+    else if (SERVICE[seg]) tokens.push(SERVICE[seg]);
+    else if (seg.length > 1) tokens.push(seg.charAt(0).toUpperCase() + seg.slice(1));
+  }
+  return tokens.length > 0 ? tokens : [infra];
+}
+
 const assetTypeIcons: Record<string, string> = {
   "Web Server": "🌐",
   "Application Server": "📦",
@@ -380,7 +462,7 @@ function ITAssetDetailPanel({
               <p className="text-[13px] font-semibold text-foreground truncate">{asset.name}</p>
               {/* Secondary identity: the disambiguator + immutable system id (copyable). */}
               <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-muted-foreground/80">
-                <span className="font-mono truncate">{asset.infrastructure}</span>
+                <span className="truncate">{parseInfra(asset.infrastructure).join(" · ")}</span>
                 <span className="text-muted-foreground/40">·</span>
                 <button
                   onClick={() => navigator.clipboard?.writeText(asset.id)}
@@ -1046,8 +1128,8 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                         <span>{assetTypeIcons[asset.type] || "📋"}</span>
                         <span className="min-w-0">
                           <span className="font-medium text-foreground truncate max-w-[220px] block">{asset.name}</span>
-                          <span className="text-[10px] text-muted-foreground/70 font-mono truncate max-w-[220px] block">
-                            {asset.infrastructure}
+                          <span className="text-[10px] text-muted-foreground/70 truncate max-w-[220px] block">
+                            {parseInfra(asset.infrastructure).join(" · ")}
                           </span>
                         </span>
                         {isManual(asset) && (
