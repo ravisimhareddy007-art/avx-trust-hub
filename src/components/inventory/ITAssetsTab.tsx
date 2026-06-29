@@ -304,7 +304,7 @@ function ITAssetDetailPanel({
   // Actionable remediation routing. No score estimates, no deltas (goal is zero
   // violations, not bargaining). Ownership is a field, NOT a violation, so it is
   // deliberately excluded here. Each action routes to the filtered Identities view.
-  const [hideHealthy, setHideHealthy] = useState(false);
+  const [showHealthy, setShowHealthy] = useState(false);
   const expiredObjs = identities.filter((o) => o.status === "Expired" || o.daysToExpiry < 0);
   const expiringObjs = identities.filter((o) => o.status !== "Expired" && o.daysToExpiry >= 0 && o.daysToExpiry <= 30);
   const quantumObjs = identities.filter((o) => o.pqcRisk === "Critical" || o.pqcRisk === "High");
@@ -313,16 +313,20 @@ function ITAssetDetailPanel({
       o.rotationFrequency === "Never" &&
       (o.type === "SSH Key" || o.type === "API Key / Secret" || o.type === "Encryption Key"),
   );
-  const healthyCount = identities.filter((o) => findingsFor(o).length === 0).length;
 
   // Per-object risk score (CRS) and its single most severe issue, so the list
   // ranks objects by risk and tells the user which one to act on first. Uses the
   // existing scoring engine and findingsFor severity order; no new logic.
   const crsOf = (co: (typeof identities)[number]) => computeCRS(co).crs;
+  // The single line that best explains WHY this object ranks where it does.
+  // Prefer a recognised violation (clearest to a sec admin); otherwise fall back
+  // to the dominant CRS factor, so a high score never reads as "No issues".
   const topIssueOf = (co: (typeof identities)[number]) => {
     const fs = findingsFor(co); // already severity-sorted (sev 1 = worst)
     return fs.length > 0 ? fs[0] : null;
   };
+  // An object with no policy violations is healthy, full stop. No invented risk.
+  const isHealthy = (co: (typeof identities)[number]) => findingsFor(co).length === 0;
   const crsTier = (crs: number) => (crs >= 71 ? "coral" : crs >= 40 ? "amber" : "teal");
   const certWord = (n: number, t: string) => `${n} ${t}${n === 1 ? "" : "s"}`;
   const idsOf = (objs: typeof identities) => objs.map((o) => o.id).join(",");
@@ -563,84 +567,113 @@ function ITAssetDetailPanel({
               <>
                 <div className="flex items-center gap-2 mb-2 mt-1">
                   {typeRollup && <p className="text-[9.5px] text-muted-foreground/70">{typeRollup}</p>}
-                  {healthyCount > 0 && totalViolations > 0 && (
-                    <button
-                      onClick={() => setHideHealthy((v) => !v)}
-                      className="ml-auto text-[9px] text-muted-foreground/70 hover:text-teal transition-colors"
-                    >
-                      {hideHealthy ? `Show ${healthyCount} healthy` : "Hide healthy"}
-                    </button>
-                  )}
                 </div>
 
                 {identities.length > 0 ? (
-                  <div className="rounded-lg border border-border/50 overflow-hidden">
-                    {/* Column headers */}
-                    <div className="flex items-center gap-2 px-2.5 py-1.5 bg-secondary/50 border-b border-border/50 text-[9px] uppercase tracking-wide text-muted-foreground/70 font-semibold">
-                      <span className="w-5 flex-shrink-0 text-center">#</span>
-                      <span className="flex-1">Object</span>
-                      <span className="w-[44px] flex-shrink-0 text-center">Risk</span>
-                      <span className="w-[150px] flex-shrink-0">Top issue</span>
-                      <span className="w-3 flex-shrink-0" />
-                    </div>
-                    {/* Rows, sorted so objects with findings surface first */}
-                    <div className="divide-y divide-border/30">
-                      {[...identities]
-                        .filter((co) => !hideHealthy || findingsFor(co).length > 0)
-                        .sort((a, b) => crsOf(b) - crsOf(a))
-                        .map((co, idx) => {
-                          const meta = objectTypeMeta(co.type);
-                          const crs = crsOf(co);
-                          const tier = crsTier(crs);
-                          const issue = topIssueOf(co);
-                          return (
-                            <button
-                              key={co.id}
-                              onClick={() => {
-                                setFilters({ tab: "identities", objectIds: co.id });
-                                setCurrentPage("inventory");
-                                onClose();
-                              }}
-                              className="w-full flex items-center gap-2 px-2.5 py-2 hover:bg-secondary/40 transition-colors text-left group"
+                  (() => {
+                    // Violated objects (any policy violation), ranked by CRS desc.
+                    // Healthy objects (no violations) drop to a collapsed section below.
+                    const violated = identities.filter((co) => !isHealthy(co)).sort((a, b) => crsOf(b) - crsOf(a));
+                    const healthy = identities.filter((co) => isHealthy(co)).sort((a, b) => crsOf(b) - crsOf(a));
+                    const renderRow = (co: (typeof identities)[number], idx: number | null) => {
+                      const meta = objectTypeMeta(co.type);
+                      const crs = crsOf(co);
+                      const tier = crsTier(crs);
+                      const issue = topIssueOf(co);
+                      return (
+                        <button
+                          key={co.id}
+                          onClick={() => {
+                            setFilters({ tab: "identities", objectIds: co.id });
+                            setCurrentPage("inventory");
+                            onClose();
+                          }}
+                          className="w-full flex items-center gap-2 px-2.5 py-2 hover:bg-secondary/40 transition-colors text-left group"
+                        >
+                          <span className="w-5 flex-shrink-0 text-center text-[10px] tabular-nums text-muted-foreground/50 font-semibold">
+                            {idx === null ? "" : idx + 1}
+                          </span>
+                          <span className="flex-1 min-w-0 flex items-center gap-1.5">
+                            <meta.Icon className={`w-3.5 h-3.5 flex-shrink-0 ${meta.color}`} />
+                            <span className="min-w-0">
+                              <span className="text-[11px] text-foreground font-medium truncate block group-hover:text-teal">
+                                {co.name}
+                              </span>
+                              <span className={`text-[9px] font-medium ${meta.color}`}>{meta.label}</span>
+                            </span>
+                          </span>
+                          <span className="w-[44px] flex-shrink-0 text-center">
+                            <span
+                              className={`text-[12px] font-bold tabular-nums ${tier === "coral" ? "text-coral" : tier === "amber" ? "text-amber" : "text-teal"}`}
                             >
-                              <span className="w-5 flex-shrink-0 text-center text-[10px] tabular-nums text-muted-foreground/50 font-semibold">
-                                {idx + 1}
+                              {crs}
+                            </span>
+                          </span>
+                          <span className="w-[150px] flex-shrink-0">
+                            {issue ? (
+                              <span
+                                className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${issue.tone === "coral" ? "bg-coral/15 text-coral" : issue.tone === "purple" ? "bg-purple/15 text-purple-light" : "bg-amber/15 text-amber"}`}
+                              >
+                                {issue.label}
                               </span>
-                              <span className="flex-1 min-w-0 flex items-center gap-1.5">
-                                <meta.Icon className={`w-3.5 h-3.5 flex-shrink-0 ${meta.color}`} />
-                                <span className="min-w-0">
-                                  <span className="text-[11px] text-foreground font-medium truncate block group-hover:text-teal">
-                                    {co.name}
-                                  </span>
-                                  <span className={`text-[9px] font-medium ${meta.color}`}>{meta.label}</span>
-                                </span>
+                            ) : (
+                              <span className="text-[9px] px-1.5 py-0.5 rounded font-medium bg-teal/10 text-teal">
+                                Healthy
                               </span>
-                              <span className="w-[44px] flex-shrink-0 text-center">
-                                <span
-                                  className={`text-[12px] font-bold tabular-nums ${tier === "coral" ? "text-coral" : tier === "amber" ? "text-amber" : "text-teal"}`}
-                                >
-                                  {crs}
-                                </span>
+                            )}
+                          </span>
+                          <ArrowRight className="w-3 h-3 text-muted-foreground/40 group-hover:text-teal flex-shrink-0" />
+                        </button>
+                      );
+                    };
+                    return (
+                      <div className="rounded-lg border border-border/50 overflow-hidden">
+                        {/* Column headers */}
+                        <div className="flex items-center gap-2 px-2.5 py-1.5 bg-secondary/50 border-b border-border/50 text-[9px] uppercase tracking-wide text-muted-foreground/70 font-semibold">
+                          <span className="w-5 flex-shrink-0 text-center">#</span>
+                          <span className="flex-1">Object</span>
+                          <span className="w-[44px] flex-shrink-0 text-center">Risk</span>
+                          <span className="w-[150px] flex-shrink-0">Top issue</span>
+                          <span className="w-3 flex-shrink-0" />
+                        </div>
+
+                        {/* Violated objects, ranked by CRS */}
+                        {violated.length > 0 ? (
+                          <div className="divide-y divide-border/30">
+                            {violated.map((co, idx) => renderRow(co, idx))}
+                          </div>
+                        ) : (
+                          <div className="px-3 py-2.5 text-[10px] text-teal">
+                            All linked objects are healthy. No policy violations.
+                          </div>
+                        )}
+
+                        {/* Healthy objects, collapsed mini-dropdown at the bottom */}
+                        {healthy.length > 0 && (
+                          <div className="border-t border-border/40">
+                            <button
+                              onClick={() => setShowHealthy((v) => !v)}
+                              className="w-full flex items-center gap-2 px-2.5 py-1.5 bg-secondary/30 hover:bg-secondary/50 transition-colors text-left"
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full bg-teal flex-shrink-0" />
+                              <span className="text-[10px] text-muted-foreground font-medium">
+                                {showHealthy ? "Hide" : "Show"} {healthy.length} healthy object
+                                {healthy.length !== 1 ? "s" : ""}
                               </span>
-                              <span className="w-[150px] flex-shrink-0">
-                                {issue ? (
-                                  <span
-                                    className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${issue.tone === "coral" ? "bg-coral/15 text-coral" : issue.tone === "purple" ? "bg-purple/15 text-purple-light" : "bg-amber/15 text-amber"}`}
-                                  >
-                                    {issue.label}
-                                  </span>
-                                ) : (
-                                  <span className="text-[9px] px-1.5 py-0.5 rounded font-medium bg-teal/10 text-teal">
-                                    No issues
-                                  </span>
-                                )}
+                              <span className="ml-auto text-muted-foreground/50">
+                                {showHealthy ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                               </span>
-                              <ArrowRight className="w-3 h-3 text-muted-foreground/40 group-hover:text-teal flex-shrink-0" />
                             </button>
-                          );
-                        })}
-                    </div>
-                  </div>
+                            {showHealthy && (
+                              <div className="divide-y divide-border/30">
+                                {healthy.map((co) => renderRow(co, null))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()
                 ) : (
                   <div className="rounded-lg border border-border/40 px-3 py-3 text-[11px] text-muted-foreground">
                     No crypto objects linked to this asset.
