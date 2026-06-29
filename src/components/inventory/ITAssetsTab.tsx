@@ -459,23 +459,15 @@ function ITAssetDetailPanel({
               <X className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
           </div>
-          <p className="text-[11px] text-muted-foreground mb-2.5">
-            {asset.type} · {asset.environment} · {asset.application}
-          </p>
-          <div className="flex items-center gap-1.5 flex-wrap mb-3">
-            <EnvBadge env={asset.environment} />
-            <span className="text-[10px] px-2 py-0.5 rounded bg-secondary text-muted-foreground">
-              {asset.ownerTeam}
-            </span>
-            <span className="text-[10px] px-2 py-0.5 rounded bg-secondary text-muted-foreground">
-              {asset.managedBy}
-            </span>
-            {!asset.scanned && (
+          {/* Only a "Not scanned" posture warning stays near the title; all other
+              metadata moves to the Asset details section at the bottom. */}
+          {!asset.scanned && (
+            <div className="mb-3">
               <span className="text-[10px] px-2 py-0.5 rounded bg-amber/10 text-amber border border-amber/20">
                 Not scanned
               </span>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Risk-forward header: ARS gauge + driver bars (consistent with Identities). */}
           <div className="bg-card rounded-lg border border-border/50 p-3">
@@ -794,6 +786,8 @@ function ITAssetDetailPanel({
                     ),
                   },
                   { label: "Type", value: asset.type },
+                  { label: "Environment", value: asset.environment },
+                  { label: "Owner team", value: asset.ownerTeam },
                   { label: "Infrastructure", value: asset.infrastructure },
                   { label: "Managed by", value: asset.managedBy },
                   { label: "Application", value: asset.application },
