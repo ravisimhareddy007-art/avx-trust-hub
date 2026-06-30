@@ -880,6 +880,8 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
   const [assetStack, setAssetStack] = useState<ITAsset[]>([]);
   const { manualITAssets, groups, addAssetsToGroup } = useInventoryRegistry();
   const [addToGroupOpen, setAddToGroupOpen] = useState(false);
+  const [scopeAssetIds, setScopeAssetIds] = useState<string[]>([]);
+  const [scopeGroupName, setScopeGroupName] = useState<string>("");
   const { setSelectedEntity } = useAgent();
   const { biMap, setBI } = useRisk();
   const { filters: navFilters, setFilters, setCurrentPage } = useNav();
@@ -899,6 +901,11 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
       if (target) openAssetDetail(target);
     }
   }, [navFilters.assetId]);
+
+  useEffect(() => {
+    setScopeAssetIds(navFilters.assetIds ? navFilters.assetIds.split(",").filter(Boolean) : []);
+    setScopeGroupName(navFilters.groupName || "");
+  }, [navFilters.assetIds, navFilters.groupName]);
 
   useEffect(() => {
     if (navFilters.type) setTypeFilter(navFilters.type);
@@ -927,6 +934,7 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
 
   const filtered = useMemo(() => {
     let result = enriched;
+    if (scopeAssetIds.length) result = result.filter((x) => scopeAssetIds.includes(x.asset.id));
     if (search) {
       const q = search.toLowerCase();
       result = result.filter(
@@ -963,7 +971,18 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
       }
     });
     return sorted;
-  }, [enriched, search, envFilter, typeFilter, teamFilter, biFilter, riskRange, sortKey, coverageFilter]);
+  }, [
+    enriched,
+    search,
+    envFilter,
+    typeFilter,
+    teamFilter,
+    biFilter,
+    riskRange,
+    sortKey,
+    coverageFilter,
+    scopeAssetIds,
+  ]);
 
   const uniqueTeams = [...new Set(allAssets.map((a) => a.ownerTeam))];
   const uniqueTypes = [...new Set(allAssets.map((a) => a.type))];
@@ -1064,6 +1083,26 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
               </button>
             </span>
             <span className="text-muted-foreground tabular-nums">{filtered.length} assets</span>
+          </div>
+        )}
+
+        {/* Group scope banner */}
+        {scopeAssetIds.length > 0 && (
+          <div className="flex items-center gap-3 px-4 py-2.5 bg-purple/10 border border-purple/30 rounded-lg mb-3">
+            <span className="text-xs text-foreground">
+              Showing <span className="font-semibold">{filtered.length}</span>{" "}
+              {filtered.length === 1 ? "asset" : "assets"} in group{scopeGroupName ? ` "${scopeGroupName}"` : ""}
+            </span>
+            <button
+              onClick={() => {
+                setScopeAssetIds([]);
+                setScopeGroupName("");
+                setFilters({ tab: "infrastructure" });
+              }}
+              className="px-3 py-1 text-xs rounded border border-border text-muted-foreground hover:bg-secondary"
+            >
+              Clear group filter
+            </button>
           </div>
         )}
 
