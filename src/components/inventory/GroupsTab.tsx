@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
 import {
-  mockGroups,
   aiSuggestedGroups,
   DynamicGroup,
   GroupCondition,
@@ -10,6 +9,7 @@ import {
 } from "@/data/inventoryMockData";
 import { mockAssets, CryptoAsset } from "@/data/mockData";
 import { useNav } from "@/context/NavigationContext";
+import { useInventoryRegistry } from "@/context/InventoryRegistryContext";
 import { StatusBadge, EnvBadge, DaysToExpiry, Modal } from "@/components/shared/UIComponents";
 import { Search, Plus, Sparkles, Shield, ShieldOff, ChevronRight, X } from "lucide-react";
 import { toast } from "sonner";
@@ -220,10 +220,16 @@ export default function GroupsTab({ onCreateTicket }: Props) {
     setSelectedGroup(null);
   };
   const [search, setSearch] = useState("");
-  const [selectedGroup, setSelectedGroup] = useState<DynamicGroup | null>(null);
+  const { groups, createGroup, deleteGroup, removeAssetFromGroup, reevaluateGroup, reevaluateAllDynamic } =
+    useInventoryRegistry();
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const selectedGroup = useMemo(() => groups.find((g) => g.id === selectedGroupId) ?? null, [groups, selectedGroupId]);
+  const setSelectedGroup = (g: DynamicGroup | null | ((p: DynamicGroup | null) => DynamicGroup | null)) => {
+    const next = typeof g === "function" ? g(selectedGroup) : g;
+    setSelectedGroupId(next ? next.id : null);
+  };
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showAISuggestions, setShowAISuggestions] = useState(false);
-  const [groups, setGroups] = useState(mockGroups);
 
   // Create group state
   const [newGroupType, setNewGroupType] = useState<"Dynamic" | "Manual">("Dynamic");
@@ -255,6 +261,15 @@ export default function GroupsTab({ onCreateTicket }: Props) {
       setFilters({ tab: "groups" });
     }
   }, [filters.createFromAssets]);
+
+  // Arriving from a clickable group badge opens that group's detail panel.
+  useEffect(() => {
+    const gid = filters.openGroup;
+    if (gid) {
+      setSelectedGroupId(gid);
+      setFilters({ tab: "groups" });
+    }
+  }, [filters.openGroup]);
 
   const resetCreateForm = () => {
     setNewGroupType("Dynamic");
@@ -312,7 +327,7 @@ export default function GroupsTab({ onCreateTicket }: Props) {
       policies: [],
       remediationTasks: [],
     };
-    setGroups([...groups, newGroup]);
+    createGroup(newGroup);
     setSelectedGroup(newGroup);
     setShowCreateModal(false);
     resetCreateForm();
@@ -342,7 +357,7 @@ export default function GroupsTab({ onCreateTicket }: Props) {
       objectCount: matched.objectIds.length,
       objectIds: matched.objectIds,
     };
-    setGroups([...groups, newGroup]);
+    createGroup(newGroup);
     setShowAISuggestions(false);
     toast.success(`Group "${sg.name}" created from AI suggestion`);
   };
@@ -392,6 +407,15 @@ export default function GroupsTab({ onCreateTicket }: Props) {
             <span className="inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold bg-teal text-primary-foreground">
               {aiSuggestedGroups.length}
             </span>
+          </button>
+          <button
+            onClick={() => {
+              reevaluateAllDynamic();
+              toast.success("All dynamic groups re-evaluated");
+            }}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[10px] font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-secondary"
+          >
+            Re-evaluate all
           </button>
           <button
             onClick={() => setShowCreateModal(true)}
@@ -552,6 +576,30 @@ export default function GroupsTab({ onCreateTicket }: Props) {
                 >
                   View in inventory
                 </button>
+                {selectedGroup.type === "Dynamic" && (
+                  <button
+                    onClick={() => {
+                      const n = reevaluateGroup(selectedGroup.id);
+                      setSelectedGroup((g) => (g ? { ...g, assetCount: n, lastEvaluated: "Just now" } : g));
+                      toast.success(`Re-evaluated: ${n} ${n === 1 ? "asset" : "assets"} match`);
+                    }}
+                    className="px-2 py-1 rounded text-[10px] font-medium border border-border text-foreground hover:bg-secondary"
+                  >
+                    Re-evaluate
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    if (confirm(`Delete group "${selectedGroup.name}"? This cannot be undone.`)) {
+                      deleteGroup(selectedGroup.id);
+                      setSelectedGroup(null);
+                      toast.success("Group deleted");
+                    }
+                  }}
+                  className="px-2 py-1 rounded text-[10px] font-medium border border-coral/40 text-coral hover:bg-coral/10"
+                >
+                  Delete
+                </button>
                 <button onClick={() => setSelectedGroup(null)} className="p-1 hover:bg-secondary rounded">
                   <X className="w-4 h-4 text-muted-foreground" />
                 </button>
@@ -655,8 +703,24 @@ export default function GroupsTab({ onCreateTicket }: Props) {
                               </span>
                             )}
                           </td>
-                          <td className="py-1.5 px-1 text-muted-foreground">
-                            <ChevronRight className="w-3 h-3" />
+                          <td className="py-1.5 px-1 text-muted-foreground" onClick={(e) => e.stopPropagation()}>
+                            {selectedGroup.type === "Manual" ? (
+                              <button
+                                title="Remove this asset from the group"
+                                onClick={() => {
+                                  const owner = mockITAssets.find((a) => a.cryptoObjectIds.includes(co.id));
+                                  if (owner) {
+                                    removeAssetFromGroup(selectedGroup.id, owner.id);
+                                    toast.success("Asset removed from group");
+                                  }
+                                }}
+                                className="hover:text-coral"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            ) : (
+                              <ChevronRight className="w-3 h-3" />
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -665,7 +729,7 @@ export default function GroupsTab({ onCreateTicket }: Props) {
                 </div>
                 {getIdentities(selectedGroup).length === 0 && (
                   <div className="py-8 text-center text-[10px] text-muted-foreground">
-                    No identities in this group yet.
+                    No objects in this group yet.
                   </div>
                 )}
               </div>
