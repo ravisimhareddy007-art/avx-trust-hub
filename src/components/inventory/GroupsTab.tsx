@@ -1,10 +1,12 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   mockGroups,
   aiSuggestedGroups,
   DynamicGroup,
   GroupCondition,
   conditionAttributes,
+  matchAssetsByObjectConditions,
+  mockITAssets,
 } from "@/data/inventoryMockData";
 import { mockAssets, CryptoAsset } from "@/data/mockData";
 import { useNav } from "@/context/NavigationContext";
@@ -75,18 +77,6 @@ function evalConditionOnAsset(a: CryptoAsset, c: GroupCondition): boolean | null
   }
 }
 
-// Match all assets against a condition set, honoring per-condition AND/OR.
-function matchAssets(conditions: GroupCondition[]): CryptoAsset[] {
-  const evaluable = conditions.filter((c) => c.value);
-  if (evaluable.length === 0) return [];
-  const usesOr = evaluable.some((c) => c.logic === "OR");
-  return mockAssets.filter((a) => {
-    const results = evaluable.map((c) => evalConditionOnAsset(a, c)).filter((r) => r !== null) as boolean[];
-    if (results.length === 0) return false;
-    return usesOr ? results.some(Boolean) : results.every(Boolean);
-  });
-}
-
 function ConditionBuilder({
   conditions,
   onChange,
@@ -129,7 +119,7 @@ function ConditionBuilder({
   const usesOr = evaluable.some((c) => c.logic === "OR");
   const matchCount = useMemo(() => {
     if (evaluable.length === 0) return null;
-    return matchAssets(conditions).length;
+    return matchAssetsByObjectConditions(conditions, mockAssets).assetIds.length;
   }, [conditions]);
 
   // Summary renders each condition with its own AND/OR joiner, so mixed logic
@@ -209,7 +199,7 @@ function ConditionBuilder({
           <p className="text-[10px] font-medium text-teal">
             {matchCount === null
               ? "Add a value to preview matches"
-              : `${matchCount} ${matchCount === 1 ? "identity matches" : "identities match"}`}
+              : `${matchCount} ${matchCount === 1 ? "asset matches" : "assets match"}`}
             {usesOr ? " (OR logic)" : ""}
           </p>
           {unmatchable && (
@@ -222,7 +212,7 @@ function ConditionBuilder({
 }
 
 export default function GroupsTab({ onCreateTicket }: Props) {
-  const { setFilters } = useNav();
+  const { filters, setFilters } = useNav();
 
   // Navigate to the asset inventory filtered to one object (or the whole group).
   const viewInInventory = (objectIds: string) => {
@@ -243,6 +233,7 @@ export default function GroupsTab({ onCreateTicket }: Props) {
   const [newConditions, setNewConditions] = useState<GroupCondition[]>([]);
   const [nlInput, setNlInput] = useState("");
   const [nlTab, setNlTab] = useState<"builder" | "describe">("builder");
+  const [newManualAssetIds, setNewManualAssetIds] = useState<string[]>([]);
 
   const filteredGroups = useMemo(() => {
     if (!search) return groups;
@@ -253,6 +244,18 @@ export default function GroupsTab({ onCreateTicket }: Props) {
     return group.objectIds.map((id) => mockAssets.find((a) => a.id === id)).filter(Boolean) as CryptoAsset[];
   };
 
+  // Arriving from the asset table "Create group from selection" pre-opens the
+  // modal as a Manual group seeded with the chosen IT assets.
+  useEffect(() => {
+    const ids = filters.createFromAssets;
+    if (ids) {
+      setNewGroupType("Manual");
+      setNewManualAssetIds(ids.split(",").filter(Boolean));
+      setShowCreateModal(true);
+      setFilters({ tab: "groups" });
+    }
+  }, [filters.createFromAssets]);
+
   const resetCreateForm = () => {
     setNewGroupType("Dynamic");
     setNewGroupName("");
@@ -261,6 +264,7 @@ export default function GroupsTab({ onCreateTicket }: Props) {
     setNewConditions([]);
     setNlInput("");
     setNlTab("builder");
+    setNewManualAssetIds([]);
   };
 
   // Trimmed name; complete conditions = those with a value selected.
@@ -268,20 +272,29 @@ export default function GroupsTab({ onCreateTicket }: Props) {
   const completeConditions = newConditions.filter((c) => c.value);
   const duplicateName = groups.some((g) => g.name.trim().toLowerCase() === trimmedName.toLowerCase());
   const canCreate =
-    trimmedName.length > 0 && !duplicateName && (newGroupType === "Manual" || completeConditions.length > 0);
+    trimmedName.length > 0 &&
+    !duplicateName &&
+    (newGroupType === "Manual" ? newManualAssetIds.length > 0 : completeConditions.length > 0);
 
   const handleCreateGroup = () => {
     if (!canCreate) return;
     // Evaluate dynamic membership at creation so the group does not falsely
     // report zero objects. Manual groups start empty by design.
-    const members = newGroupType === "Dynamic" ? matchAssets(completeConditions) : [];
-    const memberIds = members.map((m) => m.id);
+    const matched =
+      newGroupType === "Dynamic"
+        ? matchAssetsByObjectConditions(completeConditions, mockAssets)
+        : {
+            assetIds: newManualAssetIds,
+            objectIds: mockITAssets.filter((a) => newManualAssetIds.includes(a.id)).flatMap((a) => a.cryptoObjectIds),
+          };
     const newGroup: DynamicGroup = {
       id: `grp-${Date.now()}`,
       name: trimmedName,
       type: newGroupType,
-      objectCount: memberIds.length,
-      objectIds: memberIds,
+      assetCount: matched.assetIds.length,
+      assetIds: matched.assetIds,
+      objectCount: matched.objectIds.length,
+      objectIds: matched.objectIds,
       conditions: completeConditions,
       conditionSummary: newGroupDesc.trim(),
       riskScore: 45,
@@ -304,11 +317,12 @@ export default function GroupsTab({ onCreateTicket }: Props) {
     setShowCreateModal(false);
     resetCreateForm();
     toast.success(
-      `Group "${trimmedName}" created${newGroupType === "Dynamic" ? ` with ${memberIds.length} ${memberIds.length === 1 ? "identity" : "identities"}` : ""}`,
+      `Group "${trimmedName}" created with ${matched.assetIds.length} ${matched.assetIds.length === 1 ? "asset" : "assets"}`,
     );
   };
 
   const handleAcceptAISuggestion = (sg: Partial<DynamicGroup>) => {
+    const matched = matchAssetsByObjectConditions(sg.conditions || [], mockAssets);
     const newGroup: DynamicGroup = {
       ...(sg as DynamicGroup),
       policyCount: 0,
@@ -323,7 +337,10 @@ export default function GroupsTab({ onCreateTicket }: Props) {
       aiNarrative: sg.aiRationale || "",
       policies: [],
       remediationTasks: [],
-      objectIds: [],
+      assetCount: matched.assetIds.length,
+      assetIds: matched.assetIds,
+      objectCount: matched.objectIds.length,
+      objectIds: matched.objectIds,
     };
     setGroups([...groups, newGroup]);
     setShowAISuggestions(false);
@@ -458,7 +475,7 @@ export default function GroupsTab({ onCreateTicket }: Props) {
               <thead className="bg-secondary/50">
                 <tr className="border-b border-border">
                   <th className="text-left py-2 px-3 font-medium text-muted-foreground">Group Name</th>
-                  <th className="text-left py-2 px-2 font-medium text-muted-foreground">Type</th>
+                  <th className="text-center py-2 px-2 font-medium text-muted-foreground">Assets</th>
                   <th className="text-center py-2 px-2 font-medium text-muted-foreground">Objects</th>
                   <th className="text-center py-2 px-2 font-medium text-muted-foreground">Policies</th>
                   <th className="text-left py-2 px-2 font-medium text-muted-foreground">Conditions</th>
@@ -466,32 +483,40 @@ export default function GroupsTab({ onCreateTicket }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {filteredGroups.map((g) => {
+                {(["Dynamic", "Manual"] as const).map((section) => {
+                  const rows = filteredGroups.filter((g) => g.type === section);
+                  if (rows.length === 0) return null;
                   return (
-                    <tr
-                      key={g.id}
-                      onClick={() => setSelectedGroup(g)}
-                      className={`border-b border-border cursor-pointer transition-colors ${selectedGroup?.id === g.id ? "bg-teal/5" : "hover:bg-secondary/30"}`}
-                    >
-                      <td className="py-2.5 px-3">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-foreground">{g.name}</span>
-                        </div>
-                      </td>
-                      <td className="py-2.5 px-2">
-                        <span
-                          className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${g.type === "Dynamic" ? "bg-purple/10 text-purple" : "bg-secondary text-muted-foreground"}`}
+                    <React.Fragment key={section}>
+                      <tr className="bg-secondary/30">
+                        <td colSpan={6} className="py-1.5 px-3">
+                          <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            {section === "Dynamic" ? "Dynamic groups" : "Manual groups"} ({rows.length})
+                          </span>
+                          <span className="text-[9px] text-muted-foreground ml-2">
+                            {section === "Dynamic" ? "auto-maintained by conditions" : "hand-curated assets"}
+                          </span>
+                        </td>
+                      </tr>
+                      {rows.map((g) => (
+                        <tr
+                          key={g.id}
+                          onClick={() => setSelectedGroup(g)}
+                          className={`border-b border-border cursor-pointer transition-colors ${selectedGroup?.id === g.id ? "bg-teal/5" : "hover:bg-secondary/30"}`}
                         >
-                          {g.type}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-2 text-center text-foreground font-medium">{g.objectCount}</td>
-                      <td className="py-2.5 px-2 text-center text-muted-foreground">{g.policyCount}</td>
-                      <td className="py-2.5 px-2 text-[10px] text-muted-foreground italic truncate max-w-[200px]">
-                        {g.conditionSummary || "\u2014"}
-                      </td>
-                      <td className="py-2.5 px-2 text-[10px] text-muted-foreground">{g.lastEvaluated}</td>
-                    </tr>
+                          <td className="py-2.5 px-3">
+                            <span className="font-medium text-foreground">{g.name}</span>
+                          </td>
+                          <td className="py-2.5 px-2 text-center text-foreground font-medium">{g.assetCount}</td>
+                          <td className="py-2.5 px-2 text-center text-muted-foreground">{g.objectCount}</td>
+                          <td className="py-2.5 px-2 text-center text-muted-foreground">{g.policyCount}</td>
+                          <td className="py-2.5 px-2 text-[10px] text-muted-foreground italic truncate max-w-[200px]">
+                            {g.conditionSummary || "\u2014"}
+                          </td>
+                          <td className="py-2.5 px-2 text-[10px] text-muted-foreground">{g.lastEvaluated}</td>
+                        </tr>
+                      ))}
+                    </React.Fragment>
                   );
                 })}
               </tbody>
@@ -516,7 +541,9 @@ export default function GroupsTab({ onCreateTicket }: Props) {
               >
                 {selectedGroup.type}
               </span>
-              <span className="text-[10px] text-muted-foreground">{getIdentities(selectedGroup).length} objects</span>
+              <span className="text-[10px] text-muted-foreground">
+                {selectedGroup.assetCount} assets · {selectedGroup.objectCount} objects
+              </span>
               <span className="text-[10px] text-muted-foreground">· Last evaluated: {selectedGroup.lastEvaluated}</span>
               <div className="ml-auto flex items-center gap-2">
                 <button
@@ -542,7 +569,7 @@ export default function GroupsTab({ onCreateTicket }: Props) {
               {/* Quick stats row (monitoring only, derived from real data) */}
               {(() => {
                 const ids = getIdentities(selectedGroup);
-                const assetCount = new Set(ids.map((o) => o.application).filter(Boolean)).size;
+                const assetCount = selectedGroup.assetCount;
                 const withViolations = ids.filter((o) => o.policyViolations > 0).length;
                 const critical = ids.filter((o) => o.pqcRisk === "Critical").length;
                 return (
@@ -813,9 +840,16 @@ export default function GroupsTab({ onCreateTicket }: Props) {
             </div>
           ) : (
             <div className="bg-secondary/50 rounded p-3">
-              <p className="text-[10px] text-muted-foreground">
-                After creating, you can add identities from the Inventory table using "Add to Group" action.
-              </p>
+              {newManualAssetIds.length > 0 ? (
+                <p className="text-[10px] text-muted-foreground">
+                  {newManualAssetIds.length} {newManualAssetIds.length === 1 ? "asset" : "assets"} selected from the
+                  inventory will be added to this group.
+                </p>
+              ) : (
+                <p className="text-[10px] text-muted-foreground">
+                  Select assets in the Infrastructure inventory and use "Create group from selection" to add them here.
+                </p>
+              )}
             </div>
           )}
 
