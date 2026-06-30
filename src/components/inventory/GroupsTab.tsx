@@ -214,8 +214,13 @@ function ConditionBuilder({
 export default function GroupsTab({ onCreateTicket }: Props) {
   const { filters, setFilters } = useNav();
 
-  // Navigate to the asset inventory filtered to one object (or the whole group).
+  // Navigate to the inventory filtered to specific objects. Guards the empty
+  // case so an empty group does not fall through to an unscoped (all objects) view.
   const viewInInventory = (objectIds: string) => {
+    if (!objectIds) {
+      toast.info("This group has no objects to view yet.");
+      return;
+    }
     setFilters({ tab: "identities", objectIds });
     setSelectedGroup(null);
   };
@@ -571,10 +576,21 @@ export default function GroupsTab({ onCreateTicket }: Props) {
               <span className="text-[10px] text-muted-foreground">· Last evaluated: {selectedGroup.lastEvaluated}</span>
               <div className="ml-auto flex items-center gap-2">
                 <button
-                  onClick={() => viewInInventory(selectedGroup.objectIds.join(","))}
+                  onClick={() => {
+                    if (selectedGroup.assetIds.length === 0) {
+                      toast.info("This group has no assets to view yet.");
+                      return;
+                    }
+                    setFilters({
+                      tab: "infrastructure",
+                      assetIds: selectedGroup.assetIds.join(","),
+                      groupName: selectedGroup.name,
+                    });
+                    setSelectedGroup(null);
+                  }}
                   className="px-2 py-1 rounded text-[10px] font-medium border border-border text-foreground hover:bg-secondary"
                 >
-                  View in inventory
+                  View assets in inventory
                 </button>
                 {selectedGroup.type === "Dynamic" && (
                   <button
