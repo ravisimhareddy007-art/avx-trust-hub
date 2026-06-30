@@ -4,7 +4,6 @@ import {
   ITAsset,
   getAssetAINarrative,
   getAssetViolations,
-  mockGroups,
   groupsForAsset,
 } from "@/data/inventoryMockData";
 import { mockAssets, CryptoAsset } from "@/data/mockData";
@@ -879,7 +878,8 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
       return next;
     });
   const [assetStack, setAssetStack] = useState<ITAsset[]>([]);
-  const { manualITAssets } = useInventoryRegistry();
+  const { manualITAssets, groups, addAssetsToGroup } = useInventoryRegistry();
+  const [addToGroupOpen, setAddToGroupOpen] = useState(false);
   const { setSelectedEntity } = useAgent();
   const { biMap, setBI } = useRisk();
   const { filters: navFilters, setFilters, setCurrentPage } = useNav();
@@ -1081,6 +1081,40 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
             >
               Create group from selection
             </button>
+            <div className="relative">
+              <button
+                onClick={() => setAddToGroupOpen((o) => !o)}
+                className="px-3 py-1.5 text-xs rounded border border-border text-foreground hover:bg-secondary font-medium"
+              >
+                Add to existing group
+              </button>
+              {addToGroupOpen && (
+                <div className="absolute z-50 mt-1 w-56 max-h-64 overflow-y-auto bg-card border border-border rounded-lg shadow-xl scrollbar-thin">
+                  {groups.filter((g) => g.type === "Manual").length === 0 ? (
+                    <p className="px-3 py-2 text-[10px] text-muted-foreground">
+                      No manual groups yet. Dynamic groups are maintained by conditions and cannot be edited by hand.
+                    </p>
+                  ) : (
+                    groups
+                      .filter((g) => g.type === "Manual")
+                      .map((g) => (
+                        <button
+                          key={g.id}
+                          onClick={() => {
+                            addAssetsToGroup(g.id, [...selectedIds]);
+                            setAddToGroupOpen(false);
+                            setSelectedIds(new Set());
+                            toast.success(`Added to "${g.name}"`);
+                          }}
+                          className="w-full text-left px-3 py-2 text-[11px] hover:bg-secondary text-foreground"
+                        >
+                          {g.name}
+                        </button>
+                      ))
+                  )}
+                </div>
+              )}
+            </div>
             <button
               onClick={() => setSelectedIds(new Set())}
               className="px-3 py-1.5 text-xs rounded border border-border text-muted-foreground hover:bg-secondary"
@@ -1226,18 +1260,19 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                     <td className="py-2 px-2 text-muted-foreground">{asset.ownerTeam}</td>
                     <td className="py-2 px-2" onClick={(e) => e.stopPropagation()}>
                       {(() => {
-                        const gs = groupsForAsset(asset.id, mockGroups);
+                        const gs = groupsForAsset(asset.id, groups);
                         if (gs.length === 0) return <span className="text-[10px] text-muted-foreground/50">-</span>;
                         return (
                           <div className="flex flex-wrap gap-1 max-w-[180px]">
                             {gs.slice(0, 2).map((g) => (
-                              <span
+                              <button
                                 key={g.id}
-                                className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] bg-purple/10 text-purple truncate max-w-[110px]"
-                                title={g.name}
+                                onClick={() => setFilters({ tab: "groups", openGroup: g.id })}
+                                className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] bg-purple/10 text-purple hover:bg-purple/20 truncate max-w-[110px]"
+                                title={`Open group: ${g.name}`}
                               >
                                 {g.name}
-                              </span>
+                              </button>
                             ))}
                             {gs.length > 2 && (
                               <span className="text-[9px] text-muted-foreground">+{gs.length - 2}</span>
