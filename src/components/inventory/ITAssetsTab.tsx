@@ -1,5 +1,12 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { mockITAssets, ITAsset, getAssetAINarrative, getAssetViolations } from "@/data/inventoryMockData";
+import {
+  mockITAssets,
+  ITAsset,
+  getAssetAINarrative,
+  getAssetViolations,
+  mockGroups,
+  groupsForAsset,
+} from "@/data/inventoryMockData";
 import { mockAssets, CryptoAsset } from "@/data/mockData";
 import { useInventoryRegistry } from "@/context/InventoryRegistryContext";
 import { useAgent } from "@/context/AgentContext";
@@ -864,6 +871,13 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
   const [selectedAsset, setSelectedAsset] = useState<ITAsset | null>(null);
   const [violationsAsset, setViolationsAsset] = useState<ITAsset | null>(null);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const toggleSelect = (id: string) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
   const [assetStack, setAssetStack] = useState<ITAsset[]>([]);
   const { manualITAssets } = useInventoryRegistry();
   const { setSelectedEntity } = useAgent();
@@ -1053,12 +1067,46 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
           </div>
         )}
 
+        {/* Bulk selection bar */}
+        {selectedIds.size > 0 && (
+          <div className="flex items-center gap-3 px-4 py-2.5 bg-teal/10 border border-teal/30 rounded-lg mb-3">
+            <span className="text-xs font-medium text-foreground">
+              {selectedIds.size} {selectedIds.size === 1 ? "asset" : "assets"} selected
+            </span>
+            <button
+              onClick={() => {
+                setFilters({ tab: "groups", createFromAssets: [...selectedIds].join(",") });
+              }}
+              className="px-3 py-1.5 text-xs rounded bg-teal text-primary-foreground hover:opacity-90 font-medium"
+            >
+              Create group from selection
+            </button>
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              className="px-3 py-1.5 text-xs rounded border border-border text-muted-foreground hover:bg-secondary"
+            >
+              Clear
+            </button>
+          </div>
+        )}
+
         {/* Table */}
         <div className="bg-card rounded-lg border border-border overflow-hidden flex-1 min-h-0 flex flex-col">
           <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto scrollbar-thin">
             <table className="w-full text-xs">
               <thead className="bg-secondary/50">
                 <tr className="border-b border-border">
+                  <th className="w-8 py-2 px-2 text-center">
+                    <input
+                      type="checkbox"
+                      aria-label="Select all"
+                      checked={filtered.length > 0 && filtered.every(({ asset }) => selectedIds.has(asset.id))}
+                      onChange={(e) => {
+                        if (e.target.checked) setSelectedIds(new Set(filtered.map(({ asset }) => asset.id)));
+                        else setSelectedIds(new Set());
+                      }}
+                    />
+                  </th>
                   <th className="text-left py-2 px-3 font-medium text-muted-foreground">
                     <span className="inline-flex items-center gap-1">
                       <button
@@ -1109,6 +1157,7 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                     </button>
                   </th>
                   <th className="text-left py-2 px-2 font-medium text-muted-foreground">Owner</th>
+                  <th className="text-left py-2 px-2 font-medium text-muted-foreground">Groups</th>
                   <th
                     className="text-center py-2 px-2 font-medium text-muted-foreground"
                     title="Active policy violations on this asset"
@@ -1122,8 +1171,16 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                   <tr
                     key={asset.id}
                     onClick={() => openAssetDetail(asset)}
-                    className="border-b border-border hover:bg-secondary/30 cursor-pointer transition-colors"
+                    className={`border-b border-border hover:bg-secondary/30 cursor-pointer transition-colors ${selectedIds.has(asset.id) ? "bg-teal/5" : ""}`}
                   >
+                    <td className="w-8 py-2 px-2 text-center" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        aria-label={`Select ${asset.name}`}
+                        checked={selectedIds.has(asset.id)}
+                        onChange={() => toggleSelect(asset.id)}
+                      />
+                    </td>
                     <td className="py-2 px-3">
                       <div className="flex items-center gap-2">
                         <span>{assetTypeIcons[asset.type] || "📋"}</span>
@@ -1167,6 +1224,28 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                       />
                     </td>
                     <td className="py-2 px-2 text-muted-foreground">{asset.ownerTeam}</td>
+                    <td className="py-2 px-2" onClick={(e) => e.stopPropagation()}>
+                      {(() => {
+                        const gs = groupsForAsset(asset.id, mockGroups);
+                        if (gs.length === 0) return <span className="text-[10px] text-muted-foreground/50">-</span>;
+                        return (
+                          <div className="flex flex-wrap gap-1 max-w-[180px]">
+                            {gs.slice(0, 2).map((g) => (
+                              <span
+                                key={g.id}
+                                className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] bg-purple/10 text-purple truncate max-w-[110px]"
+                                title={g.name}
+                              >
+                                {g.name}
+                              </span>
+                            ))}
+                            {gs.length > 2 && (
+                              <span className="text-[9px] text-muted-foreground">+{gs.length - 2}</span>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </td>
                     <td className="py-2 px-2 text-center" onClick={(e) => e.stopPropagation()}>
                       {(() => {
                         const vs = getAssetViolations(asset, getIdentities(asset));
