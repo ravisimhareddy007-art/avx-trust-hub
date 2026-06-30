@@ -1,3 +1,4 @@
+import type { CryptoAsset } from "./mockData";
 // ─── IT Asset Model ──────────────────────────────────────────────────────────
 export interface ITAsset {
   id: string;
@@ -1781,6 +1782,11 @@ export interface DynamicGroup {
   id: string;
   name: string;
   type: "Dynamic" | "Manual";
+  // Model B: a group is composed of IT assets. assetIds are the members.
+  // objectIds are the underlying crypto objects of those assets (derived),
+  // kept for the object-level views and policy/scoring which operate on objects.
+  assetCount: number;
+  assetIds: string[];
   objectCount: number;
   objectIds: string[];
   conditions?: GroupCondition[];
@@ -1853,6 +1859,24 @@ export const mockGroups: DynamicGroup[] = [
       "k8s-003",
       "k8s-004",
     ],
+    assetIds: [
+      "it-pay-01",
+      "it-001",
+      "it-002",
+      "it-003",
+      "it-004",
+      "it-006",
+      "it-007",
+      "it-008",
+      "it-009",
+      "it-010",
+      "it-011",
+      "it-012",
+      "it-014",
+      "it-app-03",
+      "it-k8s-03",
+    ],
+    assetCount: 15,
     conditions: [
       { id: "c1", attribute: "Algorithm", operator: "equals", value: "RSA-2048", logic: "AND" },
       { id: "c2", attribute: "Environment", operator: "equals", value: "Production" },
@@ -1936,6 +1960,8 @@ export const mockGroups: DynamicGroup[] = [
     type: "Dynamic",
     objectCount: 12,
     objectIds: ["cert-001", "cert-008", "cert-009", "sshcert-002", "k8s-001", "k8s-002"],
+    assetIds: ["it-pay-01", "it-001", "it-002", "it-004", "it-007", "it-010"],
+    assetCount: 6,
     conditions: [{ id: "c1", attribute: "Days to Expiry", operator: "less_than", value: "30" }],
     conditionSummary: "All objects expiring within 30 days",
     riskScore: 89,
@@ -2009,6 +2035,8 @@ export const mockGroups: DynamicGroup[] = [
     type: "Dynamic",
     objectCount: 6,
     objectIds: ["ssh-001", "ssh-005", "secret-002"],
+    assetIds: ["it-003", "it-004", "it-009", "it-014", "it-app-03"],
+    assetCount: 5,
     conditions: [
       { id: "c1", attribute: "Has Owner", operator: "equals", value: "No", logic: "OR" },
       { id: "c2", attribute: "Status", operator: "equals", value: "Orphaned" },
@@ -2075,6 +2103,8 @@ export const mockGroups: DynamicGroup[] = [
     type: "Manual",
     objectCount: 8,
     objectIds: ["cert-001", "k8s-001", "enc-001", "secret-001"],
+    assetIds: ["it-pay-01", "it-001", "it-002", "it-003", "it-004", "it-007"],
+    assetCount: 6,
     riskScore: 62,
     policyCount: 3,
     policyCoverage: 88,
@@ -2256,3 +2286,96 @@ export const conditionAttributes = {
     { label: "Has Owner", values: ["Yes", "No"] },
   ],
 };
+
+// ── Group membership (Model B: groups are over IT assets) ───────────────────
+// An asset belongs to a dynamic group when ANY of its crypto objects matches
+// the object-level conditions. These helpers are the single source of truth.
+
+export function evalObjectCondition(o: CryptoAsset, c: GroupCondition): boolean | null {
+  if (!c.value) return null;
+  const eq = (actual: string | undefined) => (c.operator === "not_equals" ? actual !== c.value : actual === c.value);
+  switch (c.attribute) {
+    case "Algorithm":
+      return eq(o.algorithm);
+    case "Environment":
+      return eq(o.environment);
+    case "Object Type":
+      return eq(o.type);
+    case "Issuing CA":
+      return eq(o.caIssuer);
+    case "Key Size":
+      return eq(o.keyLength);
+    case "Owner Team":
+      return eq(o.team);
+    case "PQC Risk":
+      return eq(o.pqcRisk);
+    case "Status":
+      return eq(o.status);
+    case "Discovery Source":
+      return eq(o.discoverySource);
+    case "Has Owner": {
+      const hasOwner = o.owner !== "Unassigned";
+      return c.value === "Yes" ? hasOwner : !hasOwner;
+    }
+    case "Cloud Provider": {
+      const slug = (o.infrastructure || "").toLowerCase();
+      const provider = slug.startsWith("aws")
+        ? "AWS"
+        : slug.startsWith("azure")
+          ? "Azure"
+          : slug.startsWith("gcp")
+            ? "GCP"
+            : slug.startsWith("on-prem") || slug.startsWith("on_prem")
+              ? "On-prem"
+              : "";
+      return eq(provider);
+    }
+    case "Days to Expiry": {
+      const d = o.daysToExpiry;
+      if (c.value === "Expired") return d < 0;
+      if (c.value === "No expiry") return false;
+      const n = c.value === "< 7" ? 7 : c.value === "< 30" ? 30 : c.value === "< 90" ? 90 : NaN;
+      return Number.isNaN(n) ? null : d >= 0 && d < n;
+    }
+    default:
+      return null;
+  }
+}
+
+// Does one object satisfy the whole condition set (honoring per-condition AND/OR)?
+function objectMatchesConditions(o: CryptoAsset, conditions: GroupCondition[]): boolean {
+  const evaluable = conditions.filter((c) => c.value);
+  if (evaluable.length === 0) return false;
+  const usesOr = evaluable.some((c) => c.logic === "OR");
+  const results = evaluable.map((c) => evalObjectCondition(o, c)).filter((r) => r !== null) as boolean[];
+  if (results.length === 0) return false;
+  return usesOr ? results.some(Boolean) : results.every(Boolean);
+}
+
+// Assets whose ANY object matches. Returns the matching assets and the union of
+// their matching object ids. allObjects is injected to avoid a circular import.
+export function matchAssetsByObjectConditions(
+  conditions: GroupCondition[],
+  allObjects: CryptoAsset[],
+): { assetIds: string[]; objectIds: string[] } {
+  const objById = new Map(allObjects.map((o) => [o.id, o]));
+  const assetIds: string[] = [];
+  const objectIds = new Set<string>();
+  for (const asset of mockITAssets) {
+    let assetMatched = false;
+    for (const oid of asset.cryptoObjectIds) {
+      const o = objById.get(oid);
+      if (o && objectMatchesConditions(o, conditions)) {
+        assetMatched = true;
+        objectIds.add(oid);
+      }
+    }
+    if (assetMatched) assetIds.push(asset.id);
+  }
+  return { assetIds, objectIds: [...objectIds] };
+}
+
+// Which groups does an asset belong to? Used for the asset table Groups column.
+export function groupsForAsset(assetId: string, groups: DynamicGroup[]): DynamicGroup[] {
+  return groups.filter((g) => g.assetIds.includes(assetId));
+}
