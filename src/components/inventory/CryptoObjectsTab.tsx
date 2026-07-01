@@ -2273,7 +2273,11 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                     </span>
                   )}
                 </button>
-                <span className="text-[10px] text-muted-foreground ml-auto">{filtered.length} identities</span>
+                <span className="text-[10px] text-muted-foreground ml-auto tabular-nums">
+                  {navFilters.navTotal
+                    ? <>Showing <span className="font-semibold text-foreground">{filtered.length}</span> of {Number(navFilters.navTotal).toLocaleString()}</>
+                    : <>{filtered.length} identities</>}
+                </span>
                 <button
                   onClick={() => {
                     exportObjectsCsv(filtered, totalActive > 0 ? "filtered" : "all");
