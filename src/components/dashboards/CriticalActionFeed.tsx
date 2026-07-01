@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Shield, Key, Lock, Fingerprint, Globe, AlertTriangle, Clock, Sparkles, Check, ChevronDown, ChevronUp, Layers, Ticket, Lock as LockIcon, Atom } from 'lucide-react';
+import { Shield, Key, Lock, AlertTriangle, Clock, Check, ChevronDown, ChevronUp, Ticket, Atom, Boxes, Building2, Inbox, ArrowUpRight, Radar } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDashboard, feedItemToDriver } from '@/context/DashboardContext';
 import { useNav } from '@/context/NavigationContext';
@@ -7,128 +7,196 @@ import { VIOLATION_FILTERS } from '@/lib/filters/cryptoFilters';
 
 const fmt = (n: number) => n.toLocaleString();
 
-interface RemediationGroup {
-  ca: string;
-  caAccount: string;
+// One ticket is created per group row. Counts within a dimension sum to the item total.
+interface TicketGroup {
+  name: string;
   count: number;
-  environment: string;
-  teams: string[];
-  method: 'acme-auto' | 'est-semi' | 'manual';
-  requiresApproval: boolean;
-  workflowTemplate: string;
+  team: string;
 }
+
+type GroupDimension = 'objectType' | 'inventoryGroup' | 'ticketingTarget';
 
 interface ActionItem {
   id: string;
-  category: 'Certs' | 'SSH' | 'Secrets' | 'Code Sign' | 'K8s' | 'PQC';
+  category: 'Certs' | 'SSH' | 'Secrets' | 'PQC';
   icon: React.ComponentType<{ className?: string }>;
   severity: 'P1' | 'P2' | 'P3';
   title: string;
   detail: string;
-  aiPlan: string;
-  approveSummary: string;
+  filterId?: string;               // drill target in inventory
   ageMins: number;
-  remediationGroups?: RemediationGroup[];
-  licenseGated?: { module: string; reason: string };
+  groups: Record<GroupDimension, TicketGroup[]>;
   isPqc?: boolean;
 }
 
+// MVP-discoverable violations only. No code-repo secret scanning, code signing, or K8s remediation.
 const FEED: ActionItem[] = [
   {
     id: '1', category: 'Certs', icon: Shield, severity: 'P1',
-    title: `${fmt(VIOLATION_FILTERS.cert_expiring_7d.enterpriseCount)} certificates expiring in 7 days — no auto-renewal`,
-    detail: 'Wildcard + edge certs · auto-renewal off · dependent services impacted',
-    aiPlan: 'Renew expiring wildcard certs via DigiCert G2. New certs valid 90 days. Will be deployed to dependent services automatically.',
-    approveSummary: `Renew ${fmt(VIOLATION_FILTERS.cert_expiring_7d.enterpriseCount)} expiring certs and roll to dependent services.`,
+    title: `${fmt(VIOLATION_FILTERS.cert_expiring_7d.enterpriseCount)} certificates expiring in 7 days`,
+    detail: 'No auto-renewal configured · dependent services impacted',
+    filterId: 'cert_expiring_7d',
     ageMins: 12,
+    groups: {
+      objectType: [
+        { name: 'Wildcard TLS', count: 42, team: 'infra-ops' },
+        { name: 'Leaf / edge TLS', count: 120, team: 'app-team' },
+        { name: 'Internal mTLS', count: 24, team: 'platform-eng' },
+      ],
+      inventoryGroup: [
+        { name: 'Payments Platform', count: 68, team: 'payments-eng' },
+        { name: 'Public Web Estate', count: 90, team: 'app-team' },
+        { name: 'Corp Internal', count: 28, team: 'infra-ops' },
+      ],
+      ticketingTarget: [
+        { name: 'ServiceNow · Infra-Ops', count: 110, team: 'infra-ops' },
+        { name: 'ServiceNow · AppSec', count: 76, team: 'appsec' },
+      ],
+    },
+  },
+  {
+    id: 'expired', category: 'Certs', icon: Shield, severity: 'P1',
+    title: `${fmt(VIOLATION_FILTERS.cert_expired.enterpriseCount)} certificates already expired`,
+    detail: 'Live endpoints · immediate outage and trust-failure risk',
+    filterId: 'cert_expired',
+    ageMins: 40,
+    groups: {
+      objectType: [
+        { name: 'Leaf / edge TLS', count: 40, team: 'app-team' },
+        { name: 'Internal mTLS', count: 8, team: 'platform-eng' },
+      ],
+      inventoryGroup: [
+        { name: 'Public Web Estate', count: 34, team: 'app-team' },
+        { name: 'Corp Internal', count: 14, team: 'infra-ops' },
+      ],
+      ticketingTarget: [
+        { name: 'ServiceNow · AppSec', count: 48, team: 'appsec' },
+      ],
+    },
+  },
+  {
+    id: '6', category: 'Certs', icon: Shield, severity: 'P2',
+    title: `${fmt(VIOLATION_FILTERS.cert_weak_algo.enterpriseCount)} certificates use weak algorithms`,
+    detail: 'RSA-1024 / SHA-1 · re-issue on compliant algorithm required',
+    filterId: 'cert_weak_algo',
+    ageMins: 240,
+    groups: {
+      objectType: [
+        { name: 'SHA-1 signed', count: 30, team: 'infra-platform' },
+        { name: 'RSA-1024 keys', count: 22, team: 'infra-platform' },
+      ],
+      inventoryGroup: [
+        { name: 'Corp PKI', count: 34, team: 'infra-platform' },
+        { name: 'Dev Sandbox', count: 18, team: 'dev-platform' },
+      ],
+      ticketingTarget: [
+        { name: 'ServiceNow · Infra-Platform', count: 52, team: 'infra-platform' },
+      ],
+    },
   },
   {
     id: '3', category: 'SSH', icon: Key, severity: 'P1',
     title: `${fmt(VIOLATION_FILTERS.ssh_suspicious.enterpriseCount)} suspicious SSH keys with shell access`,
     detail: 'Anomalous login patterns · production hosts',
-    aiPlan: `Bulk quarantine ${fmt(VIOLATION_FILTERS.ssh_suspicious.enterpriseCount)} suspicious SSH keys for 30d before deletion. Notify last-known accessing IPs.`,
-    approveSummary: `Quarantine ${fmt(VIOLATION_FILTERS.ssh_suspicious.enterpriseCount)} suspicious keys for 30 days.`,
+    filterId: 'ssh_suspicious',
     ageMins: 95,
-    remediationGroups: [
-      { ca: 'N/A', caAccount: 'ssh-prod', count: 28, environment: 'Production', teams: ['infra-ops'], method: 'manual', requiresApproval: true, workflowTemplate: 'SSH Key Rotation' },
-      { ca: 'N/A', caAccount: 'ssh-staging', count: 16, environment: 'Staging', teams: ['dev-platform'], method: 'manual', requiresApproval: false, workflowTemplate: 'SSH Key Rotation' },
-    ],
+    groups: {
+      objectType: [
+        { name: 'User keys', count: 28, team: 'infra-ops' },
+        { name: 'Host / service keys', count: 16, team: 'dev-platform' },
+      ],
+      inventoryGroup: [
+        { name: 'Production Fleet', count: 30, team: 'infra-ops' },
+        { name: 'Staging', count: 14, team: 'dev-platform' },
+      ],
+      ticketingTarget: [
+        { name: 'ServiceNow · Infra-Ops', count: 44, team: 'infra-ops' },
+      ],
+    },
   },
   {
-    id: '4', category: 'Secrets', icon: Lock, severity: 'P1',
-    title: `${fmt(VIOLATION_FILTERS.secret_exposed_code.enterpriseCount)} secrets exposed in code repositories`,
-    detail: `GitHub + GitLab scan · ${fmt(VIOLATION_FILTERS.secret_hardcoded_24h.enterpriseCount)} hardcoded in last 24h`,
-    aiPlan: `Open PRs to replace hardcoded secrets with Vault references. Rotate all ${fmt(VIOLATION_FILTERS.secret_exposed_code.enterpriseCount)} exposed values. Notify last-author per repo.`,
-    approveSummary: `Rotate all ${fmt(VIOLATION_FILTERS.secret_exposed_code.enterpriseCount)} secrets and open replacement PRs.`,
-    ageMins: 130,
-    remediationGroups: [
-      { ca: 'HashiCorp Vault', caAccount: 'vault-prod', count: 2150, environment: 'Production', teams: ['platform-eng', 'data-eng'], method: 'acme-auto', requiresApproval: true, workflowTemplate: 'Secret Rotation' },
-      { ca: 'AWS Secrets Manager', caAccount: 'sm-app', count: 1430, environment: 'Production + Staging', teams: ['app-team'], method: 'acme-auto', requiresApproval: true, workflowTemplate: 'Secret Rotation' },
-      { ca: 'Azure Key Vault', caAccount: 'kv-shared', count: 640, environment: 'Dev + Staging', teams: ['dev-platform'], method: 'acme-auto', requiresApproval: false, workflowTemplate: 'Secret Rotation' },
-    ],
-  },
-  {
-    id: '5', category: 'K8s', icon: Globe, severity: 'P2',
-    title: '1,247 K8s workload cert renewals failing',
-    detail: 'cert-manager errors · payments + api namespaces',
-    aiPlan: 'Diagnose cert-manager: ACME challenge failing on 3 ingress paths. Patch ingress annotations + force-renew 1,247 certs.',
-    approveSummary: 'Patch ingress and force-renew 1,247 certs.',
-    ageMins: 180,
-  },
-  {
-    id: '6', category: 'Certs', icon: Shield, severity: 'P2',
-    title: `${fmt(VIOLATION_FILTERS.cert_weak_algo.enterpriseCount)} certificates use weak algorithms`,
-    detail: 'RSA-1024 / SHA-1 · NIST PQC migration required',
-    aiPlan: `Stage PQC migration: re-issue ${fmt(VIOLATION_FILTERS.cert_weak_algo.enterpriseCount)} certs with ML-KEM-768 hybrid. Roll in waves, auto-rollback on TLS handshake failure.`,
-    approveSummary: `Begin staged PQC migration of ${fmt(VIOLATION_FILTERS.cert_weak_algo.enterpriseCount)} certs.`,
-    ageMins: 240,
-    remediationGroups: [
-      { ca: 'DigiCert CertCentral', caAccount: 'payments-prod', count: 18, environment: 'Production', teams: ['payments-eng', 'billing-eng'], method: 'acme-auto', requiresApproval: true, workflowTemplate: 'Renew Certificate' },
-      { ca: 'Microsoft ADCS', caAccount: 'corp-pki', count: 22, environment: 'Production + Staging', teams: ['infra-platform'], method: 'est-semi', requiresApproval: true, workflowTemplate: 'Re-enroll Certificate' },
-      { ca: "Let's Encrypt", caAccount: 'le-prod', count: 12, environment: 'Dev + Staging', teams: ['dev-platform'], method: 'acme-auto', requiresApproval: false, workflowTemplate: 'Renew Certificate' },
-    ],
-  },
-  {
-    id: '7', category: 'Code Sign', icon: Fingerprint, severity: 'P2',
-    title: '142 unsigned production builds detected',
-    detail: 'Pipeline bypass · last 7 days · 3 release branches',
-    aiPlan: 'Block 142 unsigned artifacts at registry. Alert release engineers. Add policy gate to CI for the 3 affected branches.',
-    approveSummary: 'Block unsigned builds and gate CI on 3 branches.',
-    ageMins: 320,
-    licenseGated: {
-      module: 'Code Signing+',
-      reason: 'Automated remediation requires a Code Signing+ module license. You can still create a ticket for your release engineering team to action manually.',
+    id: '9', category: 'SSH', icon: Key, severity: 'P3',
+    title: `${fmt(VIOLATION_FILTERS.ssh_rogue.enterpriseCount)} rogue SSH keys not provisioned by platform`,
+    detail: 'Found in filesystem and vault keystores · move under managed SSH CA',
+    filterId: 'ssh_rogue',
+    ageMins: 720,
+    groups: {
+      objectType: [
+        { name: 'Filesystem keys', count: 12, team: 'infra-ops' },
+        { name: 'Vault-stored keys', count: 6, team: 'platform-eng' },
+      ],
+      inventoryGroup: [
+        { name: 'Production Fleet', count: 11, team: 'infra-ops' },
+        { name: 'Corp Internal', count: 7, team: 'platform-eng' },
+      ],
+      ticketingTarget: [
+        { name: 'ServiceNow · Infra-Ops', count: 18, team: 'infra-ops' },
+      ],
     },
   },
   {
     id: '8', category: 'Secrets', icon: Lock, severity: 'P2',
-    title: `${fmt(VIOLATION_FILTERS.secret_unrotated_90d.enterpriseCount)} secrets not rotated >90 days`,
-    detail: 'Vault + AWS Secrets Manager · production scope',
-    aiPlan: `Schedule rotation of ${fmt(VIOLATION_FILTERS.secret_unrotated_90d.enterpriseCount)} secrets grouped by vault. Notify owning teams 24h before each batch.`,
-    approveSummary: `Rotate ${fmt(VIOLATION_FILTERS.secret_unrotated_90d.enterpriseCount)} secrets grouped by vault.`,
+    title: `${fmt(VIOLATION_FILTERS.secret_unrotated_90d.enterpriseCount)} secrets not rotated in 90+ days`,
+    detail: 'HashiCorp Vault, CyberArk Conjur, and HSM scope · production',
+    filterId: 'secret_unrotated_90d',
     ageMins: 480,
-    remediationGroups: [
-      { ca: 'HashiCorp Vault', caAccount: 'vault-prod', count: 620, environment: 'Production', teams: ['platform-eng'], method: 'acme-auto', requiresApproval: true, workflowTemplate: 'API Key Rotation' },
-      { ca: 'AWS Secrets Manager', caAccount: 'sm-prod', count: 410, environment: 'Production', teams: ['cloud-eng'], method: 'acme-auto', requiresApproval: true, workflowTemplate: 'API Key Rotation' },
-      { ca: 'Azure Key Vault', caAccount: 'kv-prod', count: 220, environment: 'Production', teams: ['cloud-eng'], method: 'acme-auto', requiresApproval: false, workflowTemplate: 'API Key Rotation' },
-    ],
+    groups: {
+      objectType: [
+        { name: 'Vault-stored', count: 720, team: 'platform-eng' },
+        { name: 'Conjur-stored', count: 330, team: 'cloud-eng' },
+        { name: 'HSM-backed', count: 200, team: 'security-eng' },
+      ],
+      inventoryGroup: [
+        { name: 'Platform Services', count: 620, team: 'platform-eng' },
+        { name: 'Cloud Estate', count: 410, team: 'cloud-eng' },
+        { name: 'Data Platform', count: 220, team: 'data-eng' },
+      ],
+      ticketingTarget: [
+        { name: 'ServiceNow · Platform-Eng', count: 620, team: 'platform-eng' },
+        { name: 'ServiceNow · Cloud-Eng', count: 630, team: 'cloud-eng' },
+      ],
+    },
   },
   {
-    id: '9', category: 'SSH', icon: Key, severity: 'P3',
-    title: `${fmt(VIOLATION_FILTERS.ssh_rogue.enterpriseCount)} rogue SSH keys — not provisioned by platform`,
-    detail: 'Filesystem & vault keystores · move to managed SSH CA',
-    aiPlan: `Quarantine ${fmt(VIOLATION_FILTERS.ssh_rogue.enterpriseCount)} rogue keys. Re-issue under managed CA after owner verification.`,
-    approveSummary: `Quarantine ${fmt(VIOLATION_FILTERS.ssh_rogue.enterpriseCount)} rogue keys (windowed).`,
-    ageMins: 720,
+    id: 'orphaned', category: 'Secrets', icon: Lock, severity: 'P3',
+    title: `${fmt(VIOLATION_FILTERS.secret_orphaned.enterpriseCount)} orphaned secrets with no active owner`,
+    detail: 'No active owner · rotation and revocation blocked until reassigned',
+    filterId: 'secret_orphaned',
+    ageMins: 1440,
+    groups: {
+      objectType: [
+        { name: 'Vault-stored', count: 260, team: 'platform-eng' },
+        { name: 'Conjur-stored', count: 185, team: 'cloud-eng' },
+      ],
+      inventoryGroup: [
+        { name: 'Platform Services', count: 240, team: 'platform-eng' },
+        { name: 'Cloud Estate', count: 205, team: 'cloud-eng' },
+      ],
+      ticketingTarget: [
+        { name: 'ServiceNow · Platform-Eng', count: 445, team: 'platform-eng' },
+      ],
+    },
   },
   {
     id: 'pqc-1', category: 'PQC', icon: Atom, severity: 'P2',
     title: '847 production certs use RSA-2048 and expire after 2030',
-    detail: 'DigiCert · payments team · post-NIST-deadline exposure',
-    aiPlan: 'Generate ML-KEM-768 hybrid migration plan for 847 certs. Group by CA account and team. Submit to QTH queue for staged rollout.',
-    approveSummary: 'Add 847 quantum-vulnerable certs to QTH migration queue.',
+    detail: 'Post-NIST-deadline exposure · deprecate by 2030, disallow by 2035',
+    filterId: 'cert_weak_algo',
     ageMins: 60,
     isPqc: true,
+    groups: {
+      objectType: [
+        { name: 'RSA-2048 TLS', count: 690, team: 'payments-eng' },
+        { name: 'RSA-2048 signing', count: 157, team: 'security-eng' },
+      ],
+      inventoryGroup: [
+        { name: 'Payments Platform', count: 520, team: 'payments-eng' },
+        { name: 'Public Web Estate', count: 327, team: 'app-team' },
+      ],
+      ticketingTarget: [
+        { name: 'ServiceNow · QTH Migration Queue', count: 847, team: 'crypto-eng' },
+      ],
+    },
   },
 ];
 
@@ -138,11 +206,25 @@ const SEV_STYLES: Record<ActionItem['severity'], string> = {
   P3: 'bg-purple/15 text-purple border-purple/30',
 };
 
-const METHOD_STYLES: Record<RemediationGroup['method'], { label: string; cls: string }> = {
-  'acme-auto':  { label: 'ACME auto', cls: 'bg-teal/15 text-teal' },
-  'est-semi':   { label: 'EST semi',  cls: 'bg-amber/15 text-amber' },
-  'manual':     { label: 'Manual',    cls: 'bg-purple/15 text-purple-light' },
+// Provenance: which MVP discovery method surfaced this class of finding.
+const CATEGORY_SOURCE: Record<ActionItem['category'], string> = {
+  Certs:   'CA Scan',
+  SSH:     'Network Scan',
+  Secrets: 'Key Store Discovery',
+  PQC:     'CBOM Ingestion',
 };
+
+const SEV_TICKET_PRIORITY: Record<ActionItem['severity'], string> = {
+  P1: 'P1 · Critical',
+  P2: 'P2 · High',
+  P3: 'P3 · Moderate',
+};
+
+const DIMENSIONS: { key: GroupDimension; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { key: 'objectType',     label: 'Crypto object type', icon: Boxes },
+  { key: 'inventoryGroup', label: 'Inventory group',    icon: Building2 },
+  { key: 'ticketingTarget',label: 'Ticketing target',   icon: Inbox },
+];
 
 function ageLabel(mins: number) {
   if (mins < 60) return `${mins}m`;
@@ -150,28 +232,27 @@ function ageLabel(mins: number) {
   return `${Math.floor(mins / 1440)}d`;
 }
 
-type FilterKey = 'All' | 'Certificates' | 'Secrets' | 'SSH Keys' | 'Infrastructure' | 'Quantum';
+type FilterKey = 'All' | 'Certificates' | 'Secrets' | 'SSH Keys' | 'Quantum';
 
 const FILTER_MAP: Record<FilterKey, ActionItem['category'][] | null> = {
   'All': null,
   'Certificates': ['Certs'],
   'Secrets': ['Secrets'],
   'SSH Keys': ['SSH'],
-  'Infrastructure': ['K8s', 'Code Sign'],
   'Quantum': ['PQC'],
 };
 
-const FILTERS: FilterKey[] = ['All', 'Certificates', 'Secrets', 'SSH Keys', 'Infrastructure', 'Quantum'];
+const FILTERS: FilterKey[] = ['All', 'Certificates', 'SSH Keys', 'Secrets', 'Quantum'];
 
 export default function CriticalActionFeed() {
   const { hoveredDriver, resolvedFeedItems, resolveFeedItem } = useDashboard();
-  const { setCurrentPage } = useNav();
+  const { setCurrentPage, setFilters } = useNav();
   const [expanded, setExpanded] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterKey>('All');
+  const [groupBy, setGroupBy] = useState<GroupDimension>('objectType');
 
-  // Per-filter counts for chip badges (computed once, ignores filter state)
   const counts = useMemo(() => {
-    const c: Record<FilterKey, number> = { 'All': 0, 'Certificates': 0, 'Secrets': 0, 'SSH Keys': 0, 'Infrastructure': 0, 'Quantum': 0 };
+    const c: Record<FilterKey, number> = { 'All': 0, 'Certificates': 0, 'Secrets': 0, 'SSH Keys': 0, 'Quantum': 0 };
     FEED.forEach(item => {
       c['All']++;
       (Object.keys(FILTER_MAP) as FilterKey[]).forEach(k => {
@@ -182,7 +263,6 @@ export default function CriticalActionFeed() {
     return c;
   }, []);
 
-  // Apply filter, then sort: pending first, queued/resolved at bottom (preserving impact×urgency order within)
   const items = useMemo(() => {
     const cats = FILTER_MAP[filter];
     const filtered = cats ? FEED.filter(i => cats.includes(i.category)) : FEED;
@@ -197,24 +277,21 @@ export default function CriticalActionFeed() {
     ];
   }, [hoveredDriver, resolvedFeedItems, filter]);
 
-  const handleApprove = (item: ActionItem) => {
+  const drillToInventory = (filterId?: string) => {
+    setFilters({ tab: 'identities', filterId: filterId || '' });
+    setCurrentPage('inventory');
+  };
+
+  const createTickets = (item: ActionItem) => {
+    const groups = item.groups[groupBy];
     resolveFeedItem(item.id);
     setExpanded(null);
-    if (item.licenseGated) {
-      const ticketId = `TKT-${1000 + Number(item.id) * 37}`;
-      toast.success(`Ticket ${ticketId} created`, {
-        description: `Assigned to release engineering · ${item.licenseGated.module} not licensed`,
-        action: { label: 'Open Tickets', onClick: () => setCurrentPage('tickets') },
-      });
-      return;
-    }
-    const groupCount = item.remediationGroups?.length ?? 1;
     toast.success(
-      groupCount > 1
-        ? `${groupCount} workflow requests submitted`
-        : 'Submitted to workflow queue',
+      groups.length > 1
+        ? `${groups.length} ServiceNow tickets created`
+        : 'ServiceNow ticket created',
       {
-        description: 'View in Tickets',
+        description: `Grouped by ${DIMENSIONS.find(d => d.key === groupBy)!.label.toLowerCase()} · view in Tickets`,
         action: { label: 'Open Tickets', onClick: () => setCurrentPage('tickets') },
       },
     );
@@ -227,13 +304,12 @@ export default function CriticalActionFeed() {
           <div className="flex items-center gap-2 min-w-0">
             <AlertTriangle className="w-4 h-4 text-coral" />
             <h2 className="text-sm font-semibold text-foreground">Critical Action Feed</h2>
-            <span className="truncate text-[10px] text-muted-foreground">· ranked by impact × urgency · click row to inspect</span>
+            <span className="truncate text-[10px] text-muted-foreground">· ranked by impact × urgency · click a row to raise tickets</span>
           </div>
           <span className="text-[10px] text-muted-foreground">
             {filter === 'All' ? `${FEED.length} items` : `${items.length} of ${FEED.length}`}
           </span>
         </div>
-        {/* Always-visible filter chips */}
         <div className="flex items-center gap-1 flex-wrap">
           {FILTERS.map(f => {
             const active = filter === f;
@@ -248,7 +324,7 @@ export default function CriticalActionFeed() {
                 }`}
               >
                 {f}
-                  <span className={`min-w-4 text-center text-[9px] px-1 rounded ${active ? 'bg-primary-foreground/20' : 'bg-background/60'}`}>
+                <span className={`min-w-4 text-center text-[9px] px-1 rounded ${active ? 'bg-primary-foreground/20' : 'bg-background/60'}`}>
                   {counts[f]}
                 </span>
               </button>
@@ -271,6 +347,8 @@ export default function CriticalActionFeed() {
             const Icon = item.icon;
             const isExpanded = expanded === item.id;
             const isQueued = item.isQueued;
+            const groups = item.groups[groupBy];
+            const totalObjects = groups.reduce((s, g) => s + g.count, 0);
 
             return (
               <li
@@ -300,19 +378,12 @@ export default function CriticalActionFeed() {
                       <span className="text-[9.5px] text-muted-foreground flex items-center gap-0.5">
                         <Clock className="w-2.5 h-2.5" /> {ageLabel(item.ageMins)} ago
                       </span>
-                      {item.remediationGroups && !isQueued && (
-                        <span className="text-[9.5px] text-purple-light flex items-center gap-0.5">
-                          <Layers className="w-2.5 h-2.5" /> {item.remediationGroups.length}
-                        </span>
-                      )}
-                      {item.licenseGated && !isQueued && (
-                        <span className="text-[9.5px] font-semibold px-1.5 py-0.5 rounded bg-amber/15 text-amber border border-amber/30 flex items-center gap-0.5">
-                          <LockIcon className="w-2.5 h-2.5" /> Manual ticket only
-                        </span>
-                      )}
+                      <span className="text-[9.5px] text-muted-foreground/70 flex items-center gap-0.5" title="Discovery source">
+                        <Radar className="w-2.5 h-2.5" /> {CATEGORY_SOURCE[item.category]}
+                      </span>
                       {isQueued && (
                         <span className="text-[9.5px] font-semibold px-1.5 py-0.5 rounded bg-teal/15 text-teal flex items-center gap-1">
-                          <Check className="w-2.5 h-2.5" /> {item.licenseGated ? 'Ticket created' : 'Queued'}
+                          <Check className="w-2.5 h-2.5" /> Tickets raised
                         </span>
                       )}
                     </div>
@@ -326,133 +397,98 @@ export default function CriticalActionFeed() {
                   )}
                 </button>
 
-                {/* Expanded AI execution panel */}
-                {isExpanded && !isQueued && item.licenseGated && (
-                  <div className="px-5 pb-3 ml-10 animate-in fade-in slide-in-from-top-1 duration-200">
-                    <div className="rounded-md bg-amber/5 border border-amber/30 p-3">
-                      <p className="text-[9px] uppercase tracking-wider text-amber font-semibold mb-1 flex items-center gap-1">
-                        <LockIcon className="w-2.5 h-2.5" /> {item.licenseGated.module} not licensed
-                      </p>
-                      <p className="text-[11px] text-foreground leading-snug mb-2.5">{item.licenseGated.reason}</p>
-                      <div className="rounded border border-border bg-card p-2.5 mb-2.5">
-                        <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">Ticket will be pre-filled with</p>
-                        <ul className="text-[10.5px] text-foreground space-y-0.5">
-                          <li>• <span className="text-muted-foreground">Title:</span> {item.title}</li>
-                          <li>• <span className="text-muted-foreground">Context:</span> {item.detail}</li>
-                          <li>• <span className="text-muted-foreground">Suggested action:</span> {item.approveSummary}</li>
-                          <li>• <span className="text-muted-foreground">Assignee:</span> Release Engineering</li>
-                        </ul>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleApprove(item)}
-                          className="flex-1 flex items-center justify-center gap-1.5 text-[11px] font-semibold py-1.5 rounded-md bg-amber text-primary-foreground hover:opacity-90"
-                        >
-                          <Ticket className="w-3 h-3" /> Create ticket
-                        </button>
-                        <button
-                          onClick={() => { setExpanded(null); toast.info('Contact your account manager to enable Code Signing+'); }}
-                          className="text-[11px] font-medium px-3 py-1.5 rounded-md border border-amber/40 text-amber hover:bg-amber/10"
-                        >
-                          Request module
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {isExpanded && !isQueued && !item.licenseGated && (
+                {isExpanded && !isQueued && (
                   <div className="px-5 pb-3 ml-10 animate-in fade-in slide-in-from-top-1 duration-200">
                     <div className="rounded-md bg-secondary/40 border border-teal/20 p-3">
-                      <p className="text-[9px] uppercase tracking-wider text-teal font-semibold mb-1 flex items-center gap-1">
-                        <Sparkles className="w-2.5 h-2.5" /> What AI will do
-                      </p>
-                      <p className="text-[11px] text-foreground leading-snug mb-2">{item.aiPlan}</p>
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-[9px] uppercase tracking-wider text-teal font-semibold flex items-center gap-1">
+                          <Ticket className="w-2.5 h-2.5" /> Create remediation tickets
+                        </p>
+                        <button
+                          onClick={() => drillToInventory(item.filterId)}
+                          className="text-[10px] text-muted-foreground hover:text-teal flex items-center gap-0.5"
+                        >
+                          View in inventory <ArrowUpRight className="w-2.5 h-2.5" />
+                        </button>
+                      </div>
 
-                      {item.remediationGroups ? (
-                        <>
-                          <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5 mt-2">
-                            Remediation groups · one workflow request per row
-                          </p>
-                          <div className="rounded border border-border overflow-hidden mb-2.5 bg-card">
-                            <table className="w-full text-[10px]">
-                              <thead className="bg-secondary/40">
-                                <tr className="text-muted-foreground">
-                                  <th className="text-left px-2 py-1.5 font-medium">CA / Store</th>
-                                  <th className="text-left px-2 py-1.5 font-medium">Account</th>
-                                  <th className="text-right px-2 py-1.5 font-medium">Count</th>
-                                  <th className="text-left px-2 py-1.5 font-medium">Environment</th>
-                                  <th className="text-left px-2 py-1.5 font-medium">Teams</th>
-                                  <th className="text-left px-2 py-1.5 font-medium">Method</th>
-                                  <th className="text-left px-2 py-1.5 font-medium">Approval</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {item.remediationGroups.map((g, i) => {
-                                  const m = METHOD_STYLES[g.method];
-                                  return (
-                                    <tr key={i} className="border-t border-border">
-                                      <td className="px-2 py-1.5 text-foreground font-medium">{g.ca}</td>
-                                      <td className="px-2 py-1.5 text-muted-foreground font-mono">{g.caAccount}</td>
-                                      <td className="px-2 py-1.5 text-foreground tabular-nums text-right">{g.count.toLocaleString()}</td>
-                                      <td className="px-2 py-1.5 text-muted-foreground">{g.environment}</td>
-                                      <td className="px-2 py-1.5 text-muted-foreground">{g.teams.join(', ')}</td>
-                                      <td className="px-2 py-1.5">
-                                        <span className={`text-[9px] px-1.5 py-0.5 rounded ${m.cls}`}>{m.label}</span>
-                                      </td>
-                                      <td className="px-2 py-1.5">
-                                        {g.requiresApproval
-                                          ? <span className="text-[9px] text-coral">Required</span>
-                                          : <span className="text-[9px] text-teal">Not required</span>}
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleApprove(item)}
-                              className="flex-1 text-[11px] font-semibold py-1.5 rounded-md bg-teal text-primary-foreground hover:bg-teal-light"
-                            >
-                              Submit as workflow requests →
-                            </button>
-                            <button
-                              onClick={() => setExpanded(null)}
-                              className="text-[11px] font-medium px-3 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary"
-                            >
-                              Review manually
-                            </button>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">You're approving</p>
-                          <p className="text-[11px] text-foreground leading-snug mb-2.5">{item.approveSummary}</p>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleApprove(item)}
-                              className="flex-1 text-[11px] font-semibold py-1.5 rounded-md bg-teal text-primary-foreground hover:bg-teal-light"
-                            >
-                              Approve & Execute
-                            </button>
-                            <button
-                              onClick={() => setExpanded(null)}
-                              className="text-[11px] font-medium px-3 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary"
-                            >
-                              Review manually
-                            </button>
-                          </div>
-                        </>
-                      )}
+                      {/* Grouping selector */}
+                      <div className="flex items-center gap-1.5 mb-2.5">
+                        <span className="text-[10px] text-muted-foreground">Group by</span>
+                        <div className="inline-flex rounded-md border border-border overflow-hidden">
+                          {DIMENSIONS.map(d => {
+                            const DIcon = d.icon;
+                            const active = groupBy === d.key;
+                            return (
+                              <button
+                                key={d.key}
+                                onClick={(e) => { e.stopPropagation(); setGroupBy(d.key); }}
+                                className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 transition-colors ${
+                                  active
+                                    ? 'bg-teal text-primary-foreground'
+                                    : 'bg-card text-muted-foreground hover:text-foreground'
+                                }`}
+                              >
+                                <DIcon className="w-2.5 h-2.5" /> {d.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* One ticket per group row */}
+                      <div className="rounded border border-border overflow-hidden mb-2.5 bg-card">
+                        <table className="w-full text-[10px]">
+                          <thead className="bg-secondary/40">
+                            <tr className="text-muted-foreground">
+                              <th className="text-left px-2 py-1.5 font-medium">Ticket group</th>
+                              <th className="text-right px-2 py-1.5 font-medium">Objects</th>
+                              <th className="text-left px-2 py-1.5 font-medium">Assignee team</th>
+                              <th className="text-left px-2 py-1.5 font-medium">Priority</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {groups.map((g, i) => (
+                              <tr key={i} className="border-t border-border">
+                                <td className="px-2 py-1.5 text-foreground font-medium">{g.name}</td>
+                                <td className="px-2 py-1.5 text-foreground tabular-nums text-right">{g.count.toLocaleString()}</td>
+                                <td className="px-2 py-1.5 text-muted-foreground font-mono">{g.team}</td>
+                                <td className="px-2 py-1.5">
+                                  <span className={`text-[9px] px-1.5 py-0.5 rounded border ${SEV_STYLES[item.severity]}`}>
+                                    {SEV_TICKET_PRIORITY[item.severity]}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <p className="text-[10.5px] text-foreground leading-snug mb-2.5">
+                        Creates <span className="font-semibold">{groups.length} ServiceNow {groups.length > 1 ? 'tickets' : 'ticket'}</span> covering <span className="font-semibold tabular-nums">{totalObjects.toLocaleString()}</span> objects. One ticket per group, assigned to the owning team.
+                      </p>
+
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => createTickets(item)}
+                          className="flex-1 flex items-center justify-center gap-1.5 text-[11px] font-semibold py-1.5 rounded-md bg-teal text-primary-foreground hover:bg-teal-light"
+                        >
+                          <Ticket className="w-3 h-3" /> Create {groups.length} {groups.length > 1 ? 'tickets' : 'ticket'}
+                        </button>
+                        <button
+                          onClick={() => setExpanded(null)}
+                          className="text-[11px] font-medium px-3 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
 
                 {isQueued && (
-                  <p className={`px-5 pb-2 ml-10 text-[10px] ${item.licenseGated ? 'text-amber' : 'text-teal'}`}>
-                    {item.licenseGated ? 'Manual ticket created' : 'Workflow request submitted'} · #TKT-{1000 + Number(item.id) * 37} · view in Tickets
+                  <p className="px-5 pb-2 ml-10 text-[10px] text-teal">
+                    Tickets raised in ServiceNow · #TKT-{1000 + (Number(item.id) || item.id.length) * 37} · view in Tickets
                   </p>
                 )}
               </li>
