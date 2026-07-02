@@ -225,6 +225,7 @@ interface Draft {
   assignee: string;
   description: string;
   remediation: string;
+  system: string;
 }
 
 function draftSummary(o: PoolObj): string {
@@ -271,14 +272,15 @@ function draftRemediation(id: string): string {
       return "Review and remediate per policy.";
   }
 }
-function buildDraft(o: PoolObj, system: string): Draft {
+function buildDraft(o: PoolObj): Draft {
   const v = VIOLATION_CATALOG[o.violationId];
   return {
     summary: draftSummary(o),
     priority: crsPriority(o.crs),
     assignee: o.assignee,
-    description: `Object: ${o.name} (${o.category}). Issue: ${o.issue}. CRS score: ${o.crs} (${crsPriority(o.crs)}). Owning team: ${o.assignee}. Discovered via ${v.source}. Violates policy "${v.policy}" (${v.framework}). Raise in ${system} per policy configuration.`,
+    description: `Object: ${o.name} (${o.category}). Issue: ${o.issue}. CRS score: ${o.crs} (${crsPriority(o.crs)}). Owning team: ${o.assignee}. Discovered via ${v.source}. Violates policy "${v.policy}" (${v.framework}).`,
     remediation: draftRemediation(o.violationId),
+    system: v.system,
   };
 }
 
@@ -321,14 +323,28 @@ export default function TicketTriageModal({
   const expanded = !scoped;
   const [tab, setTab] = useState<TabKey>(initialType);
   const [stage, setStage] = useState<"select" | "review">("select");
-  const [system, setSystem] = useState<string>(() =>
-    initialViolationId ? VIOLATION_CATALOG[initialViolationId].system : "ServiceNow",
-  );
   const [selected, setSelected] = useState<Set<string>>(
     () => new Set(initialViolationId ? POOL.filter((o) => o.violationId === initialViolationId).map((o) => o.id) : []),
   );
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [activeId, setActiveId] = useState<string>("");
+
+  const sysCounts = useMemo(() => {
+    const vals = Object.values(drafts);
+    return {
+      sn: vals.filter((d) => d.system === "ServiceNow").length,
+      jira: vals.filter((d) => d.system === "Jira").length,
+    };
+  }, [drafts]);
+
+  const setAllSystem = (s: string) =>
+    setDrafts((prev) => {
+      const n = { ...prev };
+      Object.keys(n).forEach((id) => {
+        n[id] = { ...n[id], system: s };
+      });
+      return n;
+    });
 
   const tabCounts = useMemo(() => {
     const c: Record<TabKey, number> = { All: POOL.length, Certs: 0, SSH: 0, Secrets: 0, PQC: 0 };
@@ -362,31 +378,11 @@ export default function TicketTriageModal({
   const enterReview = () => {
     const d: Record<string, Draft> = {};
     selectedObjs.forEach((o) => {
-      d[o.id] = buildDraft(o, system);
+      d[o.id] = buildDraft(o);
     });
     setDrafts(d);
     setActiveId(selectedObjs[0]?.id ?? "");
     setStage("review");
-  };
-
-  // Keep the target-system line in descriptions in sync if the user flips ITSM.
-  const changeSystem = (s: string) => {
-    setSystem(s);
-    setDrafts((prev) => {
-      const next = { ...prev };
-      Object.keys(next).forEach((id) => {
-        const o = POOL.find((p) => p.id === id);
-        if (o)
-          next[id] = {
-            ...next[id],
-            description: next[id].description.replace(
-              /Raise in \w+ per policy configuration\./,
-              `Raise in ${s} per policy configuration.`,
-            ),
-          };
-      });
-      return next;
-    });
   };
 
   const patch = (id: string, field: keyof Draft, value: string) =>
@@ -394,9 +390,11 @@ export default function TicketTriageModal({
 
   const submit = () => {
     const count = selectedObjs.length;
+    const sn = Object.values(drafts).filter((d) => d.system === "ServiceNow").length;
+    const jira = count - sn;
     onClose();
-    toast.success(count > 1 ? `${fmt(count)} ${system} tickets created` : `${system} ticket created`, {
-      description: "One ticket per crypto object · view in Tickets",
+    toast.success(count > 1 ? `${fmt(count)} tickets created` : "Ticket created", {
+      description: `${sn} in ServiceNow, ${jira} in Jira · one per crypto object`,
       action: { label: "Open Tickets", onClick: () => setCurrentPage("tickets") },
     });
   };
@@ -560,24 +558,26 @@ export default function TicketTriageModal({
 
         {stage === "review" && (
           <>
-            {/* ITSM selector */}
+            {/* System summary: defaults per policy, override per ticket */}
             <div className="flex items-center gap-3 px-5 py-2 border-b border-border bg-secondary/20">
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
                 Ticketing system
               </span>
-              <div className="inline-flex rounded-md border border-border overflow-hidden">
+              <span className="text-[10px] text-muted-foreground">defaults from each policy · override per ticket</span>
+              <span className="ml-auto flex items-center gap-2 text-[10px] text-muted-foreground">
+                <span className="text-foreground">
+                  {sysCounts.sn} ServiceNow · {sysCounts.jira} Jira
+                </span>
+                <span className="text-muted-foreground/50">set all:</span>
                 {ITSM_OPTIONS.map((s) => (
                   <button
                     key={s}
-                    onClick={() => changeSystem(s)}
-                    className={`text-[11px] font-medium px-3 py-1 transition-colors ${system === s ? "bg-teal text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground"}`}
+                    onClick={() => setAllSystem(s)}
+                    className="px-1.5 py-0.5 rounded border border-border hover:text-foreground hover:border-teal/40 transition-colors"
                   >
                     {s}
                   </button>
                 ))}
-              </div>
-              <span className="ml-auto text-[10px] text-muted-foreground">
-                {fmt(count)} tickets across {new Set(selectedObjs.map((o) => o.category)).size} types
               </span>
             </div>
 
@@ -599,7 +599,12 @@ export default function TicketTriageModal({
                           {o.crs}
                         </span>
                         <Icon className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                        <span className="text-[10.5px] font-mono text-foreground truncate">{o.name}</span>
+                        <span className="text-[10.5px] font-mono text-foreground truncate flex-1">{o.name}</span>
+                        {drafts[o.id] && (
+                          <span className="text-[8px] px-1 py-0.5 rounded bg-secondary text-muted-foreground flex-shrink-0">
+                            {drafts[o.id].system === "ServiceNow" ? "SNOW" : "Jira"}
+                          </span>
+                        )}
                       </div>
                     </button>
                   );
@@ -664,6 +669,27 @@ export default function TicketTriageModal({
                         className="w-full px-2.5 py-1.5 bg-muted border border-border rounded text-[11px] text-foreground leading-relaxed resize-none focus:outline-none focus:ring-1 focus:ring-teal"
                       />
                     </AiField>
+                    <div className="mb-3">
+                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1 block">
+                        Ticketing system
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <div className="inline-flex rounded-md border border-border overflow-hidden">
+                          {ITSM_OPTIONS.map((s) => (
+                            <button
+                              key={s}
+                              onClick={() => patch(activeId, "system", s)}
+                              className={`text-[11px] font-medium px-3 py-1 transition-colors ${active.system === s ? "bg-teal text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground"}`}
+                            >
+                              {s}
+                            </button>
+                          ))}
+                        </div>
+                        <span className="text-[10px] text-muted-foreground">
+                          policy default: {VIOLATION_CATALOG[activeObj.violationId].system}
+                        </span>
+                      </div>
+                    </div>
                     <div>
                       <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1 block">
                         References
@@ -671,7 +697,7 @@ export default function TicketTriageModal({
                       <p className="text-[10.5px] text-muted-foreground">
                         Policy: {VIOLATION_CATALOG[activeObj.violationId].policy} ·{" "}
                         {VIOLATION_CATALOG[activeObj.violationId].framework} · Source:{" "}
-                        {VIOLATION_CATALOG[activeObj.violationId].source} · System: {system}
+                        {VIOLATION_CATALOG[activeObj.violationId].source} · System: {active.system}
                       </p>
                     </div>
                   </>
@@ -687,7 +713,8 @@ export default function TicketTriageModal({
                 <ChevronLeft className="w-3 h-3" /> Back to selection
               </button>
               <span className="text-[10px] text-muted-foreground">
-                AI-drafted fields marked <Sparkles className="inline w-2.5 h-2.5 text-teal" /> · edits apply per ticket
+                AI-drafted fields marked <Sparkles className="inline w-2.5 h-2.5 text-teal" /> · {sysCounts.sn}{" "}
+                ServiceNow, {sysCounts.jira} Jira
               </span>
               <div className="ml-auto flex items-center gap-2">
                 <button
@@ -700,7 +727,7 @@ export default function TicketTriageModal({
                   onClick={submit}
                   className="flex items-center gap-1.5 text-[11px] font-semibold py-1.5 px-4 rounded-md bg-teal text-primary-foreground hover:bg-teal-light"
                 >
-                  <Ticket className="w-3 h-3" /> Create {fmt(count)} {system} {count === 1 ? "ticket" : "tickets"}
+                  <Ticket className="w-3 h-3" /> Create {fmt(count)} {count === 1 ? "ticket" : "tickets"}
                 </button>
               </div>
             </div>
