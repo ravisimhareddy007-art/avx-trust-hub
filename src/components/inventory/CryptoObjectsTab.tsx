@@ -34,6 +34,7 @@ import { ticketForObject } from "@/lib/ticketStore";
 import { computeCRS } from "@/lib/risk/crs";
 import { useExceptions, effectiveViolations } from "@/lib/exceptions/ExceptionsContext";
 import { RaiseExceptionModal } from "@/lib/exceptions/ExceptionComponents";
+import TicketTriageModal from "@/components/dashboards/TicketTriageModal";
 
 // Map a violation label → its built-in policy (id + name). Returns null for
 // Returns null for labels with no backing policy.
@@ -2015,6 +2016,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   const [deployAsset, setDeployAsset] = useState<CryptoAsset | null>(null);
   const [sortKey, setSortKey] = useState<"riskScore" | "daysToExpiry">("riskScore");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [triageOpen, setTriageOpen] = useState(false);
 
   const { manualIdentities } = useInventoryRegistry();
   const { setSelectedEntity } = useAgent();
@@ -2279,6 +2281,12 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                     : <>{filtered.length} identities</>}
                 </span>
                 <button
+                  onClick={() => setTriageOpen(true)}
+                  className="flex items-center gap-1 text-[10px] px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors whitespace-nowrap"
+                >
+                  <Ticket className="w-3 h-3" /> Create tickets
+                </button>
+                <button
                   onClick={() => {
                     exportObjectsCsv(filtered, totalActive > 0 ? "filtered" : "all");
                     toast.success(`Exported ${filtered.length} objects to CSV`);
@@ -2458,6 +2466,8 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
         visibleColKeys={visibleColKeys}
         setVisibleColKeys={setVisibleColKeys}
       />
+
+      {triageOpen && <TicketTriageModal initialType="All" onClose={() => setTriageOpen(false)} />}
 
       <FilterPanel
         open={filterPanelOpen}
