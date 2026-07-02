@@ -1464,24 +1464,33 @@ function DetailPanel({
               <div className="px-4 py-3">
                 <SectionHeading label="Actions" />
                 <div className="flex flex-wrap gap-1.5">
-                  {hasPolicyViol && (
-                    <button
-                      onClick={() => onTicket("fix")}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-purple/30 text-purple-light hover:bg-purple/10 transition-colors"
-                    >
-                      <Ticket className="w-3 h-3" /> Raise remediation ticket
-                    </button>
-                  )}
-                  {isPqc && (
-                    <button
-                      onClick={() => onTicket("pqc")}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-purple/30 text-purple-light hover:bg-purple/10 transition-colors"
-                    >
-                      <Atom className="w-3 h-3" /> Raise PQC ticket
-                    </button>
-                  )}
-                  {!hasPolicyViol && !isPqc && (
-                    <span className="text-[10px] text-muted-foreground">No policy violations. No action required.</span>
+                  {objectTicket ? (
+                    <span className="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-teal/30 text-teal bg-teal/5">
+                      <Ticket className="w-3 h-3" /> Ticket {objectTicket.id} raised{objectTicket.externalSystem ? ` · ${objectTicket.externalSystem}` : ''}
+                    </span>
+                  ) : (
+                    <>
+                      {hasPolicyViol && (
+                        <button
+                          onClick={() => onTicket("fix")}
+                          the last line of the user's request is:
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-purple/30 text-purple-light hover:bg-purple/10 transition-colors"
+                        >
+                          <Ticket className="w-3 h-3" /> Raise remediation ticket
+                        </button>
+                      )}
+                      {isPqc && (
+                        <button
+                          onClick={() => onTicket("pqc")}
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-purple/30 text-purple-light hover:bg-purple/10 transition-colors"
+                        >
+                          <Atom className="w-3 h-3" /> Raise PQC ticket
+                        </button>
+                      )}
+                      {!hasPolicyViol && !isPqc && (
+                        <span className="text-[10px] text-muted-foreground">No policy violations. No action required.</span>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
