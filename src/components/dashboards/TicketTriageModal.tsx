@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner";
 import { useNav } from "@/context/NavigationContext";
 import { mockAssets, CryptoAsset } from "@/data/mockData";
+import { mockITAssets, ITAsset } from "@/data/inventoryMockData";
 import { VIOLATION_FILTERS } from "@/lib/filters/cryptoFilters";
 import { computeCRS } from "@/lib/risk";
 import { addTicket, ticketForObject, mockIncidentNumber } from "@/lib/ticketStore";
@@ -152,7 +153,19 @@ interface PoolObj {
   issue: string;
   assignee: string;
   asset: CryptoAsset;
+  itAsset?: ITAsset;
 }
+
+// Reverse link: crypto object id -> the IT asset it sits on (real FQDN + MVP-scoped type).
+const OBJECT_TO_ITASSET: Record<string, ITAsset> = (() => {
+  const m: Record<string, ITAsset> = {};
+  mockITAssets.forEach((a) =>
+    a.cryptoObjectIds.forEach((oid) => {
+      if (!m[oid]) m[oid] = a;
+    }),
+  );
+  return m;
+})();
 
 function issueFor(a: CryptoAsset, vid: string): string {
   switch (vid) {
@@ -188,6 +201,7 @@ function toPoolObj(a: CryptoAsset, vid: string): PoolObj {
     issue: issueFor(a, vid),
     assignee: a.team,
     asset: a,
+    itAsset: OBJECT_TO_ITASSET[a.id],
   };
 }
 
@@ -328,7 +342,7 @@ function remediation(vid: string): string {
 function systemFields(system: string, o: PoolObj, vid: string): SysField[] {
   const v = VIOLATION_CATALOG[vid];
   const cfg = SYS_CONFIG[o.category];
-  const ci = o.asset.application || o.asset.infrastructure || o.name;
+  const ci = o.itAsset?.name || o.asset.infrastructure || o.name;
   if (system === "Jira") {
     return [
       { label: "Project key", value: cfg.jiraProjectKey },
@@ -579,7 +593,8 @@ export default function TicketTriageModal({
             const isOpen = expandedId === o.id;
             const d = drafts[o.id];
             const vShort = VIOLATION_CATALOG[violationFor(o)].short;
-            const itAsset = o.asset.application || o.asset.infrastructure || "unbound";
+            const ita = o.itAsset;
+            const env = ita?.environment || o.asset.environment;
             return (
               <div key={o.id} className={`border-b border-border/60 ${isOpen ? "bg-secondary/10" : ""}`}>
                 <div
@@ -608,9 +623,18 @@ export default function TicketTriageModal({
                       {o.crs}
                     </span>
                   </span>
-                  <span className="text-muted-foreground truncate">{itAsset}</span>
-                  <span className={envColor(o.asset.environment)}>
-                    {o.asset.environment === "Production" ? "Prod" : o.asset.environment === "Staging" ? "Stg" : "Dev"}
+                  <span className="min-w-0">
+                    {ita ? (
+                      <span className="flex flex-col leading-tight min-w-0">
+                        <span className="text-foreground truncate">{ita.name}</span>
+                        <span className="text-[9px] text-muted-foreground/70 truncate">{ita.type}</span>
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground/50">unbound</span>
+                    )}
+                  </span>
+                  <span className={envColor(env)}>
+                    {env === "Production" ? "Prod" : env === "Staging" ? "Stg" : "Dev"}
                   </span>
                   <span className="text-muted-foreground truncate">
                     {ticketed ? (
@@ -653,16 +677,23 @@ export default function TicketTriageModal({
                         ))}
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 mb-3 text-[10px] text-muted-foreground">
+                    <div className="flex items-center gap-1.5 mb-3 text-[10px] text-muted-foreground flex-wrap">
                       <span className="text-muted-foreground/70">IT asset:</span>
-                      <span className="text-foreground">{itAsset}</span>
-                      <span
-                        className={`text-[8.5px] px-1 py-0.5 rounded ${o.asset.environment === "Production" ? "bg-coral/15 text-coral" : o.asset.environment === "Staging" ? "bg-amber/15 text-amber" : "bg-secondary text-muted-foreground"}`}
-                      >
-                        {o.asset.environment}
-                      </span>
-                      {o.asset.infrastructure && o.asset.application && (
-                        <span className="text-muted-foreground/60">· {o.asset.infrastructure}</span>
+                      {ita ? (
+                        <>
+                          <span className="text-foreground font-mono">{ita.name}</span>
+                          <span className="text-muted-foreground/60">· {ita.type}</span>
+                          <span
+                            className={`text-[8.5px] px-1 py-0.5 rounded ${env === "Production" ? "bg-coral/15 text-coral" : env === "Staging" ? "bg-amber/15 text-amber" : "bg-secondary text-muted-foreground"}`}
+                          >
+                            {env}
+                          </span>
+                          {ita.infrastructure && (
+                            <span className="text-muted-foreground/60">· {ita.infrastructure}</span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground/50">unbound</span>
                       )}
                     </div>
 
