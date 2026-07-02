@@ -14,10 +14,13 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useNav } from "@/context/NavigationContext";
+import { mockAssets, CryptoAsset } from "@/data/mockData";
+import { VIOLATION_FILTERS } from "@/lib/filters/cryptoFilters";
+import { computeCRS } from "@/lib/risk";
+import { addTicket, ticketForObject, mockIncidentNumber } from "@/lib/ticketStore";
+import type { TicketDraft } from "@/components/inventory/TicketDraftModal";
 
 const fmt = (n: number) => n.toLocaleString();
-
-// ── Violation catalog (MVP-discoverable only) ───────────────────────────────
 type Category = "Certs" | "SSH" | "Secrets" | "PQC";
 
 interface Violation {
@@ -25,12 +28,12 @@ interface Violation {
   category: Category;
   short: string;
   severity: "P1" | "P2" | "P3";
-  total: number;
-  teams: string[];
+  total: number; // enterprise total shown on the dashboard
   policy: string;
   source: string;
   system: "ServiceNow" | "Jira"; // ITSM target configured on the policy
   framework: string;
+  match: (a: CryptoAsset) => boolean;
 }
 
 export const VIOLATION_CATALOG: Record<string, Violation> = {
@@ -39,84 +42,84 @@ export const VIOLATION_CATALOG: Record<string, Violation> = {
     category: "Certs",
     short: "Expiring 7d",
     severity: "P1",
-    total: 186,
-    teams: ["infra-ops", "app-team", "platform-eng"],
+    total: VIOLATION_FILTERS.cert_expiring_7d.enterpriseCount,
     policy: "OOB: Certificate expiry threshold",
     source: "CA Scan",
     system: "ServiceNow",
     framework: "CA/Browser Forum · NIST SP 1800-16",
+    match: VIOLATION_FILTERS.cert_expiring_7d.predicate,
   },
   expired: {
     id: "expired",
     category: "Certs",
     short: "Expired",
     severity: "P1",
-    total: 48,
-    teams: ["app-team", "infra-ops"],
+    total: VIOLATION_FILTERS.cert_expired.enterpriseCount,
     policy: "OOB: No expired certificates in production",
     source: "CA Scan",
     system: "ServiceNow",
     framework: "CA/Browser Forum",
+    match: VIOLATION_FILTERS.cert_expired.predicate,
   },
   "6": {
     id: "6",
     category: "Certs",
     short: "Weak algorithm",
     severity: "P2",
-    total: 52,
-    teams: ["infra-platform", "dev-platform"],
+    total: VIOLATION_FILTERS.cert_weak_algo.enterpriseCount,
     policy: "OOB: Approved algorithms and key sizes",
     source: "CA Scan",
     system: "ServiceNow",
     framework: "NIST SP 800-131A",
+    match: VIOLATION_FILTERS.cert_weak_algo.predicate,
   },
   "3": {
     id: "3",
     category: "SSH",
     short: "Suspicious",
     severity: "P1",
-    total: 44,
-    teams: ["infra-ops", "dev-platform"],
+    total: VIOLATION_FILTERS.ssh_suspicious.enterpriseCount,
     policy: "OOB: SSH key anomaly detection",
     source: "Network Scan",
     system: "Jira",
     framework: "NIST SP 800-53 AC-17",
+    match: VIOLATION_FILTERS.ssh_suspicious.predicate,
   },
   "9": {
     id: "9",
     category: "SSH",
     short: "Rogue",
     severity: "P3",
-    total: 18,
-    teams: ["infra-ops", "platform-eng"],
+    total: VIOLATION_FILTERS.ssh_rogue.enterpriseCount,
     policy: "OOB: Managed SSH key provenance",
     source: "Network Scan",
     system: "Jira",
     framework: "NIST SP 800-53 AC-17",
+    match: VIOLATION_FILTERS.ssh_rogue.predicate,
   },
   "8": {
     id: "8",
     category: "Secrets",
     short: "Unrotated 90d+",
     severity: "P2",
-    total: 1250,
-    teams: ["platform-eng", "cloud-eng", "data-eng"],
+    total: VIOLATION_FILTERS.secret_unrotated_90d.enterpriseCount,
     policy: "OOB: Secret rotation interval",
     source: "Key Store Discovery",
     system: "Jira",
     framework: "NIST SP 800-57",
+    match: VIOLATION_FILTERS.secret_unrotated_90d.predicate,
   },
   orphaned: {
     id: "orphaned",
     category: "Secrets",
     short: "Orphaned",
     severity: "P3",
-    total: 445,
-    teams: ["platform-eng", "cloud-eng"],
+    total: VIOLATION_FILTERS.secret_orphaned.enterpriseCount,
     policy: "OOB: Owned crypto objects only",
     source: "Key Store Discovery",
     system: "Jira",
     framework: "NIST SP 800-53 AC-2",
+    match: VIOLATION_FILTERS.secret_orphaned.predicate,
   },
   "pqc-1": {
     id: "pqc-1",
@@ -124,11 +127,11 @@ export const VIOLATION_CATALOG: Record<string, Violation> = {
     short: "RSA-2048 post-2030",
     severity: "P2",
     total: 847,
-    teams: ["payments-eng", "security-eng"],
     policy: "OOB: Quantum-vulnerable algorithm in use",
     source: "CBOM Ingestion",
     system: "ServiceNow",
     framework: "NIST IR 8547",
+    match: (a) => a.pqcRisk === "Critical" || a.pqcRisk === "High",
   },
 };
 
@@ -139,7 +142,7 @@ const CAT_ICON: Record<Category, React.ComponentType<{ className?: string }>> = 
   PQC: Atom,
 };
 
-// ── Object pool ─────────────────────────────────────────────────────────────
+// ── Real object pool (mockAssets, filtered by each violation predicate) ─────
 interface PoolObj {
   id: string;
   name: string;
@@ -148,62 +151,58 @@ interface PoolObj {
   violationId: string;
   issue: string;
   assignee: string;
+  asset: CryptoAsset;
 }
 
-const CERT_HOSTS = ["payments", "api", "auth", "vault", "mail", "cdn", "gateway", "portal", "identity", "billing"];
-const SSH_HOSTS = ["prod-db", "app-svr", "bastion", "ci-runner", "k8s-node", "vault-svr", "deploy", "jump"];
-const SECRET_NS = ["payments", "platform", "data", "cloud"];
-const SECRET_KIND = ["api-key", "db-cred", "signing-key", "service-token"];
-
-function objName(cat: Category, i: number): string {
-  if (cat === "SSH") return `${SSH_HOSTS[i % SSH_HOSTS.length]}-0${(i % 9) + 1}-key`;
-  if (cat === "Secrets") return `vault:secret/${SECRET_NS[i % 4]}/${SECRET_KIND[i % 4]}-${i + 1}`;
-  const host = CERT_HOSTS[i % CERT_HOSTS.length];
-  return i % 3 === 0 ? `*.${host}.acmecorp.com` : `${host}.acmecorp.com`;
-}
-
-function objIssue(v: Violation, i: number): string {
-  switch (v.id) {
+function issueFor(a: CryptoAsset, vid: string): string {
+  switch (vid) {
     case "1":
-      return `expires in ${[2, 3, 4, 5, 6][i % 5]}d`;
+      return `expires in ${a.daysToExpiry}d`;
     case "expired":
-      return `expired ${[2, 4, 6, 9][i % 4]}d ago`;
+      return `expired ${Math.abs(a.daysToExpiry)}d ago`;
     case "6":
-      return i % 2 === 0 ? "RSA-1024 key" : "SHA-1 signature";
+      return a.signatureAlgorithm === "SHA-1" ? "SHA-1 signature" : a.algorithm;
     case "pqc-1":
-      return "RSA-2048 · valid to 2032";
+      return `${a.algorithm} · quantum-vulnerable`;
     case "3":
-      return `anomalous login · ${["prod", "staging"][i % 2]}`;
+      return a.sshKey?.riskStatus ? `${a.sshKey.riskStatus.toLowerCase()} key` : "anomalous login";
     case "9":
-      return "unmanaged · filesystem key";
+      return "unmanaged key";
     case "8":
-      return `unrotated ${90 + i * 7}d`;
+      return "not rotated 90d+";
     case "orphaned":
       return "owner left org";
     default:
-      return "";
+      return a.status;
   }
 }
 
-// Deterministic cross-type pool: up to 8 representative objects per violation.
+function toPoolObj(a: CryptoAsset, vid: string): PoolObj {
+  const v = VIOLATION_CATALOG[vid];
+  return {
+    id: a.id,
+    name: a.name,
+    crs: Math.round(computeCRS(a).crs),
+    category: v.category,
+    violationId: vid,
+    issue: issueFor(a, vid),
+    assignee: a.team,
+    asset: a,
+  };
+}
+
+// Deduped cross-type pool: each asset once, tagged with its first matching violation.
 const POOL: PoolObj[] = (() => {
+  const seen = new Set<string>();
   const out: PoolObj[] = [];
   Object.values(VIOLATION_CATALOG).forEach((v) => {
-    const show = Math.min(v.total, 8);
-    const band = v.severity === "P1" ? 97 : v.severity === "P2" ? 74 : 52;
-    for (let i = 0; i < show; i++) {
-      out.push({
-        id: `${v.id}-o${i}`,
-        name: objName(v.category, i),
-        crs: Math.max(14, band - i * 5 - (i % 2)),
-        category: v.category,
-        violationId: v.id,
-        issue: objIssue(v, i),
-        assignee: v.teams[i % v.teams.length],
-      });
-    }
+    mockAssets.filter(v.match).forEach((a) => {
+      if (seen.has(a.id)) return;
+      seen.add(a.id);
+      out.push(toPoolObj(a, v.id));
+    });
   });
-  return out.sort((a, b) => b.crs - a.crs);
+  return out.sort((x, y) => y.crs - x.crs);
 })();
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -218,6 +217,19 @@ function crsPriority(crs: number) {
   if (crs >= 60) return "P2 · High";
   return "P3 · Moderate";
 }
+function draftPriority(label: string): TicketDraft["priority"] {
+  if (label.startsWith("P1")) return "Critical";
+  if (label.startsWith("P2")) return "High";
+  return "Medium";
+}
+function ticketType(category: Category): TicketDraft["type"] {
+  return category === "PQC" ? "PQC Migration" : "Remediation";
+}
+function moduleFor(category: Category): string {
+  if (category === "PQC") return "PQC / Quantum Readiness";
+  if (category === "Secrets") return "Secrets Management";
+  return "CLM";
+}
 
 interface Draft {
   summary: string;
@@ -228,8 +240,8 @@ interface Draft {
   system: string;
 }
 
-function draftSummary(o: PoolObj): string {
-  switch (o.violationId) {
+function draftSummary(o: PoolObj, vid: string): string {
+  switch (vid) {
     case "1":
       return `Renew expiring certificate ${o.name}`;
     case "expired":
@@ -250,8 +262,8 @@ function draftSummary(o: PoolObj): string {
       return `Remediate ${o.name}`;
   }
 }
-function draftRemediation(id: string): string {
-  switch (id) {
+function draftRemediation(vid: string): string {
+  switch (vid) {
     case "1":
       return "Re-issue on an approved CA with 90-day validity, enable auto-renewal, then deploy to dependent endpoints and verify the TLS handshake.";
     case "expired":
@@ -272,14 +284,14 @@ function draftRemediation(id: string): string {
       return "Review and remediate per policy.";
   }
 }
-function buildDraft(o: PoolObj): Draft {
-  const v = VIOLATION_CATALOG[o.violationId];
+function buildDraft(o: PoolObj, vid: string): Draft {
+  const v = VIOLATION_CATALOG[vid];
   return {
-    summary: draftSummary(o),
+    summary: draftSummary(o, vid),
     priority: crsPriority(o.crs),
     assignee: o.assignee,
     description: `Object: ${o.name} (${o.category}). Issue: ${o.issue}. CRS score: ${o.crs} (${crsPriority(o.crs)}). Owning team: ${o.assignee}. Discovered via ${v.source}. Violates policy "${v.policy}" (${v.framework}).`,
-    remediation: draftRemediation(o.violationId),
+    remediation: draftRemediation(vid),
     system: v.system,
   };
 }
@@ -308,7 +320,6 @@ function AiField({ label, children }: { label: string; children: React.ReactNode
   );
 }
 
-// ── Triage modal ────────────────────────────────────────────────────────────
 export default function TicketTriageModal({
   onClose,
   initialType = "All",
@@ -323,9 +334,7 @@ export default function TicketTriageModal({
   const expanded = !scoped;
   const [tab, setTab] = useState<TabKey>(initialType);
   const [stage, setStage] = useState<"select" | "review">("select");
-  const [selected, setSelected] = useState<Set<string>>(
-    () => new Set(initialViolationId ? POOL.filter((o) => o.violationId === initialViolationId).map((o) => o.id) : []),
-  );
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [activeId, setActiveId] = useState<string>("");
 
@@ -354,31 +363,39 @@ export default function TicketTriageModal({
     return c;
   }, []);
 
-  const visible = useMemo(() => {
-    if (scoped && !expanded) return POOL.filter((o) => o.violationId === initialViolationId);
-    return tab === "All" ? POOL : POOL.filter((o) => o.category === tab);
-  }, [tab, expanded, scoped, initialViolationId]);
-  const selectedObjs = useMemo(() => POOL.filter((o) => selected.has(o.id)), [selected]);
+  // Effective violation for a given pooled object in the current context.
+  const violationFor = (o: PoolObj) => (scoped ? initialViolationId! : o.violationId);
 
-  const toggle = (id: string) =>
+  const visible = useMemo(() => {
+    if (scoped) return POOL.filter((o) => VIOLATION_CATALOG[initialViolationId!].match(o.asset));
+    return tab === "All" ? POOL : POOL.filter((o) => o.category === tab);
+  }, [tab, scoped, initialViolationId]);
+
+  const selectedObjs = useMemo(() => POOL.filter((o) => selected.has(o.id)), [selected]);
+  const isTicketed = (id: string) => !!ticketForObject(id);
+
+  const toggle = (id: string) => {
+    if (isTicketed(id)) return;
     setSelected((prev) => {
       const n = new Set(prev);
       n.has(id) ? n.delete(id) : n.add(id);
       return n;
     });
-  const allVisibleSelected = visible.length > 0 && visible.every((o) => selected.has(o.id));
+  };
+  const selectableVisible = visible.filter((o) => !isTicketed(o.id));
+  const allVisibleSelected = selectableVisible.length > 0 && selectableVisible.every((o) => selected.has(o.id));
   const toggleAllVisible = () =>
     setSelected((prev) => {
       const n = new Set(prev);
-      if (allVisibleSelected) visible.forEach((o) => n.delete(o.id));
-      else visible.forEach((o) => n.add(o.id));
+      if (allVisibleSelected) selectableVisible.forEach((o) => n.delete(o.id));
+      else selectableVisible.forEach((o) => n.add(o.id));
       return n;
     });
 
   const enterReview = () => {
     const d: Record<string, Draft> = {};
     selectedObjs.forEach((o) => {
-      d[o.id] = buildDraft(o);
+      d[o.id] = buildDraft(o, violationFor(o));
     });
     setDrafts(d);
     setActiveId(selectedObjs[0]?.id ?? "");
@@ -390,8 +407,32 @@ export default function TicketTriageModal({
 
   const submit = () => {
     const count = selectedObjs.length;
-    const sn = Object.values(drafts).filter((d) => d.system === "ServiceNow").length;
-    const jira = count - sn;
+    let sn = 0,
+      jira = 0;
+    selectedObjs.forEach((o) => {
+      const d = drafts[o.id];
+      if (!d) return;
+      const vid = violationFor(o);
+      if (d.system === "ServiceNow") sn++;
+      else jira++;
+      addTicket(
+        {
+          title: d.summary,
+          type: ticketType(o.category),
+          priority: draftPriority(d.priority),
+          assignee: d.assignee,
+          module: moduleFor(o.category),
+        },
+        {
+          objectId: o.id,
+          system: d.system as "ServiceNow" | "Jira",
+          destination: d.system === "ServiceNow" ? "servicenow" : "default",
+          externalId: mockIncidentNumber(),
+          reporter: "Security Admin",
+          linkedAssets: 1,
+        },
+      );
+    });
     onClose();
     toast.success(count > 1 ? `${fmt(count)} tickets created` : "Ticket created", {
       description: `${sn} in ServiceNow, ${jira} in Jira · one per crypto object`,
@@ -401,7 +442,9 @@ export default function TicketTriageModal({
 
   const active = drafts[activeId];
   const activeObj = selectedObjs.find((o) => o.id === activeId);
+  const activeVid = activeObj ? violationFor(activeObj) : "";
   const count = selectedObjs.length;
+  const scopedTotal = scoped ? VIOLATION_CATALOG[initialViolationId!].total : POOL.length;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
@@ -423,8 +466,8 @@ export default function TicketTriageModal({
             </div>
             <p className="text-[11px] text-muted-foreground mt-0.5">
               {stage === "select"
-                ? "One ticket per crypto object, ranked by CRS across types. Build a batch, then review."
-                : "AI has drafted each ticket. Review and edit any field, choose the ticketing system, then create."}
+                ? "One ticket per crypto object, ranked by CRS. Build a batch, then review."
+                : "AI has drafted each ticket. Review and edit any field, set the ticketing system per ticket, then create."}
             </p>
           </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-1 flex-shrink-0">
@@ -434,7 +477,6 @@ export default function TicketTriageModal({
 
         {stage === "select" && (
           <>
-            {/* Scope bar: tabs when cross-type, quiet header when opened from a single violation */}
             <div className="flex items-center gap-1 px-5 pt-2.5 pb-2 border-b border-border flex-wrap">
               {expanded ? (
                 TABS.map((t) => {
@@ -457,9 +499,11 @@ export default function TicketTriageModal({
               ) : (
                 <>
                   <span className="text-[11px] font-medium text-foreground">
-                    {initialViolationId ? VIOLATION_CATALOG[initialViolationId].short : "Selected"}
+                    {VIOLATION_CATALOG[initialViolationId!].short}
                   </span>
-                  <span className="text-[10px] text-muted-foreground">· {visible.length} objects, ranked by CRS</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    · showing {visible.length} of {fmt(scopedTotal)}, ranked by CRS
+                  </span>
                 </>
               )}
               <button
@@ -475,67 +519,82 @@ export default function TicketTriageModal({
               </button>
             </div>
 
-            {/* Object list */}
             <div className="flex-1 overflow-y-auto scrollbar-thin">
-              <table className="w-full text-[11px]">
-                <thead className="sticky top-0 bg-card border-b border-border">
-                  <tr className="text-muted-foreground">
-                    <th className="w-8 px-3 py-2"></th>
-                    <th className="text-left px-2 py-2 font-medium">Crypto object</th>
-                    <th className="text-left px-2 py-2 font-medium w-14">CRS</th>
-                    <th className="text-left px-2 py-2 font-medium w-24">Type</th>
-                    <th className="text-left px-2 py-2 font-medium">Violation</th>
-                    <th className="text-left px-2 py-2 font-medium w-28">Assignee</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {visible.map((o) => {
-                    const Icon = CAT_ICON[o.category];
-                    const isSel = selected.has(o.id);
-                    const v = VIOLATION_CATALOG[o.violationId];
-                    return (
-                      <tr
-                        key={o.id}
-                        onClick={() => toggle(o.id)}
-                        className={`border-b border-border/50 cursor-pointer transition-colors ${isSel ? "bg-teal/[0.04]" : "hover:bg-secondary/30"}`}
-                      >
-                        <td className="px-3 py-2">
-                          <span
-                            className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${isSel ? "bg-teal border-teal" : "border-border"}`}
-                          >
-                            {isSel && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
-                          </span>
-                        </td>
-                        <td className="px-2 py-2 text-foreground font-mono truncate max-w-[190px]">{o.name}</td>
-                        <td className="px-2 py-2">
-                          <span
-                            className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold tabular-nums ${crsColor(o.crs)}`}
-                          >
-                            {o.crs}
-                          </span>
-                        </td>
-                        <td className="px-2 py-2 text-muted-foreground">
-                          <span className="inline-flex items-center gap-1">
-                            <Icon className="w-3 h-3" />
-                            {o.category}
-                          </span>
-                        </td>
-                        <td className="px-2 py-2 text-muted-foreground">
-                          {v.short} <span className="text-muted-foreground/60">· {o.issue}</span>
-                        </td>
-                        <td className="px-2 py-2 text-muted-foreground font-mono">{o.assignee}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              {visible.length === 0 ? (
+                <p className="px-5 py-8 text-center text-[11px] text-muted-foreground">
+                  No matching objects in the current inventory sample.
+                </p>
+              ) : (
+                <table className="w-full text-[11px]">
+                  <thead className="sticky top-0 bg-card border-b border-border">
+                    <tr className="text-muted-foreground">
+                      <th className="w-8 px-3 py-2"></th>
+                      <th className="text-left px-2 py-2 font-medium">Crypto object</th>
+                      <th className="text-left px-2 py-2 font-medium w-14">CRS</th>
+                      <th className="text-left px-2 py-2 font-medium w-24">Type</th>
+                      <th className="text-left px-2 py-2 font-medium">Violation</th>
+                      <th className="text-left px-2 py-2 font-medium w-28">Assignee</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visible.map((o) => {
+                      const Icon = CAT_ICON[o.category];
+                      const ticketed = isTicketed(o.id);
+                      const isSel = selected.has(o.id);
+                      const vShort = VIOLATION_CATALOG[violationFor(o)].short;
+                      return (
+                        <tr
+                          key={o.id}
+                          onClick={() => toggle(o.id)}
+                          className={`border-b border-border/50 transition-colors ${ticketed ? "opacity-50 cursor-default" : `cursor-pointer ${isSel ? "bg-teal/[0.04]" : "hover:bg-secondary/30"}`}`}
+                        >
+                          <td className="px-3 py-2">
+                            {ticketed ? (
+                              <Check className="w-3.5 h-3.5 text-teal" />
+                            ) : (
+                              <span
+                                className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${isSel ? "bg-teal border-teal" : "border-border"}`}
+                              >
+                                {isSel && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-2 py-2 text-foreground font-mono truncate max-w-[190px]">{o.name}</td>
+                          <td className="px-2 py-2">
+                            <span
+                              className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold tabular-nums ${crsColor(o.crs)}`}
+                            >
+                              {o.crs}
+                            </span>
+                          </td>
+                          <td className="px-2 py-2 text-muted-foreground">
+                            <span className="inline-flex items-center gap-1">
+                              <Icon className="w-3 h-3" />
+                              {o.category}
+                            </span>
+                          </td>
+                          <td className="px-2 py-2 text-muted-foreground">
+                            {ticketed ? (
+                              <span className="text-teal">Ticket raised</span>
+                            ) : (
+                              <>
+                                {vShort} <span className="text-muted-foreground/60">· {o.issue}</span>
+                              </>
+                            )}
+                          </td>
+                          <td className="px-2 py-2 text-muted-foreground font-mono">{o.assignee}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
             </div>
 
-            {/* Footer with cart */}
             <div className="flex items-center gap-3 px-5 py-3 border-t border-border">
               <span className="flex items-center gap-1.5 text-[11px] text-foreground">
                 <ShoppingCart className="w-3.5 h-3.5 text-teal" />
-                <span className="font-semibold tabular-nums">{count}</span> selected across all types
+                <span className="font-semibold tabular-nums">{count}</span> selected
               </span>
               <div className="ml-auto flex items-center gap-2">
                 <button
@@ -558,7 +617,6 @@ export default function TicketTriageModal({
 
         {stage === "review" && (
           <>
-            {/* System summary: defaults per policy, override per ticket */}
             <div className="flex items-center gap-3 px-5 py-2 border-b border-border bg-secondary/20">
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
                 Ticketing system
@@ -582,7 +640,6 @@ export default function TicketTriageModal({
             </div>
 
             <div className="flex-1 overflow-hidden flex">
-              {/* Left: cart */}
               <div className="w-56 flex-shrink-0 border-r border-border overflow-y-auto scrollbar-thin">
                 {selectedObjs.map((o) => {
                   const Icon = CAT_ICON[o.category];
@@ -611,7 +668,6 @@ export default function TicketTriageModal({
                 })}
               </div>
 
-              {/* Right: editable draft */}
               <div className="flex-1 overflow-y-auto scrollbar-thin px-5 py-4">
                 {active && activeObj && (
                   <>
@@ -686,7 +742,7 @@ export default function TicketTriageModal({
                           ))}
                         </div>
                         <span className="text-[10px] text-muted-foreground">
-                          policy default: {VIOLATION_CATALOG[activeObj.violationId].system}
+                          policy default: {VIOLATION_CATALOG[activeVid].system}
                         </span>
                       </div>
                     </div>
@@ -695,9 +751,8 @@ export default function TicketTriageModal({
                         References
                       </label>
                       <p className="text-[10.5px] text-muted-foreground">
-                        Policy: {VIOLATION_CATALOG[activeObj.violationId].policy} ·{" "}
-                        {VIOLATION_CATALOG[activeObj.violationId].framework} · Source:{" "}
-                        {VIOLATION_CATALOG[activeObj.violationId].source} · System: {active.system}
+                        Policy: {VIOLATION_CATALOG[activeVid].policy} · {VIOLATION_CATALOG[activeVid].framework} ·
+                        Source: {VIOLATION_CATALOG[activeVid].source} · System: {active.system}
                       </p>
                     </div>
                   </>
