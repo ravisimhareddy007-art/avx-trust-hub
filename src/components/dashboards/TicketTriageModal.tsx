@@ -406,16 +406,6 @@ export default function TicketTriageModal({
     };
   }, [drafts]);
 
-  const setAllSystem = (s: string) =>
-    setDrafts((prev) => {
-      const n = { ...prev };
-      Object.keys(n).forEach((id) => {
-        const o = POOL.find((p) => p.id === id);
-        n[id] = { ...n[id], system: s, fields: o ? systemFields(s, o, violationFor(o)) : n[id].fields };
-      });
-      return n;
-    });
-
   const tabCounts = useMemo(() => {
     const c: Record<TabKey, number> = { All: POOL.length, Certs: 0, SSH: 0, Secrets: 0, PQC: 0 };
     POOL.forEach((o) => {
@@ -607,7 +597,7 @@ export default function TicketTriageModal({
                       <th className="w-8 px-3 py-2"></th>
                       <th className="text-left px-2 py-2 font-medium">Crypto object</th>
                       <th className="text-left px-2 py-2 font-medium w-14">CRS</th>
-                      <th className="text-left px-2 py-2 font-medium w-24">Type</th>
+                      <th className="text-left px-2 py-2 font-medium">IT asset</th>
                       <th className="text-left px-2 py-2 font-medium">Violation</th>
                       <th className="text-left px-2 py-2 font-medium w-28">Assignee</th>
                     </tr>
@@ -635,7 +625,12 @@ export default function TicketTriageModal({
                               </span>
                             )}
                           </td>
-                          <td className="px-2 py-2 text-foreground font-mono truncate max-w-[190px]">{o.name}</td>
+                          <td className="px-2 py-2 text-foreground font-mono truncate max-w-[180px]">
+                            <span className="inline-flex items-center gap-1.5">
+                              <Icon className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                              {o.name}
+                            </span>
+                          </td>
                           <td className="px-2 py-2">
                             <span
                               className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold tabular-nums ${crsColor(o.crs)}`}
@@ -644,10 +639,26 @@ export default function TicketTriageModal({
                             </span>
                           </td>
                           <td className="px-2 py-2 text-muted-foreground">
-                            <span className="inline-flex items-center gap-1">
-                              <Icon className="w-3 h-3" />
-                              {o.category}
-                            </span>
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="truncate max-w-[130px]">
+                                {o.asset.application || o.asset.infrastructure || "unbound"}
+                              </span>
+                              <span
+                                className={`text-[8.5px] px-1 py-0.5 rounded flex-shrink-0 ${
+                                  o.asset.environment === "Production"
+                                    ? "bg-coral/15 text-coral"
+                                    : o.asset.environment === "Staging"
+                                      ? "bg-amber/15 text-amber"
+                                      : "bg-secondary text-muted-foreground"
+                                }`}
+                              >
+                                {o.asset.environment === "Production"
+                                  ? "Prod"
+                                  : o.asset.environment === "Staging"
+                                    ? "Stg"
+                                    : "Dev"}
+                              </span>
+                            </div>
                           </td>
                           <td className="px-2 py-2 text-muted-foreground">
                             {ticketed ? (
@@ -658,7 +669,9 @@ export default function TicketTriageModal({
                               </>
                             )}
                           </td>
-                          <td className="px-2 py-2 text-muted-foreground font-mono">{o.assignee}</td>
+                          <td className="px-2 py-2 text-muted-foreground font-mono truncate max-w-[110px]">
+                            {o.assignee}
+                          </td>
                         </tr>
                       );
                     })}
@@ -693,28 +706,6 @@ export default function TicketTriageModal({
 
         {stage === "review" && (
           <>
-            <div className="flex items-center gap-3 px-5 py-2 border-b border-border bg-secondary/20">
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-                Ticketing system
-              </span>
-              <span className="text-[10px] text-muted-foreground">defaults from each policy · override per ticket</span>
-              <span className="ml-auto flex items-center gap-2 text-[10px] text-muted-foreground">
-                <span className="text-foreground">
-                  {sysCounts.sn} ServiceNow · {sysCounts.jira} Jira
-                </span>
-                <span className="text-muted-foreground/50">set all:</span>
-                {ITSM_OPTIONS.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setAllSystem(s)}
-                    className="px-1.5 py-0.5 rounded border border-border hover:text-foreground hover:border-teal/40 transition-colors"
-                  >
-                    {s}
-                  </button>
-                ))}
-              </span>
-            </div>
-
             <div className="flex-1 overflow-hidden flex">
               <div className="w-56 flex-shrink-0 border-r border-border overflow-y-auto scrollbar-thin">
                 {selectedObjs.map((o) => {
@@ -747,33 +738,25 @@ export default function TicketTriageModal({
               <div className="flex-1 overflow-y-auto scrollbar-thin px-5 py-4">
                 {active && activeObj && (
                   <>
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="text-[10px] text-muted-foreground">Ticket for</span>
+                    <div className="flex items-center gap-2 mb-3 flex-wrap">
                       <span className="text-[11px] font-mono text-foreground">{activeObj.name}</span>
                       <span
                         className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold tabular-nums ${crsColor(activeObj.crs)}`}
                       >
                         CRS {activeObj.crs}
                       </span>
-                    </div>
-                    <div className="flex items-center gap-2 mb-3 p-2 rounded-md bg-secondary/30 border border-border">
-                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-                        Raise in
-                      </span>
+                      <span className="text-[10px] text-muted-foreground ml-auto">Raise in</span>
                       <div className="inline-flex rounded-md border border-border overflow-hidden">
                         {ITSM_OPTIONS.map((s) => (
                           <button
                             key={s}
                             onClick={() => changeSystem(activeId, s)}
-                            className={`text-[11px] font-medium px-3 py-1 transition-colors ${active.system === s ? "bg-teal text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground"}`}
+                            className={`text-[11px] font-medium px-2.5 py-1 transition-colors ${active.system === s ? "bg-teal text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground"}`}
                           >
                             {s}
                           </button>
                         ))}
                       </div>
-                      <span className="text-[10px] text-muted-foreground ml-auto">
-                        policy default: {VIOLATION_CATALOG[activeVid].system}
-                      </span>
                     </div>
                     <AiField label="Name">
                       <input
@@ -807,15 +790,6 @@ export default function TicketTriageModal({
                           </div>
                         ))}
                       </div>
-                    </div>
-                    <div>
-                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1 block">
-                        References
-                      </label>
-                      <p className="text-[10.5px] text-muted-foreground">
-                        Policy: {VIOLATION_CATALOG[activeVid].policy} · {VIOLATION_CATALOG[activeVid].framework} ·
-                        System: {active.system}
-                      </p>
                     </div>
                   </>
                 )}
