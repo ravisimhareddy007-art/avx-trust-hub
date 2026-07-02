@@ -29,6 +29,8 @@ interface Violation {
   teams: string[];
   policy: string;
   source: string;
+  system: "ServiceNow" | "Jira"; // ITSM target configured on the policy
+  framework: string;
 }
 
 export const VIOLATION_CATALOG: Record<string, Violation> = {
@@ -41,6 +43,8 @@ export const VIOLATION_CATALOG: Record<string, Violation> = {
     teams: ["infra-ops", "app-team", "platform-eng"],
     policy: "OOB: Certificate expiry threshold",
     source: "CA Scan",
+    system: "ServiceNow",
+    framework: "CA/Browser Forum · NIST SP 1800-16",
   },
   expired: {
     id: "expired",
@@ -51,6 +55,8 @@ export const VIOLATION_CATALOG: Record<string, Violation> = {
     teams: ["app-team", "infra-ops"],
     policy: "OOB: No expired certificates in production",
     source: "CA Scan",
+    system: "ServiceNow",
+    framework: "CA/Browser Forum",
   },
   "6": {
     id: "6",
@@ -61,6 +67,8 @@ export const VIOLATION_CATALOG: Record<string, Violation> = {
     teams: ["infra-platform", "dev-platform"],
     policy: "OOB: Approved algorithms and key sizes",
     source: "CA Scan",
+    system: "ServiceNow",
+    framework: "NIST SP 800-131A",
   },
   "3": {
     id: "3",
@@ -71,6 +79,8 @@ export const VIOLATION_CATALOG: Record<string, Violation> = {
     teams: ["infra-ops", "dev-platform"],
     policy: "OOB: SSH key anomaly detection",
     source: "Network Scan",
+    system: "Jira",
+    framework: "NIST SP 800-53 AC-17",
   },
   "9": {
     id: "9",
@@ -81,6 +91,8 @@ export const VIOLATION_CATALOG: Record<string, Violation> = {
     teams: ["infra-ops", "platform-eng"],
     policy: "OOB: Managed SSH key provenance",
     source: "Network Scan",
+    system: "Jira",
+    framework: "NIST SP 800-53 AC-17",
   },
   "8": {
     id: "8",
@@ -91,6 +103,8 @@ export const VIOLATION_CATALOG: Record<string, Violation> = {
     teams: ["platform-eng", "cloud-eng", "data-eng"],
     policy: "OOB: Secret rotation interval",
     source: "Key Store Discovery",
+    system: "Jira",
+    framework: "NIST SP 800-57",
   },
   orphaned: {
     id: "orphaned",
@@ -101,6 +115,8 @@ export const VIOLATION_CATALOG: Record<string, Violation> = {
     teams: ["platform-eng", "cloud-eng"],
     policy: "OOB: Owned crypto objects only",
     source: "Key Store Discovery",
+    system: "Jira",
+    framework: "NIST SP 800-53 AC-2",
   },
   "pqc-1": {
     id: "pqc-1",
@@ -111,6 +127,8 @@ export const VIOLATION_CATALOG: Record<string, Violation> = {
     teams: ["payments-eng", "security-eng"],
     policy: "OOB: Quantum-vulnerable algorithm in use",
     source: "CBOM Ingestion",
+    system: "ServiceNow",
+    framework: "NIST IR 8547",
   },
 };
 
@@ -259,7 +277,7 @@ function buildDraft(o: PoolObj, system: string): Draft {
     summary: draftSummary(o),
     priority: crsPriority(o.crs),
     assignee: o.assignee,
-    description: `${o.name}: ${o.issue}. CRS ${o.crs}. Discovered via ${v.source}. Violates policy "${v.policy}". Target system: ${system}.`,
+    description: `Object: ${o.name} (${o.category}). Issue: ${o.issue}. CRS score: ${o.crs} (${crsPriority(o.crs)}). Owning team: ${o.assignee}. Discovered via ${v.source}. Violates policy "${v.policy}" (${v.framework}). Raise in ${system} per policy configuration.`,
     remediation: draftRemediation(o.violationId),
   };
 }
@@ -300,10 +318,12 @@ export default function TicketTriageModal({
 }) {
   const { setCurrentPage } = useNav();
   const scoped = !!initialViolationId;
-  const [expanded, setExpanded] = useState<boolean>(!scoped);
+  const expanded = !scoped;
   const [tab, setTab] = useState<TabKey>(initialType);
   const [stage, setStage] = useState<"select" | "review">("select");
-  const [system, setSystem] = useState<string>("ServiceNow");
+  const [system, setSystem] = useState<string>(() =>
+    initialViolationId ? VIOLATION_CATALOG[initialViolationId].system : "ServiceNow",
+  );
   const [selected, setSelected] = useState<Set<string>>(
     () => new Set(initialViolationId ? POOL.filter((o) => o.violationId === initialViolationId).map((o) => o.id) : []),
   );
@@ -359,7 +379,10 @@ export default function TicketTriageModal({
         if (o)
           next[id] = {
             ...next[id],
-            description: next[id].description.replace(/Target system: \w+\./, `Target system: ${s}.`),
+            description: next[id].description.replace(
+              /Raise in \w+ per policy configuration\./,
+              `Raise in ${s} per policy configuration.`,
+            ),
           };
       });
       return next;
@@ -439,15 +462,6 @@ export default function TicketTriageModal({
                     {initialViolationId ? VIOLATION_CATALOG[initialViolationId].short : "Selected"}
                   </span>
                   <span className="text-[10px] text-muted-foreground">· {visible.length} objects, ranked by CRS</span>
-                  <button
-                    onClick={() => {
-                      setExpanded(true);
-                      setTab("All");
-                    }}
-                    className="text-[10px] text-teal hover:underline underline-offset-2 ml-1"
-                  >
-                    + Add other types
-                  </button>
                 </>
               )}
               <button
@@ -655,7 +669,8 @@ export default function TicketTriageModal({
                         References
                       </label>
                       <p className="text-[10.5px] text-muted-foreground">
-                        Policy: {VIOLATION_CATALOG[activeObj.violationId].policy} · Source:{" "}
+                        Policy: {VIOLATION_CATALOG[activeObj.violationId].policy} ·{" "}
+                        {VIOLATION_CATALOG[activeObj.violationId].framework} · Source:{" "}
                         {VIOLATION_CATALOG[activeObj.violationId].source} · System: {system}
                       </p>
                     </div>
