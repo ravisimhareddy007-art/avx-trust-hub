@@ -1473,7 +1473,7 @@ function DetailPanel({
                       {hasPolicyViol && (
                         <button
                           onClick={() => onTicket("fix")}
-                          the last line of the user's request is:
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-purple/30 text-purple-light hover:bg-purple/10 transition-colors"
                           className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-purple/30 text-purple-light hover:bg-purple/10 transition-colors"
                         >
                           <Ticket className="w-3 h-3" /> Raise remediation ticket
