@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { Shield, Key, Lock, AlertTriangle, Clock, Check, ChevronRight, Atom, Radar } from "lucide-react";
+import { Shield, Key, Lock, AlertTriangle, Clock, Check, ChevronRight, Atom } from "lucide-react";
 import { useDashboard, feedItemToDriver } from "@/context/DashboardContext";
 import { VIOLATION_FILTERS } from "@/lib/filters/cryptoFilters";
 import TicketTriageModal from "./TicketTriageModal";
@@ -96,13 +96,6 @@ const SEV_STYLES: Record<ActionItem["severity"], string> = {
   P1: "bg-coral/15 text-coral border-coral/30",
   P2: "bg-amber/15 text-amber border-amber/30",
   P3: "bg-purple/15 text-purple border-purple/30",
-};
-
-const CATEGORY_SOURCE: Record<Category, string> = {
-  Certs: "CA Scan",
-  SSH: "Network Scan",
-  Secrets: "Key Store Discovery",
-  PQC: "CBOM Ingestion",
 };
 
 function ageLabel(mins: number) {
@@ -218,12 +211,6 @@ export default function CriticalActionFeed() {
                       <span className="text-[9.5px] text-muted-foreground">{item.category}</span>
                       <span className="text-[9.5px] text-muted-foreground flex items-center gap-0.5">
                         <Clock className="w-2.5 h-2.5" /> {ageLabel(item.ageMins)} ago
-                      </span>
-                      <span
-                        className="text-[9.5px] text-muted-foreground/70 flex items-center gap-0.5"
-                        title="Discovery source"
-                      >
-                        <Radar className="w-2.5 h-2.5" /> {CATEGORY_SOURCE[item.category]}
                       </span>
                     </div>
                     <p className="text-[11.5px] font-medium text-foreground leading-snug">{item.title}</p>
