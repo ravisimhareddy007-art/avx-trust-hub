@@ -231,13 +231,30 @@ function moduleFor(category: Category): string {
   return "CLM";
 }
 
+interface SysField {
+  label: string;
+  value: string;
+}
 interface Draft {
   summary: string;
-  priority: string;
-  assignee: string;
   description: string;
-  remediation: string;
   system: string;
+  fields: SysField[];
+}
+
+// Per-category policy configuration for the ITSM field defaults.
+const SYS_CONFIG: Record<Category, { snowCategory: string; jiraProjectKey: string; jiraIssueType: string }> = {
+  Certs: { snowCategory: "Certificate Management", jiraProjectKey: "CLM", jiraIssueType: "Task" },
+  SSH: { snowCategory: "SSH Key Management", jiraProjectKey: "SEC", jiraIssueType: "Task" },
+  Secrets: { snowCategory: "Secrets Management", jiraProjectKey: "SEC", jiraIssueType: "Task" },
+  PQC: { snowCategory: "PQC Migration", jiraProjectKey: "PQC", jiraIssueType: "Story" },
+};
+
+function urgencyFor(crs: number) {
+  return crs >= 80 ? "High" : crs >= 60 ? "Medium" : "Low";
+}
+function jiraPriorityFor(sev: string) {
+  return sev === "P1" ? "Highest" : sev === "P2" ? "High" : "Medium";
 }
 
 function draftSummary(o: PoolObj, vid: string): string {
@@ -262,7 +279,29 @@ function draftSummary(o: PoolObj, vid: string): string {
       return `Remediate ${o.name}`;
   }
 }
-function draftRemediation(vid: string): string {
+function rootCause(o: PoolObj, vid: string): string {
+  switch (vid) {
+    case "1":
+      return `has a certificate ${o.issue} and no auto-renewal configured, risking an outage for dependent services`;
+    case "expired":
+      return `has an expired certificate still deployed to a live endpoint, causing trust failures`;
+    case "6":
+      return `uses a weak signature or key (${o.issue})`;
+    case "pqc-1":
+      return `uses a quantum-vulnerable algorithm (${o.issue}) that becomes unsafe past the NIST deadline`;
+    case "3":
+      return `is a suspicious SSH key showing anomalous login patterns on production hosts`;
+    case "9":
+      return `is a rogue SSH key not provisioned through the platform`;
+    case "8":
+      return `is a secret not rotated in over 90 days`;
+    case "orphaned":
+      return `is an orphaned secret whose owner has left the org, blocking rotation`;
+    default:
+      return `requires review`;
+  }
+}
+function remediation(vid: string): string {
   switch (vid) {
     case "1":
       return "Re-issue on an approved CA with 90-day validity, enable auto-renewal, then deploy to dependent endpoints and verify the TLS handshake.";
@@ -284,19 +323,40 @@ function draftRemediation(vid: string): string {
       return "Review and remediate per policy.";
   }
 }
+
+// ITSM field set, prefilled from policy config + the object. Swaps with the system choice.
+function systemFields(system: string, o: PoolObj, vid: string): SysField[] {
+  const v = VIOLATION_CATALOG[vid];
+  const cfg = SYS_CONFIG[o.category];
+  const ci = o.asset.application || o.asset.infrastructure || o.name;
+  if (system === "Jira") {
+    return [
+      { label: "Project key", value: cfg.jiraProjectKey },
+      { label: "Issue type", value: cfg.jiraIssueType },
+      { label: "Components", value: o.category },
+      { label: "Labels", value: `${v.short.toLowerCase().replace(/\s+/g, "-")} crypto-posture` },
+      { label: "Priority", value: jiraPriorityFor(v.severity) },
+    ];
+  }
+  return [
+    { label: "Assignment group", value: o.assignee },
+    { label: "Category", value: cfg.snowCategory },
+    { label: "Configuration item", value: ci },
+    { label: "Urgency", value: urgencyFor(o.crs) },
+    { label: "Impact", value: o.asset.environment === "Production" ? "High" : "Medium" },
+  ];
+}
+
 function buildDraft(o: PoolObj, vid: string): Draft {
   const v = VIOLATION_CATALOG[vid];
   return {
     summary: draftSummary(o, vid),
-    priority: crsPriority(o.crs),
-    assignee: o.assignee,
-    description: `Object: ${o.name} (${o.category}). Issue: ${o.issue}. CRS score: ${o.crs} (${crsPriority(o.crs)}). Owning team: ${o.assignee}. Discovered via ${v.source}. Violates policy "${v.policy}" (${v.framework}).`,
-    remediation: draftRemediation(vid),
+    description: `Root cause: ${o.name} (${o.category}) ${rootCause(o, vid)}. It violates policy "${v.policy}" (${v.framework}); CRS ${o.crs} (${crsPriority(o.crs)}); owning team ${o.assignee}.\n\nSuggested remediation: ${remediation(vid)}`,
     system: v.system,
+    fields: systemFields(v.system, o, vid),
   };
 }
 
-const PRIORITY_OPTIONS = ["P1 · Critical", "P2 · High", "P3 · Moderate"];
 const ITSM_OPTIONS = ["ServiceNow", "Jira"] as const;
 
 type TabKey = "All" | Category;
@@ -350,7 +410,8 @@ export default function TicketTriageModal({
     setDrafts((prev) => {
       const n = { ...prev };
       Object.keys(n).forEach((id) => {
-        n[id] = { ...n[id], system: s };
+        const o = POOL.find((p) => p.id === id);
+        n[id] = { ...n[id], system: s, fields: o ? systemFields(s, o, violationFor(o)) : n[id].fields };
       });
       return n;
     });
@@ -405,6 +466,21 @@ export default function TicketTriageModal({
   const patch = (id: string, field: keyof Draft, value: string) =>
     setDrafts((prev) => ({ ...prev, [id]: { ...prev[id], [field]: value } }));
 
+  const changeSystem = (id: string, s: string) =>
+    setDrafts((prev) => {
+      const o = POOL.find((p) => p.id === id);
+      return {
+        ...prev,
+        [id]: { ...prev[id], system: s, fields: o ? systemFields(s, o, violationFor(o)) : prev[id].fields },
+      };
+    });
+
+  const patchField = (id: string, index: number, value: string) =>
+    setDrafts((prev) => {
+      const f = prev[id].fields.map((x, i) => (i === index ? { ...x, value } : x));
+      return { ...prev, [id]: { ...prev[id], fields: f } };
+    });
+
   const submit = () => {
     const count = selectedObjs.length;
     let sn = 0,
@@ -419,8 +495,8 @@ export default function TicketTriageModal({
         {
           title: d.summary,
           type: ticketType(o.category),
-          priority: draftPriority(d.priority),
-          assignee: d.assignee,
+          priority: draftPriority(crsPriority(o.crs)),
+          assignee: o.assignee,
           module: moduleFor(o.category),
         },
         {
@@ -680,70 +756,56 @@ export default function TicketTriageModal({
                         CRS {activeObj.crs}
                       </span>
                     </div>
-                    <AiField label="Summary">
+                    <div className="flex items-center gap-2 mb-3 p-2 rounded-md bg-secondary/30 border border-border">
+                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                        Raise in
+                      </span>
+                      <div className="inline-flex rounded-md border border-border overflow-hidden">
+                        {ITSM_OPTIONS.map((s) => (
+                          <button
+                            key={s}
+                            onClick={() => changeSystem(activeId, s)}
+                            className={`text-[11px] font-medium px-3 py-1 transition-colors ${active.system === s ? "bg-teal text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground"}`}
+                          >
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                      <span className="text-[10px] text-muted-foreground ml-auto">
+                        policy default: {VIOLATION_CATALOG[activeVid].system}
+                      </span>
+                    </div>
+                    <AiField label="Name">
                       <input
                         value={active.summary}
                         onChange={(e) => patch(activeId, "summary", e.target.value)}
                         className="w-full px-2.5 py-1.5 bg-muted border border-border rounded text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal"
                       />
                     </AiField>
-                    <div className="grid grid-cols-2 gap-3">
-                      <AiField label="Priority">
-                        <select
-                          value={active.priority}
-                          onChange={(e) => patch(activeId, "priority", e.target.value)}
-                          className="w-full px-2.5 py-1.5 bg-muted border border-border rounded text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal"
-                        >
-                          {PRIORITY_OPTIONS.map((p) => (
-                            <option key={p} value={p}>
-                              {p}
-                            </option>
-                          ))}
-                        </select>
-                      </AiField>
-                      <AiField label="Assignee team">
-                        <input
-                          value={active.assignee}
-                          onChange={(e) => patch(activeId, "assignee", e.target.value)}
-                          className="w-full px-2.5 py-1.5 bg-muted border border-border rounded text-[11px] text-foreground font-mono focus:outline-none focus:ring-1 focus:ring-teal"
-                        />
-                      </AiField>
-                    </div>
-                    <AiField label="Description">
+                    <AiField label="Description (root cause and remediation)">
                       <textarea
                         value={active.description}
                         onChange={(e) => patch(activeId, "description", e.target.value)}
-                        rows={3}
-                        className="w-full px-2.5 py-1.5 bg-muted border border-border rounded text-[11px] text-foreground leading-relaxed resize-none focus:outline-none focus:ring-1 focus:ring-teal"
-                      />
-                    </AiField>
-                    <AiField label="Suggested remediation">
-                      <textarea
-                        value={active.remediation}
-                        onChange={(e) => patch(activeId, "remediation", e.target.value)}
-                        rows={3}
+                        rows={6}
                         className="w-full px-2.5 py-1.5 bg-muted border border-border rounded text-[11px] text-foreground leading-relaxed resize-none focus:outline-none focus:ring-1 focus:ring-teal"
                       />
                     </AiField>
                     <div className="mb-3">
-                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1 block">
-                        Ticketing system
+                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1.5 block">
+                        {active.system} fields{" "}
+                        <span className="text-muted-foreground/60 normal-case">· from policy configuration</span>
                       </label>
-                      <div className="flex items-center gap-2">
-                        <div className="inline-flex rounded-md border border-border overflow-hidden">
-                          {ITSM_OPTIONS.map((s) => (
-                            <button
-                              key={s}
-                              onClick={() => patch(activeId, "system", s)}
-                              className={`text-[11px] font-medium px-3 py-1 transition-colors ${active.system === s ? "bg-teal text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground"}`}
-                            >
-                              {s}
-                            </button>
-                          ))}
-                        </div>
-                        <span className="text-[10px] text-muted-foreground">
-                          policy default: {VIOLATION_CATALOG[activeVid].system}
-                        </span>
+                      <div className="grid grid-cols-2 gap-2.5">
+                        {active.fields.map((f, i) => (
+                          <div key={f.label}>
+                            <label className="text-[9.5px] text-muted-foreground mb-0.5 block">{f.label}</label>
+                            <input
+                              value={f.value}
+                              onChange={(e) => patchField(activeId, i, e.target.value)}
+                              className="w-full px-2 py-1 bg-muted border border-border rounded text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal"
+                            />
+                          </div>
+                        ))}
                       </div>
                     </div>
                     <div>
@@ -752,7 +814,7 @@ export default function TicketTriageModal({
                       </label>
                       <p className="text-[10.5px] text-muted-foreground">
                         Policy: {VIOLATION_CATALOG[activeVid].policy} · {VIOLATION_CATALOG[activeVid].framework} ·
-                        Source: {VIOLATION_CATALOG[activeVid].source} · System: {active.system}
+                        System: {active.system}
                       </p>
                     </div>
                   </>
