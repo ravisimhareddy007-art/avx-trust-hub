@@ -6,7 +6,7 @@ import {
   Atom,
   Check,
   ChevronRight,
-  ChevronLeft,
+  ChevronDown,
   Ticket,
   X,
   Sparkles,
@@ -368,18 +368,6 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "PQC", label: "Quantum" },
 ];
 
-function AiField({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="mb-3">
-      <label className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">
-        {label}
-        <Sparkles className="w-2.5 h-2.5 text-teal" />
-      </label>
-      {children}
-    </div>
-  );
-}
-
 export default function TicketTriageModal({
   onClose,
   initialType = "All",
@@ -391,20 +379,20 @@ export default function TicketTriageModal({
 }) {
   const { setCurrentPage } = useNav();
   const scoped = !!initialViolationId;
-  const expanded = !scoped;
   const [tab, setTab] = useState<TabKey>(initialType);
-  const [stage, setStage] = useState<"select" | "review">("select");
-  const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
-  const [activeId, setActiveId] = useState<string>("");
+  const [selected, setSelected] = useState<Set<string>>(() =>
+    initialViolationId
+      ? new Set(
+          POOL.filter((o) => VIOLATION_CATALOG[initialViolationId].match(o.asset) && !ticketForObject(o.id)).map(
+            (o) => o.id,
+          ),
+        )
+      : new Set(),
+  );
 
-  const sysCounts = useMemo(() => {
-    const vals = Object.values(drafts);
-    return {
-      sn: vals.filter((d) => d.system === "ServiceNow").length,
-      jira: vals.filter((d) => d.system === "Jira").length,
-    };
-  }, [drafts]);
+  const violationFor = (o: PoolObj) => (scoped ? initialViolationId! : o.violationId);
 
   const tabCounts = useMemo(() => {
     const c: Record<TabKey, number> = { All: POOL.length, Certs: 0, SSH: 0, Secrets: 0, PQC: 0 };
@@ -414,16 +402,19 @@ export default function TicketTriageModal({
     return c;
   }, []);
 
-  // Effective violation for a given pooled object in the current context.
-  const violationFor = (o: PoolObj) => (scoped ? initialViolationId! : o.violationId);
-
   const visible = useMemo(() => {
     if (scoped) return POOL.filter((o) => VIOLATION_CATALOG[initialViolationId!].match(o.asset));
     return tab === "All" ? POOL : POOL.filter((o) => o.category === tab);
   }, [tab, scoped, initialViolationId]);
 
-  const selectedObjs = useMemo(() => POOL.filter((o) => selected.has(o.id)), [selected]);
   const isTicketed = (id: string) => !!ticketForObject(id);
+  const selectedObjs = useMemo(() => POOL.filter((o) => selected.has(o.id)), [selected]);
+
+  const sysFor = (o: PoolObj) => drafts[o.id]?.system ?? VIOLATION_CATALOG[violationFor(o)].system;
+  const sysCounts = useMemo(() => {
+    const sn = selectedObjs.filter((o) => sysFor(o) === "ServiceNow").length;
+    return { sn, jira: selectedObjs.length - sn };
+  }, [selectedObjs, drafts]);
 
   const toggle = (id: string) => {
     if (isTicketed(id)) return;
@@ -443,19 +434,14 @@ export default function TicketTriageModal({
       return n;
     });
 
-  const enterReview = () => {
-    const d: Record<string, Draft> = {};
-    selectedObjs.forEach((o) => {
-      d[o.id] = buildDraft(o, violationFor(o));
-    });
-    setDrafts(d);
-    setActiveId(selectedObjs[0]?.id ?? "");
-    setStage("review");
+  const expand = (o: PoolObj) => {
+    if (isTicketed(o.id)) return;
+    setExpandedId((prev) => (prev === o.id ? null : o.id));
+    setDrafts((prev) => (prev[o.id] ? prev : { ...prev, [o.id]: buildDraft(o, violationFor(o)) }));
   };
 
   const patch = (id: string, field: keyof Draft, value: string) =>
     setDrafts((prev) => ({ ...prev, [id]: { ...prev[id], [field]: value } }));
-
   const changeSystem = (id: string, s: string) =>
     setDrafts((prev) => {
       const o = POOL.find((p) => p.id === id);
@@ -464,7 +450,6 @@ export default function TicketTriageModal({
         [id]: { ...prev[id], system: s, fields: o ? systemFields(s, o, violationFor(o)) : prev[id].fields },
       };
     });
-
   const patchField = (id: string, index: number, value: string) =>
     setDrafts((prev) => {
       const f = prev[id].fields.map((x, i) => (i === index ? { ...x, value } : x));
@@ -476,9 +461,7 @@ export default function TicketTriageModal({
     let sn = 0,
       jira = 0;
     selectedObjs.forEach((o) => {
-      const d = drafts[o.id];
-      if (!d) return;
-      const vid = violationFor(o);
+      const d = drafts[o.id] ?? buildDraft(o, violationFor(o));
       if (d.system === "ServiceNow") sn++;
       else jira++;
       addTicket(
@@ -506,16 +489,17 @@ export default function TicketTriageModal({
     });
   };
 
-  const active = drafts[activeId];
-  const activeObj = selectedObjs.find((o) => o.id === activeId);
-  const activeVid = activeObj ? violationFor(activeObj) : "";
-  const count = selectedObjs.length;
   const scopedTotal = scoped ? VIOLATION_CATALOG[initialViolationId!].total : POOL.length;
+  const count = selectedObjs.length;
+  const COLS = "30px minmax(0,2.4fr) 46px 1.5fr 58px 1.8fr 24px";
+
+  const envColor = (env: string) =>
+    env === "Production" ? "text-coral" : env === "Staging" ? "text-amber" : "text-muted-foreground";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <div
-        className="bg-card border border-border rounded-xl w-full max-w-4xl max-h-[86vh] flex flex-col shadow-2xl"
+        className="bg-card border border-border rounded-xl w-full max-w-4xl max-h-[88vh] flex flex-col shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -526,304 +510,236 @@ export default function TicketTriageModal({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-semibold text-foreground">Remediation triage</h2>
-              <span className="text-[10px] text-teal">
-                {stage === "select" ? "Step 1 · Select objects" : "Step 2 · Review AI-drafted tickets"}
+              <span className="text-[11px] text-muted-foreground">
+                {scoped
+                  ? `${VIOLATION_CATALOG[initialViolationId!].short} · showing ${visible.length} of ${fmt(scopedTotal)}, ranked by CRS`
+                  : "One ticket per crypto object, ranked by CRS. Select, review inline, then create."}
               </span>
             </div>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              {stage === "select"
-                ? "One ticket per crypto object, ranked by CRS. Build a batch, then review."
-                : "AI has drafted each ticket. Review and edit any field, set the ticketing system per ticket, then create."}
-            </p>
           </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-1 flex-shrink-0">
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {stage === "select" && (
-          <>
-            <div className="flex items-center gap-1 px-5 pt-2.5 pb-2 border-b border-border flex-wrap">
-              {expanded ? (
-                TABS.map((t) => {
-                  const activeTab = tab === t.key;
-                  return (
-                    <button
-                      key={t.key}
-                      onClick={() => setTab(t.key)}
-                      className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${activeTab ? "bg-teal text-primary-foreground border-teal" : "bg-secondary/40 text-muted-foreground border-border hover:text-foreground hover:border-teal/40"}`}
-                    >
-                      {t.label}
-                      <span
-                        className={`min-w-4 text-center text-[9px] px-1 rounded ${activeTab ? "bg-primary-foreground/20" : "bg-background/60"}`}
-                      >
-                        {tabCounts[t.key]}
-                      </span>
-                    </button>
-                  );
-                })
-              ) : (
-                <>
-                  <span className="text-[11px] font-medium text-foreground">
-                    {VIOLATION_CATALOG[initialViolationId!].short}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground">
-                    · showing {visible.length} of {fmt(scopedTotal)}, ranked by CRS
-                  </span>
-                </>
-              )}
-              <button
-                onClick={toggleAllVisible}
-                className="ml-auto flex items-center gap-1.5 text-[10px] text-foreground"
-              >
-                <span
-                  className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${allVisibleSelected ? "bg-teal border-teal" : "border-border"}`}
-                >
-                  {allVisibleSelected && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
-                </span>
-                Select all shown
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto scrollbar-thin">
-              {visible.length === 0 ? (
-                <p className="px-5 py-8 text-center text-[11px] text-muted-foreground">
-                  No matching objects in the current inventory sample.
-                </p>
-              ) : (
-                <table className="w-full text-[11px]">
-                  <thead className="sticky top-0 bg-card border-b border-border">
-                    <tr className="text-muted-foreground">
-                      <th className="w-8 px-3 py-2"></th>
-                      <th className="text-left px-2 py-2 font-medium">Crypto object</th>
-                      <th className="text-left px-2 py-2 font-medium w-14">CRS</th>
-                      <th className="text-left px-2 py-2 font-medium">IT asset</th>
-                      <th className="text-left px-2 py-2 font-medium">Violation</th>
-                      <th className="text-left px-2 py-2 font-medium w-28">Assignee</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visible.map((o) => {
-                      const Icon = CAT_ICON[o.category];
-                      const ticketed = isTicketed(o.id);
-                      const isSel = selected.has(o.id);
-                      const vShort = VIOLATION_CATALOG[violationFor(o)].short;
-                      return (
-                        <tr
-                          key={o.id}
-                          onClick={() => toggle(o.id)}
-                          className={`border-b border-border/50 transition-colors ${ticketed ? "opacity-50 cursor-default" : `cursor-pointer ${isSel ? "bg-teal/[0.04]" : "hover:bg-secondary/30"}`}`}
-                        >
-                          <td className="px-3 py-2">
-                            {ticketed ? (
-                              <Check className="w-3.5 h-3.5 text-teal" />
-                            ) : (
-                              <span
-                                className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${isSel ? "bg-teal border-teal" : "border-border"}`}
-                              >
-                                {isSel && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-2 py-2 text-foreground font-mono truncate max-w-[180px]">
-                            <span className="inline-flex items-center gap-1.5">
-                              <Icon className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                              {o.name}
-                            </span>
-                          </td>
-                          <td className="px-2 py-2">
-                            <span
-                              className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold tabular-nums ${crsColor(o.crs)}`}
-                            >
-                              {o.crs}
-                            </span>
-                          </td>
-                          <td className="px-2 py-2 text-muted-foreground">
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <span className="truncate max-w-[130px]">
-                                {o.asset.application || o.asset.infrastructure || "unbound"}
-                              </span>
-                              <span
-                                className={`text-[8.5px] px-1 py-0.5 rounded flex-shrink-0 ${
-                                  o.asset.environment === "Production"
-                                    ? "bg-coral/15 text-coral"
-                                    : o.asset.environment === "Staging"
-                                      ? "bg-amber/15 text-amber"
-                                      : "bg-secondary text-muted-foreground"
-                                }`}
-                              >
-                                {o.asset.environment === "Production"
-                                  ? "Prod"
-                                  : o.asset.environment === "Staging"
-                                    ? "Stg"
-                                    : "Dev"}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-2 py-2 text-muted-foreground">
-                            {ticketed ? (
-                              <span className="text-teal">Ticket raised</span>
-                            ) : (
-                              <>
-                                {vShort} <span className="text-muted-foreground/60">· {o.issue}</span>
-                              </>
-                            )}
-                          </td>
-                          <td className="px-2 py-2 text-muted-foreground font-mono truncate max-w-[110px]">
-                            {o.assignee}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
-            </div>
-
-            <div className="flex items-center gap-3 px-5 py-3 border-t border-border">
-              <span className="flex items-center gap-1.5 text-[11px] text-foreground">
-                <ShoppingCart className="w-3.5 h-3.5 text-teal" />
-                <span className="font-semibold tabular-nums">{count}</span> selected
-              </span>
-              <div className="ml-auto flex items-center gap-2">
+        {/* Cross-type tabs (inventory entry only) */}
+        {!scoped && (
+          <div className="flex items-center gap-1 px-5 pt-2.5 pb-2 border-b border-border flex-wrap">
+            {TABS.map((t) => {
+              const activeTab = tab === t.key;
+              return (
                 <button
-                  onClick={onClose}
-                  className="text-[11px] font-medium px-3 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary"
+                  key={t.key}
+                  onClick={() => setTab(t.key)}
+                  className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${activeTab ? "bg-teal text-primary-foreground border-teal" : "bg-secondary/40 text-muted-foreground border-border hover:text-foreground hover:border-teal/40"}`}
                 >
-                  Cancel
+                  {t.label}
+                  <span
+                    className={`min-w-4 text-center text-[9px] px-1 rounded ${activeTab ? "bg-primary-foreground/20" : "bg-background/60"}`}
+                  >
+                    {tabCounts[t.key]}
+                  </span>
                 </button>
-                <button
-                  onClick={enterReview}
-                  disabled={count === 0}
-                  className="flex items-center gap-1.5 text-[11px] font-semibold py-1.5 px-4 rounded-md bg-teal text-primary-foreground hover:bg-teal-light disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  Review {fmt(count)} {count === 1 ? "ticket" : "tickets"} <ChevronRight className="w-3 h-3" />
-                </button>
-              </div>
-            </div>
-          </>
+              );
+            })}
+          </div>
         )}
 
-        {stage === "review" && (
-          <>
-            <div className="flex-1 overflow-hidden flex">
-              <div className="w-56 flex-shrink-0 border-r border-border overflow-y-auto scrollbar-thin">
-                {selectedObjs.map((o) => {
-                  const Icon = CAT_ICON[o.category];
-                  return (
-                    <button
-                      key={o.id}
-                      onClick={() => setActiveId(o.id)}
-                      className={`w-full text-left px-3 py-2 border-b border-border/50 transition-colors ${activeId === o.id ? "bg-teal/[0.06] border-l-2 border-l-teal" : "hover:bg-secondary/30 border-l-2 border-l-transparent"}`}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className={`inline-block px-1 py-0.5 rounded text-[9px] font-semibold tabular-nums ${crsColor(o.crs)}`}
-                        >
-                          {o.crs}
-                        </span>
-                        <Icon className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                        <span className="text-[10.5px] font-mono text-foreground truncate flex-1">{o.name}</span>
-                        {drafts[o.id] && (
-                          <span className="text-[8px] px-1 py-0.5 rounded bg-secondary text-muted-foreground flex-shrink-0">
-                            {drafts[o.id].system === "ServiceNow" ? "SNOW" : "Jira"}
-                          </span>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+        {/* Column header */}
+        <div
+          className="grid items-center px-4 py-2 border-b border-border text-[10px] text-muted-foreground sticky top-0 bg-card z-10"
+          style={{ gridTemplateColumns: COLS }}
+        >
+          <button
+            onClick={toggleAllVisible}
+            title="Select all shown"
+            className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${allVisibleSelected ? "bg-teal border-teal" : "border-border hover:border-teal/60"}`}
+          >
+            {allVisibleSelected && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+          </button>
+          <span>Crypto object</span>
+          <span>CRS</span>
+          <span>IT asset</span>
+          <span>Env</span>
+          <span>Violation</span>
+          <span></span>
+        </div>
 
-              <div className="flex-1 overflow-y-auto scrollbar-thin px-5 py-4">
-                {active && activeObj && (
-                  <>
-                    <div className="flex items-center gap-2 mb-3 flex-wrap">
-                      <span className="text-[11px] font-mono text-foreground">{activeObj.name}</span>
+        {/* Rows */}
+        <div className="flex-1 overflow-y-auto scrollbar-thin">
+          {visible.length === 0 && (
+            <p className="px-5 py-8 text-center text-[11px] text-muted-foreground">
+              No matching objects in the current inventory sample.
+            </p>
+          )}
+          {visible.map((o) => {
+            const Icon = CAT_ICON[o.category];
+            const ticketed = isTicketed(o.id);
+            const isSel = selected.has(o.id);
+            const isOpen = expandedId === o.id;
+            const d = drafts[o.id];
+            const vShort = VIOLATION_CATALOG[violationFor(o)].short;
+            const itAsset = o.asset.application || o.asset.infrastructure || "unbound";
+            return (
+              <div key={o.id} className={`border-b border-border/60 ${isOpen ? "bg-secondary/10" : ""}`}>
+                <div
+                  onClick={() => expand(o)}
+                  className={`grid items-center px-4 py-2 text-[11px] transition-colors ${ticketed ? "opacity-50" : "cursor-pointer hover:bg-secondary/20"} ${isOpen ? "border-l-2 border-l-teal" : "border-l-2 border-l-transparent"}`}
+                  style={{ gridTemplateColumns: COLS }}
+                >
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggle(o.id);
+                    }}
+                    disabled={ticketed}
+                    className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${ticketed ? "bg-teal/30 border-teal/40" : isSel ? "bg-teal border-teal" : "border-border hover:border-teal/60"}`}
+                  >
+                    {(isSel || ticketed) && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                  </button>
+                  <span className="inline-flex items-center gap-1.5 min-w-0">
+                    <Icon className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                    <span className="font-mono text-foreground truncate">{o.name}</span>
+                  </span>
+                  <span>
+                    <span
+                      className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold tabular-nums ${crsColor(o.crs)}`}
+                    >
+                      {o.crs}
+                    </span>
+                  </span>
+                  <span className="text-muted-foreground truncate">{itAsset}</span>
+                  <span className={envColor(o.asset.environment)}>
+                    {o.asset.environment === "Production" ? "Prod" : o.asset.environment === "Staging" ? "Stg" : "Dev"}
+                  </span>
+                  <span className="text-muted-foreground truncate">
+                    {ticketed ? (
+                      <span className="text-teal">Ticket raised</span>
+                    ) : (
+                      <>
+                        {vShort} <span className="text-muted-foreground/60">· {o.issue}</span>
+                      </>
+                    )}
+                  </span>
+                  <span className="flex justify-end">
+                    {!ticketed &&
+                      (isOpen ? (
+                        <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+                      ) : (
+                        <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                      ))}
+                  </span>
+                </div>
+
+                {isOpen && d && (
+                  <div className="px-5 pb-4 pt-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <span className="text-[11px] font-mono text-foreground">{o.name}</span>
                       <span
-                        className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold tabular-nums ${crsColor(activeObj.crs)}`}
+                        className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold tabular-nums ${crsColor(o.crs)}`}
                       >
-                        CRS {activeObj.crs}
+                        CRS {o.crs}
                       </span>
                       <span className="text-[10px] text-muted-foreground ml-auto">Raise in</span>
                       <div className="inline-flex rounded-md border border-border overflow-hidden">
                         {ITSM_OPTIONS.map((s) => (
                           <button
                             key={s}
-                            onClick={() => changeSystem(activeId, s)}
-                            className={`text-[11px] font-medium px-2.5 py-1 transition-colors ${active.system === s ? "bg-teal text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground"}`}
+                            onClick={() => changeSystem(o.id, s)}
+                            className={`text-[11px] font-medium px-2.5 py-1 transition-colors ${d.system === s ? "bg-teal text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground"}`}
                           >
                             {s}
                           </button>
                         ))}
                       </div>
                     </div>
-                    <AiField label="Name">
-                      <input
-                        value={active.summary}
-                        onChange={(e) => patch(activeId, "summary", e.target.value)}
-                        className="w-full px-2.5 py-1.5 bg-muted border border-border rounded text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal"
-                      />
-                    </AiField>
-                    <AiField label="Description (root cause and remediation)">
-                      <textarea
-                        value={active.description}
-                        onChange={(e) => patch(activeId, "description", e.target.value)}
-                        rows={6}
-                        className="w-full px-2.5 py-1.5 bg-muted border border-border rounded text-[11px] text-foreground leading-relaxed resize-none focus:outline-none focus:ring-1 focus:ring-teal"
-                      />
-                    </AiField>
-                    <div className="mb-3">
-                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1.5 block">
-                        {active.system} fields{" "}
-                        <span className="text-muted-foreground/60 normal-case">· from policy configuration</span>
-                      </label>
-                      <div className="grid grid-cols-2 gap-2.5">
-                        {active.fields.map((f, i) => (
-                          <div key={f.label}>
-                            <label className="text-[9.5px] text-muted-foreground mb-0.5 block">{f.label}</label>
-                            <input
-                              value={f.value}
-                              onChange={(e) => patchField(activeId, i, e.target.value)}
-                              className="w-full px-2 py-1 bg-muted border border-border rounded text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal"
-                            />
-                          </div>
-                        ))}
+                    <div className="flex items-center gap-1.5 mb-3 text-[10px] text-muted-foreground">
+                      <span className="text-muted-foreground/70">IT asset:</span>
+                      <span className="text-foreground">{itAsset}</span>
+                      <span
+                        className={`text-[8.5px] px-1 py-0.5 rounded ${o.asset.environment === "Production" ? "bg-coral/15 text-coral" : o.asset.environment === "Staging" ? "bg-amber/15 text-amber" : "bg-secondary text-muted-foreground"}`}
+                      >
+                        {o.asset.environment}
+                      </span>
+                      {o.asset.infrastructure && o.asset.application && (
+                        <span className="text-muted-foreground/60">· {o.asset.infrastructure}</span>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                      <div>
+                        <label className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">
+                          Name <Sparkles className="w-2.5 h-2.5 text-teal" />
+                        </label>
+                        <input
+                          value={d.summary}
+                          onChange={(e) => patch(o.id, "summary", e.target.value)}
+                          className="w-full px-2.5 py-1.5 bg-muted border border-border rounded text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal"
+                        />
+                      </div>
+                      <div>
+                        <label className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">
+                          Description · root cause and remediation <Sparkles className="w-2.5 h-2.5 text-teal" />
+                        </label>
+                        <textarea
+                          value={d.description}
+                          onChange={(e) => patch(o.id, "description", e.target.value)}
+                          rows={4}
+                          className="w-full px-2.5 py-1.5 bg-muted border border-border rounded text-[11px] text-foreground leading-relaxed resize-none focus:outline-none focus:ring-1 focus:ring-teal"
+                        />
                       </div>
                     </div>
-                  </>
+
+                    <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1.5 block">
+                      {d.system} fields{" "}
+                      <span className="text-muted-foreground/60 normal-case">· from policy configuration</span>
+                    </label>
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                      {d.fields.map((f, i) => (
+                        <div key={f.label}>
+                          <label className="text-[9.5px] text-muted-foreground mb-0.5 block truncate">{f.label}</label>
+                          <input
+                            value={f.value}
+                            onChange={(e) => patchField(o.id, i, e.target.value)}
+                            className="w-full px-2 py-1 bg-muted border border-border rounded text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
-            </div>
+            );
+          })}
+        </div>
 
-            <div className="flex items-center gap-3 px-5 py-3 border-t border-border">
-              <button
-                onClick={() => setStage("select")}
-                className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-0.5"
-              >
-                <ChevronLeft className="w-3 h-3" /> Back to selection
-              </button>
-              <span className="text-[10px] text-muted-foreground">
-                AI-drafted fields marked <Sparkles className="inline w-2.5 h-2.5 text-teal" /> · {sysCounts.sn}{" "}
-                ServiceNow, {sysCounts.jira} Jira
+        {/* Footer */}
+        <div className="flex items-center gap-3 px-5 py-3 border-t border-border">
+          <span className="flex items-center gap-1.5 text-[11px] text-foreground">
+            <ShoppingCart className="w-3.5 h-3.5 text-teal" />
+            <span className="font-semibold tabular-nums">{count}</span> selected
+            {count > 0 && (
+              <span className="text-muted-foreground">
+                · {sysCounts.sn} ServiceNow, {sysCounts.jira} Jira
               </span>
-              <div className="ml-auto flex items-center gap-2">
-                <button
-                  onClick={onClose}
-                  className="text-[11px] font-medium px-3 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={submit}
-                  className="flex items-center gap-1.5 text-[11px] font-semibold py-1.5 px-4 rounded-md bg-teal text-primary-foreground hover:bg-teal-light"
-                >
-                  <Ticket className="w-3 h-3" /> Create {fmt(count)} {count === 1 ? "ticket" : "tickets"}
-                </button>
-              </div>
-            </div>
-          </>
-        )}
+            )}
+          </span>
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={onClose}
+              className="text-[11px] font-medium px-3 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={submit}
+              disabled={count === 0}
+              className="flex items-center gap-1.5 text-[11px] font-semibold py-1.5 px-4 rounded-md bg-teal text-primary-foreground hover:bg-teal-light disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Ticket className="w-3 h-3" /> Create {fmt(count)} {count === 1 ? "ticket" : "tickets"}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
