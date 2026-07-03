@@ -30,6 +30,8 @@ export interface ErsBreakdown {
   quantumWeight: number;
   topAssets: { id: string; name: string; ars: number; bi: BusinessImpact; rps: number; contribution: number }[];
   driverBuckets: ErsDriver[];
+  history: { label: string; value: number }[];
+  historySample: boolean;
 }
 
 export interface ErsDriver {
@@ -142,6 +144,22 @@ function ersScoreOver(objects: CryptoAsset[]): number {
 // Contribution = the real ERS reduction if this driver's objects were resolved.
 // Computed through the same ARS -> ERS engine. Not additive across drivers, because
 // ERS uses a max/floor rule, so each row answers "fix this, ERS drops by N" on its own.
+// SAMPLE history for the prototype: a deterministic 12-week series that ends at the
+// live ERS. This is illustrative sample data, not stored telemetry. When real ERS
+// snapshots are persisted, swap this for the stored series (same shape).
+function ersHistory(current: number): { label: string; value: number }[] {
+  const N = 12;
+  const start = Math.min(100, current + 11);
+  const pts: { label: string; value: number }[] = [];
+  for (let i = 0; i < N; i++) {
+    const base = start + (current - start) * (i / (N - 1));
+    const wiggle = Math.sin(i * 1.7) * 2.4 + Math.cos(i * 0.9) * 1.3;
+    const v = i === N - 1 ? current : Math.max(0, Math.min(100, Math.round(base + wiggle)));
+    pts.push({ label: i === N - 1 ? "now" : `${N - 1 - i}w`, value: v });
+  }
+  return pts;
+}
+
 function buildDriverBuckets(): ErsDriver[] {
   const baseline = ersScoreOver(mockAssets);
   const rows = DRIVER_DEFS.map((def) => {
@@ -233,6 +251,8 @@ export function computeERS(assets: ITAsset[], bi: Record<string, BusinessImpact>
     quantumWeight: 0,
     topAssets,
     driverBuckets: buildDriverBuckets(),
+    history: ersHistory(ers),
+    historySample: true,
   };
 }
 
