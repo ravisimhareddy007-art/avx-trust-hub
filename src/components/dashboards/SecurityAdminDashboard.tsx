@@ -7,7 +7,10 @@ import { RiskProvider } from "@/context/RiskContext";
 import { toast } from "sonner";
 import EnterpriseRiskScore from "./ers/EnterpriseRiskScore";
 import CriticalActionFeed from "./CriticalActionFeed";
+import PqcReadinessCard from "./PqcReadinessCard";
+import CryptoEstateOverview from "./CryptoEstateOverview";
 import IdentityHealthBands from "./IdentityHealthBands";
+
 import InfrastructurePostureStrip from "./InfrastructurePostureStrip";
 
 export default function SecurityAdminDashboard() {
@@ -21,29 +24,23 @@ export default function SecurityAdminDashboard() {
     <DashboardProvider>
       <RiskProvider>
         <div className="space-y-0">
-          {/* Page header */}
-          <div className="flex items-end justify-between pt-1 pb-3 flex-shrink-0">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">Trust Posture & Risk Intelligence</h1>
-              <p className="text-xs text-muted-foreground mt-1">Security Admin · Enterprise view</p>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>Refreshed {refreshedLabel}</span>
-              <button
-                onClick={() => {
-                  setSpinning(true);
-                  setRefreshedLabel("just now");
-                  toast.success("Dashboard refreshed");
-                  setTimeout(() => setSpinning(false), 800);
-                }}
-                className="p-1 hover:text-foreground"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${spinning ? "animate-spin" : ""}`} />
-              </button>
-            </div>
+          {/* Slim status row */}
+          <div className="flex items-center justify-end pt-1 pb-2 text-xs text-muted-foreground">
+            <span>Refreshed {refreshedLabel}</span>
+            <button
+              onClick={() => {
+                setSpinning(true);
+                setRefreshedLabel("just now");
+                toast.success("Dashboard refreshed");
+                setTimeout(() => setSpinning(false), 800);
+              }}
+              className="p-1 hover:text-foreground"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${spinning ? "animate-spin" : ""}`} />
+            </button>
           </div>
 
-          <div className="pt-4">
+          <div className="pt-1">
             <div className="space-y-4 pr-1">
               {escalations.length > 0 && (
                 <div className="space-y-2">
@@ -107,6 +104,15 @@ export default function SecurityAdminDashboard() {
                 </div>
                 <div className="lg:col-span-7 lg:h-[420px] overflow-hidden">
                   <CriticalActionFeed />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+                <div className="lg:col-span-4">
+                  <PqcReadinessCard />
+                </div>
+                <div className="lg:col-span-8">
+                  <CryptoEstateOverview />
                 </div>
               </div>
 
