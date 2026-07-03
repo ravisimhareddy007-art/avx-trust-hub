@@ -1,10 +1,9 @@
 import React, { useState } from "react";
-import { RefreshCw, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useNotifications } from "@/context/NotificationContext";
 import { useNav } from "@/context/NavigationContext";
 import { DashboardProvider } from "@/context/DashboardContext";
 import { RiskProvider } from "@/context/RiskContext";
-import { toast } from "sonner";
 import EnterpriseRiskScore from "./ers/EnterpriseRiskScore";
 import IdentityHealthBands from "./IdentityHealthBands";
 
@@ -13,30 +12,12 @@ import InfrastructurePostureStrip from "./InfrastructurePostureStrip";
 export default function SecurityAdminDashboard() {
   const { notifications, markRead } = useNotifications();
   const { setCurrentPage } = useNav();
-  const [refreshedLabel, setRefreshedLabel] = useState("just now");
-  const [spinning, setSpinning] = useState(false);
   const escalations = notifications.filter((n) => n.toPersona === "security-admin");
 
   return (
     <DashboardProvider>
       <RiskProvider>
         <div className="space-y-0">
-          {/* Slim status row */}
-          <div className="flex items-center justify-end pt-1 pb-2 text-xs text-muted-foreground">
-            <span>Refreshed {refreshedLabel}</span>
-            <button
-              onClick={() => {
-                setSpinning(true);
-                setRefreshedLabel("just now");
-                toast.success("Dashboard refreshed");
-                setTimeout(() => setSpinning(false), 800);
-              }}
-              className="p-1 hover:text-foreground"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${spinning ? "animate-spin" : ""}`} />
-            </button>
-          </div>
-
           <div className="pt-1">
             <div className="space-y-4 pr-1">
               {escalations.length > 0 && (
