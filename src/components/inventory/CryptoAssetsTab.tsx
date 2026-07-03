@@ -24,6 +24,7 @@ import { useExceptions } from "@/lib/exceptions/ExceptionsContext";
 import { RaiseExceptionModal } from "@/lib/exceptions/ExceptionComponents";
 import { EnvBadge } from "@/components/shared/UIComponents";
 import { useNav } from "@/context/NavigationContext";
+import TicketDraftModal, { TicketDraft } from "@/components/inventory/TicketDraftModal";
 
 // ---- shared helpers ----------------------------------------------------------
 const SEV_TEXT: Record<StackSeverity, string> = {
@@ -175,6 +176,73 @@ function libraryFactors(l: LibraryAsset): Factor[] {
   ];
 }
 
+const priorityForSeverity = (s: StackSeverity): TicketDraft["priority"] =>
+  s === "Critical" ? "Critical" : s === "High" ? "High" : s === "Medium" ? "Medium" : "Low";
+const slaFor = (p: TicketDraft["priority"]) =>
+  p === "Critical"
+    ? "Resolve within 24 hours, P1 SLA"
+    : p === "High"
+      ? "Resolve within 72 hours, P2 SLA"
+      : "Resolve within 7 days, P3 SLA";
+
+function protocolDraft(p: ProtocolAsset): TicketDraft {
+  const priority = priorityForSeverity(p.severity);
+  const weakest = [...p.cipherSuites].sort(
+    (a, b) => ({ Insecure: 0, Weak: 1, Strong: 2 })[a.strength] - { Insecure: 0, Weak: 1, Strong: 2 }[b.strength],
+  )[0];
+  const viol = p.policyViolations.map((id) => POLICY_NAME[id] || id).join(", ");
+  return {
+    title: `Remediate ${p.version} on ${p.fqdn}:${p.port}`,
+    type: "Remediation",
+    priority,
+    assignee: p.owner !== "Unassigned" ? p.owner : p.team,
+    module: p.protocol === "SSH" ? "SSH" : "Protocol",
+    description: `${p.protocol} endpoint ${p.fqdn}:${p.port} accepts ${p.version} with weakest ${p.protocol === "SSH" ? "algorithm" : "cipher suite"} ${weakest.enc} (${weakest.strength}). Exposure: ${p.exposure} in ${p.environment}. Violations: ${viol || "none"}.`,
+    rootCause:
+      `Endpoint configuration permits ${p.version}${weakest.strength !== "Strong" ? ` and ${weakest.strength.toLowerCase()} ${weakest.enc}` : ""}. ${p.bound ? "" : "Host is not in IT asset inventory (shadow host)."}`.trim(),
+    remediationSteps: [
+      `Disable ${p.version} on ${p.fqdn}:${p.port}; enforce TLS 1.2 minimum (NIST SP 800-52 Rev2)`,
+      `Remove weak/insecure cipher suites (${weakest.enc}); allow AEAD suites only`,
+      `Re-scan the endpoint via ${p.discoverySource} to confirm remediation`,
+      `Validate handshake and downstream connectivity post-change`,
+    ],
+    affectedSystems: p.bound
+      ? `Endpoint ${p.fqdn}:${p.port} · ${p.environment}`
+      : `Unbound host ${p.fqdn}:${p.port} (not in inventory)`,
+    complianceImpact: `NIST SP 800-52 Rev2; PCI DSS v4.0 Req 4.2.1${p.policyViolations.includes("OOB-PROT-02") ? "; SP 800-131A Rev2" : ""}`,
+    sla: slaFor(priority),
+  };
+}
+
+function libraryDraft(l: LibraryAsset): TicketDraft {
+  const priority = priorityForSeverity(l.severity);
+  const topCve = l.cves.slice().sort((a, b) => b.cvss - a.cvss)[0];
+  const viol = l.policyViolations.map((id) => POLICY_NAME[id] || id).join(", ");
+  return {
+    title: `Upgrade ${l.name} ${l.version} across ${l.assetsAffected.length} host${l.assetsAffected.length === 1 ? "" : "s"}`,
+    type: "Remediation",
+    priority,
+    assignee: l.owner !== "Unassigned" ? l.owner : l.team,
+    module: "Library",
+    description: `${l.name} ${l.version} (${l.provider}) is ${l.eolStatus.toLowerCase()}${l.eolDate !== "Active" ? ` since ${l.eolDate}` : ""} and ${l.inUse ? "reached in production" : "present but dormant"} on ${l.assetsAffected.length} host${l.assetsAffected.length === 1 ? "" : "s"}. ${l.cveCount ? `${l.cveCount} known CVE${l.cveCount === 1 ? "" : "s"}, max CVSS ${l.maxCvss}.` : ""} Violations: ${viol || "none"}.`,
+    rootCause:
+      l.eolStatus === "End-of-Life"
+        ? `Version ${l.version} is past vendor end-of-life and no longer receives security fixes.`
+        : topCve
+          ? `Version ${l.version} carries ${topCve.id} (CVSS ${topCve.cvss}): ${topCve.title}.`
+          : `Version ${l.version} is behind current stable (${l.latestSafe}).`,
+    remediationSteps: [
+      `Upgrade ${l.name} to ${l.latestSafe} on all ${l.assetsAffected.length} affected host${l.assetsAffected.length === 1 ? "" : "s"}`,
+      ...(topCve ? [`Confirm the upgrade resolves ${topCve.id} (CVSS ${topCve.cvss})`] : []),
+      `Rebuild and redeploy dependent services; verify reachability`,
+      `Re-run CBOM ingestion to confirm the old version is retired`,
+    ],
+    affectedSystems: l.assetsAffected.join(", "),
+    complianceImpact: `NIST SP 800-131A Rev2${l.cveCount ? "; SP 800-40 Rev4 (CVE remediation)" : ""}`,
+    sla: slaFor(priority),
+  };
+}
+
 function SectionHeading({ label, count }: { label: string; count?: number }) {
   return (
     <div className="flex items-center gap-2 mb-2">
@@ -196,13 +264,12 @@ function MetaRow({ label, value, mono }: { label: string; value: React.ReactNode
   );
 }
 
-function Gauge({ score, factors }: { score: number; factors: Factor[] }) {
+function Gauge({ score, factors, violationCount }: { score: number; factors: Factor[]; violationCount: number }) {
   const [open, setOpen] = useState(false);
   const totalW = factors.reduce((s, f) => s + f.weight, 0);
   const col = score >= 60 ? "text-coral" : score >= 30 ? "text-amber" : "text-teal";
   const stroke = score >= 60 ? "hsl(var(--coral))" : score >= 30 ? "hsl(var(--amber))" : "hsl(var(--teal))";
   const band = score >= 80 ? "Critical" : score >= 60 ? "High" : score >= 30 ? "Medium" : "Low";
-  const viol = factors.length ? factors.filter((f) => f.raw >= 60).length : 0;
   return (
     <div className="mt-3 bg-card rounded-lg border border-border/50 p-3">
       <div className="flex items-center gap-3">
@@ -240,6 +307,15 @@ function Gauge({ score, factors }: { score: number; factors: Factor[] }) {
               {open ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
             </button>
           </div>
+          <p className="text-[10px] leading-snug mt-0.5">
+            {violationCount > 0 ? (
+              <span className="text-coral font-medium">
+                {violationCount} active violation{violationCount !== 1 ? "s" : ""}
+              </span>
+            ) : (
+              <span className="text-teal">No policy violations</span>
+            )}
+          </p>
         </div>
       </div>
       {open && (
@@ -334,7 +410,7 @@ function ViolationsSection({
   );
 }
 
-function LinkedInfra({ assets, note }: { assets: ITAsset[]; note?: string }) {
+function LinkedInfra({ assets, note, onNavigate }: { assets: ITAsset[]; note?: string; onNavigate: () => void }) {
   const { setFilters, setCurrentPage } = useNav();
   return (
     <div className="px-4 py-3">
@@ -350,6 +426,7 @@ function LinkedInfra({ assets, note }: { assets: ITAsset[]; note?: string }) {
               onClick={() => {
                 setFilters({ tab: "infrastructure", assetName: a.name });
                 setCurrentPage("inventory" as never);
+                onNavigate();
               }}
               className="w-full flex items-center gap-2 text-[11px] rounded px-2 py-1.5 hover:bg-secondary/50 transition-colors text-left group"
             >
@@ -375,6 +452,7 @@ function PanelShell({
   pills,
   crs,
   factors,
+  violationCount,
   onClose,
   onTicket,
   ticketLabel,
@@ -385,6 +463,7 @@ function PanelShell({
   pills: React.ReactNode;
   crs: number;
   factors: Factor[];
+  violationCount: number;
   onClose: () => void;
   onTicket: () => void;
   ticketLabel: string;
@@ -403,7 +482,7 @@ function PanelShell({
           </div>
           <p className="text-[11px] text-muted-foreground mb-2.5">{subtitle}</p>
           <div className="flex items-center gap-1.5">{pills}</div>
-          <Gauge score={crs} factors={factors} />
+          <Gauge score={crs} factors={factors} violationCount={violationCount} />
         </div>
         <div className="flex-1 overflow-y-auto scrollbar-thin divide-y divide-border/40">
           <div className="px-4 py-3">
@@ -425,15 +504,19 @@ function PanelShell({
 function ProtocolPanel({
   p,
   onClose,
-  onCreateTicket,
+  onRaise,
 }: {
   p: ProtocolAsset;
   onClose: () => void;
-  onCreateTicket: (ctx: unknown) => void;
+  onRaise: (d: TicketDraft) => void;
 }) {
   const asset = assetByFqdn(p.fqdn);
   const factors = protocolFactors(p);
   const violations = p.policyViolations.map((id) => ({ id, severity: p.severity }));
+  const suites = [...p.cipherSuites].sort(
+    (a, b) => ({ Insecure: 0, Weak: 1, Strong: 2 })[a.strength] - { Insecure: 0, Weak: 1, Strong: 2 }[b.strength],
+  );
+  const isSSH = p.protocol === "SSH";
   return (
     <PanelShell
       title={`${p.fqdn}:${p.port}`}
@@ -449,23 +532,24 @@ function ProtocolPanel({
       }
       crs={p.crs}
       factors={factors}
+      violationCount={p.policyViolations.length}
       onClose={onClose}
-      onTicket={() => onCreateTicket({ kind: "protocol", object: p })}
+      onTicket={() => onRaise(protocolDraft(p))}
       ticketLabel="Raise remediation ticket"
     >
       <div className="px-4 py-3">
-        <SectionHeading label="Negotiated cipher suites" />
+        <SectionHeading label={isSSH ? "Negotiated algorithms" : "Negotiated cipher suites"} />
         <div className="border border-border rounded-lg overflow-hidden">
           <div className="grid grid-cols-[1fr_auto] gap-2 px-2.5 py-1.5 bg-secondary/40 text-[9px] uppercase tracking-wide text-muted-foreground">
-            <span>Suite · KEX · Auth · Enc · MAC</span>
+            <span>{isSSH ? "Cipher · KEX · MAC" : "Suite · KEX · Auth · Enc · MAC"}</span>
             <span>Strength</span>
           </div>
-          {p.cipherSuites.map((c) => (
+          {suites.map((c) => (
             <div key={c.id} className="grid grid-cols-[1fr_auto] gap-2 px-2.5 py-2 border-t border-border/50">
               <div className="min-w-0">
                 <div className="text-[11px] font-mono text-foreground truncate">{c.name}</div>
                 <div className="text-[9.5px] text-muted-foreground">
-                  {c.kex} · {c.auth} · {c.enc} · {c.mac} · {c.id}
+                  {isSSH ? `${c.enc} · ${c.kex} · ${c.mac}` : `${c.kex} · ${c.auth} · ${c.enc} · ${c.mac} · ${c.id}`}
                 </div>
               </div>
               <span className={`text-[10px] font-semibold ${suiteColor[c.strength]}`}>{c.strength}</span>
@@ -502,6 +586,7 @@ function ProtocolPanel({
             ? "Unbound: host not in IT asset inventory (shadow host). Add it in the Infrastructure tab to track blast radius."
             : undefined
         }
+        onNavigate={onClose}
       />
     </PanelShell>
   );
@@ -510,11 +595,11 @@ function ProtocolPanel({
 function LibraryPanel({
   l,
   onClose,
-  onCreateTicket,
+  onRaise,
 }: {
   l: LibraryAsset;
   onClose: () => void;
-  onCreateTicket: (ctx: unknown) => void;
+  onRaise: (d: TicketDraft) => void;
 }) {
   const assets = l.assetsAffected.map(assetByFqdn).filter((a): a is ITAsset => !!a);
   const factors = libraryFactors(l);
@@ -538,8 +623,9 @@ function LibraryPanel({
       }
       crs={l.crs}
       factors={factors}
+      violationCount={l.policyViolations.length}
       onClose={onClose}
-      onTicket={() => onCreateTicket({ kind: "library", object: l })}
+      onTicket={() => onRaise(libraryDraft(l))}
       ticketLabel="Raise upgrade ticket"
     >
       <div className="px-4 py-3">
@@ -606,16 +692,18 @@ function LibraryPanel({
         parentAsset={l.assetsAffected[0]}
         violations={violations}
       />
-      <LinkedInfra assets={assets} />
+      <LinkedInfra assets={assets} onNavigate={onClose} />
     </PanelShell>
   );
 }
 
 // ---- tab ---------------------------------------------------------------------
 export default function CryptoAssetsTab({ onCreateTicket }: { onCreateTicket: (ctx: unknown) => void }) {
+  void onCreateTicket; // crypto-stack tickets use the AI draft modal, matching crypto objects
   const [view, setView] = useState<"protocols" | "libraries">("protocols");
   const [openProto, setOpenProto] = useState<string | null>(null);
   const [openLib, setOpenLib] = useState<string | null>(null);
+  const [ticketDraft, setTicketDraft] = useState<TicketDraft | null>(null);
 
   const protocols = useMemo(() => [...mockProtocols].sort((a, b) => b.crs - a.crs), []);
   const libraries = useMemo(() => [...mockLibraries].sort((a, b) => b.crs - a.crs), []);
@@ -814,10 +902,18 @@ export default function CryptoAssetsTab({ onCreateTicket }: { onCreateTicket: (c
         )}
       </div>
 
-      {drawerProto && (
-        <ProtocolPanel p={drawerProto} onClose={() => setOpenProto(null)} onCreateTicket={onCreateTicket} />
+      {drawerProto && <ProtocolPanel p={drawerProto} onClose={() => setOpenProto(null)} onRaise={setTicketDraft} />}
+      {drawerLib && <LibraryPanel l={drawerLib} onClose={() => setOpenLib(null)} onRaise={setTicketDraft} />}
+
+      {ticketDraft && (
+        <TicketDraftModal
+          asset={null}
+          action="fix"
+          initialDraft={ticketDraft}
+          onClose={() => setTicketDraft(null)}
+          onConfirm={() => setTicketDraft(null)}
+        />
       )}
-      {drawerLib && <LibraryPanel l={drawerLib} onClose={() => setOpenLib(null)} onCreateTicket={onCreateTicket} />}
     </div>
   );
 }
