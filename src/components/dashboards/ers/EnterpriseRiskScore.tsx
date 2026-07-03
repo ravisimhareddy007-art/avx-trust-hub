@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { Sparkles, Info, ChevronRight, ChevronLeft, TrendingDown, TrendingUp, Ticket } from "lucide-react";
 import { useRisk } from "@/context/RiskContext";
 import { severityHsl } from "@/lib/risk/types";
@@ -22,6 +22,8 @@ const SEV_TEXT: Record<string, string> = {
 };
 
 function TrendChart({ points, hsl }: { points: { label: string; value: number }[]; hsl: string }) {
+  const [hover, setHover] = useState<number | null>(null);
+  const ref = useRef<SVGSVGElement>(null);
   const W = 300,
     H = 130,
     L = 22,
@@ -42,12 +44,29 @@ function TrendChart({ points, hsl }: { points: { label: string; value: number }[
     { top: 30, bot: 0, c: "hsl(162 72% 42%)", label: "Low", op: 0.08 },
   ];
   const yTicks = [100, 80, 60, 30, 0];
+
+  const onMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    const svg = ref.current;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    const mx = ((e.clientX - rect.left) / rect.width) * W;
+    const idx = Math.max(0, Math.min(points.length - 1, Math.round(((mx - L) / (R - L)) * (points.length - 1))));
+    setHover(idx);
+  };
+
+  const hp = hover !== null ? points[hover] : null;
+  const tipX = hover !== null ? Math.min(Math.max(x(hover), 24), W - 26) : 0;
+
   return (
     <svg
+      ref={ref}
       width="100%"
       viewBox={`0 0 ${W} ${H}`}
       role="img"
       aria-label={`Risk trend, peaked at ${peak.value}, now ${last.value}`}
+      onMouseMove={onMove}
+      onMouseLeave={() => setHover(null)}
+      style={{ cursor: "crosshair" }}
     >
       {zones.map((z) => (
         <g key={z.label}>
@@ -72,6 +91,36 @@ function TrendChart({ points, hsl }: { points: { label: string; value: number }[
         strokeLinejoin="round"
         opacity="0.9"
       />
+
+      {hp && (
+        <g pointerEvents="none">
+          <line
+            x1={x(hover!)}
+            y1={T}
+            x2={x(hover!)}
+            y2={B}
+            stroke="currentColor"
+            strokeWidth="0.75"
+            strokeDasharray="2 2"
+            opacity="0.4"
+          />
+          <circle cx={x(hover!)} cy={y(hp.value)} r="3.5" fill={hsl} stroke="var(--card)" strokeWidth="1.5" />
+          <rect
+            x={tipX - 22}
+            y={y(hp.value) - 24}
+            width="44"
+            height="16"
+            rx="3"
+            fill="hsl(222 22% 11%)"
+            stroke="currentColor"
+            strokeOpacity="0.2"
+          />
+          <text x={tipX} y={y(hp.value) - 13} fontSize="8" fontWeight="500" fill="currentColor" textAnchor="middle">
+            {hp.label} · {hp.value}
+          </text>
+        </g>
+      )}
+
       <circle cx={x(peakIdx)} cy={y(peak.value)} r="2.5" fill="none" stroke="hsl(16 72% 51%)" strokeWidth="1.5" />
       <text x={x(peakIdx)} y={y(peak.value) - 5} fontSize="7.5" fill="hsl(16 72% 51%)" textAnchor="middle">
         peak {peak.value}
@@ -88,41 +137,15 @@ function TrendChart({ points, hsl }: { points: { label: string; value: number }[
         {last.value}
       </text>
       {points.map((p, i) => (
-        <g key={i} className="group/pt" style={{ cursor: "default" }}>
-          <circle
-            cx={x(i)}
-            cy={y(p.value)}
-            r="2"
-            fill="currentColor"
-            opacity="0.5"
-            className="group-hover/pt:opacity-100"
-          />
-          <rect x={x(i) - 8} y={0} width={16} height={H} fill="transparent" />
-          <g className="opacity-0 group-hover/pt:opacity-100 transition-opacity" pointerEvents="none">
-            <rect
-              x={Math.min(Math.max(x(i) - 24, 2), W - 50)}
-              y={y(p.value) - 26}
-              width="48"
-              height="18"
-              rx="3"
-              fill="hsl(222 20% 12%)"
-              stroke="currentColor"
-              strokeOpacity="0.2"
-            />
-            <text
-              x={Math.min(Math.max(x(i), 26), W - 26)}
-              y={y(p.value) - 13}
-              fontSize="8"
-              fill="currentColor"
-              textAnchor="middle"
-            >
-              {p.label} · {p.value}
-            </text>
-          </g>
-        </g>
-      ))}
-      {points.map((p, i) => (
-        <text key={`m${i}`} x={x(i)} y={H - 3} fontSize="7.5" fill="currentColor" opacity="0.4" textAnchor="middle">
+        <text
+          key={`m${i}`}
+          x={x(i)}
+          y={H - 3}
+          fontSize="7.5"
+          fill="currentColor"
+          opacity={hover === i ? 0.9 : 0.4}
+          textAnchor="middle"
+        >
           {p.label}
         </text>
       ))}
@@ -219,7 +242,7 @@ export default function EnterpriseRiskScore() {
             </div>
           </div>
 
-          <div className="mt-1">
+          <div className="flex-1 flex items-center mt-1">
             <TrendChart points={hist} hsl={hsl} />
           </div>
 
@@ -270,7 +293,7 @@ export default function EnterpriseRiskScore() {
             </div>
           </div>
 
-          <div className="flex flex-col flex-1">
+          <div className="flex flex-col">
             {pageRows.map((d) => (
               <button
                 key={d.id}
@@ -303,7 +326,7 @@ export default function EnterpriseRiskScore() {
             ))}
           </div>
 
-          <div className="flex items-center justify-between pt-2.5 mt-1">
+          <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-border/40">
             <span className="text-[10px] text-muted-foreground">
               {rows.length === 0
                 ? "No active factors"
