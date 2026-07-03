@@ -1,107 +1,57 @@
 import React, { useState } from "react";
-import { Sparkles, Info, ArrowRight, Zap, ShieldCheck } from "lucide-react";
+import { Sparkles, Info, ChevronRight, TrendingDown, TrendingUp } from "lucide-react";
 import { useRisk } from "@/context/RiskContext";
 import { severityHsl } from "@/lib/risk/types";
 import TicketTriageModal from "@/components/dashboards/TicketTriageModal";
 
-// Release 2 seam: each driver can gain a "remediate" action beside "review & ticket",
-// and pts already models the projected ERS reduction. MVP stays monitoring + ticketing.
 const REMEDIATION_ENABLED = false;
 
-const SEV_ACCENT: Record<string, string> = {
+const SEV_BAR: Record<string, string> = {
   Critical: "bg-coral",
-  High: "bg-amber",
-  Medium: "bg-purple",
+  High: "bg-coral",
+  Medium: "bg-amber",
   Low: "bg-teal",
 };
-const SEV_TINT: Record<string, string> = {
-  Critical: "bg-coral/10",
-  High: "bg-amber/10",
-  Medium: "bg-purple/10",
-  Low: "bg-teal/10",
+const SEV_TEXT: Record<string, string> = {
+  Critical: "text-coral",
+  High: "text-coral",
+  Medium: "text-amber",
+  Low: "text-teal",
 };
 
-function ErsGauge({ score, hsl, label }: { score: number; hsl: string; label: string }) {
-  const R = 52,
-    cx = 80,
-    cy = 70,
-    startAngle = -220,
-    totalDegrees = 260;
-  const toRad = (d: number) => (d * Math.PI) / 180;
-  const arcPath = (start: number, end: number) => {
-    const s = { x: cx + R * Math.cos(toRad(start)), y: cy + R * Math.sin(toRad(start)) };
-    const e = { x: cx + R * Math.cos(toRad(end)), y: cy + R * Math.sin(toRad(end)) };
-    const large = end - start > 180 ? 1 : 0;
-    return `M ${s.x} ${s.y} A ${R} ${R} 0 ${large} 1 ${e.x} ${e.y}`;
-  };
-  const lowEnd = startAngle + 0.29 * totalDegrees;
-  const medEnd = startAngle + 0.59 * totalDegrees;
-  const highEnd = startAngle + 0.79 * totalDegrees;
-  const arcEnd = startAngle + totalDegrees;
-  const filled = startAngle + (score / 100) * totalDegrees;
-  const TEAL = "hsl(162 72% 42%)",
-    BLUE = "hsl(210 80% 56%)",
-    AMBER = "hsl(38 82% 55%)",
-    CORAL = "hsl(16 80% 56%)";
+function TrendChart({ points, hsl }: { points: { label: string; value: number }[]; hsl: string }) {
+  const W = 300,
+    H = 64,
+    pad = 6;
+  const vals = points.map((p) => p.value);
+  const min = Math.min(...vals) - 4,
+    max = Math.max(...vals) + 4;
+  const span = Math.max(1, max - min);
+  const x = (i: number) => pad + (i / (points.length - 1)) * (W - pad * 2);
+  const y = (v: number) => pad + (1 - (v - min) / span) * (H - pad * 2);
+  const line = points.map((p, i) => `${i === 0 ? "M" : "L"} ${x(i).toFixed(1)} ${y(p.value).toFixed(1)}`).join(" ");
+  const area = `${line} L ${x(points.length - 1).toFixed(1)} ${H - pad} L ${x(0).toFixed(1)} ${H - pad} Z`;
+  const lastX = x(points.length - 1),
+    lastY = y(points[points.length - 1].value);
   return (
-    <svg width="168" height="122" viewBox="0 0 160 120">
-      <path d={arcPath(startAngle, lowEnd)} fill="none" stroke={TEAL} strokeWidth="9" opacity="0.22" />
-      <path d={arcPath(lowEnd, medEnd)} fill="none" stroke={BLUE} strokeWidth="9" opacity="0.22" />
-      <path d={arcPath(medEnd, highEnd)} fill="none" stroke={AMBER} strokeWidth="9" opacity="0.22" />
-      <path d={arcPath(highEnd, arcEnd)} fill="none" stroke={CORAL} strokeWidth="9" opacity="0.22" />
+    <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="ersFade" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={hsl} stopOpacity="0.20" />
+          <stop offset="100%" stopColor={hsl} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={area} fill="url(#ersFade)" />
       <path
-        d={arcPath(startAngle, filled)}
+        d={line}
         fill="none"
         stroke={hsl}
-        strokeWidth="9"
+        strokeWidth="2"
         strokeLinecap="round"
-        style={{ transition: "all 0.8s cubic-bezier(0.4,0,0.2,1)", filter: `drop-shadow(0 0 5px ${hsl})` }}
+        strokeLinejoin="round"
+        vectorEffect="non-scaling-stroke"
       />
-      <circle
-        cx={cx + (R - 3) * Math.cos(toRad(filled))}
-        cy={cy + (R - 3) * Math.sin(toRad(filled))}
-        r="5"
-        fill={hsl}
-        style={{ transition: "all 0.8s cubic-bezier(0.4,0,0.2,1)" }}
-      />
-      <text x="8" y="110" textAnchor="middle" fontSize="7" fill={TEAL} opacity="0.7">
-        LOW
-      </text>
-      <text x="34" y="16" textAnchor="middle" fontSize="7" fill={BLUE} opacity="0.7">
-        MED
-      </text>
-      <text x="126" y="16" textAnchor="middle" fontSize="7" fill={AMBER} opacity="0.7">
-        HIGH
-      </text>
-      <text x="152" y="110" textAnchor="middle" fontSize="7" fill={CORAL} opacity="0.7">
-        CRIT
-      </text>
-      <text
-        x={cx}
-        y="66"
-        textAnchor="middle"
-        fontSize="30"
-        fontWeight="800"
-        fill={hsl}
-        style={{ transition: "fill 0.7s ease" }}
-      >
-        {score}
-      </text>
-      <text
-        x={cx}
-        y="82"
-        textAnchor="middle"
-        fontSize="10"
-        fontWeight="700"
-        letterSpacing="1.5"
-        fill={hsl}
-        fillOpacity="0.9"
-      >
-        {label.toUpperCase()}
-      </text>
-      <text x={cx} y="95" textAnchor="middle" fontSize="8" fill="currentColor" fillOpacity="0.35">
-        RISK / 100
-      </text>
+      <circle cx={lastX} cy={lastY} r="3.5" fill={hsl} />
     </svg>
   );
 }
@@ -114,92 +64,96 @@ export default function EnterpriseRiskScore() {
   const severity = ers.severity;
   const hsl = severityHsl(severity);
   const drivers = ers.driverBuckets;
-  const top = drivers[0];
-  const topPts = top?.pts ?? 0;
-  const projected = Math.max(0, score - topPts);
+  const maxPts = Math.max(1, ...drivers.map((d) => d.pts));
+  const hist = ers.history;
+  const startVal = hist[0]?.value ?? score;
+  const delta = score - startVal;
+  const improving = delta < 0;
 
   return (
-    <div className="bg-card rounded-xl border border-border h-full flex flex-col overflow-hidden">
-      {/* severity accent strip */}
-      <div className={`h-1 w-full ${SEV_ACCENT[severity]}`} />
-
+    <div className="bg-card rounded-2xl border border-border h-full flex flex-col overflow-hidden">
       <div className="p-5 flex-1 flex flex-col min-h-0">
-        <div className="flex items-start justify-between mb-1">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-teal" />
-            <h2 className="text-sm font-semibold text-foreground">Enterprise Risk Score</h2>
-            <span className="text-[9px] uppercase tracking-wider text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">
-              ERS
-            </span>
-            <div className="relative group">
-              <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
-              <div className="absolute left-0 top-5 z-50 hidden group-hover:block w-72 bg-card border border-border rounded-lg shadow-lg px-3 py-2.5">
-                <p className="text-[11px] text-foreground leading-relaxed">
-                  Every object's CRS rolls up through per-asset ARS, weighted by business impact, with a floor so one
-                  critical asset on fire cannot be averaged out. Higher is worse. Each factor below shows the real ERS
-                  drop if you resolve it.
-                </p>
-              </div>
+        <div className="flex items-center gap-2 mb-3">
+          <Sparkles className="w-4 h-4 text-teal" />
+          <h2 className="text-sm font-semibold text-foreground">Enterprise Risk Score</h2>
+          <span className="text-[9px] uppercase tracking-wider text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">
+            ERS
+          </span>
+          <div className="relative group">
+            <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+            <div className="absolute left-0 top-5 z-50 hidden group-hover:block w-72 bg-card border border-border rounded-lg shadow-lg px-3 py-2.5">
+              <p className="text-[11px] text-foreground leading-relaxed">
+                Every object's CRS rolls up through per-asset ARS, weighted by business impact, with a floor so one
+                critical asset on fire cannot be averaged out. Each factor below shows the real ERS drop if you resolve
+                it.
+              </p>
             </div>
           </div>
-          <span className="text-[10px] text-muted-foreground">live</span>
+          <span className="ml-auto inline-flex items-center gap-1 text-[10px] text-teal">
+            <span className="w-1.5 h-1.5 rounded-full bg-teal" /> live
+          </span>
         </div>
 
-        <div className="flex flex-col items-center flex-shrink-0">
-          <ErsGauge score={score} hsl={hsl} label={severity} />
-        </div>
-
-        {/* Recommended next step, the single clearest action */}
-        {topPts > 0 ? (
-          <button
-            onClick={() => setTriage({ type: top.triageType, violationId: top.id })}
-            className={`w-full ${SEV_TINT[top.severity]} border border-border rounded-lg px-3 py-2 mt-1 flex items-center gap-2.5 hover:brightness-110 transition-all group text-left`}
-          >
-            <Zap className="w-4 h-4 text-teal flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <div className="text-[11px] font-semibold text-foreground leading-tight">Top fix: {top.label}</div>
-              <div className="text-[10px] text-muted-foreground">
-                Resolve to drop ERS{" "}
-                <span className="text-teal font-semibold">
-                  {score} to {projected}
-                </span>
-              </div>
+        {/* Trend hero */}
+        <div className="flex items-end gap-4 mb-1">
+          <div className="flex-shrink-0">
+            <div className="flex items-baseline gap-1">
+              <span className="text-5xl font-semibold leading-none tabular-nums" style={{ color: hsl }}>
+                {score}
+              </span>
+              <span className="text-xs text-muted-foreground">/100</span>
             </div>
-            <ArrowRight className="w-3.5 h-3.5 text-teal opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
-          </button>
-        ) : (
-          <div className="w-full bg-teal/10 border border-teal/20 rounded-lg px-3 py-2 mt-1 flex items-center gap-2 text-[11px] text-teal">
-            <ShieldCheck className="w-4 h-4" /> No single factor is currently moving the score.
+            <div className="flex items-center gap-1.5 mt-2">
+              <span
+                className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                style={{ color: hsl, background: `${hsl}1f` }}
+              >
+                {severity} risk
+              </span>
+              <span
+                className={`inline-flex items-center gap-0.5 text-[10px] font-medium ${improving ? "text-teal" : "text-coral"}`}
+              >
+                {improving ? <TrendingDown className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
+                {Math.abs(delta)} / 12w
+              </span>
+            </div>
           </div>
-        )}
+          <div className="flex-1 min-w-0 pb-0.5">
+            <TrendChart points={hist} hsl={hsl} />
+          </div>
+        </div>
+        <div className="text-[9px] text-muted-foreground mb-3">12-week trend · sample history</div>
 
-        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mt-3.5 mb-2">
-          What's driving ERS · click to review and raise tickets
-        </p>
+        <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2.5 pt-1 border-t border-border/40">
+          What's driving your risk · bar length = ERS impact
+        </div>
 
-        <div className="space-y-1 flex-1 overflow-y-auto scrollbar-thin -mr-1 pr-1">
+        <div className="flex flex-col gap-3 flex-1 overflow-y-auto scrollbar-thin -mr-1 pr-1">
           {drivers.map((d) => (
             <button
               key={d.id}
               onClick={() => setTriage({ type: d.triageType, violationId: d.id })}
-              className="w-full flex items-stretch gap-2.5 rounded-lg border border-border hover:border-teal/40 hover:bg-secondary/30 transition-all text-left overflow-hidden group"
+              className="group text-left"
             >
-              <div className={`w-1 flex-shrink-0 ${SEV_ACCENT[d.severity]}`} />
-              <div className="flex-1 min-w-0 py-1.5">
-                <div className="text-[11px] text-foreground leading-tight truncate">{d.label}</div>
-                <div className="text-[9.5px] text-muted-foreground mt-0.5">
-                  {d.count.toLocaleString()} objects · {d.urgency}
-                </div>
-              </div>
-              <div className="flex items-center gap-1.5 pr-2.5">
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-[11.5px] text-foreground flex-1 min-w-0 truncate">{d.label}</span>
                 {d.pts > 0 ? (
-                  <span className="text-[10px] font-bold text-teal bg-teal/10 px-1.5 py-0.5 rounded tabular-nums whitespace-nowrap">
-                    -{d.pts} ERS
-                  </span>
+                  <span className={`text-[11.5px] font-semibold tabular-nums ${SEV_TEXT[d.severity]}`}>-{d.pts}</span>
                 ) : (
-                  <span className="text-[9px] text-muted-foreground whitespace-nowrap">holds steady</span>
+                  <span className="text-[9px] text-muted-foreground">holds steady</span>
                 )}
-                <ArrowRight className="w-3 h-3 text-teal opacity-0 group-hover:opacity-100 transition-opacity" />
+                <ChevronRight className="w-3.5 h-3.5 text-muted-foreground group-hover:text-teal transition-colors" />
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-1.5 bg-secondary/60 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full ${SEV_BAR[d.severity]}`}
+                    style={{ width: `${Math.max(4, (d.pts / maxPts) * 100)}%` }}
+                  />
+                </div>
+                <span className="text-[9px] text-muted-foreground whitespace-nowrap">
+                  {d.count.toLocaleString()} · {d.urgency}
+                </span>
               </div>
             </button>
           ))}
@@ -207,9 +161,9 @@ export default function EnterpriseRiskScore() {
 
         <button
           onClick={() => setTriage({ type: "All" })}
-          className="w-full text-center text-[10px] text-teal hover:text-teal/80 transition-colors pt-2 pb-0.5 border-t border-border/30 mt-1.5"
+          className="w-full text-center text-[10px] text-teal hover:text-teal/80 transition-colors pt-2.5 pb-0.5 border-t border-border/30 mt-2"
         >
-          Review all contributing factors →
+          All contributing factors →
         </button>
       </div>
 
