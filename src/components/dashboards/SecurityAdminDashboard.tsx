@@ -1,112 +1,115 @@
-import React, { useState } from 'react';
-import { RefreshCw, AlertTriangle, CheckCircle2 } from 'lucide-react';
-import { useNotifications } from '@/context/NotificationContext';
-import { useNav } from '@/context/NavigationContext';
-import { DashboardProvider } from '@/context/DashboardContext';
-import { RiskProvider } from '@/context/RiskContext';
-import { toast } from 'sonner';
-import EnterpriseRiskScore from './ers/EnterpriseRiskScore';
-import CriticalActionFeed from './CriticalActionFeed';
-import PqcReadinessCard from './PqcReadinessCard';
-import CryptoEstateOverview from './CryptoEstateOverview';
-import IdentityHealthBands from './IdentityHealthBands';
+import React, { useState } from "react";
+import { RefreshCw, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { useNotifications } from "@/context/NotificationContext";
+import { useNav } from "@/context/NavigationContext";
+import { DashboardProvider } from "@/context/DashboardContext";
+import { RiskProvider } from "@/context/RiskContext";
+import { toast } from "sonner";
+import EnterpriseRiskScore from "./ers/EnterpriseRiskScore";
+import CriticalActionFeed from "./CriticalActionFeed";
+import IdentityHealthBands from "./IdentityHealthBands";
 
-import InfrastructurePostureStrip from './InfrastructurePostureStrip';
+import InfrastructurePostureStrip from "./InfrastructurePostureStrip";
 
 export default function SecurityAdminDashboard() {
   const { notifications, markRead } = useNotifications();
   const { setCurrentPage } = useNav();
-  const [refreshedLabel, setRefreshedLabel] = useState('just now');
+  const [refreshedLabel, setRefreshedLabel] = useState("just now");
   const [spinning, setSpinning] = useState(false);
-  const escalations = notifications.filter(n => n.toPersona === 'security-admin');
+  const escalations = notifications.filter((n) => n.toPersona === "security-admin");
 
   return (
     <DashboardProvider>
       <RiskProvider>
         <div className="space-y-0">
+          {/* Slim status row */}
+          <div className="flex items-center justify-end pt-1 pb-2 text-xs text-muted-foreground">
+            <span>Refreshed {refreshedLabel}</span>
+            <button
+              onClick={() => {
+                setSpinning(true);
+                setRefreshedLabel("just now");
+                toast.success("Dashboard refreshed");
+                setTimeout(() => setSpinning(false), 800);
+              }}
+              className="p-1 hover:text-foreground"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${spinning ? "animate-spin" : ""}`} />
+            </button>
+          </div>
 
-        {/* Slim status row */}
-        <div className="flex items-center justify-end pt-1 pb-2 text-xs text-muted-foreground">
-          <span>Refreshed {refreshedLabel}</span>
-          <button
-            onClick={() => {
-              setSpinning(true);
-              setRefreshedLabel('just now');
-              toast.success('Dashboard refreshed');
-              setTimeout(() => setSpinning(false), 800);
-            }}
-            className="p-1 hover:text-foreground"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${spinning ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
-
-        <div className="pt-1">
-          <div className="space-y-4 pr-1">
-
-            {escalations.length > 0 && (
-              <div className="space-y-2">
-                {escalations.map(n => (
-                  <div key={n.id} className={`rounded-lg border px-4 py-3 flex items-start gap-3 transition-colors ${!n.read ? 'border-coral/40 bg-coral/5' : 'border-border bg-muted/20 opacity-70'}`}>
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${!n.read ? 'bg-coral/15' : 'bg-muted'}`}>
-                      <AlertTriangle className={`w-4 h-4 ${!n.read ? 'text-coral' : 'text-muted-foreground'}`} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-xs font-semibold text-foreground">Compliance Escalation</span>
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                          n.violationSeverity === 'Critical' ? 'bg-coral/10 text-coral' :
-                          n.violationSeverity === 'High' ? 'bg-amber/10 text-amber' : 'bg-purple/10 text-purple'
-                        }`}>{n.violationSeverity}</span>
-                        {n.ticketId && <span className="text-[10px] font-mono text-teal">{n.ticketId}</span>}
-                        {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-coral animate-pulse" />}
-                        <span className="text-[10px] text-muted-foreground ml-auto">{n.timestamp}</span>
+          <div className="pt-1">
+            <div className="space-y-4 pr-1">
+              {escalations.length > 0 && (
+                <div className="space-y-2">
+                  {escalations.map((n) => (
+                    <div
+                      key={n.id}
+                      className={`rounded-lg border px-4 py-3 flex items-start gap-3 transition-colors ${!n.read ? "border-coral/40 bg-coral/5" : "border-border bg-muted/20 opacity-70"}`}
+                    >
+                      <div
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${!n.read ? "bg-coral/15" : "bg-muted"}`}
+                      >
+                        <AlertTriangle className={`w-4 h-4 ${!n.read ? "text-coral" : "text-muted-foreground"}`} />
                       </div>
-                      <p className="text-xs font-medium text-foreground">{n.violationAsset}</p>
-                      <p className="text-[10px] text-muted-foreground">{n.violationRule} · {n.violationFramework} · {n.violationBU}</p>
-                      {n.comments && (
-                        <p className="text-[10px] text-foreground/80 mt-1.5 italic bg-muted/40 rounded px-2 py-1">
-                          💬 "{n.comments}"
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="text-xs font-semibold text-foreground">Compliance Escalation</span>
+                          <span
+                            className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                              n.violationSeverity === "Critical"
+                                ? "bg-coral/10 text-coral"
+                                : n.violationSeverity === "High"
+                                  ? "bg-amber/10 text-amber"
+                                  : "bg-purple/10 text-purple"
+                            }`}
+                          >
+                            {n.violationSeverity}
+                          </span>
+                          {n.ticketId && <span className="text-[10px] font-mono text-teal">{n.ticketId}</span>}
+                          {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-coral animate-pulse" />}
+                          <span className="text-[10px] text-muted-foreground ml-auto">{n.timestamp}</span>
+                        </div>
+                        <p className="text-xs font-medium text-foreground">{n.violationAsset}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {n.violationRule} · {n.violationFramework} · {n.violationBU}
                         </p>
-                      )}
+                        {n.comments && (
+                          <p className="text-[10px] text-foreground/80 mt-1.5 italic bg-muted/40 rounded px-2 py-1">
+                            💬 "{n.comments}"
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {!n.read && (
+                          <button
+                            onClick={() => markRead(n.id)}
+                            className="text-[10px] px-2 py-1 bg-teal/10 text-teal rounded hover:bg-teal/20 font-medium whitespace-nowrap"
+                          >
+                            Acknowledge
+                          </button>
+                        )}
+                        {n.read && <CheckCircle2 className="w-4 h-4 text-teal" />}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {!n.read && (
-                        <button onClick={() => markRead(n.id)}
-                          className="text-[10px] px-2 py-1 bg-teal/10 text-teal rounded hover:bg-teal/20 font-medium whitespace-nowrap">
-                          Acknowledge
-                        </button>
-                      )}
-                      {n.read && <CheckCircle2 className="w-4 h-4 text-teal" />}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
 
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-              <div className="lg:col-span-5 lg:h-[420px]">
-                <EnterpriseRiskScore />
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+                <div className="lg:col-span-5 lg:h-[420px]">
+                  <EnterpriseRiskScore />
+                </div>
+                <div className="lg:col-span-7 lg:h-[420px] overflow-hidden">
+                  <CriticalActionFeed />
+                </div>
               </div>
-              <div className="lg:col-span-7 lg:h-[420px] overflow-hidden">
-                <CriticalActionFeed />
-              </div>
+
+              <IdentityHealthBands />
+              <InfrastructurePostureStrip />
             </div>
-
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-              <div className="lg:col-span-4">
-                <PqcReadinessCard />
-              </div>
-              <div className="lg:col-span-8">
-                <CryptoEstateOverview />
-              </div>
-            </div>
-
-            <IdentityHealthBands />
-            <InfrastructurePostureStrip />
           </div>
         </div>
-      </div>
       </RiskProvider>
     </DashboardProvider>
   );
