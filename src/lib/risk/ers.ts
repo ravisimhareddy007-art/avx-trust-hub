@@ -39,10 +39,10 @@ export interface ErsDriver {
   triageType: string; // triage category tab key
   label: string; // precise, monitoring-safe condition
   framework: string; // NIST reference (evidence, shown demoted)
-  pts: number; // real ERS reduction if this population is resolved (marginal, through the engine)
-  contribution: number; // severity-weighted risk mass this factor represents (drives the bar length)
-  count: number; // affected crypto objects
-  objectIds: string[]; // for ticket-coverage lookup
+  pts: number; // estimated ERS reduction if resolved (proportional, always non-zero)
+  contribution: number; // severity-weighted risk mass this factor represents
+  count: number; // enterprise-scale affected count
+  objectIds: string[]; // for ticket-coverage lookup (sample objects)
   severity: Severity;
   urgency: string; // grounded urgency signal (expiry clock, exposure, etc.)
   urgencyScore: number; // for the "urgency" sort lens
@@ -53,6 +53,7 @@ interface DriverDef {
   triageType: string;
   label: string;
   framework: string;
+  enterpriseCount: number;
   urgencyWeight: number;
   predicate: (a: CryptoAsset) => boolean;
   urgency: (objs: CryptoAsset[]) => string;
@@ -64,84 +65,72 @@ const DRIVER_DEFS: DriverDef[] = [
     triageType: "Certs",
     label: "Expired certificates on live endpoints",
     framework: "NIST SP 1800-16",
+    enterpriseCount: 48,
     urgencyWeight: 100,
     predicate: VIOLATION_FILTERS.cert_expired.predicate,
-    urgency: (o) => `${o.length} expired now`,
+    urgency: () => "expired, live traffic at risk",
   },
   {
     id: "1",
     triageType: "Certs",
     label: "Certificates expiring within 7 days",
     framework: "NIST SP 1800-16",
+    enterpriseCount: 186,
     urgencyWeight: 90,
     predicate: VIOLATION_FILTERS.cert_expiring_7d.predicate,
-    urgency: (o) => {
-      const d = Math.min(...o.map((x) => x.daysToExpiry).filter((n) => n >= 0));
-      return isFinite(d) ? `soonest ${d}d` : "expiring soon";
-    },
+    urgency: () => "no auto-renewal configured",
   },
   {
     id: "3",
     triageType: "SSH",
     label: "Suspicious SSH user keys with shell access",
     framework: "NIST SP 800-53 AC-17",
+    enterpriseCount: 44,
     urgencyWeight: 80,
     predicate: VIOLATION_FILTERS.ssh_suspicious.predicate,
-    urgency: () => "active shell access",
+    urgency: () => "anomalous access on production",
   },
   {
     id: "6",
     triageType: "Certs",
     label: "RSA-1024 / SHA-1 certificates in use",
     framework: "NIST SP 800-131A",
+    enterpriseCount: 52,
     urgencyWeight: 50,
     predicate: VIOLATION_FILTERS.cert_weak_algo.predicate,
-    urgency: () => "non-compliant algorithm",
+    urgency: () => "below approved key strength",
   },
   {
     id: "9",
     triageType: "SSH",
     label: "Rogue SSH host keys off-platform",
     framework: "NIST SP 800-53 AC-17",
+    enterpriseCount: 18,
     urgencyWeight: 60,
     predicate: VIOLATION_FILTERS.ssh_rogue.predicate,
-    urgency: () => "unmanaged provenance",
+    urgency: () => "unmanaged, outside the CA",
   },
   {
     id: "8",
     triageType: "Secrets",
     label: "Secrets not rotated in 90+ days",
     framework: "NIST SP 800-57",
+    enterpriseCount: 1250,
     urgencyWeight: 40,
     predicate: VIOLATION_FILTERS.secret_unrotated_90d.predicate,
-    urgency: () => "stale credentials",
+    urgency: () => "past rotation policy",
   },
   {
     id: "orphaned",
     triageType: "Secrets",
     label: "Orphaned secrets with no owner",
     framework: "NIST SP 800-53 AC-2",
+    enterpriseCount: 445,
     urgencyWeight: 45,
     predicate: VIOLATION_FILTERS.secret_orphaned.predicate,
-    urgency: () => "ownerless",
+    urgency: () => "no owner to rotate or revoke",
   },
 ];
-
-// A fully-remediated version of an object: healthy lifecycle, owned, compliant.
-// Used only to measure "what if this were fixed" for marginal attribution.
-function resolveObject(o: CryptoAsset): CryptoAsset {
-  return {
-    ...o,
-    status: "Active",
-    daysToExpiry: 365,
-    autoRenewal: true,
-    policyViolations: 0,
-    owner: o.owner === "Unassigned" ? "security-team" : o.owner,
-    algorithm: /RSA-1024|SHA-1|DSA/.test(o.algorithm) ? "RSA-3072" : o.algorithm,
-    signatureAlgorithm: o.signatureAlgorithm === "SHA-1" ? "SHA-256" : o.signatureAlgorithm,
-    pqcRisk: "Low",
-  } as CryptoAsset;
-}
 
 // ERS computed over an arbitrary object set, mirroring computeERS (operational, weighted, floored).
 function ersScoreOver(objects: CryptoAsset[]): number {
@@ -185,14 +174,9 @@ const OBJ_ASSET_BI: Record<string, ITAsset> = (() => {
 })();
 
 function buildDriverBuckets(): ErsDriver[] {
-  const baseline = ersScoreOver(mockAssets);
-  const rows = DRIVER_DEFS.map((def) => {
+  const raw = DRIVER_DEFS.map((def) => {
     const objs = mockAssets.filter(def.predicate);
     if (objs.length === 0) return null;
-    const resolvedIds = new Set(objs.map((o) => o.id));
-    const modified = mockAssets.map((o) => (resolvedIds.has(o.id) ? resolveObject(o) : o));
-    const ersAfter = ersScoreOver(modified);
-    const pts = Math.max(0, baseline - ersAfter);
     let maxCrs = 0;
     let contribution = 0;
     objs.forEach((o) => {
@@ -202,22 +186,29 @@ function buildDriverBuckets(): ErsDriver[] {
       const bi = asset ? defaultBI(asset) : "Low";
       contribution += crs * BI_WEIGHT[bi];
     });
-    return {
+    return { def, objs, maxCrs, contribution };
+  }).filter((r): r is NonNullable<typeof r> => r !== null);
+
+  // Estimated ERS reduction, distributed by risk-contribution share of the current score.
+  // Always non-zero, and the shares sum to roughly the score (fixing everything -> near 0).
+  const totalContribution = raw.reduce((s, r) => s + r.contribution, 0) || 1;
+  const baseline = ersScoreOver(mockAssets);
+
+  return raw
+    .map(({ def, objs, maxCrs, contribution }) => ({
       id: def.id,
       triageType: def.triageType,
       label: def.label,
       framework: def.framework,
-      count: objs.length,
+      count: def.enterpriseCount,
       objectIds: objs.map((o) => o.id),
-      pts,
+      pts: Math.max(1, Math.round((contribution / totalContribution) * baseline)),
       contribution,
       severity: severityFor(maxCrs),
       urgency: def.urgency(objs),
       urgencyScore: def.urgencyWeight + maxCrs,
-    };
-  }).filter((r): r is NonNullable<typeof r> => r !== null);
-
-  return rows.sort((a, b) => b.contribution - a.contribution);
+    }))
+    .sort((a, b) => b.pts - a.pts);
 }
 
 interface ScoredAsset {
