@@ -68,7 +68,7 @@ const DRIVER_DEFS: DriverDef[] = [
     enterpriseCount: 48,
     urgencyWeight: 100,
     predicate: VIOLATION_FILTERS.cert_expired.predicate,
-    urgency: () => "expired, live traffic at risk",
+    urgency: () => "expired, still serving live traffic",
   },
   {
     id: "1",
@@ -78,7 +78,7 @@ const DRIVER_DEFS: DriverDef[] = [
     enterpriseCount: 186,
     urgencyWeight: 90,
     predicate: VIOLATION_FILTERS.cert_expiring_7d.predicate,
-    urgency: () => "no auto-renewal configured",
+    urgency: () => "expiring within 7 days",
   },
   {
     id: "3",
@@ -108,7 +108,7 @@ const DRIVER_DEFS: DriverDef[] = [
     enterpriseCount: 18,
     urgencyWeight: 60,
     predicate: VIOLATION_FILTERS.ssh_rogue.predicate,
-    urgency: () => "unmanaged, outside the CA",
+    urgency: () => "unmanaged host keys off-platform",
   },
   {
     id: "8",
@@ -118,7 +118,7 @@ const DRIVER_DEFS: DriverDef[] = [
     enterpriseCount: 1250,
     urgencyWeight: 40,
     predicate: VIOLATION_FILTERS.secret_unrotated_90d.predicate,
-    urgency: () => "past rotation policy",
+    urgency: () => "not rotated in 90+ days",
   },
   {
     id: "orphaned",
@@ -128,7 +128,7 @@ const DRIVER_DEFS: DriverDef[] = [
     enterpriseCount: 445,
     urgencyWeight: 45,
     predicate: VIOLATION_FILTERS.secret_orphaned.predicate,
-    urgency: () => "no owner to rotate or revoke",
+    urgency: () => "no assigned owner",
   },
 ];
 
