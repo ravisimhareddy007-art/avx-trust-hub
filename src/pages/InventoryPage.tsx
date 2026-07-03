@@ -3,14 +3,16 @@ import { useNav } from "@/context/NavigationContext";
 import ITAssetsTab from "@/components/inventory/ITAssetsTab";
 import CryptoObjectsTab from "@/components/inventory/CryptoObjectsTab";
 import GroupsTab from "@/components/inventory/GroupsTab";
+import CryptoAssetsTab from "@/components/inventory/CryptoAssetsTab";
 import PolicyDrawer from "@/components/inventory/PolicyDrawer";
 import TicketDrawer from "@/components/inventory/TicketDrawer";
 import AddResourceModal from "@/components/inventory/AddResourceModal";
-import { Server, Key, LayoutGrid, Plus } from "lucide-react";
+import { Server, Key, LayoutGrid, Plus, Layers } from "lucide-react";
 
 const tabs = [
   { key: "it-assets", label: "Infrastructure", icon: Server },
   { key: "crypto-objects", label: "Identities", icon: Key },
+  { key: "crypto-assets", label: "Crypto Assets", icon: Layers },
   { key: "groups", label: "Groups", icon: LayoutGrid },
 ] as const;
 
@@ -88,6 +90,7 @@ export default function InventoryPage() {
           <ITAssetsTab onCreateTicket={openTicketDrawer} onOpenPolicyDrawer={openPolicyDrawer} />
         )}
         {activeTab === "crypto-objects" && <CryptoObjectsTab onCreateTicket={openTicketDrawer} />}
+        {activeTab === "crypto-assets" && <CryptoAssetsTab onCreateTicket={openTicketDrawer} />}
         {activeTab === "groups" && <GroupsTab onCreateTicket={openTicketDrawer} />}
       </div>
 
