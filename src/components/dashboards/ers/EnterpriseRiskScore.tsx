@@ -132,7 +132,7 @@ export default function EnterpriseRiskScore() {
     return [...active.sort(cmp), ...done];
   }, [ers.driverBuckets, sort]);
 
-  const maxPts = Math.max(1, ...ers.driverBuckets.map((d) => d.pts));
+  const maxContribution = Math.max(1, ...ers.driverBuckets.map((d) => d.contribution));
   const pageCount = Math.ceil(rows.length / PAGE);
   const pageRows = rows.slice(page * PAGE, page * PAGE + PAGE);
 
@@ -244,7 +244,7 @@ export default function EnterpriseRiskScore() {
                     <div className="flex-1 h-1.5 bg-secondary/60 rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full ${d.fullyTicketed ? "bg-muted-foreground/40" : SEV_BAR[d.severity]}`}
-                        style={{ width: `${Math.max(4, (d.pts / maxPts) * 100)}%` }}
+                        style={{ width: `${Math.max(6, (d.contribution / maxContribution) * 100)}%` }}
                       />
                     </div>
                     <span className="text-[9px] text-muted-foreground whitespace-nowrap">
