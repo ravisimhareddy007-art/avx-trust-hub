@@ -521,6 +521,10 @@ export default function TicketTriageModal({
 
   const isTicketed = (id: string) => !!ticketForObject(id);
   const selectedObjs = useMemo(() => POOL.filter((o) => selected.has(o.id)), [selected]);
+  const drawerObj = expandedId
+    ? (visible.find((o) => o.id === expandedId) ?? POOL.find((o) => o.id === expandedId) ?? null)
+    : null;
+  const dd = expandedId ? drafts[expandedId] : null;
 
   const sysFor = (o: PoolObj) => drafts[o.id]?.system ?? VIOLATION_CATALOG[violationFor(o)].system;
   const sysCounts = useMemo(() => {
@@ -611,7 +615,7 @@ export default function TicketTriageModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <div
-        className="bg-card border border-border rounded-xl w-full max-w-4xl max-h-[88vh] flex flex-col shadow-2xl"
+        className="bg-card border border-border rounded-xl w-full max-w-5xl max-h-[88vh] flex flex-col shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -706,172 +710,194 @@ export default function TicketTriageModal({
           </span>
         </div>
 
-        {/* Rows */}
-        <div className="flex-1 overflow-y-auto scrollbar-thin">
-          {visible.length === 0 && (
-            <p className="px-5 py-8 text-center text-[11px] text-muted-foreground">
-              No matching objects in the current inventory sample.
-            </p>
-          )}
-          {visible.map((o) => {
-            const Icon = CAT_ICON[o.category];
-            const ticketed = isTicketed(o.id);
-            const isSel = selected.has(o.id);
-            const isOpen = expandedId === o.id;
-            const d = drafts[o.id];
-            const vShort = VIOLATION_CATALOG[violationFor(o)].short;
-            const ita = o.itAsset;
-            const env = ita?.environment || o.asset.environment;
-            return (
-              <div key={o.id} className={`border-b border-border/60 ${isOpen ? "bg-secondary/10" : ""}`}>
-                <div
-                  onClick={() => expand(o)}
-                  className={`grid items-center px-4 py-2 text-[11px] transition-colors ${ticketed ? "opacity-50" : "cursor-pointer hover:bg-secondary/20"} ${isOpen ? "border-l-2 border-l-teal" : "border-l-2 border-l-transparent"}`}
-                  style={{ gridTemplateColumns: COLS }}
-                >
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggle(o.id);
-                    }}
-                    disabled={ticketed}
-                    className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${ticketed ? "bg-teal/30 border-teal/40" : isSel ? "bg-teal border-teal" : "border-border hover:border-teal/60"}`}
+        {/* Rows + drawer */}
+        <div className="flex flex-1 min-h-0">
+          <div className={`flex-1 overflow-y-auto scrollbar-thin transition-opacity ${drawerObj ? "opacity-45" : ""}`}>
+            {visible.length === 0 && (
+              <p className="px-5 py-8 text-center text-[11px] text-muted-foreground">
+                No matching objects in the current inventory sample.
+              </p>
+            )}
+            {visible.map((o) => {
+              const Icon = CAT_ICON[o.category];
+              const ticketed = isTicketed(o.id);
+              const isSel = selected.has(o.id);
+              const isOpen = expandedId === o.id;
+              const d = drafts[o.id];
+              const vShort = VIOLATION_CATALOG[violationFor(o)].short;
+              const ita = o.itAsset;
+              const env = ita?.environment || o.asset.environment;
+              return (
+                <div key={o.id} className={`border-b border-border/60 ${isOpen ? "bg-secondary/10" : ""}`}>
+                  <div
+                    onClick={() => expand(o)}
+                    className={`grid items-center px-4 py-2 text-[11px] transition-colors ${ticketed ? "opacity-50" : "cursor-pointer hover:bg-secondary/20"} ${isOpen ? "border-l-2 border-l-teal" : "border-l-2 border-l-transparent"}`}
+                    style={{ gridTemplateColumns: COLS }}
                   >
-                    {(isSel || ticketed) && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
-                  </button>
-                  <span className="inline-flex items-center gap-1.5 min-w-0">
-                    <Icon className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                    <span className="font-mono text-foreground truncate">{o.name}</span>
-                  </span>
-                  <span>
-                    <span
-                      className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold tabular-nums ${crsColor(o.crs)}`}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggle(o.id);
+                      }}
+                      disabled={ticketed}
+                      className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${ticketed ? "bg-teal/30 border-teal/40" : isSel ? "bg-teal border-teal" : "border-border hover:border-teal/60"}`}
                     >
-                      {o.crs}
+                      {(isSel || ticketed) && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                    </button>
+                    <span className="inline-flex items-center gap-1.5 min-w-0">
+                      <Icon className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                      <span className="font-mono text-foreground truncate">{o.name}</span>
                     </span>
-                  </span>
-                  <span className="min-w-0">
-                    {ita ? (
-                      <span className="flex flex-col leading-tight min-w-0">
-                        <span className="text-foreground truncate">{ita.name}</span>
-                        <span className="text-[9px] text-muted-foreground/70 truncate">{ita.type}</span>
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground/50">unbound</span>
-                    )}
-                  </span>
-                  <span className={envColor(env)}>
-                    {env === "Production" ? "Prod" : env === "Staging" ? "Stg" : "Dev"}
-                  </span>
-                  <span className="text-muted-foreground truncate">
-                    {ticketed ? (
-                      <span className="text-teal">Ticket raised</span>
-                    ) : (
-                      <>
-                        {vShort}{" "}
-                        <span className="text-muted-foreground/60">
-                          · {scoped ? issueFor(o.asset, initialViolationId!) : o.issue}
-                        </span>
-                      </>
-                    )}
-                  </span>
-                  <span className="flex justify-end">
-                    {!ticketed &&
-                      (isOpen ? (
-                        <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-                      ) : (
-                        <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
-                      ))}
-                  </span>
-                </div>
-
-                {isOpen && d && (
-                  <div className="px-5 pb-4 pt-1 animate-in fade-in slide-in-from-top-1 duration-150">
-                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <span className="text-[11px] font-mono text-foreground">{o.name}</span>
+                    <span>
                       <span
                         className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold tabular-nums ${crsColor(o.crs)}`}
                       >
-                        CRS {o.crs}
+                        {o.crs}
                       </span>
-                      <span className="text-[10px] text-muted-foreground ml-auto">Raise in</span>
-                      <div className="inline-flex rounded-md border border-border overflow-hidden">
-                        {ITSM_OPTIONS.map((s) => (
-                          <button
-                            key={s}
-                            onClick={() => changeSystem(o.id, s)}
-                            className={`text-[11px] font-medium px-2.5 py-1 transition-colors ${d.system === s ? "bg-teal text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground"}`}
-                          >
-                            {s}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5 mb-3 text-[10px] text-muted-foreground flex-wrap">
-                      <span className="text-muted-foreground/70">IT asset:</span>
+                    </span>
+                    <span className="min-w-0">
                       {ita ? (
-                        <>
-                          <span className="text-foreground font-mono">{ita.name}</span>
-                          <span className="text-muted-foreground/60">· {ita.type}</span>
-                          <span
-                            className={`text-[8.5px] px-1 py-0.5 rounded ${env === "Production" ? "bg-coral/15 text-coral" : env === "Staging" ? "bg-amber/15 text-amber" : "bg-secondary text-muted-foreground"}`}
-                          >
-                            {env}
-                          </span>
-                          {ita.infrastructure && (
-                            <span className="text-muted-foreground/60">· {ita.infrastructure}</span>
-                          )}
-                        </>
+                        <span className="flex flex-col leading-tight min-w-0">
+                          <span className="text-foreground truncate">{ita.name}</span>
+                          <span className="text-[9px] text-muted-foreground/70 truncate">{ita.type}</span>
+                        </span>
                       ) : (
                         <span className="text-muted-foreground/50">unbound</span>
                       )}
+                    </span>
+                    <span className={envColor(env)}>
+                      {env === "Production" ? "Prod" : env === "Staging" ? "Stg" : "Dev"}
+                    </span>
+                    <span className="text-muted-foreground truncate">
+                      {ticketed ? (
+                        <span className="text-teal">Ticket raised</span>
+                      ) : (
+                        <>
+                          {vShort}{" "}
+                          <span className="text-muted-foreground/60">
+                            · {scoped ? issueFor(o.asset, initialViolationId!) : o.issue}
+                          </span>
+                        </>
+                      )}
+                    </span>
+                    <span className="flex justify-end">
+                      {!ticketed && (
+                        <ChevronRight className={`w-3.5 h-3.5 ${isOpen ? "text-teal" : "text-muted-foreground"}`} />
+                      )}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {drawerObj &&
+            dd &&
+            (() => {
+              const accent =
+                drawerObj.crs >= 80 ? "hsl(16 72% 51%)" : drawerObj.crs >= 60 ? "hsl(38 78% 51%)" : "hsl(162 72% 42%)";
+              const dita = drawerObj.itAsset;
+              const denv = dita?.environment || drawerObj.asset.environment;
+              return (
+                <div
+                  className="w-[380px] flex-shrink-0 bg-card flex flex-col animate-in slide-in-from-right-2 duration-150"
+                  style={{ borderLeft: `3px solid ${accent}` }}
+                >
+                  <div className="flex items-start gap-2 px-4 py-3 border-b border-border">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[12px] font-mono text-foreground truncate">{drawerObj.name}</div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span
+                          className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold tabular-nums ${crsColor(drawerObj.crs)}`}
+                        >
+                          CRS {drawerObj.crs}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground truncate">
+                          {dita ? `${dita.name} · ` : ""}
+                          {denv === "Production" ? "Prod" : denv === "Staging" ? "Stg" : "Dev"}
+                        </span>
+                      </div>
+                    </div>
+                    <button onClick={() => setExpandedId(null)} className="text-muted-foreground hover:text-foreground">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto scrollbar-thin px-4 py-3 space-y-4">
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                          Ticket details
+                        </span>
+                        <span className="inline-flex items-center gap-0.5 text-[9px] text-teal">
+                          <Sparkles className="w-2.5 h-2.5" /> AI drafted
+                        </span>
+                        <div className="flex-1 h-px bg-border" />
+                      </div>
+                      <label className="text-[10px] text-muted-foreground mb-1 block">Summary</label>
+                      <input
+                        value={dd.summary}
+                        onChange={(e) => patch(drawerObj.id, "summary", e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-muted border border-border rounded text-[11px] text-foreground mb-3 focus:outline-none focus:ring-1 focus:ring-teal"
+                      />
+                      <label className="text-[10px] text-muted-foreground mb-1 block">
+                        Description · root cause and remediation
+                      </label>
+                      <textarea
+                        value={dd.description}
+                        onChange={(e) => patch(drawerObj.id, "description", e.target.value)}
+                        rows={5}
+                        className="w-full px-2.5 py-1.5 bg-muted border border-border rounded text-[11px] text-foreground leading-relaxed resize-none focus:outline-none focus:ring-1 focus:ring-teal"
+                      />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                      <div>
-                        <label className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">
-                          Name <Sparkles className="w-2.5 h-2.5 text-teal" />
-                        </label>
-                        <input
-                          value={d.summary}
-                          onChange={(e) => patch(o.id, "summary", e.target.value)}
-                          className="w-full px-2.5 py-1.5 bg-muted border border-border rounded text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal"
-                        />
-                      </div>
-                      <div>
-                        <label className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">
-                          Description · root cause and remediation <Sparkles className="w-2.5 h-2.5 text-teal" />
-                        </label>
-                        <textarea
-                          value={d.description}
-                          onChange={(e) => patch(o.id, "description", e.target.value)}
-                          rows={4}
-                          className="w-full px-2.5 py-1.5 bg-muted border border-border rounded text-[11px] text-foreground leading-relaxed resize-none focus:outline-none focus:ring-1 focus:ring-teal"
-                        />
-                      </div>
-                    </div>
-
-                    <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1.5 block">
-                      {d.system} fields{" "}
-                      <span className="text-muted-foreground/60 normal-case">· from policy configuration</span>
-                    </label>
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                      {d.fields.map((f, i) => (
-                        <div key={f.label}>
-                          <label className="text-[9.5px] text-muted-foreground mb-0.5 block truncate">{f.label}</label>
-                          <input
-                            value={f.value}
-                            onChange={(e) => patchField(o.id, i, e.target.value)}
-                            className="w-full px-2 py-1 bg-muted border border-border rounded text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal"
-                          />
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                          Routing
+                        </span>
+                        <div className="flex-1 h-px bg-border" />
+                        <div className="inline-flex rounded-md border border-border overflow-hidden">
+                          {ITSM_OPTIONS.map((s) => (
+                            <button
+                              key={s}
+                              onClick={() => changeSystem(drawerObj.id, s)}
+                              className={`text-[10px] font-medium px-2 py-0.5 transition-colors ${dd.system === s ? "bg-teal text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground"}`}
+                            >
+                              {s}
+                            </button>
+                          ))}
                         </div>
-                      ))}
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {dd.fields.map((f, i) => (
+                          <div key={f.label}>
+                            <label className="text-[9.5px] text-muted-foreground mb-0.5 block truncate">
+                              {f.label}
+                            </label>
+                            <input
+                              value={f.value}
+                              onChange={(e) => patchField(drawerObj.id, i, e.target.value)}
+                              className="w-full px-2 py-1 bg-muted border border-border rounded text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal"
+                            />
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                )}
-              </div>
-            );
-          })}
+
+                  <div className="flex items-center gap-2 px-4 py-2.5 border-t border-border">
+                    <span className="text-[10px] text-muted-foreground flex-1">Saved to this object's ticket</span>
+                    <button
+                      onClick={() => setExpandedId(null)}
+                      className="text-[11px] font-medium px-3 py-1 rounded-md border border-border text-foreground hover:bg-secondary"
+                    >
+                      Done
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
         </div>
 
         {/* Footer */}
