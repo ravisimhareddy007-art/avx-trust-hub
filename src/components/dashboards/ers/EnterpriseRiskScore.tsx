@@ -205,9 +205,9 @@ export default function EnterpriseRiskScore() {
           <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
           <div className="absolute left-0 top-5 z-50 hidden group-hover:block w-80 bg-card border border-border rounded-lg shadow-lg px-3 py-2.5">
             <p className="text-[11px] text-foreground leading-relaxed">
-              Every object's CRS rolls up through per-asset ARS, weighted by business impact. Higher is worse. Each
-              factor shows the estimated ERS drop if you resolve it. Click a factor to review its objects and raise
-              tickets.
+              Enterprise Risk Score (ERS) is a single executive-level risk score for your organization. It is calculated
+              as a business-impact-weighted average of every asset's risk, with a floor rule that prevents a single
+              critical production asset from being masked by a large number of healthy assets.
             </p>
           </div>
         </div>
