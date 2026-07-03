@@ -11,6 +11,9 @@ import {
   X,
   Sparkles,
   ShoppingCart,
+  Package,
+  Hash,
+  ArrowLeftRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useNav } from "@/context/NavigationContext";
@@ -22,7 +25,7 @@ import { addTicket, ticketForObject, mockIncidentNumber } from "@/lib/ticketStor
 import type { TicketDraft } from "@/components/inventory/TicketDraftModal";
 
 const fmt = (n: number) => n.toLocaleString();
-type Category = "Certs" | "SSH" | "Secrets" | "PQC";
+type Category = "Certs" | "SSH" | "Secrets" | "PQC" | "Library" | "Cipher" | "Protocol";
 
 interface Violation {
   id: string;
@@ -134,6 +137,42 @@ export const VIOLATION_CATALOG: Record<string, Violation> = {
     framework: "NIST IR 8547",
     match: (a) => a.pqcRisk === "Critical" || a.pqcRisk === "High",
   },
+  "lib-outdated": {
+    id: "lib-outdated",
+    category: "Library",
+    short: "Outdated library",
+    severity: "P2",
+    total: 74,
+    policy: "OOB: No end-of-life crypto libraries",
+    source: "Tenable / Qualys / CBOM",
+    system: "ServiceNow",
+    framework: "NIST SP 800-131A",
+    match: (a) => a.type === "TLS Certificate" && a.environment === "Production",
+  },
+  "cipher-weak": {
+    id: "cipher-weak",
+    category: "Cipher",
+    short: "Weak cipher",
+    severity: "P2",
+    total: 12,
+    policy: "OOB: Approved cipher suites only",
+    source: "Qualys / CBOM",
+    system: "ServiceNow",
+    framework: "NIST SP 800-52",
+    match: (a) => a.signatureAlgorithm === "SHA-1",
+  },
+  "proto-deprecated": {
+    id: "proto-deprecated",
+    category: "Protocol",
+    short: "Deprecated protocol",
+    severity: "P2",
+    total: 52,
+    policy: "OOB: No deprecated TLS versions",
+    source: "Tenable / Qualys",
+    system: "ServiceNow",
+    framework: "NIST SP 800-52",
+    match: (a) => a.type === "TLS Certificate" && a.environment === "Staging",
+  },
 };
 
 const CAT_ICON: Record<Category, React.ComponentType<{ className?: string }>> = {
@@ -141,6 +180,9 @@ const CAT_ICON: Record<Category, React.ComponentType<{ className?: string }>> = 
   SSH: Key,
   Secrets: Lock,
   PQC: Atom,
+  Library: Package,
+  Cipher: Hash,
+  Protocol: ArrowLeftRight,
 };
 
 // ── Real object pool (mockAssets, filtered by each violation predicate) ─────
@@ -185,6 +227,12 @@ function issueFor(a: CryptoAsset, vid: string): string {
       return "not rotated 90d+";
     case "orphaned":
       return "owner left org";
+    case "lib-outdated":
+      return "OpenSSL 1.0.2 (EOL)";
+    case "cipher-weak":
+      return "RC4 / 3DES negotiated";
+    case "proto-deprecated":
+      return "TLS 1.0 / 1.1 enabled";
     default:
       return a.status;
   }
@@ -242,6 +290,7 @@ function ticketType(category: Category): TicketDraft["type"] {
 function moduleFor(category: Category): string {
   if (category === "PQC") return "PQC / Quantum Readiness";
   if (category === "Secrets") return "Secrets Management";
+  if (category === "Library" || category === "Cipher" || category === "Protocol") return "Crypto Posture";
   return "CLM";
 }
 
@@ -262,6 +311,9 @@ const SYS_CONFIG: Record<Category, { snowCategory: string; jiraProjectKey: strin
   SSH: { snowCategory: "SSH Key Management", jiraProjectKey: "SEC", jiraIssueType: "Task" },
   Secrets: { snowCategory: "Secrets Management", jiraProjectKey: "SEC", jiraIssueType: "Task" },
   PQC: { snowCategory: "PQC Migration", jiraProjectKey: "PQC", jiraIssueType: "Story" },
+  Library: { snowCategory: "Vulnerability Management", jiraProjectKey: "SEC", jiraIssueType: "Task" },
+  Cipher: { snowCategory: "Cryptography", jiraProjectKey: "SEC", jiraIssueType: "Task" },
+  Protocol: { snowCategory: "Cryptography", jiraProjectKey: "SEC", jiraIssueType: "Task" },
 };
 
 function urgencyFor(crs: number) {
@@ -281,6 +333,12 @@ function draftSummary(o: PoolObj, vid: string): string {
       return `Re-issue weak-algorithm certificate ${o.name}`;
     case "pqc-1":
       return `Plan PQC migration for ${o.name}`;
+    case "lib-outdated":
+      return `Upgrade outdated crypto library on ${o.name}`;
+    case "cipher-weak":
+      return `Disable weak cipher on ${o.name}`;
+    case "proto-deprecated":
+      return `Disable deprecated TLS on ${o.name}`;
     case "3":
       return `Investigate suspicious SSH key ${o.name}`;
     case "9":
@@ -303,6 +361,12 @@ function rootCause(o: PoolObj, vid: string): string {
       return `uses a weak signature or key (${o.issue})`;
     case "pqc-1":
       return `uses a quantum-vulnerable algorithm (${o.issue}) that becomes unsafe past the NIST deadline`;
+    case "lib-outdated":
+      return `runs an end-of-life crypto library (${o.issue}) with known CVEs`;
+    case "cipher-weak":
+      return `negotiates a weak cipher (${o.issue}) vulnerable to downgrade`;
+    case "proto-deprecated":
+      return `accepts a deprecated protocol version (${o.issue})`;
     case "3":
       return `is a suspicious SSH key showing anomalous login patterns on production hosts`;
     case "9":
@@ -325,6 +389,12 @@ function remediation(vid: string): string {
       return "Re-issue with RSA-3072 or ECDSA P-256 and a SHA-256 signature. Retire the weak key once deployed.";
     case "pqc-1":
       return "Add to the QTH migration queue for ML-KEM hybrid re-issue in a staged wave.";
+    case "lib-outdated":
+      return "Upgrade to a supported OpenSSL 3.x build, redeploy the service, and rescan to confirm the library version.";
+    case "cipher-weak":
+      return "Remove RC4 and 3DES from the endpoint cipher suite and restrict to AES-GCM. Redeploy and re-scan.";
+    case "proto-deprecated":
+      return "Disable TLS 1.0 and 1.1 on the endpoint and require TLS 1.2 or higher. Verify no client breakage first.";
     case "3":
       return "Quarantine the key, confirm last-known access, then rotate under the managed SSH CA and remove the anomalous authorization.";
     case "9":
@@ -379,6 +449,9 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "Certs", label: "Certificates" },
   { key: "SSH", label: "SSH keys" },
   { key: "Secrets", label: "Secrets" },
+  { key: "Library", label: "Libraries" },
+  { key: "Cipher", label: "Ciphers" },
+  { key: "Protocol", label: "Protocols" },
   { key: "PQC", label: "Quantum" },
 ];
 
@@ -407,9 +480,19 @@ export default function TicketTriageModal({
   );
 
   const violationFor = (o: PoolObj) => (scoped ? initialViolationId! : o.violationId);
+  const withIssue = (o: PoolObj) => (scoped ? { ...o, issue: issueFor(o.asset, initialViolationId!) } : o);
 
   const tabCounts = useMemo(() => {
-    const c: Record<TabKey, number> = { All: POOL.length, Certs: 0, SSH: 0, Secrets: 0, PQC: 0 };
+    const c: Record<TabKey, number> = {
+      All: POOL.length,
+      Certs: 0,
+      SSH: 0,
+      Secrets: 0,
+      PQC: 0,
+      Library: 0,
+      Cipher: 0,
+      Protocol: 0,
+    };
     POOL.forEach((o) => {
       c[o.category]++;
     });
@@ -451,7 +534,7 @@ export default function TicketTriageModal({
   const expand = (o: PoolObj) => {
     if (isTicketed(o.id)) return;
     setExpandedId((prev) => (prev === o.id ? null : o.id));
-    setDrafts((prev) => (prev[o.id] ? prev : { ...prev, [o.id]: buildDraft(o, violationFor(o)) }));
+    setDrafts((prev) => (prev[o.id] ? prev : { ...prev, [o.id]: buildDraft(withIssue(o), violationFor(o)) }));
   };
 
   const patch = (id: string, field: keyof Draft, value: string) =>
@@ -475,7 +558,7 @@ export default function TicketTriageModal({
     let sn = 0,
       jira = 0;
     selectedObjs.forEach((o) => {
-      const d = drafts[o.id] ?? buildDraft(o, violationFor(o));
+      const d = drafts[o.id] ?? buildDraft(withIssue(o), violationFor(o));
       if (d.system === "ServiceNow") sn++;
       else jira++;
       addTicket(
@@ -641,7 +724,10 @@ export default function TicketTriageModal({
                       <span className="text-teal">Ticket raised</span>
                     ) : (
                       <>
-                        {vShort} <span className="text-muted-foreground/60">· {o.issue}</span>
+                        {vShort}{" "}
+                        <span className="text-muted-foreground/60">
+                          · {scoped ? issueFor(o.asset, initialViolationId!) : o.issue}
+                        </span>
                       </>
                     )}
                   </span>
