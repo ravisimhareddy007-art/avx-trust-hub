@@ -8,11 +8,11 @@ import TicketTriageModal from "@/components/dashboards/TicketTriageModal";
 const REMEDIATION_ENABLED = false;
 const PAGE = 5;
 
-const SEV_STYLE: Record<string, string> = {
-  Critical: "text-coral bg-coral/12",
-  High: "text-coral bg-coral/12",
-  Medium: "text-amber bg-amber/12",
-  Low: "text-teal bg-teal/12",
+const SEV_DOT: Record<string, string> = {
+  Critical: "bg-coral",
+  High: "bg-coral",
+  Medium: "bg-amber",
+  Low: "bg-teal",
 };
 const SEV_TEXT: Record<string, string> = {
   Critical: "text-coral",
@@ -298,30 +298,36 @@ export default function EnterpriseRiskScore() {
               <button
                 key={d.id}
                 onClick={() => setTriage({ type: d.triageType, violationId: d.id })}
-                className={`group flex items-center gap-3 py-2 border-b border-border/40 text-left ${d.fullyTicketed ? "opacity-55" : ""}`}
+                className={`group grid items-center gap-3 py-2.5 border-b border-border/40 text-left ${d.fullyTicketed ? "opacity-55" : ""}`}
+                style={{ gridTemplateColumns: "84px minmax(0,1fr) 44px 16px" }}
               >
-                <span
-                  className={`text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wide ${SEV_STYLE[d.severity]}`}
-                >
-                  {d.severity}
+                <span className="flex items-center gap-1.5">
+                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${SEV_DOT[d.severity]}`} />
+                  <span className={`text-[9px] font-semibold uppercase tracking-wide ${SEV_TEXT[d.severity]}`}>
+                    {d.severity}
+                  </span>
                 </span>
-                <div className="flex-1 min-w-0">
+                <div className="min-w-0">
                   <div className="text-[12px] text-foreground truncate">{d.label}</div>
-                  <div className="text-[10px] text-muted-foreground">
+                  <div className="text-[10px] text-muted-foreground truncate">
                     {d.count.toLocaleString()} objects · {d.urgency}
                   </div>
                 </div>
-                {d.fullyTicketed ? (
-                  <span className="inline-flex items-center gap-1 text-[9px] text-teal bg-teal/10 px-1.5 py-0.5 rounded">
-                    <Ticket className="w-2.5 h-2.5" /> ticketed
-                  </span>
-                ) : (
-                  <div className="text-right">
-                    <div className={`text-[13px] font-semibold tabular-nums ${SEV_TEXT[d.severity]}`}>-{d.pts}</div>
-                    <div className="text-[8px] text-muted-foreground uppercase tracking-wide">ERS</div>
-                  </div>
-                )}
-                <ChevronRight className="w-3.5 h-3.5 text-muted-foreground group-hover:text-teal transition-colors flex-shrink-0" />
+                <div className="text-right">
+                  {d.fullyTicketed ? (
+                    <span className="inline-flex items-center gap-0.5 text-[9px] text-teal">
+                      <Ticket className="w-2.5 h-2.5" /> done
+                    </span>
+                  ) : (
+                    <>
+                      <div className={`text-[13px] font-semibold tabular-nums leading-none ${SEV_TEXT[d.severity]}`}>
+                        -{d.pts}
+                      </div>
+                      <div className="text-[8px] text-muted-foreground uppercase tracking-wide">ERS</div>
+                    </>
+                  )}
+                </div>
+                <ChevronRight className="w-3.5 h-3.5 text-muted-foreground group-hover:text-teal transition-colors" />
               </button>
             ))}
           </div>
