@@ -151,13 +151,16 @@ function ersScoreOver(objects: CryptoAsset[]): number {
 // snapshots are persisted, swap this for the stored series (same shape).
 function ersHistory(current: number): { label: string; value: number }[] {
   const N = 12;
-  const start = Math.min(100, current + 11);
+  const start = Math.min(100, current + 14);
+  const now = Date.now();
   const pts: { label: string; value: number }[] = [];
   for (let i = 0; i < N; i++) {
     const base = start + (current - start) * (i / (N - 1));
-    const wiggle = Math.sin(i * 1.7) * 2.4 + Math.cos(i * 0.9) * 1.3;
+    const wiggle = Math.sin(i * 1.5) * 4.2 + Math.cos(i * 0.8) * 2.6;
     const v = i === N - 1 ? current : Math.max(0, Math.min(100, Math.round(base + wiggle)));
-    pts.push({ label: i === N - 1 ? "now" : `${N - 1 - i}w`, value: v });
+    const weeksAgo = N - 1 - i;
+    const d = new Date(now - weeksAgo * 7 * 86400000);
+    pts.push({ label: d.toLocaleString("en-US", { month: "short" }), value: v });
   }
   return pts;
 }
