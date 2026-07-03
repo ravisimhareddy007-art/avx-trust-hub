@@ -40,6 +40,7 @@ export interface ErsDriver {
   label: string; // precise, monitoring-safe condition
   framework: string; // NIST reference (evidence, shown demoted)
   pts: number; // real ERS reduction if this population is resolved (marginal, through the engine)
+  contribution: number; // severity-weighted risk mass this factor represents (drives the bar length)
   count: number; // affected crypto objects
   objectIds: string[]; // for ticket-coverage lookup
   severity: Severity;
@@ -172,6 +173,17 @@ function ersHistory(current: number): { label: string; value: number }[] {
   return pts;
 }
 
+// Object -> IT asset (for business-impact weighting of risk contribution).
+const OBJ_ASSET_BI: Record<string, ITAsset> = (() => {
+  const m: Record<string, ITAsset> = {};
+  mockITAssets.forEach((a) =>
+    a.cryptoObjectIds.forEach((id) => {
+      if (!m[id]) m[id] = a;
+    }),
+  );
+  return m;
+})();
+
 function buildDriverBuckets(): ErsDriver[] {
   const baseline = ersScoreOver(mockAssets);
   const rows = DRIVER_DEFS.map((def) => {
@@ -181,7 +193,15 @@ function buildDriverBuckets(): ErsDriver[] {
     const modified = mockAssets.map((o) => (resolvedIds.has(o.id) ? resolveObject(o) : o));
     const ersAfter = ersScoreOver(modified);
     const pts = Math.max(0, baseline - ersAfter);
-    const maxCrs = Math.max(...objs.map((o) => computeCRS(o).crs));
+    let maxCrs = 0;
+    let contribution = 0;
+    objs.forEach((o) => {
+      const crs = computeCRS(o).crs;
+      if (crs > maxCrs) maxCrs = crs;
+      const asset = OBJ_ASSET_BI[o.id];
+      const bi = asset ? defaultBI(asset) : "Low";
+      contribution += crs * BI_WEIGHT[bi];
+    });
     return {
       id: def.id,
       triageType: def.triageType,
@@ -190,13 +210,14 @@ function buildDriverBuckets(): ErsDriver[] {
       count: objs.length,
       objectIds: objs.map((o) => o.id),
       pts,
+      contribution,
       severity: severityFor(maxCrs),
       urgency: def.urgency(objs),
       urgencyScore: def.urgencyWeight + maxCrs,
     };
   }).filter((r): r is NonNullable<typeof r> => r !== null);
 
-  return rows.sort((a, b) => b.pts - a.pts);
+  return rows.sort((a, b) => b.contribution - a.contribution);
 }
 
 interface ScoredAsset {
