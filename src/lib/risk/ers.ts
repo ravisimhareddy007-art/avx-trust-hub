@@ -38,16 +38,21 @@ export interface ErsDriver {
   id: string; // triage violation id (deep-links into the scoped triage)
   triageType: string; // triage category tab key
   label: string; // precise, monitoring-safe condition
+  framework: string; // NIST reference (evidence, shown demoted)
   pts: number; // real ERS reduction if this population is resolved (marginal, through the engine)
   count: number; // affected crypto objects
+  objectIds: string[]; // for ticket-coverage lookup
   severity: Severity;
   urgency: string; // grounded urgency signal (expiry clock, exposure, etc.)
+  urgencyScore: number; // for the "urgency" sort lens
 }
 
 interface DriverDef {
   id: string;
   triageType: string;
   label: string;
+  framework: string;
+  urgencyWeight: number;
   predicate: (a: CryptoAsset) => boolean;
   urgency: (objs: CryptoAsset[]) => string;
 }
@@ -57,6 +62,8 @@ const DRIVER_DEFS: DriverDef[] = [
     id: "expired",
     triageType: "Certs",
     label: "Expired certificates on live endpoints",
+    framework: "NIST SP 1800-16",
+    urgencyWeight: 100,
     predicate: VIOLATION_FILTERS.cert_expired.predicate,
     urgency: (o) => `${o.length} expired now`,
   },
@@ -64,6 +71,8 @@ const DRIVER_DEFS: DriverDef[] = [
     id: "1",
     triageType: "Certs",
     label: "Certificates expiring within 7 days",
+    framework: "NIST SP 1800-16",
+    urgencyWeight: 90,
     predicate: VIOLATION_FILTERS.cert_expiring_7d.predicate,
     urgency: (o) => {
       const d = Math.min(...o.map((x) => x.daysToExpiry).filter((n) => n >= 0));
@@ -71,23 +80,29 @@ const DRIVER_DEFS: DriverDef[] = [
     },
   },
   {
-    id: "6",
-    triageType: "Certs",
-    label: "RSA-1024 / SHA-1 certificates in use",
-    predicate: VIOLATION_FILTERS.cert_weak_algo.predicate,
-    urgency: () => "non-compliant algorithm",
-  },
-  {
     id: "3",
     triageType: "SSH",
     label: "Suspicious SSH user keys with shell access",
+    framework: "NIST SP 800-53 AC-17",
+    urgencyWeight: 80,
     predicate: VIOLATION_FILTERS.ssh_suspicious.predicate,
     urgency: () => "active shell access",
+  },
+  {
+    id: "6",
+    triageType: "Certs",
+    label: "RSA-1024 / SHA-1 certificates in use",
+    framework: "NIST SP 800-131A",
+    urgencyWeight: 50,
+    predicate: VIOLATION_FILTERS.cert_weak_algo.predicate,
+    urgency: () => "non-compliant algorithm",
   },
   {
     id: "9",
     triageType: "SSH",
     label: "Rogue SSH host keys off-platform",
+    framework: "NIST SP 800-53 AC-17",
+    urgencyWeight: 60,
     predicate: VIOLATION_FILTERS.ssh_rogue.predicate,
     urgency: () => "unmanaged provenance",
   },
@@ -95,6 +110,8 @@ const DRIVER_DEFS: DriverDef[] = [
     id: "8",
     triageType: "Secrets",
     label: "Secrets not rotated in 90+ days",
+    framework: "NIST SP 800-57",
+    urgencyWeight: 40,
     predicate: VIOLATION_FILTERS.secret_unrotated_90d.predicate,
     urgency: () => "stale credentials",
   },
@@ -102,15 +119,10 @@ const DRIVER_DEFS: DriverDef[] = [
     id: "orphaned",
     triageType: "Secrets",
     label: "Orphaned secrets with no owner",
+    framework: "NIST SP 800-53 AC-2",
+    urgencyWeight: 45,
     predicate: VIOLATION_FILTERS.secret_orphaned.predicate,
     urgency: () => "ownerless",
-  },
-  {
-    id: "pqc-1",
-    triageType: "PQC",
-    label: "Quantum-vulnerable algorithms (NIST 2030)",
-    predicate: (a) => a.pqcRisk === "Critical" || a.pqcRisk === "High",
-    urgency: () => "NIST 2030 deadline",
   },
 ];
 
@@ -174,14 +186,17 @@ function buildDriverBuckets(): ErsDriver[] {
       id: def.id,
       triageType: def.triageType,
       label: def.label,
+      framework: def.framework,
       count: objs.length,
+      objectIds: objs.map((o) => o.id),
       pts,
       severity: severityFor(maxCrs),
       urgency: def.urgency(objs),
+      urgencyScore: def.urgencyWeight + maxCrs,
     };
   }).filter((r): r is NonNullable<typeof r> => r !== null);
 
-  return rows.sort((a, b) => b.pts - a.pts).slice(0, 5);
+  return rows.sort((a, b) => b.pts - a.pts);
 }
 
 interface ScoredAsset {
