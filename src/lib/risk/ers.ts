@@ -150,16 +150,15 @@ function ersScoreOver(objects: CryptoAsset[]): number {
 // live ERS. This is illustrative sample data, not stored telemetry. When real ERS
 // snapshots are persisted, swap this for the stored series (same shape).
 function ersHistory(current: number): { label: string; value: number }[] {
-  const N = 12;
-  const start = Math.min(100, current + 14);
-  const now = Date.now();
+  const N = 6;
+  const start = Math.min(100, current + 16);
+  const now = new Date();
   const pts: { label: string; value: number }[] = [];
   for (let i = 0; i < N; i++) {
     const base = start + (current - start) * (i / (N - 1));
-    const wiggle = Math.sin(i * 1.5) * 4.2 + Math.cos(i * 0.8) * 2.6;
-    const v = i === N - 1 ? current : Math.max(0, Math.min(100, Math.round(base + wiggle)));
-    const weeksAgo = N - 1 - i;
-    const d = new Date(now - weeksAgo * 7 * 86400000);
+    const wiggle = i === N - 1 ? 0 : Math.sin(i * 1.9) * 3.6 + Math.cos(i * 1.1) * 2.2;
+    const v = Math.max(0, Math.min(100, Math.round(base + wiggle)));
+    const d = new Date(now.getFullYear(), now.getMonth() - (N - 1 - i), 1);
     pts.push({ label: d.toLocaleString("en-US", { month: "short" }), value: v });
   }
   return pts;
