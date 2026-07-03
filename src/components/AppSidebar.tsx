@@ -46,17 +46,19 @@ interface NavSubItemProps {
 const NavSubItem = ({ label, count, icon: ItemIcon, isActive, onClick }: NavSubItemProps) => (
   <div
     onClick={onClick}
-    className={`flex items-center justify-between gap-2 px-4 py-1.5 cursor-pointer text-xs transition-colors border-l-2 ${
+    className={`flex items-center justify-center group-hover:justify-between gap-2 px-2 group-hover:px-4 py-1.5 cursor-pointer text-xs transition-colors border-l-2 ${
       isActive
         ? "text-teal font-medium border-teal bg-teal/5"
         : "border-transparent text-muted-foreground hover:text-foreground hover:bg-white/5"
     }`}
   >
-    <span>{label}</span>
+    <span className="hidden group-hover:inline whitespace-nowrap">{label}</span>
     <div className="flex items-center gap-1.5 shrink-0">
       {ItemIcon && <ItemIcon size={10} className="text-amber" />}
       {typeof count === "number" && (
-        <span className="bg-white/10 px-1.5 py-0.5 rounded-full text-xs text-muted-foreground">{count}</span>
+        <span className="hidden group-hover:inline bg-white/10 px-1.5 py-0.5 rounded-full text-xs text-muted-foreground">
+          {count}
+        </span>
       )}
     </div>
   </div>
@@ -152,26 +154,28 @@ export default function AppSidebar() {
           <div className="w-8 h-8 rounded-lg bg-teal flex items-center justify-center flex-shrink-0">
             <Lock className="w-4 h-4 text-primary-foreground" />
           </div>
-          <div className="flex flex-col">
+          <div className="hidden group-hover:flex flex-col whitespace-nowrap">
             <span className="text-primary-foreground font-bold text-sm leading-tight">Trust</span>
             <span className="text-[9px] text-muted-foreground leading-tight tracking-wide">CONTROL PLANE</span>
           </div>
         </div>
       </div>
 
-      <div className="px-3 py-2 border-b border-navy-lighter">
+      <div className="px-2 group-hover:px-3 py-2 border-b border-navy-lighter">
         <div className="relative">
           <button
             onClick={() => setPersonaOpen(!personaOpen)}
-            className="w-full flex items-center justify-between px-3 py-1.5 rounded-md bg-navy-light text-sidebar-foreground text-xs hover:bg-navy-lighter transition-colors"
+            className="w-full flex items-center justify-center group-hover:justify-between px-2 group-hover:px-3 py-1.5 rounded-md bg-navy-light text-sidebar-foreground text-xs hover:bg-navy-lighter transition-colors"
           >
             <div className="flex items-center gap-2">
-              <div className="w-5 h-5 rounded-full bg-amber/20 flex items-center justify-center">
+              <div className="w-5 h-5 rounded-full bg-amber/20 flex items-center justify-center flex-shrink-0">
                 <Users className="w-3 h-3 text-amber" />
               </div>
-              <span className="text-[11px]">{personaOptions.find((p) => p.value === persona)?.label}</span>
+              <span className="hidden group-hover:inline text-[11px] whitespace-nowrap">
+                {personaOptions.find((p) => p.value === persona)?.label}
+              </span>
             </div>
-            <ChevronDown className="w-3 h-3" />
+            <ChevronDown className="w-3 h-3 hidden group-hover:block" />
           </button>
           {personaOpen && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-navy-light border border-navy-lighter rounded-md shadow-lg z-50">
@@ -192,7 +196,7 @@ export default function AppSidebar() {
         </div>
       </div>
 
-      <nav className="flex-1 px-2 py-2 overflow-y-auto scrollbar-thin">
+      <nav className="flex-1 px-2 py-2 overflow-y-auto overflow-x-hidden scrollbar-thin">
         {navItems.map((item) => (
           <div key={item.id} className="mb-0.5">
             {item.children ? (
@@ -211,10 +215,10 @@ export default function AppSidebar() {
                         toggleGroup(item.id);
                       }
                     }}
-                    className="flex items-center gap-2 flex-1 text-left"
+                    className="flex items-center justify-center group-hover:justify-start gap-2 flex-1 text-left"
                   >
-                    <item.icon className="w-4 h-4" />
-                    <span className="flex-1">{item.label}</span>
+                    <item.icon className="w-4 h-4 flex-shrink-0" />
+                    <span className="hidden group-hover:inline flex-1 whitespace-nowrap">{item.label}</span>
                   </button>
                   <button
                     onClick={(e) => {
@@ -222,10 +226,10 @@ export default function AppSidebar() {
                       toggleGroup(item.id);
                     }}
                     aria-label={expandedGroups.includes(item.id) ? `Collapse ${item.label}` : `Expand ${item.label}`}
-                    className="p-0.5 rounded hover:bg-navy-light text-muted-foreground"
+                    className="hidden group-hover:block p-0.5 rounded hover:bg-navy-light text-muted-foreground"
                   >
                     {expandedGroups.includes(item.id) ? (
-                      <span className="text-xs">—</span>
+                      <ChevronDown className="w-3 h-3" />
                     ) : (
                       <ChevronRight className="w-3 h-3" />
                     )}
@@ -249,12 +253,12 @@ export default function AppSidebar() {
             ) : (
               <button
                 onClick={() => handleNavClick(item.id, item.page)}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-[11px] font-semibold uppercase tracking-wide transition-colors ${
+                className={`w-full flex items-center justify-center group-hover:justify-start gap-2 px-3 py-2 rounded-md text-[11px] font-semibold uppercase tracking-wide transition-colors ${
                   isActive(item.id, item.page) ? "text-teal" : "text-sidebar-foreground hover:text-primary-foreground"
                 }`}
               >
-                <item.icon className="w-4 h-4" />
-                <span>{item.label}</span>
+                <item.icon className="w-4 h-4 flex-shrink-0" />
+                <span className="hidden group-hover:inline whitespace-nowrap">{item.label}</span>
               </button>
             )}
           </div>
