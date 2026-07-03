@@ -90,8 +90,7 @@ function AgentBoundary({ children }: { children: React.ReactNode }) {
 
 function AppShell() {
   return (
-    <div className="flex h-screen w-full overflow-hidden relative">
-      <div className="w-16 flex-shrink-0" />
+    <div className="flex h-screen w-full overflow-hidden">
       <AppSidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <TopBar />
