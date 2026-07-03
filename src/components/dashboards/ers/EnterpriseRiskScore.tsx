@@ -23,7 +23,7 @@ const SEV_TEXT: Record<string, string> = {
 
 function TrendChart({ points, hsl }: { points: { label: string; value: number }[]; hsl: string }) {
   const W = 300,
-    H = 132,
+    H = 130,
     L = 22,
     R = 250,
     T = 8,
@@ -36,20 +36,12 @@ function TrendChart({ points, hsl }: { points: { label: string; value: number }[
   const peakIdx = points.reduce((best, p, i) => (i < points.length - 1 && p.value > points[best].value ? i : best), 0);
   const peak = points[peakIdx];
   const zones = [
-    { top: 100, bot: 80, c: "hsl(16 72% 51%)", label: "Crit" },
-    { top: 80, bot: 60, c: "hsl(38 78% 51%)", label: "High" },
-    { top: 60, bot: 30, c: "hsl(210 80% 56%)", label: "Mod" },
-    { top: 30, bot: 0, c: "hsl(162 72% 42%)", label: "Low" },
+    { top: 100, bot: 80, c: "hsl(16 72% 51%)", label: "Crit", op: 0.055 },
+    { top: 80, bot: 60, c: "hsl(38 78% 51%)", label: "High", op: 0.06 },
+    { top: 60, bot: 30, c: "hsl(210 80% 56%)", label: "Mod", op: 0.08 },
+    { top: 30, bot: 0, c: "hsl(162 72% 42%)", label: "Low", op: 0.08 },
   ];
-  const yTicks = [100, 60, 30, 0];
-  const months: { i: number; t: string }[] = [];
-  let lastM = "";
-  points.forEach((p, i) => {
-    if (p.label !== lastM) {
-      months.push({ i, t: p.label });
-      lastM = p.label;
-    }
-  });
+  const yTicks = [100, 80, 60, 30, 0];
   return (
     <svg
       width="100%"
@@ -59,8 +51,8 @@ function TrendChart({ points, hsl }: { points: { label: string; value: number }[
     >
       {zones.map((z) => (
         <g key={z.label}>
-          <rect x={L} y={y(z.top)} width={R - L} height={y(z.bot) - y(z.top)} fill={z.c} opacity="0.09" />
-          <text x={R + 4} y={(y(z.top) + y(z.bot)) / 2 + 3} fontSize="7" fill={z.c} opacity="0.8">
+          <rect x={L} y={y(z.top)} width={R - L} height={y(z.bot) - y(z.top)} fill={z.c} opacity={z.op} />
+          <text x={R + 4} y={(y(z.top) + y(z.bot)) / 2 + 3} fontSize="7" fill={z.c} opacity="0.6">
             {z.label}
           </text>
         </g>
@@ -70,7 +62,7 @@ function TrendChart({ points, hsl }: { points: { label: string; value: number }[
           {v}
         </text>
       ))}
-      <path d={area} fill={hsl} fillOpacity="0.12" />
+      <path d={area} fill={hsl} fillOpacity="0.1" />
       <path
         d={line}
         fill="none"
@@ -95,9 +87,9 @@ function TrendChart({ points, hsl }: { points: { label: string; value: number }[
       >
         {last.value}
       </text>
-      {months.map((m) => (
-        <text key={m.i} x={x(m.i)} y={H - 3} fontSize="7.5" fill="currentColor" opacity="0.4" textAnchor="middle">
-          {m.t}
+      {points.map((p, i) => (
+        <text key={i} x={x(i)} y={H - 3} fontSize="7.5" fill="currentColor" opacity="0.4" textAnchor="middle">
+          {p.label}
         </text>
       ))}
     </svg>
@@ -122,6 +114,7 @@ export default function EnterpriseRiskScore() {
 
   const topThree = [...ers.driverBuckets].sort((a, b) => b.pts - a.pts).slice(0, 3);
   const projected = Math.max(0, score - topThree.reduce((s, d) => s + d.pts, 0));
+  const peak = Math.max(...hist.map((p) => p.value));
 
   const coverageFor = (ids: string[]) => ids.reduce((n, id) => n + (ticketForObject(id) ? 1 : 0), 0);
 
@@ -196,11 +189,21 @@ export default function EnterpriseRiskScore() {
             <TrendChart points={hist} hsl={hsl} />
           </div>
 
-          <div className="flex items-center justify-between mt-2 pt-2.5 border-t border-border/40">
-            <span className="text-[10px] text-muted-foreground">Projected after top 3 fixes</span>
-            <span className="text-sm font-semibold text-teal tabular-nums">
-              {projected} <span className="text-[10px] font-normal text-muted-foreground">from {score}</span>
-            </span>
+          <div className="grid grid-cols-3 gap-2 mt-2 pt-2.5 border-t border-border/40">
+            <div>
+              <div className="text-[9px] text-muted-foreground uppercase tracking-wider">Peak</div>
+              <div className="text-sm font-semibold text-coral tabular-nums">{peak}</div>
+            </div>
+            <div>
+              <div className="text-[9px] text-muted-foreground uppercase tracking-wider">Now</div>
+              <div className="text-sm font-semibold tabular-nums" style={{ color: hsl }}>
+                {score}
+              </div>
+            </div>
+            <div>
+              <div className="text-[9px] text-muted-foreground uppercase tracking-wider">After top 3</div>
+              <div className="text-sm font-semibold text-teal tabular-nums">{projected}</div>
+            </div>
           </div>
         </div>
 
