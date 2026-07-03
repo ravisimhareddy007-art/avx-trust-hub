@@ -825,6 +825,39 @@ export default function TicketTriageModal({
 
                   <div className="flex-1 overflow-y-auto scrollbar-thin px-4 py-3 space-y-4">
                     <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                          Raise in
+                        </span>
+                        <div className="inline-flex rounded-md border border-border-strong overflow-hidden">
+                          {ITSM_OPTIONS.map((s) => (
+                            <button
+                              key={s}
+                              onClick={() => changeSystem(drawerObj.id, s)}
+                              className={`text-[11px] font-medium px-3 py-1 transition-colors ${dd.system === s ? "bg-teal text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground"}`}
+                            >
+                              {s}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {dd.fields.map((f, i) => (
+                          <div key={f.label}>
+                            <label className="text-[9.5px] text-muted-foreground mb-0.5 block truncate">
+                              {f.label}
+                            </label>
+                            <input
+                              value={f.value}
+                              onChange={(e) => patchField(drawerObj.id, i, e.target.value)}
+                              className="w-full px-2 py-1 bg-muted border border-border rounded text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
                           Ticket details
@@ -849,40 +882,6 @@ export default function TicketTriageModal({
                         rows={5}
                         className="w-full px-2.5 py-1.5 bg-muted border border-border rounded text-[11px] text-foreground leading-relaxed resize-none focus:outline-none focus:ring-1 focus:ring-teal"
                       />
-                    </div>
-
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-                          Routing
-                        </span>
-                        <div className="flex-1 h-px bg-border" />
-                        <div className="inline-flex rounded-md border border-border overflow-hidden">
-                          {ITSM_OPTIONS.map((s) => (
-                            <button
-                              key={s}
-                              onClick={() => changeSystem(drawerObj.id, s)}
-                              className={`text-[10px] font-medium px-2 py-0.5 transition-colors ${dd.system === s ? "bg-teal text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground"}`}
-                            >
-                              {s}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        {dd.fields.map((f, i) => (
-                          <div key={f.label}>
-                            <label className="text-[9.5px] text-muted-foreground mb-0.5 block truncate">
-                              {f.label}
-                            </label>
-                            <input
-                              value={f.value}
-                              onChange={(e) => patchField(drawerObj.id, i, e.target.value)}
-                              className="w-full px-2 py-1 bg-muted border border-border rounded text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-teal"
-                            />
-                          </div>
-                        ))}
-                      </div>
                     </div>
                   </div>
 
