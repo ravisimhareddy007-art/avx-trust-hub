@@ -1,11 +1,24 @@
 import React, { useState, useMemo } from "react";
-import { Shield, Key, Lock, AlertTriangle, Clock, Check, ChevronRight, Atom } from "lucide-react";
+import {
+  Shield,
+  Lock,
+  AlertTriangle,
+  Clock,
+  Check,
+  ChevronRight,
+  Atom,
+  User,
+  Server,
+  Package,
+  Hash,
+  ArrowLeftRight,
+} from "lucide-react";
 import { useDashboard, feedItemToDriver } from "@/context/DashboardContext";
 import { VIOLATION_FILTERS } from "@/lib/filters/cryptoFilters";
 import TicketTriageModal from "./TicketTriageModal";
 
 const fmt = (n: number) => n.toLocaleString();
-type Category = "Certs" | "SSH" | "Secrets" | "PQC";
+type Category = "Certs" | "SSH" | "Secrets" | "PQC" | "Library" | "Cipher" | "Protocol";
 
 interface ActionItem {
   id: string;
@@ -48,20 +61,38 @@ const FEED: ActionItem[] = [
   {
     id: "3",
     category: "SSH",
-    icon: Key,
+    icon: User,
     severity: "P1",
-    title: `${fmt(VIOLATION_FILTERS.ssh_suspicious.enterpriseCount)} suspicious SSH keys with shell access`,
+    title: `${fmt(VIOLATION_FILTERS.ssh_suspicious.enterpriseCount)} suspicious SSH user keys with shell access`,
     detail: "Anomalous login patterns · production hosts",
     ageMins: 95,
   },
   {
-    id: "9",
-    category: "SSH",
-    icon: Key,
-    severity: "P3",
-    title: `${fmt(VIOLATION_FILTERS.ssh_rogue.enterpriseCount)} rogue SSH keys not provisioned by platform`,
-    detail: "Found in filesystem and vault keystores · move under managed SSH CA",
-    ageMins: 720,
+    id: "lib-outdated",
+    category: "Library",
+    icon: Package,
+    severity: "P2",
+    title: "74 services on outdated OpenSSL 1.0.2",
+    detail: "Known RCE exposure · Tenable, Qualys, CBOM",
+    ageMins: 30,
+  },
+  {
+    id: "cipher-weak",
+    category: "Cipher",
+    icon: Hash,
+    severity: "P2",
+    title: "12 endpoints negotiate RC4 / 3DES",
+    detail: "Downgrade risk · Qualys, CBOM",
+    ageMins: 55,
+  },
+  {
+    id: "6",
+    category: "Certs",
+    icon: Shield,
+    severity: "P2",
+    title: `${fmt(VIOLATION_FILTERS.cert_weak_algo.enterpriseCount)} certificates use weak algorithms`,
+    detail: "RSA-1024 / SHA-1 · re-issue on compliant algorithm required",
+    ageMins: 240,
   },
   {
     id: "8",
@@ -73,13 +104,13 @@ const FEED: ActionItem[] = [
     ageMins: 480,
   },
   {
-    id: "orphaned",
-    category: "Secrets",
-    icon: Lock,
-    severity: "P3",
-    title: `${fmt(VIOLATION_FILTERS.secret_orphaned.enterpriseCount)} orphaned secrets with no active owner`,
-    detail: "No active owner · rotation and revocation blocked until reassigned",
-    ageMins: 1440,
+    id: "proto-deprecated",
+    category: "Protocol",
+    icon: ArrowLeftRight,
+    severity: "P2",
+    title: "52 endpoints still allow TLS 1.0 / 1.1",
+    detail: "Deprecated protocol · Tenable, Qualys",
+    ageMins: 120,
   },
   {
     id: "pqc-1",
@@ -89,6 +120,24 @@ const FEED: ActionItem[] = [
     title: "847 production certs use RSA-2048 and expire after 2030",
     detail: "Post-NIST-deadline exposure · deprecate by 2030, disallow by 2035",
     ageMins: 60,
+  },
+  {
+    id: "orphaned",
+    category: "Secrets",
+    icon: Lock,
+    severity: "P3",
+    title: `${fmt(VIOLATION_FILTERS.secret_orphaned.enterpriseCount)} orphaned secrets with no active owner`,
+    detail: "No active owner · rotation and revocation blocked until reassigned",
+    ageMins: 1440,
+  },
+  {
+    id: "9",
+    category: "SSH",
+    icon: Server,
+    severity: "P3",
+    title: `${fmt(VIOLATION_FILTERS.ssh_rogue.enterpriseCount)} rogue SSH host keys not platform-provisioned`,
+    detail: "Found in filesystem and vault keystores · move under managed SSH CA",
+    ageMins: 720,
   },
 ];
 
@@ -104,15 +153,16 @@ function ageLabel(mins: number) {
   return `${Math.floor(mins / 1440)}d`;
 }
 
-type FilterKey = "All" | "Certificates" | "Secrets" | "SSH Keys" | "Quantum";
+type FilterKey = "All" | "Certificates" | "SSH" | "Secrets" | "Crypto stack" | "Quantum";
 const FILTER_MAP: Record<FilterKey, Category[] | null> = {
   All: null,
   Certificates: ["Certs"],
+  SSH: ["SSH"],
   Secrets: ["Secrets"],
-  "SSH Keys": ["SSH"],
+  "Crypto stack": ["Library", "Cipher", "Protocol"],
   Quantum: ["PQC"],
 };
-const FILTERS: FilterKey[] = ["All", "Certificates", "SSH Keys", "Secrets", "Quantum"];
+const FILTERS: FilterKey[] = ["All", "Certificates", "SSH", "Secrets", "Crypto stack", "Quantum"];
 
 export default function CriticalActionFeed() {
   const { hoveredDriver, resolvedFeedItems } = useDashboard();
@@ -120,7 +170,7 @@ export default function CriticalActionFeed() {
   const [triage, setTriage] = useState<{ type: Category; violationId: string } | null>(null);
 
   const counts = useMemo(() => {
-    const c: Record<FilterKey, number> = { All: 0, Certificates: 0, Secrets: 0, "SSH Keys": 0, Quantum: 0 };
+    const c: Record<FilterKey, number> = { All: 0, Certificates: 0, SSH: 0, Secrets: 0, "Crypto stack": 0, Quantum: 0 };
     FEED.forEach((item) => {
       c["All"]++;
       (Object.keys(FILTER_MAP) as FilterKey[]).forEach((k) => {
