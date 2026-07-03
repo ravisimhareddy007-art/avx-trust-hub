@@ -8,11 +8,11 @@ import TicketTriageModal from "@/components/dashboards/TicketTriageModal";
 const REMEDIATION_ENABLED = false;
 const PAGE = 5;
 
-const SEV_BAR: Record<string, string> = {
-  Critical: "bg-coral",
-  High: "bg-coral",
-  Medium: "bg-amber",
-  Low: "bg-teal",
+const SEV_STYLE: Record<string, string> = {
+  Critical: "text-coral bg-coral/12",
+  High: "text-coral bg-coral/12",
+  Medium: "text-amber bg-amber/12",
+  Low: "text-teal bg-teal/12",
 };
 const SEV_TEXT: Record<string, string> = {
   Critical: "text-coral",
@@ -21,53 +21,85 @@ const SEV_TEXT: Record<string, string> = {
   Low: "text-teal",
 };
 
-function TrendChart({ points, hsl }: { points: { label: string; value: number }[]; hsl: string }) {
-  const W = 340,
-    H = 150,
-    L = 8,
-    R = 300,
-    T = 8,
-    B = 122;
+function TrendChart({
+  points,
+  hsl,
+  target,
+}: {
+  points: { label: string; value: number }[];
+  hsl: string;
+  target: number;
+}) {
+  const W = 320,
+    H = 188,
+    L = 26,
+    R = 264,
+    T = 10,
+    B = 150;
   const y = (v: number) => T + (1 - v / 100) * (B - T);
   const x = (i: number) => L + (i / (points.length - 1)) * (R - L);
   const line = points.map((p, i) => `${i === 0 ? "M" : "L"} ${x(i).toFixed(1)} ${y(p.value).toFixed(1)}`).join(" ");
   const area = `${line} L ${R} ${B} L ${L} ${B} Z`;
   const last = points[points.length - 1];
   const zones = [
-    { y: y(100), h: y(80) - y(100), c: "hsl(16 72% 51%)", label: "Critical", ly: y(90) },
-    { y: y(80), h: y(60) - y(80), c: "hsl(38 78% 51%)", label: "High", ly: y(70) },
-    { y: y(60), h: y(30) - y(60), c: "hsl(210 80% 56%)", label: "Moderate", ly: y(45) },
-    { y: y(30), h: B - y(30), c: "hsl(162 72% 42%)", label: "Low", ly: y(15) },
+    { top: 100, bot: 80, c: "hsl(16 72% 51%)", label: "Critical" },
+    { top: 80, bot: 60, c: "hsl(38 78% 51%)", label: "High" },
+    { top: 60, bot: 30, c: "hsl(210 80% 56%)", label: "Moderate" },
+    { top: 30, bot: 0, c: "hsl(162 72% 42%)", label: "Low" },
+  ];
+  const yTicks = [100, 80, 60, 30, 0];
+  const xLabels = [
+    { i: 0, t: "12w" },
+    { i: 3, t: "9w" },
+    { i: 6, t: "6w" },
+    { i: 9, t: "3w" },
+    { i: points.length - 1, t: "now" },
   ];
   return (
     <svg
       width="100%"
-      height={H}
       viewBox={`0 0 ${W} ${H}`}
       role="img"
-      aria-label={`Twelve week risk trend, now ${last.value}`}
+      aria-label={`Twelve week risk trend, now ${last.value}, target ${target}`}
     >
       {zones.map((z) => (
         <g key={z.label}>
-          <rect x={L} y={z.y} width={R - L} height={z.h} fill={z.c} opacity="0.10" />
-          <text x={R + 5} y={z.ly + 3} fontSize="8" fill={z.c} opacity="0.9">
+          <rect x={L} y={y(z.top)} width={R - L} height={y(z.bot) - y(z.top)} fill={z.c} opacity="0.09" />
+          <text x={R + 4} y={(y(z.top) + y(z.bot)) / 2 + 3} fontSize="7.5" fill={z.c} opacity="0.85">
             {z.label}
           </text>
         </g>
       ))}
-      {[80, 60, 30].map((v) => (
-        <line
-          key={v}
-          x1={L}
-          y1={y(v)}
-          x2={R}
-          y2={y(v)}
-          stroke="currentColor"
-          strokeWidth="0.5"
-          strokeDasharray="2 3"
-          opacity="0.15"
-        />
+      {yTicks.map((v) => (
+        <g key={v}>
+          <text x={L - 5} y={y(v) + 3} fontSize="8" fill="currentColor" opacity="0.4" textAnchor="end">
+            {v}
+          </text>
+          <line
+            x1={L}
+            y1={y(v)}
+            x2={R}
+            y2={y(v)}
+            stroke="currentColor"
+            strokeWidth="0.5"
+            strokeDasharray="2 3"
+            opacity="0.1"
+          />
+        </g>
       ))}
+      <line
+        x1={L}
+        y1={y(target)}
+        x2={R}
+        y2={y(target)}
+        stroke="hsl(162 72% 42%)"
+        strokeWidth="1"
+        strokeDasharray="4 3"
+        opacity="0.7"
+      />
+      <text x={L + 2} y={y(target) - 3} fontSize="7.5" fill="hsl(162 72% 42%)">
+        target {target}
+      </text>
       <path d={area} fill={hsl} fillOpacity="0.12" />
       <path
         d={line}
@@ -89,12 +121,11 @@ function TrendChart({ points, hsl }: { points: { label: string; value: number }[
       >
         {last.value}
       </text>
-      <text x={L} y={H - 4} fontSize="8" fill="currentColor" opacity="0.4">
-        12w ago
-      </text>
-      <text x={R} y={H - 4} fontSize="8" fill="currentColor" opacity="0.4" textAnchor="end">
-        now
-      </text>
+      {xLabels.map((l) => (
+        <text key={l.t} x={x(l.i)} y={H - 4} fontSize="8" fill="currentColor" opacity="0.4" textAnchor="middle">
+          {l.t}
+        </text>
+      ))}
     </svg>
   );
 }
@@ -115,12 +146,16 @@ export default function EnterpriseRiskScore() {
   const delta = score - startVal;
   const improving = delta < 0;
 
+  const topThree = [...ers.driverBuckets].sort((a, b) => b.pts - a.pts).slice(0, 3);
+  const projected = Math.max(0, score - topThree.reduce((s, d) => s + d.pts, 0));
+  const target = Math.min(projected, 30);
+
   const coverageFor = (ids: string[]) => ids.reduce((n, id) => n + (ticketForObject(id) ? 1 : 0), 0);
 
   const rows = useMemo(() => {
     const withCov = ers.driverBuckets.map((d) => {
       const ticketed = coverageFor(d.objectIds);
-      const fullyTicketed = ticketed >= d.count && d.count > 0;
+      const fullyTicketed = d.objectIds.length > 0 && ticketed >= d.objectIds.length;
       return { ...d, ticketed, fullyTicketed };
     });
     const active = withCov.filter((d) => !d.fullyTicketed);
@@ -132,7 +167,6 @@ export default function EnterpriseRiskScore() {
     return [...active.sort(cmp), ...done];
   }, [ers.driverBuckets, sort]);
 
-  const maxContribution = Math.max(1, ...ers.driverBuckets.map((d) => d.contribution));
   const pageCount = Math.ceil(rows.length / PAGE);
   const pageRows = rows.slice(page * PAGE, page * PAGE + PAGE);
 
@@ -148,9 +182,9 @@ export default function EnterpriseRiskScore() {
           <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
           <div className="absolute left-0 top-5 z-50 hidden group-hover:block w-80 bg-card border border-border rounded-lg shadow-lg px-3 py-2.5">
             <p className="text-[11px] text-foreground leading-relaxed">
-              Every object's CRS rolls up through per-asset ARS, weighted by business impact, with a floor so one
-              critical asset on fire cannot be averaged out. Each factor shows the real ERS drop if you resolve it.
-              Click a factor to review its objects, grouped by owning team, and raise tickets.
+              Every object's CRS rolls up through per-asset ARS, weighted by business impact. Higher is worse. Each
+              factor shows the estimated ERS drop if you resolve it. Click a factor to review its objects and raise
+              tickets.
             </p>
           </div>
         </div>
@@ -159,10 +193,10 @@ export default function EnterpriseRiskScore() {
         </span>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(280px,38%)_1fr]">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(300px,40%)_1fr]">
         {/* Trend + score */}
-        <div className="p-5 lg:border-r border-border">
-          <div className="flex items-end gap-3">
+        <div className="p-5 lg:border-r border-border flex flex-col">
+          <div className="flex items-end gap-3 mb-1">
             <div className="flex items-baseline gap-1">
               <span className="text-5xl font-semibold leading-none tabular-nums" style={{ color: hsl }}>
                 {score}
@@ -184,10 +218,27 @@ export default function EnterpriseRiskScore() {
               </span>
             </div>
           </div>
-          <div className="mt-3">
-            <TrendChart points={hist} hsl={hsl} />
+
+          <div className="mt-2 flex-1">
+            <TrendChart points={hist} hsl={hsl} target={target} />
           </div>
-          <div className="text-[9px] text-muted-foreground">12-week trend · sample history</div>
+
+          <div className="flex items-center gap-2 mt-2 pt-3 border-t border-border/40">
+            <div className="flex-1">
+              <div className="text-[9px] text-muted-foreground uppercase tracking-wider">
+                Projected after top 3 fixes
+              </div>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-lg font-semibold text-teal tabular-nums">{projected}</span>
+                <span className="text-[10px] text-muted-foreground">from {score}</span>
+              </div>
+            </div>
+            <div className="text-[9px] text-muted-foreground text-right">
+              12-week trend
+              <br />
+              sample history
+            </div>
+          </div>
         </div>
 
         {/* Factors */}
@@ -196,7 +247,8 @@ export default function EnterpriseRiskScore() {
             <span className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium flex-1">
               What's driving your risk
             </span>
-            <div className="inline-flex rounded-full border border-border overflow-hidden">
+            <span className="text-[10px] text-muted-foreground">Sort</span>
+            <div className="inline-flex rounded-full border border-border-strong overflow-hidden">
               <button
                 onClick={() => {
                   setSort("impact");
@@ -218,48 +270,40 @@ export default function EnterpriseRiskScore() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-3.5 flex-1">
-            {pageRows.map((d) => {
-              const partial = d.ticketed > 0 && !d.fullyTicketed;
-              return (
-                <button
-                  key={d.id}
-                  onClick={() => setTriage({ type: d.triageType, violationId: d.id })}
-                  className={`group text-left ${d.fullyTicketed ? "opacity-55" : ""}`}
+          <div className="flex flex-col flex-1">
+            {pageRows.map((d) => (
+              <button
+                key={d.id}
+                onClick={() => setTriage({ type: d.triageType, violationId: d.id })}
+                className={`group flex items-center gap-3 py-2.5 border-b border-border/40 text-left ${d.fullyTicketed ? "opacity-55" : ""}`}
+              >
+                <span
+                  className={`text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wide ${SEV_STYLE[d.severity]}`}
                 >
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <span className="text-[12px] text-foreground flex-1 min-w-0 truncate">{d.label}</span>
-                    {d.fullyTicketed ? (
-                      <span className="inline-flex items-center gap-1 text-[9px] text-teal bg-teal/10 px-1.5 py-0.5 rounded">
-                        <Ticket className="w-2.5 h-2.5" /> ticketed · awaiting fix
-                      </span>
-                    ) : d.pts > 0 ? (
-                      <span className={`text-[12px] font-semibold tabular-nums ${SEV_TEXT[d.severity]}`}>-{d.pts}</span>
-                    ) : (
-                      <span className="text-[9px] text-muted-foreground">holds steady</span>
-                    )}
-                    <ChevronRight className="w-3.5 h-3.5 text-muted-foreground group-hover:text-teal transition-colors" />
+                  {d.severity}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[12px] text-foreground truncate">{d.label}</div>
+                  <div className="text-[10px] text-muted-foreground">
+                    {d.count.toLocaleString()} objects · {d.urgency}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 h-1.5 bg-secondary/60 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full ${d.fullyTicketed ? "bg-muted-foreground/40" : SEV_BAR[d.severity]}`}
-                        style={{ width: `${Math.max(6, (d.contribution / maxContribution) * 100)}%` }}
-                      />
-                    </div>
-                    <span className="text-[9px] text-muted-foreground whitespace-nowrap">
-                      {d.count.toLocaleString()} objects
-                      {partial && <span className="text-teal"> · {d.ticketed} ticketed</span>}
-                      {" · "}
-                      {d.framework}
-                    </span>
+                </div>
+                {d.fullyTicketed ? (
+                  <span className="inline-flex items-center gap-1 text-[9px] text-teal bg-teal/10 px-1.5 py-0.5 rounded">
+                    <Ticket className="w-2.5 h-2.5" /> ticketed
+                  </span>
+                ) : (
+                  <div className="text-right">
+                    <div className={`text-[13px] font-semibold tabular-nums ${SEV_TEXT[d.severity]}`}>-{d.pts}</div>
+                    <div className="text-[8px] text-muted-foreground uppercase tracking-wide">ERS</div>
                   </div>
-                </button>
-              );
-            })}
+                )}
+                <ChevronRight className="w-3.5 h-3.5 text-muted-foreground group-hover:text-teal transition-colors flex-shrink-0" />
+              </button>
+            ))}
           </div>
 
-          <div className="flex items-center justify-between pt-3 mt-2 border-t border-border/40">
+          <div className="flex items-center justify-between pt-3 mt-1">
             <span className="text-[10px] text-muted-foreground">
               {rows.length === 0
                 ? "No active factors"
