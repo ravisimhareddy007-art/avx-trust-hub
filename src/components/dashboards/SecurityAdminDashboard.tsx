@@ -6,7 +6,6 @@ import { DashboardProvider } from "@/context/DashboardContext";
 import { RiskProvider } from "@/context/RiskContext";
 import { toast } from "sonner";
 import EnterpriseRiskScore from "./ers/EnterpriseRiskScore";
-import CriticalActionFeed from "./CriticalActionFeed";
 import IdentityHealthBands from "./IdentityHealthBands";
 
 import InfrastructurePostureStrip from "./InfrastructurePostureStrip";
@@ -96,14 +95,7 @@ export default function SecurityAdminDashboard() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-                <div className="lg:col-span-5 lg:h-[420px]">
-                  <EnterpriseRiskScore />
-                </div>
-                <div className="lg:col-span-7 lg:h-[420px] overflow-hidden">
-                  <CriticalActionFeed />
-                </div>
-              </div>
+              <EnterpriseRiskScore />
 
               <IdentityHealthBands />
               <InfrastructurePostureStrip />
