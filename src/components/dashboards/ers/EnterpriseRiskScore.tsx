@@ -20,38 +20,79 @@ const SEV_TEXT: Record<string, string> = {
 };
 
 function TrendChart({ points, hsl }: { points: { label: string; value: number }[]; hsl: string }) {
-  const W = 300,
-    H = 64,
-    pad = 6;
-  const vals = points.map((p) => p.value);
-  const min = Math.min(...vals) - 4,
-    max = Math.max(...vals) + 4;
-  const span = Math.max(1, max - min);
-  const x = (i: number) => pad + (i / (points.length - 1)) * (W - pad * 2);
-  const y = (v: number) => pad + (1 - (v - min) / span) * (H - pad * 2);
+  const W = 320,
+    H = 146,
+    L = 8,
+    R = 286,
+    T = 8,
+    B = 118;
+  const y = (v: number) => T + (1 - v / 100) * (B - T);
+  const x = (i: number) => L + (i / (points.length - 1)) * (R - L);
   const line = points.map((p, i) => `${i === 0 ? "M" : "L"} ${x(i).toFixed(1)} ${y(p.value).toFixed(1)}`).join(" ");
-  const area = `${line} L ${x(points.length - 1).toFixed(1)} ${H - pad} L ${x(0).toFixed(1)} ${H - pad} Z`;
-  const lastX = x(points.length - 1),
-    lastY = y(points[points.length - 1].value);
+  const area = `${line} L ${R} ${B} L ${L} ${B} Z`;
+  const last = points[points.length - 1];
+  const zones = [
+    { y: y(100), h: y(80) - y(100), c: "hsl(16 72% 51%)", label: "Crit", ly: y(90) },
+    { y: y(80), h: y(60) - y(80), c: "hsl(38 78% 51%)", label: "High", ly: y(70) },
+    { y: y(60), h: y(30) - y(60), c: "hsl(210 80% 56%)", label: "Mod", ly: y(45) },
+    { y: y(30), h: B - y(30), c: "hsl(162 72% 42%)", label: "Low", ly: y(15) },
+  ];
   return (
-    <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
-      <defs>
-        <linearGradient id="ersFade" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={hsl} stopOpacity="0.20" />
-          <stop offset="100%" stopColor={hsl} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d={area} fill="url(#ersFade)" />
+    <svg
+      width="100%"
+      height={H}
+      viewBox={`0 0 ${W} ${H}`}
+      role="img"
+      aria-label={`Twelve week risk trend, now ${last.value}`}
+    >
+      {zones.map((z) => (
+        <g key={z.label}>
+          <rect x={L} y={z.y} width={R - L} height={z.h} fill={z.c} opacity="0.10" />
+          <text x={R + 4} y={z.ly + 3} fontSize="7.5" fill={z.c} opacity="0.9">
+            {z.label}
+          </text>
+        </g>
+      ))}
+      {[80, 60, 30].map((v) => (
+        <line
+          key={v}
+          x1={L}
+          y1={y(v)}
+          x2={R}
+          y2={y(v)}
+          stroke="currentColor"
+          strokeWidth="0.5"
+          strokeDasharray="2 3"
+          opacity="0.15"
+        />
+      ))}
+      <path d={area} fill={hsl} fillOpacity="0.12" />
       <path
         d={line}
         fill="none"
-        stroke={hsl}
-        strokeWidth="2"
+        stroke="currentColor"
+        strokeWidth="1.75"
         strokeLinecap="round"
         strokeLinejoin="round"
-        vectorEffect="non-scaling-stroke"
+        opacity="0.85"
       />
-      <circle cx={lastX} cy={lastY} r="3.5" fill={hsl} />
+      <circle cx={x(points.length - 1)} cy={y(last.value)} r="3.5" fill={hsl} />
+      <text
+        x={x(points.length - 1) - 4}
+        y={y(last.value) - 6}
+        fontSize="9"
+        fontWeight="600"
+        fill={hsl}
+        textAnchor="end"
+      >
+        {last.value}
+      </text>
+      <text x={L} y={H - 4} fontSize="7.5" fill="currentColor" opacity="0.4">
+        12w ago
+      </text>
+      <text x={R} y={H - 4} fontSize="7.5" fill="currentColor" opacity="0.4" textAnchor="end">
+        now
+      </text>
     </svg>
   );
 }
