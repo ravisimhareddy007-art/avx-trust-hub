@@ -88,7 +88,41 @@ function TrendChart({ points, hsl }: { points: { label: string; value: number }[
         {last.value}
       </text>
       {points.map((p, i) => (
-        <text key={i} x={x(i)} y={H - 3} fontSize="7.5" fill="currentColor" opacity="0.4" textAnchor="middle">
+        <g key={i} className="group/pt" style={{ cursor: "default" }}>
+          <circle
+            cx={x(i)}
+            cy={y(p.value)}
+            r="2"
+            fill="currentColor"
+            opacity="0.5"
+            className="group-hover/pt:opacity-100"
+          />
+          <rect x={x(i) - 8} y={0} width={16} height={H} fill="transparent" />
+          <g className="opacity-0 group-hover/pt:opacity-100 transition-opacity" pointerEvents="none">
+            <rect
+              x={Math.min(Math.max(x(i) - 24, 2), W - 50)}
+              y={y(p.value) - 26}
+              width="48"
+              height="18"
+              rx="3"
+              fill="hsl(222 20% 12%)"
+              stroke="currentColor"
+              strokeOpacity="0.2"
+            />
+            <text
+              x={Math.min(Math.max(x(i), 26), W - 26)}
+              y={y(p.value) - 13}
+              fontSize="8"
+              fill="currentColor"
+              textAnchor="middle"
+            >
+              {p.label} · {p.value}
+            </text>
+          </g>
+        </g>
+      ))}
+      {points.map((p, i) => (
+        <text key={`m${i}`} x={x(i)} y={H - 3} fontSize="7.5" fill="currentColor" opacity="0.4" textAnchor="middle">
           {p.label}
         </text>
       ))}
