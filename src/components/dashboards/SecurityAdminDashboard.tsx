@@ -5,7 +5,7 @@ import { useNav } from "@/context/NavigationContext";
 import { DashboardProvider } from "@/context/DashboardContext";
 import { RiskProvider } from "@/context/RiskContext";
 import EnterpriseRiskScore from "./ers/EnterpriseRiskScore";
-import IdentityHealthBands from "./IdentityHealthBands";
+import CryptoPostureGrid from "./CryptoPostureGrid";
 
 import InfrastructurePostureStrip from "./InfrastructurePostureStrip";
 
@@ -78,7 +78,7 @@ export default function SecurityAdminDashboard() {
 
               <EnterpriseRiskScore />
 
-              <IdentityHealthBands />
+              <CryptoPostureGrid />
               <InfrastructurePostureStrip />
             </div>
           </div>
