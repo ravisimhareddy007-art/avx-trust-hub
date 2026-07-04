@@ -245,14 +245,16 @@ function libraryDraft(l: LibraryAsset): TicketDraft {
 
 function SectionHeading({ label, count }: { label: string; count?: number }) {
   return (
-    <div className="flex items-center gap-2 mb-2">
-      <span className="uppercase tracking-wider text-muted-foreground font-semibold">{label}</span>
-      {count !== undefined && count > 0 && (
-        <span className="text-[9px] font-semibold text-coral bg-coral/15 rounded-full w-4 h-4 flex items-center justify-center">
+    <p className="text-[11px] font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
+      {label}
+      {count !== undefined && (
+        <span
+          className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${count > 0 ? "bg-coral/15 text-coral" : "bg-secondary text-muted-foreground"}`}
+        >
           {count}
         </span>
       )}
-    </div>
+    </p>
   );
 }
 function MetaRow({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {
@@ -552,7 +554,7 @@ function ProtocolPanel({
   return (
     <PanelShell
       title={`${p.fqdn}:${p.port}`}
-      subtitle={`${p.protocol} ${p.version} · ${p.environment} · ${p.exposure}`}
+      subtitle={`${p.protocol} protocol · ${p.environment} · ${p.exposure}`}
       pills={
         <>
           <span className={`font-semibold px-2 py-0.5 rounded ${crsChip(p.crs)}`}>{p.version}</span>
@@ -738,25 +740,28 @@ export default function CryptoAssetsTab({ onCreateTicket }: { onCreateTicket: (c
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border">
-        <div className="inline-flex rounded-lg border border-border overflow-hidden">
-          <button
-            onClick={() => {
-              setView("protocols");
-              setOpenLib(null);
-            }}
-            className={`inline-flex items-center gap-1.5 font-medium px-3 py-1.5 transition-colors ${view === "protocols" ? "bg-teal text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <Network className="w-3.5 h-3.5" /> Protocols <span className="opacity-70">{protocols.length}</span>
-          </button>
-          <button
-            onClick={() => {
-              setView("libraries");
-              setOpenProto(null);
-            }}
-            className={`inline-flex items-center gap-1.5 font-medium px-3 py-1.5 transition-colors ${view === "libraries" ? "bg-teal text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <Package className="w-3.5 h-3.5" /> Libraries <span className="opacity-70">{libraries.length}</span>
-          </button>
+        <div className="flex items-center gap-1.5">
+          {(
+            [
+              ["protocols", "Protocols", protocols.length, Network],
+              ["libraries", "Libraries", libraries.length, Package],
+            ] as const
+          ).map(([key, label, cnt, Icon]) => (
+            <button
+              key={key}
+              onClick={() => {
+                setView(key);
+                if (key === "protocols") setOpenLib(null);
+                else setOpenProto(null);
+              }}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10.5px] font-medium whitespace-nowrap transition-colors flex-shrink-0 ${view === key ? "bg-teal/15 text-teal border border-teal/30" : "text-muted-foreground hover:bg-secondary border border-transparent"}`}
+            >
+              <Icon className="w-3.5 h-3.5" /> {label}
+              <span className={`text-[9px] tabular-nums ${view === key ? "text-teal/70" : "text-muted-foreground/50"}`}>
+                {cnt}
+              </span>
+            </button>
+          ))}
         </div>
         <span className="ml-auto text-muted-foreground">Discovered via Tenable, Qualys, and CBOM ingestion</span>
       </div>
