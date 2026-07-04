@@ -945,6 +945,12 @@ const prodCount = (l: LibraryAsset) =>
   l.assetsAffected.filter((f) => assetByFqdn(f)?.environment === "Production").length;
 const topEpss = (l: LibraryAsset) => (l.cves.length ? Math.max(...l.cves.map((c: any) => c.epss)) : 0);
 const hasKev = (l: LibraryAsset) => l.cves.some((c: any) => c.kev);
+const exploitLevel = (l: LibraryAsset) => {
+  if (!l.cves.length) return { label: "None", cls: "text-muted-foreground" };
+  if (hasKev(l)) return { label: "Known Exploited", cls: "text-coral font-medium" };
+  if (topEpss(l) >= 0.1) return { label: "High Likelihood", cls: "text-amber" };
+  return { label: "Low Likelihood", cls: "text-teal" };
+};
 
 const LIB_COLS: ColDef[] = [
   {
@@ -970,7 +976,16 @@ const LIB_COLS: ColDef[] = [
       </span>
     ),
   },
-  { key: "upgrade", label: "Upgrade To", render: (l) => <span className="text-teal font-mono">{l.latestSafe}</span> },
+  {
+    key: "upgrade",
+    label: "Upgrade To",
+    render: (l) =>
+      l.eolStatus === "Supported" ? (
+        <span className="text-muted-foreground">Latest supported</span>
+      ) : (
+        <span className="text-teal font-mono">{l.latestSafe}</span>
+      ),
+  },
   {
     key: "cves",
     label: "CVEs",
@@ -1017,13 +1032,8 @@ const LIB_COLS: ColDef[] = [
     key: "exploit",
     label: "Exploitability",
     render: (l) => {
-      if (!l.cves.length) return <span className="text-muted-foreground">None</span>;
-      if (hasKev(l)) return <span className="text-coral font-medium">KEV ✓</span>;
-      const e = topEpss(l);
-      const pct = Math.round(e * 100);
-      return (
-        <span className={e >= 0.5 ? "text-coral" : e >= 0.1 ? "text-amber" : "text-muted-foreground"}>EPSS {pct}%</span>
-      );
+      const e = exploitLevel(l);
+      return <span className={e.cls}>{e.label}</span>;
     },
   },
   {
@@ -1054,6 +1064,16 @@ const LIB_COLS: ColDef[] = [
       <span className={`font-semibold px-1.5 py-0.5 rounded tabular-nums ${crsChip(l.crs)}`}>{l.crs}</span>
     ),
   },
+  {
+    key: "violations",
+    label: "Violations",
+    center: true,
+    render: (l) => (
+      <span className={l.policyViolations.length ? "text-coral font-medium" : "text-muted-foreground"}>
+        {l.policyViolations.length || "0"}
+      </span>
+    ),
+  },
   { key: "source", label: "Source", render: (l) => <span className="text-muted-foreground">{l.discoverySource}</span> },
 ];
 const PROTO_FACETS: Facet[] = [
@@ -1075,13 +1095,8 @@ const LIB_FACETS: Facet[] = [
   {
     key: "exploit",
     label: "Exploitability",
-    options: ["KEV", "High EPSS", "None"],
-    value: (l) =>
-      l.cves.some((c: any) => c.kev)
-        ? "KEV"
-        : l.cves.length && Math.max(...l.cves.map((c: any) => c.epss)) >= 0.1
-          ? "High EPSS"
-          : "None",
+    options: ["Known Exploited", "High Likelihood", "Low Likelihood", "None"],
+    value: (l) => exploitLevel(l).label,
   },
   { key: "inuse", label: "Usage", options: ["In use", "Dormant"], value: (l) => (l.inUse ? "In use" : "Dormant") },
   { key: "source", label: "Source", options: ["CBOM Ingestion", "Tenable", "Qualys"], value: (l) => l.discoverySource },
