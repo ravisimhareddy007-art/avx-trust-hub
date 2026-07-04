@@ -26,6 +26,7 @@ export default function InventoryPage() {
   useEffect(() => {
     if (filters.tab === "identities") setActiveTab("crypto-objects");
     else if (filters.tab === "infrastructure") setActiveTab("it-assets");
+    else if (filters.tab === "crypto-assets") setActiveTab("crypto-assets");
     else if (filters.tab === "groups") setActiveTab("groups");
   }, [filters]);
 
