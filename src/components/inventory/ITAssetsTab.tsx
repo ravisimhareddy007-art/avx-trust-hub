@@ -794,7 +794,7 @@ function ITAssetDetailPanel({
                       <Network className="w-3.5 h-3.5 text-teal flex-shrink-0" />
                       <span className="flex-1 min-w-0">
                         <span className="text-[11px] text-foreground font-medium block truncate group-hover:text-teal">
-                          {p.service} :{p.port} · {p.version}
+                          {p.service} :{p.port} · {p.family} {p.version}
                         </span>
                         <span className="text-[9px] text-muted-foreground">
                           {p.application} · Protocol
