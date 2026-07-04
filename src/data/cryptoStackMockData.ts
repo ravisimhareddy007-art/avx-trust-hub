@@ -49,13 +49,15 @@ export interface LibraryAsset {
   latestSafe: string; // recommended version
   cveCount: number;
   maxCvss: number;
-  cves: { id: string; cvss: number; title: string }[];
+  cves: { id: string; cvss: number; title: string; kev: boolean; epss: number }[];
   assetsAffected: string[]; // FQDNs (one-to-many spread)
   implementsList: string[]; // algorithms / protocols provided
   inUse: boolean; // reachability: reached in production vs dormant
   owner: string;
   team: string;
   discoverySource: "CBOM Ingestion" | "Tenable" | "Qualys";
+  packageId: string; // PURL (CBOM) or CPE (scanner), drawer only
+  lastSeen: string;
   crs: number;
   severity: StackSeverity;
   policyViolations: string[];
@@ -334,12 +336,12 @@ export const mockLibraries: LibraryAsset[] = [
     cveCount: 6,
     maxCvss: 9.8,
     cves: [
-      { id: "CVE-2021-3711", cvss: 9.8, title: "SM2 decryption buffer overflow" },
-      { id: "CVE-2014-0160", cvss: 7.5, title: "Heartbleed information disclosure" },
-      { id: "CVE-2016-6304", cvss: 7.5, title: "OCSP status request memory exhaustion" },
-      { id: "CVE-2022-0778", cvss: 7.5, title: "BN_mod_sqrt infinite loop (DoS)" },
-      { id: "CVE-2019-1543", cvss: 7.4, title: "ChaCha20-Poly1305 nonce reuse" },
-      { id: "CVE-2016-2107", cvss: 5.9, title: "Padding oracle in AES-NI CBC" },
+      { id: "CVE-2021-3711", cvss: 9.8, title: "SM2 decryption buffer overflow", kev: false, epss: 0.42 },
+      { id: "CVE-2014-0160", cvss: 7.5, title: "Heartbleed information disclosure", kev: true, epss: 0.94 },
+      { id: "CVE-2016-6304", cvss: 7.5, title: "OCSP status request memory exhaustion", kev: false, epss: 0.3 },
+      { id: "CVE-2022-0778", cvss: 7.5, title: "BN_mod_sqrt infinite loop (DoS)", kev: false, epss: 0.55 },
+      { id: "CVE-2019-1543", cvss: 7.4, title: "ChaCha20-Poly1305 nonce reuse", kev: false, epss: 0.12 },
+      { id: "CVE-2016-2107", cvss: 5.9, title: "Padding oracle in AES-NI CBC", kev: false, epss: 0.35 },
     ],
     assetsAffected: [
       "legacy-erp.internal",
@@ -352,6 +354,8 @@ export const mockLibraries: LibraryAsset[] = [
     owner: "Marcus Reid",
     team: "Infrastructure",
     discoverySource: "CBOM Ingestion",
+    packageId: "pkg:generic/openssl@1.0.2u",
+    lastSeen: "2026-07-03 02:10",
     crs: 90,
     severity: "Critical",
     policyViolations: ["OOB-LIB-01", "OOB-LIB-02"],
@@ -368,8 +372,8 @@ export const mockLibraries: LibraryAsset[] = [
     cveCount: 2,
     maxCvss: 7.5,
     cves: [
-      { id: "CVE-2022-3602", cvss: 7.5, title: "X.509 punycode buffer overflow" },
-      { id: "CVE-2023-5678", cvss: 5.3, title: "DH key generation excessive time" },
+      { id: "CVE-2022-3602", cvss: 7.5, title: "X.509 punycode buffer overflow", kev: false, epss: 0.2 },
+      { id: "CVE-2023-5678", cvss: 5.3, title: "DH key generation excessive time", kev: false, epss: 0.06 },
     ],
     assetsAffected: ["partner-api-gw.acmecorp.com", "staging-api.acmecorp.com", "auth.acmecorp.com"],
     implementsList: ["TLS 1.2", "TLS 1.3", "RSA", "ECDSA", "SHA-256"],
@@ -377,6 +381,8 @@ export const mockLibraries: LibraryAsset[] = [
     owner: "Lisa Park",
     team: "Platform Engineering",
     discoverySource: "CBOM Ingestion",
+    packageId: "pkg:generic/openssl@1.1.1w",
+    lastSeen: "2026-07-03 02:10",
     crs: 68,
     severity: "High",
     policyViolations: ["OOB-LIB-01"],
@@ -392,13 +398,15 @@ export const mockLibraries: LibraryAsset[] = [
     latestSafe: "1.78",
     cveCount: 1,
     maxCvss: 5.3,
-    cves: [{ id: "CVE-2023-33201", cvss: 5.3, title: "LDAP CertStore blind LDAP injection" }],
+    cves: [{ id: "CVE-2023-33201", cvss: 5.3, title: "LDAP CertStore blind LDAP injection", kev: false, epss: 0.05 }],
     assetsAffected: ["jenkins-ci.internal", "gitlab-runner-01.internal"],
     implementsList: ["RSA", "ECDSA", "AES-GCM", "SHA-256"],
     inUse: false,
     owner: "CI/CD Team",
     team: "DevOps",
     discoverySource: "CBOM Ingestion",
+    packageId: "pkg:maven/org.bouncycastle/bcprov-jdk15on@1.68",
+    lastSeen: "2026-07-02 23:40",
     crs: 44,
     severity: "Medium",
     policyViolations: ["OOB-LIB-02"],
@@ -415,9 +423,9 @@ export const mockLibraries: LibraryAsset[] = [
     cveCount: 3,
     maxCvss: 8.1,
     cves: [
-      { id: "CVE-2022-42905", cvss: 8.1, title: "TLS 1.3 out-of-bounds read (DoS)" },
-      { id: "CVE-2022-25640", cvss: 7.5, title: "TLS 1.3 client authentication bypass" },
-      { id: "CVE-2021-3336", cvss: 7.4, title: "TLS 1.3 MITM via crafted certificate" },
+      { id: "CVE-2022-42905", cvss: 8.1, title: "TLS 1.3 out-of-bounds read (DoS)", kev: false, epss: 0.18 },
+      { id: "CVE-2022-25640", cvss: 7.5, title: "TLS 1.3 client authentication bypass", kev: false, epss: 0.15 },
+      { id: "CVE-2021-3336", cvss: 7.4, title: "TLS 1.3 MITM via crafted certificate", kev: false, epss: 0.09 },
     ],
     assetsAffected: ["bastion-01.acmecorp.com"],
     implementsList: ["TLS 1.2", "TLS 1.3", "ECDSA", "AES-GCM"],
@@ -425,6 +433,8 @@ export const mockLibraries: LibraryAsset[] = [
     owner: "James Wilson",
     team: "Identity & Access",
     discoverySource: "CBOM Ingestion",
+    packageId: "pkg:generic/wolfssl@4.7.0",
+    lastSeen: "2026-07-03 01:05",
     crs: 72,
     severity: "High",
     policyViolations: ["OOB-LIB-01", "OOB-LIB-02"],
@@ -447,6 +457,8 @@ export const mockLibraries: LibraryAsset[] = [
     owner: "Sarah Chen",
     team: "Payments Engineering",
     discoverySource: "CBOM Ingestion",
+    packageId: "pkg:generic/openssl@3.4.1",
+    lastSeen: "2026-07-03 02:12",
     crs: 10,
     severity: "Low",
     policyViolations: [],
