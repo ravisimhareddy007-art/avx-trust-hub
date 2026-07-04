@@ -31,12 +31,6 @@ import { useNav } from "@/context/NavigationContext";
 import TicketDraftModal, { TicketDraft } from "@/components/inventory/TicketDraftModal";
 
 // ---- shared helpers ----------------------------------------------------------
-const SEV_TEXT: Record<StackSeverity, string> = {
-  Critical: "text-coral",
-  High: "text-coral",
-  Medium: "text-amber",
-  Low: "text-teal",
-};
 const SEV_DOT: Record<StackSeverity, string> = {
   Critical: "bg-coral",
   High: "bg-coral",
@@ -743,18 +737,6 @@ function LibraryPanel({
 }
 
 // ---- tab ---------------------------------------------------------------------
-const weakestOf = (p: ProtocolAsset) =>
-  [...p.cipherSuites].sort(
-    (a, b) => ({ Insecure: 0, Weak: 1, Strong: 2 })[a.strength] - { Insecure: 0, Weak: 1, Strong: 2 }[b.strength],
-  )[0];
-function SevCell({ s }: { s: StackSeverity }) {
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <span className={`w-1.5 h-1.5 rounded-full ${SEV_DOT[s]}`} />
-      <span className={`text-[10px] font-semibold uppercase ${SEV_TEXT[s]}`}>{s}</span>
-    </span>
-  );
-}
 interface ColDef {
   key: string;
   label: string;
@@ -794,11 +776,25 @@ const PROTO_COLS: ColDef[] = [
     ),
   },
   {
-    key: "cipher",
-    label: "Weakest cipher",
+    key: "ciphers",
+    label: "Cipher suites",
     render: (p) => {
-      const w = weakestOf(p);
-      return <span className={suiteColor[w.strength]}>{w.enc}</span>;
+      const suites = [...p.cipherSuites].sort(
+        (a, b) => ({ Insecure: 0, Weak: 1, Strong: 2 })[a.strength] - { Insecure: 0, Weak: 1, Strong: 2 }[b.strength],
+      );
+      const shown = suites.slice(0, 3);
+      return (
+        <span className="inline-flex items-center gap-1 flex-wrap">
+          <span className="text-muted-foreground">{suites.length} offered ·</span>
+          {shown.map((c, i) => (
+            <span key={c.id} className={suiteColor[c.strength]}>
+              {c.enc}
+              {i < shown.length - 1 ? "," : ""}
+            </span>
+          ))}
+          {suites.length > 3 && <span className="text-muted-foreground">+{suites.length - 3}</span>}
+        </span>
+      );
     },
   },
   { key: "kex", label: "Key exchange", render: (p) => <span className="text-muted-foreground">{p.kexStrength}</span> },
@@ -817,12 +813,15 @@ const PROTO_COLS: ColDef[] = [
       <span className={`font-semibold px-1.5 py-0.5 rounded tabular-nums ${crsChip(p.crs)}`}>{p.crs}</span>
     ),
   },
-  { key: "severity", label: "Severity", render: (p) => <SevCell s={p.severity} /> },
   {
     key: "violations",
     label: "Violations",
     center: true,
-    render: (p) => <span className="text-muted-foreground">{p.policyViolations.length || "0"}</span>,
+    render: (p) => (
+      <span className={p.policyViolations.length ? "text-coral font-medium" : "text-muted-foreground"}>
+        {p.policyViolations.length || "0"}
+      </span>
+    ),
   },
   { key: "source", label: "Source", render: (p) => <span className="text-muted-foreground">{p.discoverySource}</span> },
 ];
@@ -853,13 +852,17 @@ const LIB_COLS: ColDef[] = [
   },
   {
     key: "cves",
-    label: "CVEs",
+    label: "CVEs (max CVSS)",
     center: true,
-    render: (l) => (
-      <span className={l.maxCvss >= 7 ? "text-coral" : l.cveCount ? "text-amber" : "text-muted-foreground"}>
-        {l.cveCount ? `${l.cveCount} · ${l.maxCvss.toFixed(1)}` : "0"}
-      </span>
-    ),
+    render: (l) => {
+      const n = l.cves.length;
+      const mx = n ? Math.max(...l.cves.map((c: any) => c.cvss)) : 0;
+      return (
+        <span className={mx >= 7 ? "text-coral" : n ? "text-amber" : "text-muted-foreground"}>
+          {n ? `${n} · ${mx.toFixed(1)}` : "None"}
+        </span>
+      );
+    },
   },
   {
     key: "assets",
@@ -887,7 +890,6 @@ const LIB_COLS: ColDef[] = [
       <span className={`font-semibold px-1.5 py-0.5 rounded tabular-nums ${crsChip(l.crs)}`}>{l.crs}</span>
     ),
   },
-  { key: "severity", label: "Severity", render: (l) => <SevCell s={l.severity} /> },
   { key: "source", label: "Source", render: (l) => <span className="text-muted-foreground">{l.discoverySource}</span> },
 ];
 const PROTO_FACETS: Facet[] = [
