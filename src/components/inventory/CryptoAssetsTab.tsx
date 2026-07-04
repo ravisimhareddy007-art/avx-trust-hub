@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Network,
   Package,
@@ -921,6 +921,21 @@ export default function CryptoAssetsTab({ onCreateTicket }: { onCreateTicket: (c
   const [hiddenP, setHiddenP] = useState<Set<string>>(new Set());
   const [hiddenL, setHiddenL] = useState<Set<string>>(new Set());
   const [popover, setPopover] = useState<"filters" | "columns" | null>(null);
+  const { filters: navFilters } = useNav();
+
+  useEffect(() => {
+    if (navFilters.tab === "crypto-assets" && navFilters.objectId) {
+      if (navFilters.view === "libraries") {
+        setView("libraries");
+        setOpenLib(navFilters.objectId);
+        setOpenProto(null);
+      } else {
+        setView("protocols");
+        setOpenProto(navFilters.objectId);
+        setOpenLib(null);
+      }
+    }
+  }, [navFilters]);
 
   const protocols = useMemo(() => [...mockProtocols].sort((a, b) => b.crs - a.crs), []);
   const libraries = useMemo(() => [...mockLibraries].sort((a, b) => b.crs - a.crs), []);
