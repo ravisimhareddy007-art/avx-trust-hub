@@ -21,6 +21,8 @@ export interface ProtocolAsset {
   fqdn: string; // binds to ITAsset.name
   port: number; // attribute, shown as fqdn:port
   protocol: "TLS" | "SSH" | "IPsec";
+  service: string; // listening service, e.g. HTTPS, SMTPS, PostgreSQL, SSH
+  application: string; // owning application on the host
   version: string; // 'TLS 1.0', 'SSLv3', 'SSH-2'
   cipherSuites: CipherSuite[];
   kexStrength: string; // 'ECDHE P-256', 'DH 1024 (weak)'
@@ -84,6 +86,8 @@ export const mockProtocols: ProtocolAsset[] = [
     fqdn: "legacy-erp.internal",
     port: 443,
     protocol: "TLS",
+    service: "HTTPS",
+    application: "Legacy ERP",
     version: "TLS 1.0",
     cipherSuites: [
       WEAK_SUITE("0x000A", "TLS_RSA_WITH_3DES_EDE_CBC_SHA", "RSA", "RSA", "3DES-CBC", "SHA"),
@@ -108,6 +112,8 @@ export const mockProtocols: ProtocolAsset[] = [
     fqdn: "partner-api-gw.acmecorp.com",
     port: 8443,
     protocol: "TLS",
+    service: "HTTPS",
+    application: "Partner API Gateway",
     version: "TLS 1.1",
     cipherSuites: [WEAK_SUITE("0xC013", "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA", "ECDHE", "RSA", "AES-128-CBC", "SHA")],
     kexStrength: "ECDHE P-256",
@@ -129,6 +135,8 @@ export const mockProtocols: ProtocolAsset[] = [
     fqdn: "mail.acmecorp.com",
     port: 465,
     protocol: "TLS",
+    service: "SMTPS",
+    application: "Mail Submission",
     version: "SSLv3",
     cipherSuites: [
       WEAK_SUITE("0x0005", "TLS_RSA_WITH_RC4_128_SHA", "RSA", "RSA", "RC4-128", "SHA"),
@@ -153,6 +161,8 @@ export const mockProtocols: ProtocolAsset[] = [
     fqdn: "legacy-api-gw-01.internal",
     port: 443,
     protocol: "TLS",
+    service: "HTTPS",
+    application: "Legacy API Gateway",
     version: "TLS 1.0",
     cipherSuites: [WEAK_SUITE("0x002F", "TLS_RSA_WITH_AES_128_CBC_SHA", "RSA", "RSA", "AES-128-CBC", "SHA")],
     kexStrength: "RSA (no forward secrecy)",
@@ -174,6 +184,8 @@ export const mockProtocols: ProtocolAsset[] = [
     fqdn: "prod-db-primary.internal",
     port: 5432,
     protocol: "TLS",
+    service: "PostgreSQL",
+    application: "Primary Database",
     version: "TLS 1.0",
     cipherSuites: [WEAK_SUITE("0x000A", "TLS_RSA_WITH_3DES_EDE_CBC_SHA", "RSA", "RSA", "3DES-CBC", "SHA")],
     kexStrength: "RSA (no forward secrecy)",
@@ -195,6 +207,8 @@ export const mockProtocols: ProtocolAsset[] = [
     fqdn: "bastion-01.acmecorp.com",
     port: 22,
     protocol: "SSH",
+    service: "SSH",
+    application: "Bastion Host",
     version: "SSH-2",
     cipherSuites: [WEAK_SUITE("cbc", "aes128-cbc", "ecdh", "host-key", "AES-128-CBC", "hmac-sha1")],
     kexStrength: "ecdh-sha2-nistp256",
@@ -216,6 +230,8 @@ export const mockProtocols: ProtocolAsset[] = [
     fqdn: "staging-api.acmecorp.com",
     port: 443,
     protocol: "TLS",
+    service: "HTTPS",
+    application: "Staging API",
     version: "TLS 1.1",
     cipherSuites: [WEAK_SUITE("0xC013", "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA", "ECDHE", "RSA", "AES-128-CBC", "SHA")],
     kexStrength: "ECDHE P-256",
@@ -238,6 +254,8 @@ export const mockProtocols: ProtocolAsset[] = [
     fqdn: "vpn-gw-old.dmz.acmecorp.com",
     port: 443,
     protocol: "TLS",
+    service: "HTTPS",
+    application: "Legacy VPN Gateway",
     version: "SSLv3",
     cipherSuites: [WEAK_SUITE("0x0005", "TLS_RSA_WITH_RC4_128_SHA", "RSA", "RSA", "RC4-128", "SHA")],
     kexStrength: "RSA (no forward secrecy)",
@@ -260,6 +278,8 @@ export const mockProtocols: ProtocolAsset[] = [
     fqdn: "payments-api.acmecorp.com",
     port: 443,
     protocol: "TLS",
+    service: "HTTPS",
+    application: "Payments API",
     version: "TLS 1.3",
     cipherSuites: [STRONG_SUITE("0x1302", "TLS_AES_256_GCM_SHA384", "ECDHE X25519", "(cert)", "AES-256-GCM", "AEAD")],
     kexStrength: "ECDHE X25519",
@@ -281,6 +301,8 @@ export const mockProtocols: ProtocolAsset[] = [
     fqdn: "auth.acmecorp.com",
     port: 443,
     protocol: "TLS",
+    service: "HTTPS",
+    application: "Auth Service",
     version: "TLS 1.2",
     cipherSuites: [
       STRONG_SUITE("0xC030", "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384", "ECDHE", "RSA", "AES-256-GCM", "SHA384"),
