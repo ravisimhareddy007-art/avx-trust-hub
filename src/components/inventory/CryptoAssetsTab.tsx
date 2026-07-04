@@ -10,6 +10,10 @@ import {
   ArrowRight,
   ArrowUpRight,
   Info,
+  Search,
+  SlidersHorizontal,
+  Columns3,
+  Check,
 } from "lucide-react";
 import {
   mockProtocols,
@@ -739,17 +743,223 @@ function LibraryPanel({
 }
 
 // ---- tab ---------------------------------------------------------------------
+const weakestOf = (p: ProtocolAsset) =>
+  [...p.cipherSuites].sort(
+    (a, b) => ({ Insecure: 0, Weak: 1, Strong: 2 })[a.strength] - { Insecure: 0, Weak: 1, Strong: 2 }[b.strength],
+  )[0];
+function SevCell({ s }: { s: StackSeverity }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className={`w-1.5 h-1.5 rounded-full ${SEV_DOT[s]}`} />
+      <span className={`text-[10px] font-semibold uppercase ${SEV_TEXT[s]}`}>{s}</span>
+    </span>
+  );
+}
+interface ColDef {
+  key: string;
+  label: string;
+  always?: boolean;
+  center?: boolean;
+  render: (row: any) => React.ReactNode;
+}
+interface Facet {
+  key: string;
+  label: string;
+  options: string[];
+  value: (row: any) => string;
+}
+
+const PROTO_COLS: ColDef[] = [
+  {
+    key: "protocol",
+    label: "Protocol / Version",
+    always: true,
+    render: (p) => (
+      <span className="text-foreground font-medium">
+        {p.protocol} {p.version.replace(p.protocol, "").trim() || p.version}
+      </span>
+    ),
+  },
+  {
+    key: "endpoint",
+    label: "Endpoint",
+    always: true,
+    render: (p) => (
+      <>
+        <span className="font-mono text-muted-foreground">
+          {p.fqdn}:{p.port}
+        </span>
+        {!p.bound && <span className="ml-1.5 text-[9px] text-amber">unbound</span>}
+      </>
+    ),
+  },
+  {
+    key: "cipher",
+    label: "Weakest cipher",
+    render: (p) => {
+      const w = weakestOf(p);
+      return <span className={suiteColor[w.strength]}>{w.enc}</span>;
+    },
+  },
+  { key: "kex", label: "Key exchange", render: (p) => <span className="text-muted-foreground">{p.kexStrength}</span> },
+  {
+    key: "exposure",
+    label: "Exposure",
+    render: (p) => (
+      <span className={p.exposure === "Internet-facing" ? "text-coral" : "text-muted-foreground"}>{p.exposure}</span>
+    ),
+  },
+  {
+    key: "crs",
+    label: "CRS",
+    center: true,
+    render: (p) => (
+      <span className={`font-semibold px-1.5 py-0.5 rounded tabular-nums ${crsChip(p.crs)}`}>{p.crs}</span>
+    ),
+  },
+  { key: "severity", label: "Severity", render: (p) => <SevCell s={p.severity} /> },
+  {
+    key: "violations",
+    label: "Violations",
+    center: true,
+    render: (p) => <span className="text-muted-foreground">{p.policyViolations.length || "0"}</span>,
+  },
+  { key: "source", label: "Source", render: (p) => <span className="text-muted-foreground">{p.discoverySource}</span> },
+];
+const LIB_COLS: ColDef[] = [
+  {
+    key: "library",
+    label: "Library / Version",
+    always: true,
+    render: (l) => (
+      <span className="text-foreground font-medium font-mono">
+        {l.name} {l.version}
+      </span>
+    ),
+  },
+  { key: "provider", label: "Provider", render: (l) => <span className="text-muted-foreground">{l.provider}</span> },
+  {
+    key: "eol",
+    label: "EOL",
+    render: (l) => (
+      <span
+        className={
+          l.eolStatus === "End-of-Life" ? "text-coral" : l.eolStatus === "Outdated" ? "text-amber" : "text-teal"
+        }
+      >
+        {l.eolStatus}
+      </span>
+    ),
+  },
+  {
+    key: "cves",
+    label: "CVEs",
+    center: true,
+    render: (l) => (
+      <span className={l.maxCvss >= 7 ? "text-coral" : l.cveCount ? "text-amber" : "text-muted-foreground"}>
+        {l.cveCount ? `${l.cveCount} · ${l.maxCvss.toFixed(1)}` : "0"}
+      </span>
+    ),
+  },
+  {
+    key: "assets",
+    label: "Assets",
+    center: true,
+    render: (l) => (
+      <span className="inline-flex items-center gap-1 text-foreground">
+        <ArrowUpRight className="w-3 h-3 text-muted-foreground" />
+        {l.assetsAffected.length}
+      </span>
+    ),
+  },
+  {
+    key: "inuse",
+    label: "In use",
+    render: (l) => (
+      <span className={l.inUse ? "text-coral" : "text-muted-foreground"}>{l.inUse ? "In use" : "Dormant"}</span>
+    ),
+  },
+  {
+    key: "crs",
+    label: "CRS",
+    center: true,
+    render: (l) => (
+      <span className={`font-semibold px-1.5 py-0.5 rounded tabular-nums ${crsChip(l.crs)}`}>{l.crs}</span>
+    ),
+  },
+  { key: "severity", label: "Severity", render: (l) => <SevCell s={l.severity} /> },
+  { key: "source", label: "Source", render: (l) => <span className="text-muted-foreground">{l.discoverySource}</span> },
+];
+const PROTO_FACETS: Facet[] = [
+  { key: "severity", label: "Severity", options: ["Critical", "High", "Medium", "Low"], value: (p) => p.severity },
+  { key: "exposure", label: "Exposure", options: ["Internet-facing", "Internal"], value: (p) => p.exposure },
+  { key: "source", label: "Source", options: ["Tenable", "Qualys"], value: (p) => p.discoverySource },
+  { key: "binding", label: "Binding", options: ["Bound", "Unbound"], value: (p) => (p.bound ? "Bound" : "Unbound") },
+];
+const LIB_FACETS: Facet[] = [
+  { key: "severity", label: "Severity", options: ["Critical", "High", "Medium", "Low"], value: (l) => l.severity },
+  { key: "eol", label: "Lifecycle", options: ["End-of-Life", "Outdated", "Supported"], value: (l) => l.eolStatus },
+  { key: "inuse", label: "Usage", options: ["In use", "Dormant"], value: (l) => (l.inUse ? "In use" : "Dormant") },
+  { key: "source", label: "Source", options: ["CBOM Ingestion", "Tenable", "Qualys"], value: (l) => l.discoverySource },
+];
+const protoText = (p: ProtocolAsset) =>
+  `${p.protocol} ${p.version} ${p.fqdn}:${p.port} ${p.discoverySource} ${p.owner}`.toLowerCase();
+const libText = (l: LibraryAsset) =>
+  `${l.name} ${l.version} ${l.provider} ${l.discoverySource} ${l.owner}`.toLowerCase();
+
 export default function CryptoAssetsTab({ onCreateTicket }: { onCreateTicket: (ctx: unknown) => void }) {
   void onCreateTicket; // crypto-stack tickets use the AI draft modal, matching crypto objects
   const [view, setView] = useState<"protocols" | "libraries">("protocols");
   const [openProto, setOpenProto] = useState<string | null>(null);
   const [openLib, setOpenLib] = useState<string | null>(null);
   const [ticketDraft, setTicketDraft] = useState<TicketDraft | null>(null);
+  const [search, setSearch] = useState("");
+  const [pf, setPf] = useState<Record<string, string[]>>({});
+  const [lf, setLf] = useState<Record<string, string[]>>({});
+  const [hiddenP, setHiddenP] = useState<Set<string>>(new Set());
+  const [hiddenL, setHiddenL] = useState<Set<string>>(new Set());
+  const [popover, setPopover] = useState<"filters" | "columns" | null>(null);
 
   const protocols = useMemo(() => [...mockProtocols].sort((a, b) => b.crs - a.crs), []);
   const libraries = useMemo(() => [...mockLibraries].sort((a, b) => b.crs - a.crs), []);
   const drawerProto = openProto ? protocols.find((p) => p.id === openProto) : null;
   const drawerLib = openLib ? libraries.find((l) => l.id === openLib) : null;
+
+  const isLib = view === "libraries";
+  const cols = isLib ? LIB_COLS : PROTO_COLS;
+  const hidden = isLib ? hiddenL : hiddenP;
+  const setHidden = isLib ? setHiddenL : setHiddenP;
+  const filters = isLib ? lf : pf;
+  const setFilters = isLib ? setLf : setPf;
+  const facets = isLib ? LIB_FACETS : PROTO_FACETS;
+  const visibleCols = cols.filter((c) => !hidden.has(c.key));
+  const activeFilterCount = Object.values(filters).reduce((n, arr) => n + arr.length, 0);
+
+  const q = search.trim().toLowerCase();
+  const rows = (isLib ? libraries : protocols) as any[];
+  const filtered = rows.filter((row) => {
+    if (q) {
+      const t = isLib ? libText(row) : protoText(row);
+      if (!t.includes(q)) return false;
+    }
+    for (const f of facets) {
+      const sel = filters[f.key];
+      if (sel && sel.length && !sel.includes(f.value(row))) return false;
+    }
+    return true;
+  });
+
+  const toggleFacet = (key: string, opt: string) =>
+    setFilters((prev) => {
+      const cur = prev[key] || [];
+      return { ...prev, [key]: cur.includes(opt) ? cur.filter((x) => x !== opt) : [...cur, opt] };
+    });
+  const toggleCol = (key: string) =>
+    setHidden((prev) => {
+      const n = new Set(prev);
+      n.has(key) ? n.delete(key) : n.add(key);
+      return n;
+    });
 
   return (
     <div className="h-full flex flex-col">
@@ -765,6 +975,7 @@ export default function CryptoAssetsTab({ onCreateTicket }: { onCreateTicket: (c
               key={key}
               onClick={() => {
                 setView(key);
+                setPopover(null);
                 if (key === "protocols") setOpenLib(null);
                 else setOpenProto(null);
               }}
@@ -777,165 +988,152 @@ export default function CryptoAssetsTab({ onCreateTicket }: { onCreateTicket: (c
             </button>
           ))}
         </div>
-        <span className="ml-auto text-[10px] text-muted-foreground">
-          Discovered via Tenable, Qualys, and CBOM ingestion
+      </div>
+
+      <div className="flex items-center gap-2 px-4 py-2 border-b border-border flex-wrap">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={isLib ? "Search library, version, provider..." : "Search protocol, endpoint, source..."}
+            className="w-full pl-7 pr-3 py-1.5 bg-muted border border-border rounded text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal"
+          />
+        </div>
+
+        <div className="relative">
+          <button
+            onClick={() => setPopover(popover === "filters" ? null : "filters")}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[11px] font-medium border transition-colors ${activeFilterCount > 0 ? "border-teal/40 text-teal bg-teal/10 hover:bg-teal/15" : "border-border text-foreground hover:bg-muted"}`}
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" /> Filters
+            {activeFilterCount > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 rounded-full bg-teal/20 text-teal text-[9px] font-bold tabular-nums">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+          {popover === "filters" && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setPopover(null)} />
+              <div className="absolute right-0 mt-1 z-50 w-64 bg-card border border-border rounded-lg shadow-2xl p-3 space-y-3">
+                {facets.map((f) => (
+                  <div key={f.key}>
+                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1.5">
+                      {f.label}
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {f.options.map((opt) => {
+                        const on = (filters[f.key] || []).includes(opt);
+                        return (
+                          <button
+                            key={opt}
+                            onClick={() => toggleFacet(f.key, opt)}
+                            className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${on ? "bg-teal/15 text-teal border-teal/30" : "text-muted-foreground border-border hover:bg-muted"}`}
+                          >
+                            {opt}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+                {activeFilterCount > 0 && (
+                  <button
+                    onClick={() => setFilters({})}
+                    className="text-[10px] text-muted-foreground hover:text-foreground"
+                  >
+                    Clear all
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="relative">
+          <button
+            onClick={() => setPopover(popover === "columns" ? null : "columns")}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[11px] font-medium border border-border text-foreground hover:bg-muted transition-colors"
+          >
+            <Columns3 className="w-3.5 h-3.5" /> Columns
+            <span className="ml-1 px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground text-[9px] font-bold tabular-nums">
+              {visibleCols.length}
+            </span>
+          </button>
+          {popover === "columns" && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setPopover(null)} />
+              <div className="absolute right-0 mt-1 z-50 w-52 bg-card border border-border rounded-lg shadow-2xl p-2 max-h-72 overflow-auto scrollbar-thin">
+                {cols.map((c) => {
+                  const shown = !hidden.has(c.key);
+                  return (
+                    <button
+                      key={c.key}
+                      disabled={c.always}
+                      onClick={() => !c.always && toggleCol(c.key)}
+                      className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-[11px] text-left ${c.always ? "opacity-60 cursor-not-allowed" : "hover:bg-muted"}`}
+                    >
+                      <span
+                        className={`w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 ${shown ? "bg-teal border-teal" : "border-border"}`}
+                      >
+                        {shown && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                      </span>
+                      <span className="text-foreground">{c.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+
+        <span className="ml-auto text-[10px] text-muted-foreground tabular-nums">
+          {filtered.length} {isLib ? "libraries" : "protocols"}
         </span>
       </div>
 
       <div className="flex-1 min-h-0 overflow-auto scrollbar-thin">
-        {view === "protocols" ? (
-          <table className="w-full min-w-max text-xs table-auto text-left">
-            <thead className="sticky top-0 bg-card z-[1]">
-              <tr className="text-muted-foreground border-b border-border">
-                <th className="py-2.5 px-3 font-medium whitespace-nowrap">Protocol / Version</th>
-                <th className="py-2.5 px-3 font-medium whitespace-nowrap">Endpoint</th>
-                <th className="py-2.5 px-3 font-medium whitespace-nowrap">Weakest cipher</th>
-                <th className="py-2.5 px-3 font-medium whitespace-nowrap">Key exchange</th>
-                <th className="py-2.5 px-3 font-medium whitespace-nowrap">Exposure</th>
-                <th className="py-2.5 px-3 font-medium whitespace-nowrap text-center">CRS</th>
-                <th className="py-2.5 px-3 font-medium whitespace-nowrap">Severity</th>
-                <th className="py-2.5 px-3 font-medium whitespace-nowrap">Violations</th>
-                <th className="py-2.5 px-3 font-medium whitespace-nowrap">Source</th>
-                <th className="py-2 px-2" />
-              </tr>
-            </thead>
-            <tbody>
-              {protocols.map((p) => {
-                const weakest = [...p.cipherSuites].sort(
-                  (a, b) =>
-                    ({ Insecure: 0, Weak: 1, Strong: 2 })[a.strength] - { Insecure: 0, Weak: 1, Strong: 2 }[b.strength],
-                )[0];
-                return (
-                  <tr
-                    key={p.id}
-                    onClick={() => setOpenProto(p.id)}
-                    className="border-b border-border/40 hover:bg-secondary/30 cursor-pointer"
-                  >
-                    <td className="py-2.5 px-3">
-                      <span className="text-foreground font-medium">
-                        {p.protocol} {p.version.replace(p.protocol, "").trim() || p.version}
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-3">
-                      <span className="font-mono text-muted-foreground">
-                        {p.fqdn}:{p.port}
-                      </span>
-                      {!p.bound && <span className="ml-1.5 text-[9px] text-amber">unbound</span>}
-                    </td>
-                    <td className="py-2.5 px-3">
-                      <span className={`${suiteColor[weakest.strength]}`}>{weakest.enc}</span>
-                    </td>
-                    <td className="py-2.5 px-3">
-                      <span className="text-muted-foreground">{p.kexStrength}</span>
-                    </td>
-                    <td className="py-2.5 px-3">
-                      <span className={`${p.exposure === "Internet-facing" ? "text-coral" : "text-muted-foreground"}`}>
-                        {p.exposure}
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-3 text-center">
-                      <span className={`font-semibold px-1.5 py-0.5 rounded tabular-nums ${crsChip(p.crs)}`}>
-                        {p.crs}
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-3">
-                      <span className="inline-flex items-center gap-1.5">
-                        <span className={`w-1.5 h-1.5 rounded-full ${SEV_DOT[p.severity]}`} />
-                        <span className={`font-semibold uppercase ${SEV_TEXT[p.severity]}`}>{p.severity}</span>
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-3">
-                      <span className="text-muted-foreground">{p.policyViolations.length || "0"}</span>
-                    </td>
-                    <td className="py-2.5 px-3">
-                      <span className="text-muted-foreground">{p.discoverySource}</span>
-                    </td>
-                    <td className="py-2.5 px-2">
-                      <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        ) : (
-          <table className="w-full min-w-max text-xs table-auto text-left">
-            <thead className="sticky top-0 bg-card z-[1]">
-              <tr className="text-muted-foreground border-b border-border">
-                <th className="py-2.5 px-3 font-medium whitespace-nowrap">Library / Version</th>
-                <th className="py-2.5 px-3 font-medium whitespace-nowrap">Provider</th>
-                <th className="py-2.5 px-3 font-medium whitespace-nowrap">EOL</th>
-                <th className="py-2.5 px-3 font-medium whitespace-nowrap text-center">CVEs</th>
-                <th className="py-2.5 px-3 font-medium whitespace-nowrap text-center">Assets</th>
-                <th className="py-2.5 px-3 font-medium whitespace-nowrap">In use</th>
-                <th className="py-2.5 px-3 font-medium whitespace-nowrap text-center">CRS</th>
-                <th className="py-2.5 px-3 font-medium whitespace-nowrap">Severity</th>
-                <th className="py-2.5 px-3 font-medium whitespace-nowrap">Source</th>
-                <th className="py-2 px-2" />
-              </tr>
-            </thead>
-            <tbody>
-              {libraries.map((l) => (
-                <tr
-                  key={l.id}
-                  onClick={() => setOpenLib(l.id)}
-                  className="border-b border-border/40 hover:bg-secondary/30 cursor-pointer"
+        <table className="w-full min-w-max text-xs table-auto text-left">
+          <thead className="sticky top-0 bg-card z-[1]">
+            <tr className="text-muted-foreground border-b border-border">
+              {visibleCols.map((c) => (
+                <th
+                  key={c.key}
+                  className={`py-2.5 px-3 font-medium whitespace-nowrap ${c.center ? "text-center" : ""}`}
                 >
-                  <td className="py-2.5 px-3">
-                    <span className="text-foreground font-medium font-mono">
-                      {l.name} {l.version}
-                    </span>
-                  </td>
-                  <td className="py-2.5 px-3">
-                    <span className="text-muted-foreground">{l.provider}</span>
-                  </td>
-                  <td className="py-2.5 px-3">
-                    <span
-                      className={`${l.eolStatus === "End-of-Life" ? "text-coral" : l.eolStatus === "Outdated" ? "text-amber" : "text-teal"}`}
-                    >
-                      {l.eolStatus}
-                    </span>
-                  </td>
-                  <td className="py-2.5 px-3 text-center">
-                    <span
-                      className={`${l.maxCvss >= 7 ? "text-coral" : l.cveCount ? "text-amber" : "text-muted-foreground"}`}
-                    >
-                      {l.cveCount ? `${l.cveCount} · ${l.maxCvss.toFixed(1)}` : "0"}
-                    </span>
-                  </td>
-                  <td className="py-2.5 px-3 text-center">
-                    <span className="inline-flex items-center gap-1 text-foreground">
-                      <ArrowUpRight className="w-3 h-3 text-muted-foreground" />
-                      {l.assetsAffected.length}
-                    </span>
-                  </td>
-                  <td className="py-2.5 px-3">
-                    <span className={`${l.inUse ? "text-coral" : "text-muted-foreground"}`}>
-                      {l.inUse ? "In use" : "Dormant"}
-                    </span>
-                  </td>
-                  <td className="py-2.5 px-3 text-center">
-                    <span className={`font-semibold px-1.5 py-0.5 rounded tabular-nums ${crsChip(l.crs)}`}>
-                      {l.crs}
-                    </span>
-                  </td>
-                  <td className="py-2.5 px-3">
-                    <span className="inline-flex items-center gap-1.5">
-                      <span className={`w-1.5 h-1.5 rounded-full ${SEV_DOT[l.severity]}`} />
-                      <span className={`font-semibold uppercase ${SEV_TEXT[l.severity]}`}>{l.severity}</span>
-                    </span>
-                  </td>
-                  <td className="py-2.5 px-3">
-                    <span className="text-muted-foreground">{l.discoverySource}</span>
-                  </td>
-                  <td className="py-2.5 px-2">
-                    <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
-                  </td>
-                </tr>
+                  {c.label}
+                </th>
               ))}
-            </tbody>
-          </table>
-        )}
+              <th className="py-2 px-2" />
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((row) => (
+              <tr
+                key={row.id}
+                onClick={() => (isLib ? setOpenLib(row.id) : setOpenProto(row.id))}
+                className="border-b border-border/40 hover:bg-secondary/30 cursor-pointer"
+              >
+                {visibleCols.map((c) => (
+                  <td key={c.key} className={`py-2.5 px-3 ${c.center ? "text-center" : ""}`}>
+                    {c.render(row)}
+                  </td>
+                ))}
+                <td className="py-2.5 px-2">
+                  <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                </td>
+              </tr>
+            ))}
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={visibleCols.length + 1} className="py-8 text-center text-muted-foreground text-[11px]">
+                  No {isLib ? "libraries" : "protocols"} match your search or filters.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
 
       {drawerProto && <ProtocolPanel p={drawerProto} onClose={() => setOpenProto(null)} onRaise={setTicketDraft} />}
