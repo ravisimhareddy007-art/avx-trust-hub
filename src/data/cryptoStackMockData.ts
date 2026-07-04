@@ -332,7 +332,7 @@ export const mockLibraries: LibraryAsset[] = [
     provider: "OpenSSL Project",
     eolStatus: "End-of-Life",
     eolDate: "2019-12-31",
-    latestSafe: "3.4.x",
+    latestSafe: "3.4.1",
     cveCount: 6,
     maxCvss: 9.8,
     cves: [
@@ -368,7 +368,7 @@ export const mockLibraries: LibraryAsset[] = [
     provider: "OpenSSL Project",
     eolStatus: "End-of-Life",
     eolDate: "2023-09-11",
-    latestSafe: "3.4.x",
+    latestSafe: "3.4.1",
     cveCount: 2,
     maxCvss: 7.5,
     cves: [
@@ -419,7 +419,7 @@ export const mockLibraries: LibraryAsset[] = [
     provider: "wolfSSL Inc.",
     eolStatus: "End-of-Life",
     eolDate: "2021-06-30",
-    latestSafe: "5.7.x",
+    latestSafe: "5.7.6",
     cveCount: 3,
     maxCvss: 8.1,
     cves: [
@@ -447,7 +447,7 @@ export const mockLibraries: LibraryAsset[] = [
     provider: "OpenSSL Project",
     eolStatus: "Supported",
     eolDate: "Active",
-    latestSafe: "3.4.x",
+    latestSafe: "3.4.1",
     cveCount: 0,
     maxCvss: 0,
     cves: [],
