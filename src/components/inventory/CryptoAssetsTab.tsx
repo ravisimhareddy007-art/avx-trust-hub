@@ -872,12 +872,9 @@ const PROTO_COLS: ColDef[] = [
     label: "Endpoint",
     always: true,
     render: (p) => (
-      <>
-        <span className="font-mono text-muted-foreground">
-          {p.fqdn}:{p.port}
-        </span>
-        {!p.bound && <span className="ml-1.5 text-[9px] text-amber">unbound</span>}
-      </>
+      <span className="font-mono text-muted-foreground">
+        {p.fqdn}:{p.port}
+      </span>
     ),
   },
   {
