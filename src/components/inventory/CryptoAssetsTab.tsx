@@ -74,13 +74,7 @@ function protocolFactors(p: ProtocolAsset): Factor[] {
     (a, b) => ({ Insecure: 0, Weak: 1, Strong: 2 })[a.strength] - { Insecure: 0, Weak: 1, Strong: 2 }[b.strength],
   )[0];
   const algoRaw = worst.strength === "Insecure" ? 95 : worst.strength === "Weak" ? 70 : 15;
-  const verRaw = /SSLv2|SSLv3/.test(p.version)
-    ? 100
-    : /1\.0|1\.1/.test(p.version)
-      ? 80
-      : /1\.2/.test(p.version)
-        ? 25
-        : 10;
+  const verRaw = p.family === "SSL" ? 100 : /1\.0|1\.1/.test(p.version) ? 80 : /1\.2/.test(p.version) ? 25 : 10;
   const expRaw =
     p.exposure === "Internet-facing"
       ? p.environment === "Production"
@@ -107,7 +101,7 @@ function protocolFactors(p: ProtocolAsset): Factor[] {
       label: "Lifecycle",
       raw: verRaw,
       weight: WEIGHTS.lifecycle,
-      why: `${p.version} deprecation status`,
+      why: `${p.family} ${p.version} deprecation status`,
     },
     {
       id: "exposure",
@@ -196,16 +190,16 @@ function protocolDraft(p: ProtocolAsset): TicketDraft {
   )[0];
   const viol = p.policyViolations.map((id) => POLICY_NAME[id] || id).join(", ");
   return {
-    title: `Remediate ${p.version} on ${p.fqdn}:${p.port}`,
+    title: `Remediate ${p.family} ${p.version} on ${p.fqdn}:${p.port}`,
     type: "Remediation",
     priority,
     assignee: p.owner !== "Unassigned" ? p.owner : p.team,
-    module: p.protocol === "SSH" ? "SSH" : "Protocol",
-    description: `${p.protocol} endpoint ${p.fqdn}:${p.port} accepts ${p.version} with weakest ${p.protocol === "SSH" ? "algorithm" : "cipher suite"} ${weakest.enc} (${weakest.strength}). Exposure: ${p.exposure} in ${p.environment}. Violations: ${viol || "none"}.`,
+    module: p.family === "SSH" ? "SSH" : "Protocol",
+    description: `${p.service} endpoint ${p.fqdn}:${p.port} accepts ${p.family} ${p.version} with weakest ${p.family === "SSH" ? "algorithm" : "cipher suite"} ${weakest.enc} (${weakest.strength}). Exposure: ${p.exposure} in ${p.environment}. Violations: ${viol || "none"}.`,
     rootCause:
-      `Endpoint configuration permits ${p.version}${weakest.strength !== "Strong" ? ` and ${weakest.strength.toLowerCase()} ${weakest.enc}` : ""}. ${p.bound ? "" : "Host is not in IT asset inventory (shadow host)."}`.trim(),
+      `Endpoint configuration permits ${p.family} ${p.version}${weakest.strength !== "Strong" ? ` and ${weakest.strength.toLowerCase()} ${weakest.enc}` : ""}. ${p.bound ? "" : "Host is not in IT asset inventory (shadow host)."}`.trim(),
     remediationSteps: [
-      `Disable ${p.version} on ${p.fqdn}:${p.port}; enforce TLS 1.2 minimum (NIST SP 800-52 Rev2)`,
+      `Disable ${p.family} ${p.version} on ${p.fqdn}:${p.port}; enforce TLS 1.2 minimum (NIST SP 800-52 Rev2)`,
       `Remove weak/insecure cipher suites (${weakest.enc}); allow AEAD suites only`,
       `Re-scan the endpoint via ${p.discoverySource} to confirm remediation`,
       `Validate handshake and downstream connectivity post-change`,
@@ -556,7 +550,7 @@ function ProtocolPanel({
   const suites = [...p.cipherSuites].sort(
     (a, b) => ({ Insecure: 0, Weak: 1, Strong: 2 })[a.strength] - { Insecure: 0, Weak: 1, Strong: 2 }[b.strength],
   );
-  const isSSH = p.protocol === "SSH";
+  const isSSH = p.family === "SSH";
   return (
     <PanelShell
       title={`${p.fqdn}:${p.port}`}
@@ -566,7 +560,7 @@ function ProtocolPanel({
           <span
             className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${crsChip(p.crs)}`}
           >
-            {p.version}
+            {p.family} {p.version}
           </span>
           <span
             className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${SEV_PILL[p.severity]}`}
@@ -592,10 +586,20 @@ function ProtocolPanel({
             </span>
           }
         />
-        <MetaRow label="Protocol" value={p.protocol} />
+        <MetaRow label="Protocol family" value={p.family} />
         <MetaRow label="Version" value={p.version} />
         <MetaRow label="Endpoint" value={`${p.fqdn}:${p.port}`} mono />
         <MetaRow label="Key exchange" value={p.kexStrength} />
+        <MetaRow
+          label="Forward secrecy"
+          value={
+            /^rsa\b/i.test(p.kexStrength) ? (
+              <span className="text-coral">No</span>
+            ) : (
+              <span className="text-teal">Yes</span>
+            )
+          }
+        />
         <MetaRow
           label="Weakest offered cipher"
           value={
@@ -621,7 +625,7 @@ function ProtocolPanel({
       <ViolationsSection
         objectId={p.id}
         objectName={`${p.fqdn}:${p.port}`}
-        objectType={`${p.protocol} ${p.version}`}
+        objectType={`${p.family} ${p.version}`}
         parentAsset={p.fqdn}
         violations={violations}
       />
@@ -766,7 +770,7 @@ const PROTO_COLS: ColDef[] = [
     always: true,
     render: (p) => (
       <span className="text-foreground font-medium">
-        {p.protocol} {p.version.replace(p.protocol, "").trim() || p.version}
+        {p.family} {p.version}
       </span>
     ),
   },
@@ -816,6 +820,13 @@ const PROTO_COLS: ColDef[] = [
     },
   },
   { key: "kex", label: "Key exchange", render: (p) => <span className="text-muted-foreground">{p.kexStrength}</span> },
+  {
+    key: "fs",
+    label: "Forward secrecy",
+    center: true,
+    render: (p) =>
+      /^rsa\b/i.test(p.kexStrength) ? <span className="text-coral">No</span> : <span className="text-teal">Yes</span>,
+  },
   {
     key: "exposure",
     label: "Exposure",
@@ -914,6 +925,12 @@ const PROTO_FACETS: Facet[] = [
   { key: "severity", label: "Severity", options: ["Critical", "High", "Medium", "Low"], value: (p) => p.severity },
   { key: "service", label: "Service", options: ["HTTPS", "SMTPS", "PostgreSQL", "SSH"], value: (p) => p.service },
   { key: "exposure", label: "Exposure", options: ["Internet-facing", "Internal"], value: (p) => p.exposure },
+  {
+    key: "fs",
+    label: "Forward secrecy",
+    options: ["Yes", "No"],
+    value: (p) => (/^rsa\b/i.test(p.kexStrength) ? "No" : "Yes"),
+  },
   { key: "source", label: "Source", options: ["Tenable", "Qualys"], value: (p) => p.discoverySource },
   { key: "binding", label: "Binding", options: ["Bound", "Unbound"], value: (p) => (p.bound ? "Bound" : "Unbound") },
 ];
@@ -924,7 +941,7 @@ const LIB_FACETS: Facet[] = [
   { key: "source", label: "Source", options: ["CBOM Ingestion", "Tenable", "Qualys"], value: (l) => l.discoverySource },
 ];
 const protoText = (p: ProtocolAsset) =>
-  `${p.protocol} ${p.version} ${p.service} ${p.application} ${p.fqdn}:${p.port} ${p.discoverySource} ${p.owner}`.toLowerCase();
+  `${p.family} ${p.version} ${p.service} ${p.application} ${p.fqdn}:${p.port} ${p.discoverySource} ${p.owner}`.toLowerCase();
 const libText = (l: LibraryAsset) =>
   `${l.name} ${l.version} ${l.provider} ${l.discoverySource} ${l.owner}`.toLowerCase();
 
