@@ -1,18 +1,34 @@
 import React from "react";
 import { useNav } from "@/context/NavigationContext";
-import { FileBadge, Key, FileKey, Lock, Network, Package } from "lucide-react";
-import { mockAssets, ESTATE_SUMMARY } from "@/data/mockData";
+import { FileBadge, FileKey, Key, Lock, Network, Package } from "lucide-react";
 import { mockProtocols, mockLibraries } from "@/data/cryptoStackMockData";
 import PostureTile, { PostureRow, DonutSlice, Bar } from "./PostureTile";
-
-const A = mockAssets as any[];
-const ageDays = (iso?: string) => (iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 86400000) : null);
 
 const CORAL = "hsl(var(--coral))",
   AMBER = "hsl(var(--amber))",
   TEAL = "hsl(var(--teal))",
   MUTED = "hsl(var(--muted-foreground))";
 const REDDARK = "#b23524";
+
+// Enterprise posture summary (presentation-layer, estate scale). The inventory
+// holds the representative sample; the dashboard reports estate totals, the same
+// pattern as ESTATE_SUMMARY. Replace with live aggregates when the backend lands.
+const POSTURE = {
+  certs: {
+    total: 18402,
+    expired: 213,
+    day7: [41, 28, 35, 22, 47, 31, 39], // per day, next 7 days
+    win30: [188, 142, 165, 121, 98, 84], // 5-day intervals to 30 days
+    win90: [512, 388, 305, 261, 198, 176], // 15-day intervals to 90 days
+  },
+  ssh: {
+    total: 9120,
+    age: [1240, 1980, 2360, 3540], // 0-30, 30-60, 60-90, 90+
+    risks: { suspicious: 1204, misplaced: 642, shared: 588, rogue: 496, weak: 312 },
+  },
+  enc: { total: 2847, oop: 1204, rotation: 642, quantum: 388, software: 724, unowned: 156 },
+  secrets: { total: 6240, act: 3980, unrotated: 3210, orphaned: 512, noPolicy: 258 },
+};
 
 export default function CryptoPostureGrid() {
   const { setCurrentPage, setFilters } = useNav();
@@ -21,212 +37,150 @@ export default function CryptoPostureGrid() {
     setCurrentPage("inventory");
   };
 
-  const certs = A.filter((a) => a.type === "TLS Certificate" || a.type === "Certificate");
-  const ssh = A.filter((a) => a.type === "SSH Key");
-  const enc = A.filter((a) => a.type === "Encryption Key" || a.type === "Encryption Keys");
-  const secrets = A.filter((a) => a.type === "API Key / Secret");
-
-  // Certificates: expiry horizon
-  const cExpired = certs.filter(
-    (a) => a.status === "Expired" || (typeof a.daysToExpiry === "number" && a.daysToExpiry < 0),
-  ).length;
-  const c7 = certs.filter((a) => a.daysToExpiry >= 0 && a.daysToExpiry <= 7).length;
-  const c30 = certs.filter((a) => a.daysToExpiry > 7 && a.daysToExpiry <= 30).length;
-  const c90 = certs.filter((a) => a.daysToExpiry > 30 && a.daysToExpiry <= 90).length;
-
-  // SSH keys: age report (age since last rotation)
-  const sAges = ssh.map((a) => ageDays(a.lastRotated)).filter((d): d is number => d !== null);
-  const sUnder1 = sAges.filter((d) => d < 365).length;
-  const s12 = sAges.filter((d) => d >= 365 && d < 730).length;
-  const s25 = sAges.filter((d) => d >= 730 && d < 1825).length;
-  const s5 = sAges.filter((d) => d >= 1825).length;
-  const sAged = s12 + s25 + s5;
-
-  // Encryption keys: governance gaps (monitor only)
-  const rotOverdue = (a: any) => {
-    const f = String(a.rotationFrequency || "");
-    const y = f.match(/(\d+)\s*year/);
-    if (y) return +y[1] >= 2;
-    const d = f.match(/(\d+)\s*day/);
-    if (d) return +d[1] > 365;
-    return !a.rotationFrequency;
-  };
-  const quantum = (a: any) =>
-    a.pqcRisk === "High" || a.pqcRisk === "Critical" || /^(RSA|EC|ECDSA|ECDH|DSA|DH)\b/i.test(a.algorithm || "");
-  const notHsm = (a: any) => a.environment === "Production" && !/HSM/i.test(a.protectionLevel || "");
-  const unowned = (a: any) => !a.owner || a.owner === "Unassigned";
-  const eRot = enc.filter(rotOverdue).length;
-  const eQ = enc.filter(quantum).length;
-  const eSw = enc.filter(notHsm).length;
-  const eOwn = enc.filter(unowned).length;
-  const eOOP = enc.filter((a) => rotOverdue(a) || quantum(a) || notHsm(a) || unowned(a)).length;
-
-  // Secrets: staleness and ownership
-  const secUnrot = secrets.filter((a) => {
-    const d = ageDays(a.lastRotated);
-    return d !== null && d > 90;
-  }).length;
-  const secOrphan = secrets.filter(unowned).length;
-  const secStale = secrets.filter((a) => !a.rotationFrequency).length;
-  const secAct = secrets.filter((a) => {
-    const d = ageDays(a.lastRotated);
-    return (d !== null && d > 90) || !a.owner || a.owner === "Unassigned";
-  }).length;
-
-  // Protocols donut by version
-  const byVer = (fam: string, ver?: string) =>
-    mockProtocols.filter((p) => p.family === fam && (ver ? p.version.startsWith(ver) : true)).length;
-  const ssl = mockProtocols.filter((p) => p.family === "SSL").length;
-  const t10 = byVer("TLS", "1.0"),
-    t11 = byVer("TLS", "1.1"),
-    t12 = byVer("TLS", "1.2"),
-    t13 = byVer("TLS", "1.3");
-  const sshP = mockProtocols.filter((p) => p.family === "SSH").length;
-  const pLegacy = ssl + t10 + t11;
-
-  // Libraries donut by lifecycle
-  const lEol = mockLibraries.filter((l) => l.eolStatus === "End-of-Life").length;
-  const lOut = mockLibraries.filter((l) => l.eolStatus === "Outdated").length;
-  const lSup = mockLibraries.filter((l) => l.eolStatus === "Supported").length;
-
-  const certRows: PostureRow[] = [
-    {
-      label: "Expired",
-      count: cExpired,
-      role: "critical",
-      onClick: () => go({ tab: "identities", type: "TLS Certificate", filterId: "cert_expired" }),
-    },
-    {
-      label: "Expiring in 7 days",
-      count: c7,
-      role: "critical",
-      onClick: () => go({ tab: "identities", type: "TLS Certificate", filterId: "cert_expiring_7d" }),
-    },
-    {
-      label: "Expiring in 30 days",
-      count: c30,
-      role: "high",
-      onClick: () => go({ tab: "identities", type: "TLS Certificate", filterId: "cert_expiring_30d" }),
-    },
-    {
-      label: "Expiring in 90 days",
-      count: c90,
-      role: "medium",
-      onClick: () => go({ tab: "identities", type: "TLS Certificate" }),
-    },
-  ];
-  const certBars: Bar[] = [
-    {
-      label: "Expired",
-      count: cExpired,
-      color: REDDARK,
-      onClick: () => go({ tab: "identities", type: "TLS Certificate", filterId: "cert_expired" }),
-    },
-    {
-      label: "\u22647d",
-      count: c7,
-      color: CORAL,
-      onClick: () => go({ tab: "identities", type: "TLS Certificate", filterId: "cert_expiring_7d" }),
-    },
-    {
-      label: "\u226430d",
-      count: c30,
-      color: AMBER,
-      onClick: () => go({ tab: "identities", type: "TLS Certificate", filterId: "cert_expiring_30d" }),
-    },
-    { label: "\u226490d", count: c90, color: MUTED, onClick: () => go({ tab: "identities", type: "TLS Certificate" }) },
-  ];
+  const c = POSTURE.certs;
+  const certHero = c.expired + c.day7.reduce((a, b) => a + b, 0);
+  const day7Bars: Bar[] = c.day7.map((n, i) => ({
+    label: String(i + 1),
+    count: n,
+    color: CORAL,
+    onClick: () => go({ tab: "identities", type: "TLS Certificate", filterId: "cert_expiring_7d" }),
+  }));
+  const w30Labels = ["0-5", "5-10", "10-15", "15-20", "20-25", "25-30"];
+  const win30Bars: Bar[] = c.win30.map((n, i) => ({
+    label: w30Labels[i],
+    count: n,
+    color: AMBER,
+    onClick: () => go({ tab: "identities", type: "TLS Certificate", filterId: "cert_expiring_30d" }),
+  }));
+  const w90Labels = ["0-15", "15-30", "30-45", "45-60", "60-75", "75-90"];
+  const win90Bars: Bar[] = c.win90.map((n, i) => ({
+    label: w90Labels[i],
+    count: n,
+    color: MUTED,
+    onClick: () => go({ tab: "identities", type: "TLS Certificate" }),
+  }));
 
   const sshAgeBars: Bar[] = [
-    { label: "<1yr", count: sUnder1, color: TEAL, onClick: () => go({ tab: "identities", type: "SSH Key" }) },
-    { label: "1-2yr", count: s12, color: AMBER, onClick: () => go({ tab: "identities", type: "SSH Key" }) },
-    { label: "2-5yr", count: s25, color: CORAL, onClick: () => go({ tab: "identities", type: "SSH Key" }) },
-    { label: "5yr+", count: s5, color: REDDARK, onClick: () => go({ tab: "identities", type: "SSH Key" }) },
+    {
+      label: "0-30",
+      count: POSTURE.ssh.age[0],
+      color: TEAL,
+      onClick: () => go({ tab: "identities", type: "SSH Key" }),
+    },
+    {
+      label: "30-60",
+      count: POSTURE.ssh.age[1],
+      color: MUTED,
+      onClick: () => go({ tab: "identities", type: "SSH Key" }),
+    },
+    {
+      label: "60-90",
+      count: POSTURE.ssh.age[2],
+      color: AMBER,
+      onClick: () => go({ tab: "identities", type: "SSH Key" }),
+    },
+    {
+      label: "90+",
+      count: POSTURE.ssh.age[3],
+      color: REDDARK,
+      onClick: () => go({ tab: "identities", type: "SSH Key" }),
+    },
   ];
-  const S = ESTATE_SUMMARY as any;
-  const sshSusp = S.sshSuspicious ?? 0,
-    sshShared = (S.sshSharedUser ?? 0) + (S.sshSharedHost ?? 0),
-    sshRogue = S.sshRogue ?? 0,
-    sshWeak = (S.sshWeakUser ?? 0) + (S.sshWeakHost ?? 0),
-    sshMisp = S.sshMisplaced ?? 0;
+  const r = POSTURE.ssh.risks;
   const sshRiskRows: PostureRow[] = [
     {
       label: "Suspicious keys",
-      count: sshSusp,
+      count: r.suspicious,
       role: "critical",
       onClick: () => go({ tab: "identities", filterId: "ssh_suspicious" }),
     },
     {
       label: "Misplaced keys",
-      count: sshMisp,
+      count: r.misplaced,
       role: "high",
       onClick: () => go({ tab: "identities", filterId: "ssh_misplaced" }),
     },
     {
       label: "Shared keys",
-      count: sshShared,
+      count: r.shared,
       role: "high",
       onClick: () => go({ tab: "identities", filterId: "ssh_shared_user" }),
     },
     {
       label: "Rogue keys",
-      count: sshRogue,
+      count: r.rogue,
       role: "critical",
       onClick: () => go({ tab: "identities", filterId: "ssh_rogue" }),
     },
     {
       label: "Weak keys",
-      count: sshWeak,
+      count: r.weak,
       role: "medium",
       onClick: () => go({ tab: "identities", filterId: "ssh_weak_user" }),
     },
   ];
+
+  const e = POSTURE.enc;
   const encRows: PostureRow[] = [
     {
       label: "Rotation disabled / overdue",
-      count: eRot,
+      count: e.rotation,
       role: "critical",
       onClick: () => go({ tab: "identities", type: "Encryption Key" }),
     },
     {
       label: "Quantum-vulnerable (RSA / ECC)",
-      count: eQ,
+      count: e.quantum,
       role: "high",
       onClick: () => go({ tab: "identities", type: "Encryption Key" }),
     },
     {
       label: "Software-protected (not HSM)",
-      count: eSw,
+      count: e.software,
       role: "medium",
       onClick: () => go({ tab: "identities", type: "Encryption Key" }),
     },
     {
       label: "Unowned / untagged",
-      count: eOwn,
+      count: e.unowned,
       role: "medium",
       onClick: () => go({ tab: "identities", type: "Encryption Key" }),
     },
   ];
+  const s = POSTURE.secrets;
   const secretRows: PostureRow[] = [
     {
       label: "Unrotated over 90 days",
-      count: secUnrot,
+      count: s.unrotated,
       role: "critical",
       onClick: () => go({ tab: "identities", type: "API Key / Secret" }),
     },
     {
       label: "Orphaned / no owner",
-      count: secOrphan,
+      count: s.orphaned,
       role: "high",
       onClick: () => go({ tab: "identities", type: "API Key / Secret" }),
     },
     {
       label: "No rotation policy",
-      count: secStale,
+      count: s.noPolicy,
       role: "medium",
       onClick: () => go({ tab: "identities", type: "API Key / Secret" }),
     },
   ];
+
+  // Protocols + libraries: unchanged, computed live from the crypto-stack data.
+  const ssl = mockProtocols.filter((p) => p.family === "SSL").length;
+  const t10 = mockProtocols.filter((p) => p.family === "TLS" && p.version.startsWith("1.0")).length;
+  const t11 = mockProtocols.filter((p) => p.family === "TLS" && p.version.startsWith("1.1")).length;
+  const t12 = mockProtocols.filter((p) => p.family === "TLS" && p.version.startsWith("1.2")).length;
+  const t13 = mockProtocols.filter((p) => p.family === "TLS" && p.version.startsWith("1.3")).length;
+  const sshP = mockProtocols.filter((p) => p.family === "SSH").length;
+  const pLegacy = ssl + t10 + t11;
+  const lEol = mockLibraries.filter((l) => l.eolStatus === "End-of-Life").length;
+  const lOut = mockLibraries.filter((l) => l.eolStatus === "Outdated").length;
+  const lSup = mockLibraries.filter((l) => l.eolStatus === "Supported").length;
+
   const protoSlices: DonutSlice[] = [
     {
       label: "SSL 3.0",
@@ -304,11 +258,12 @@ export default function CryptoPostureGrid() {
         <PostureTile
           icon={FileBadge}
           label="Certificates"
-          total={certs.length}
-          hero={{ value: cExpired + c7, caption: "expired or expiring \u2264 7d", role: "critical" }}
+          total={c.total}
+          hero={{ value: certHero, caption: "expired or expiring \u2264 7d", role: "critical" }}
           views={[
-            { label: "Chart", distribution: { type: "bars", bars: certBars } },
-            { label: "List", distribution: { type: "rows", rows: certRows } },
+            { label: "7 days", distribution: { type: "bars", bars: day7Bars } },
+            { label: "30 days", distribution: { type: "bars", bars: win30Bars } },
+            { label: "90 days", distribution: { type: "bars", bars: win90Bars } },
           ]}
           emphasis
           onOpen={() => go({ tab: "identities", type: "TLS Certificate" })}
@@ -317,17 +272,17 @@ export default function CryptoPostureGrid() {
         <PostureTile
           icon={FileKey}
           label="SSH keys"
-          total={ssh.length}
-          hero={{ value: sAged, caption: "aged over 1 year", role: "high" }}
+          total={POSTURE.ssh.total}
+          hero={{ value: POSTURE.ssh.age[3], caption: "not rotated 90d+", role: "high" }}
           views={[
             {
               label: "Key age",
-              hero: { value: sAged, caption: "aged over 1 year", role: "high" },
+              hero: { value: POSTURE.ssh.age[3], caption: "not rotated 90d+", role: "high" },
               distribution: { type: "bars", bars: sshAgeBars },
             },
             {
               label: "Risks",
-              hero: { value: sshSusp, caption: "suspicious keys", role: "critical" },
+              hero: { value: r.suspicious, caption: "suspicious keys", role: "critical" },
               distribution: { type: "rows", rows: sshRiskRows },
             },
           ]}
@@ -338,9 +293,9 @@ export default function CryptoPostureGrid() {
         <PostureTile
           icon={Key}
           label="Encryption keys"
-          total={enc.length}
+          total={e.total}
           caption={"AWS \u00b7 Azure \u00b7 GCP \u00b7 central visibility"}
-          hero={{ value: eOOP, caption: "out of policy", role: "high" }}
+          hero={{ value: e.oop, caption: "out of policy", role: "high" }}
           distribution={{ type: "rows", rows: encRows }}
           footerNote={"Monitor only \u00b7 ticket to act"}
           onOpen={() => go({ tab: "identities", type: "Encryption Key" })}
@@ -349,8 +304,8 @@ export default function CryptoPostureGrid() {
         <PostureTile
           icon={Lock}
           label="Secrets"
-          total={secrets.length}
-          hero={{ value: secAct, caption: "need action", role: "critical" }}
+          total={s.total}
+          hero={{ value: s.act, caption: "need action", role: "critical" }}
           distribution={{ type: "rows", rows: secretRows }}
           onOpen={() => go({ tab: "identities", type: "API Key / Secret" })}
         />
