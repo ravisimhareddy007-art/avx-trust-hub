@@ -794,10 +794,10 @@ function ITAssetDetailPanel({
                       <Network className="w-3.5 h-3.5 text-teal flex-shrink-0" />
                       <span className="flex-1 min-w-0">
                         <span className="text-[11px] text-foreground font-medium block truncate group-hover:text-teal">
-                          {p.protocol} {p.version} · :{p.port}
+                          {p.service} :{p.port} · {p.version}
                         </span>
                         <span className="text-[9px] text-muted-foreground">
-                          Protocol
+                          {p.application} · Protocol
                           {p.policyViolations.length
                             ? ` · ${p.policyViolations.length} violation${p.policyViolations.length !== 1 ? "s" : ""}`
                             : ""}
