@@ -39,6 +39,12 @@ const SEV_DOT: Record<StackSeverity, string> = {
   Medium: "bg-amber",
   Low: "bg-teal",
 };
+const SEV_PILL: Record<StackSeverity, string> = {
+  Critical: "bg-coral/15 text-coral",
+  High: "bg-coral/15 text-coral",
+  Medium: "bg-amber/15 text-amber",
+  Low: "bg-teal/15 text-teal",
+};
 const crsChip = (n: number) =>
   n >= 60 ? "text-coral bg-coral/12" : n >= 30 ? "text-amber bg-amber/12" : "text-teal bg-teal/12";
 const suiteColor: Record<CipherSuite["strength"], string> = {
@@ -474,7 +480,7 @@ function LinkedInfra({ assets, note, onNavigate }: { assets: ITAsset[]; note?: s
           ))}
         </div>
       ) : (
-        <div className="rounded-lg border border-border/40 px-3 py-3 text-amber">
+        <div className="rounded-lg border border-border/40 px-3 py-3 text-[11px] text-amber">
           {note || "Not bound to any tracked infrastructure asset."}
         </div>
       )}
@@ -525,7 +531,7 @@ function PanelShell({
             <SectionHeading label="Actions" />
             <button
               onClick={onTicket}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded font-semibold border border-purple/30 text-purple-light hover:bg-purple/10 transition-colors"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-purple/30 text-purple-light hover:bg-purple/10 transition-colors"
             >
               <Ticket className="w-3 h-3" /> {ticketLabel}
             </button>
@@ -559,10 +565,15 @@ function ProtocolPanel({
       subtitle={`${p.protocol} protocol · ${p.environment} · ${p.exposure}`}
       pills={
         <>
-          <span className={`font-semibold px-2 py-0.5 rounded ${crsChip(p.crs)}`}>{p.version}</span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className={`w-1.5 h-1.5 rounded-full ${SEV_DOT[p.severity]}`} />
-            <span className={`font-semibold uppercase ${SEV_TEXT[p.severity]}`}>{p.severity}</span>
+          <span
+            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${crsChip(p.crs)}`}
+          >
+            {p.version}
+          </span>
+          <span
+            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${SEV_PILL[p.severity]}`}
+          >
+            {p.severity}
           </span>
         </>
       }
@@ -640,13 +651,14 @@ function LibraryPanel({
       pills={
         <>
           <span
-            className={`font-semibold px-2 py-0.5 rounded ${l.eolStatus === "End-of-Life" ? "text-coral bg-coral/12" : l.eolStatus === "Outdated" ? "text-amber bg-amber/12" : "text-teal bg-teal/12"}`}
+            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${l.eolStatus === "End-of-Life" ? "bg-coral/15 text-coral" : l.eolStatus === "Outdated" ? "bg-amber/15 text-amber" : "bg-teal/15 text-teal"}`}
           >
             {l.eolStatus}
           </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className={`w-1.5 h-1.5 rounded-full ${SEV_DOT[l.severity]}`} />
-            <span className={`font-semibold uppercase ${SEV_TEXT[l.severity]}`}>{l.severity}</span>
+          <span
+            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${SEV_PILL[l.severity]}`}
+          >
+            {l.severity}
           </span>
         </>
       }
