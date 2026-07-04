@@ -7,6 +7,7 @@ import {
   groupsForAsset,
 } from "@/data/inventoryMockData";
 import { mockAssets, CryptoAsset } from "@/data/mockData";
+import { mockProtocols, mockLibraries } from "@/data/cryptoStackMockData";
 import { useInventoryRegistry } from "@/context/InventoryRegistryContext";
 import { useAgent } from "@/context/AgentContext";
 import { useRisk } from "@/context/RiskContext";
@@ -44,6 +45,8 @@ import {
   ArrowRight,
   Filter as FilterIcon,
   Copy,
+  Network,
+  Package,
 } from "lucide-react";
 
 // Object type → icon + short label, for compact rendering in tables/lists
@@ -763,7 +766,76 @@ function ITAssetDetailPanel({
             )}
           </div>
 
-          {/* Asset metadata, demoted + collapsible (progressive disclosure). */}
+          {/* Cryptographic stack on this host: protocols and libraries bound by FQDN. */}
+          {(() => {
+            const hostProtocols = mockProtocols.filter((p) => p.fqdn === asset.name);
+            const hostLibraries = mockLibraries.filter((l) => l.assetsAffected.includes(asset.name));
+            if (hostProtocols.length === 0 && hostLibraries.length === 0) return null;
+            const crsCol = (n: number) => (n >= 60 ? "text-coral" : n >= 30 ? "text-amber" : "text-teal");
+            return (
+              <div className="px-4 py-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <p className="text-[11px] font-semibold text-muted-foreground">Cryptographic stack on this host</p>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground font-medium tabular-nums">
+                    {hostProtocols.length + hostLibraries.length}
+                  </span>
+                </div>
+                <div className="rounded-lg border border-border/50 overflow-hidden divide-y divide-border/30">
+                  {hostProtocols.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => {
+                        setFilters({ tab: "crypto-assets", view: "protocols", objectId: p.id });
+                        setCurrentPage("inventory");
+                        onClose();
+                      }}
+                      className="w-full flex items-center gap-2 px-2.5 py-2 hover:bg-secondary/40 transition-colors text-left group"
+                    >
+                      <Network className="w-3.5 h-3.5 text-teal flex-shrink-0" />
+                      <span className="flex-1 min-w-0">
+                        <span className="text-[11px] text-foreground font-medium block truncate group-hover:text-teal">
+                          {p.protocol} {p.version} · :{p.port}
+                        </span>
+                        <span className="text-[9px] text-muted-foreground">
+                          Protocol
+                          {p.policyViolations.length
+                            ? ` · ${p.policyViolations.length} violation${p.policyViolations.length !== 1 ? "s" : ""}`
+                            : ""}
+                        </span>
+                      </span>
+                      <span className={`text-[12px] font-bold tabular-nums ${crsCol(p.crs)}`}>{p.crs}</span>
+                      <ArrowRight className="w-3 h-3 text-muted-foreground/40 group-hover:text-teal flex-shrink-0" />
+                    </button>
+                  ))}
+                  {hostLibraries.map((l) => (
+                    <button
+                      key={l.id}
+                      onClick={() => {
+                        setFilters({ tab: "crypto-assets", view: "libraries", objectId: l.id });
+                        setCurrentPage("inventory");
+                        onClose();
+                      }}
+                      className="w-full flex items-center gap-2 px-2.5 py-2 hover:bg-secondary/40 transition-colors text-left group"
+                    >
+                      <Package className="w-3.5 h-3.5 text-purple-light flex-shrink-0" />
+                      <span className="flex-1 min-w-0">
+                        <span className="text-[11px] text-foreground font-medium block truncate group-hover:text-teal">
+                          {l.name} {l.version}
+                        </span>
+                        <span className="text-[9px] text-muted-foreground">Library · {l.eolStatus}</span>
+                      </span>
+                      <span className={`text-[12px] font-bold tabular-nums ${crsCol(l.crs)}`}>{l.crs}</span>
+                      <ArrowRight className="w-3 h-3 text-muted-foreground/40 group-hover:text-teal flex-shrink-0" />
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[9px] text-muted-foreground/60 mt-2 leading-snug">
+                  Protocols and libraries observed on this host, discovered via network scan and CBOM ingestion. Open
+                  one to see its full detail in Crypto Assets.
+                </p>
+              </div>
+            );
+          })()}
           <div className="px-4 py-3">
             <button
               onClick={() => setDetailsOpen((v) => !v)}
