@@ -1,9 +1,9 @@
 import React from "react";
 import { useNav } from "@/context/NavigationContext";
 import { FileBadge, Key, FileKey, Lock, Network, Package } from "lucide-react";
-import { mockAssets } from "@/data/mockData";
+import { mockAssets, ESTATE_SUMMARY } from "@/data/mockData";
 import { mockProtocols, mockLibraries } from "@/data/cryptoStackMockData";
-import PostureTile, { PostureRow, DonutSlice } from "./PostureTile";
+import PostureTile, { PostureRow, DonutSlice, Bar } from "./PostureTile";
 
 const A = mockAssets as any[];
 const ageDays = (iso?: string) => (iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 86400000) : null);
@@ -12,20 +12,7 @@ const CORAL = "hsl(var(--coral))",
   AMBER = "hsl(var(--amber))",
   TEAL = "hsl(var(--teal))",
   MUTED = "hsl(var(--muted-foreground))";
-
-// Placeholder posture-history trend. Deterministic per tile so it is stable across
-// renders. Replace with real daily snapshots once posture history is captured; the
-// tile API (delta + spark) does not change when that lands.
-function trendFor(seed: string, current: number, deltaHint: number): { delta: number; spark: number[] } {
-  const prev = current - deltaHint;
-  const pts: number[] = [];
-  for (let i = 0; i < 7; i++) {
-    const t = i / 6;
-    const wob = ((seed.charCodeAt(i % seed.length) % 5) - 2) * 0.2;
-    pts.push(Math.max(0, prev + (current - prev) * t + wob));
-  }
-  return { delta: deltaHint, spark: pts };
-}
+const REDDARK = "#b23524";
 
 export default function CryptoPostureGrid() {
   const { setCurrentPage, setFilters } = useNav();
@@ -104,8 +91,14 @@ export default function CryptoPostureGrid() {
 
   const certRows: PostureRow[] = [
     {
+      label: "Expired",
+      count: cExpired,
+      role: "critical",
+      onClick: () => go({ tab: "identities", type: "TLS Certificate", filterId: "cert_expired" }),
+    },
+    {
       label: "Expiring in 7 days",
-      count: c7 + cExpired,
+      count: c7,
       role: "critical",
       onClick: () => go({ tab: "identities", type: "TLS Certificate", filterId: "cert_expiring_7d" }),
     },
@@ -122,16 +115,71 @@ export default function CryptoPostureGrid() {
       onClick: () => go({ tab: "identities", type: "TLS Certificate" }),
     },
   ];
-  const sshRows: PostureRow[] = [
+  const certBars: Bar[] = [
     {
-      label: "Under 1 year",
-      count: sUnder1,
-      role: "neutral",
-      onClick: () => go({ tab: "identities", type: "SSH Key" }),
+      label: "Expired",
+      count: cExpired,
+      color: REDDARK,
+      onClick: () => go({ tab: "identities", type: "TLS Certificate", filterId: "cert_expired" }),
     },
-    { label: "1 to 2 years", count: s12, role: "high", onClick: () => go({ tab: "identities", type: "SSH Key" }) },
-    { label: "2 to 5 years", count: s25, role: "critical", onClick: () => go({ tab: "identities", type: "SSH Key" }) },
-    { label: "5+ years", count: s5, role: "critical", onClick: () => go({ tab: "identities", type: "SSH Key" }) },
+    {
+      label: "\u22647d",
+      count: c7,
+      color: CORAL,
+      onClick: () => go({ tab: "identities", type: "TLS Certificate", filterId: "cert_expiring_7d" }),
+    },
+    {
+      label: "\u226430d",
+      count: c30,
+      color: AMBER,
+      onClick: () => go({ tab: "identities", type: "TLS Certificate", filterId: "cert_expiring_30d" }),
+    },
+    { label: "\u226490d", count: c90, color: MUTED, onClick: () => go({ tab: "identities", type: "TLS Certificate" }) },
+  ];
+
+  const sshAgeBars: Bar[] = [
+    { label: "<1yr", count: sUnder1, color: TEAL, onClick: () => go({ tab: "identities", type: "SSH Key" }) },
+    { label: "1-2yr", count: s12, color: AMBER, onClick: () => go({ tab: "identities", type: "SSH Key" }) },
+    { label: "2-5yr", count: s25, color: CORAL, onClick: () => go({ tab: "identities", type: "SSH Key" }) },
+    { label: "5yr+", count: s5, color: REDDARK, onClick: () => go({ tab: "identities", type: "SSH Key" }) },
+  ];
+  const S = ESTATE_SUMMARY as any;
+  const sshSusp = S.sshSuspicious ?? 0,
+    sshShared = (S.sshSharedUser ?? 0) + (S.sshSharedHost ?? 0),
+    sshRogue = S.sshRogue ?? 0,
+    sshWeak = (S.sshWeakUser ?? 0) + (S.sshWeakHost ?? 0),
+    sshMisp = S.sshMisplaced ?? 0;
+  const sshRiskRows: PostureRow[] = [
+    {
+      label: "Suspicious keys",
+      count: sshSusp,
+      role: "critical",
+      onClick: () => go({ tab: "identities", filterId: "ssh_suspicious" }),
+    },
+    {
+      label: "Misplaced keys",
+      count: sshMisp,
+      role: "high",
+      onClick: () => go({ tab: "identities", filterId: "ssh_misplaced" }),
+    },
+    {
+      label: "Shared keys",
+      count: sshShared,
+      role: "high",
+      onClick: () => go({ tab: "identities", filterId: "ssh_shared_user" }),
+    },
+    {
+      label: "Rogue keys",
+      count: sshRogue,
+      role: "critical",
+      onClick: () => go({ tab: "identities", filterId: "ssh_rogue" }),
+    },
+    {
+      label: "Weak keys",
+      count: sshWeak,
+      role: "medium",
+      onClick: () => go({ tab: "identities", filterId: "ssh_weak_user" }),
+    },
   ];
   const encRows: PostureRow[] = [
     {
@@ -257,10 +305,11 @@ export default function CryptoPostureGrid() {
           icon={FileBadge}
           label="Certificates"
           total={certs.length}
-          hero={{ value: c7 + cExpired, caption: "expiring \u2264 7d", role: "critical" }}
-          distribution={{ type: "rows", rows: certRows }}
-          trend={trendFor("cert", c7 + cExpired, 4)}
-          target="target 0"
+          hero={{ value: cExpired + c7, caption: "expired or expiring \u2264 7d", role: "critical" }}
+          views={[
+            { label: "Chart", distribution: { type: "bars", bars: certBars } },
+            { label: "List", distribution: { type: "rows", rows: certRows } },
+          ]}
           emphasis
           onOpen={() => go({ tab: "identities", type: "TLS Certificate" })}
         />
@@ -270,9 +319,18 @@ export default function CryptoPostureGrid() {
           label="SSH keys"
           total={ssh.length}
           hero={{ value: sAged, caption: "aged over 1 year", role: "high" }}
-          distribution={{ type: "rows", rows: sshRows }}
-          trend={trendFor("ssh", sAged, 2)}
-          target="target under 5"
+          views={[
+            {
+              label: "Key age",
+              hero: { value: sAged, caption: "aged over 1 year", role: "high" },
+              distribution: { type: "bars", bars: sshAgeBars },
+            },
+            {
+              label: "Risks",
+              hero: { value: sshSusp, caption: "suspicious keys", role: "critical" },
+              distribution: { type: "rows", rows: sshRiskRows },
+            },
+          ]}
           footerNote="Key age report"
           onOpen={() => go({ tab: "identities", type: "SSH Key" })}
         />
@@ -281,12 +339,10 @@ export default function CryptoPostureGrid() {
           icon={Key}
           label="Encryption keys"
           total={enc.length}
-          caption="AWS \u00b7 Azure \u00b7 GCP \u00b7 central visibility"
+          caption={"AWS \u00b7 Azure \u00b7 GCP \u00b7 central visibility"}
           hero={{ value: eOOP, caption: "out of policy", role: "high" }}
           distribution={{ type: "rows", rows: encRows }}
-          trend={trendFor("enc", eOOP, -6)}
-          target="target under 10"
-          footerNote="Monitor only \u00b7 ticket to act"
+          footerNote={"Monitor only \u00b7 ticket to act"}
           onOpen={() => go({ tab: "identities", type: "Encryption Key" })}
         />
 
@@ -296,8 +352,6 @@ export default function CryptoPostureGrid() {
           total={secrets.length}
           hero={{ value: secAct, caption: "need action", role: "critical" }}
           distribution={{ type: "rows", rows: secretRows }}
-          trend={trendFor("sec", secAct, 3)}
-          target="target under 20"
           onOpen={() => go({ tab: "identities", type: "API Key / Secret" })}
         />
 
