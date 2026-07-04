@@ -1,8 +1,8 @@
-import React from "react";
-import { ArrowRight, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import React, { useState } from "react";
+import { ArrowRight } from "lucide-react";
 
-// One posture tile, two distribution renderers (rows, donut), one drill contract.
-// Every value is a count that routes into a pre-filtered inventory view.
+// One posture tile, three distribution renderers (rows, donut, bars) plus an
+// optional view toggle. Every value is a count that routes into filtered inventory.
 
 export type PostureRole = "critical" | "high" | "medium" | "neutral";
 
@@ -18,12 +18,6 @@ const ROLE_TEXT: Record<PostureRole, string> = {
   medium: "text-muted-foreground",
   neutral: "text-teal",
 };
-const ROLE_STROKE: Record<PostureRole, string> = {
-  critical: "hsl(var(--coral))",
-  high: "hsl(var(--amber))",
-  medium: "hsl(var(--muted-foreground))",
-  neutral: "hsl(var(--teal))",
-};
 
 export interface PostureRow {
   label: string;
@@ -38,41 +32,35 @@ export interface DonutSlice {
   text: string;
   onClick?: () => void;
 }
+export interface Bar {
+  label: string;
+  count: number;
+  color: string;
+  onClick?: () => void;
+}
 
 export type Distribution =
   | { type: "rows"; rows: PostureRow[] }
-  | { type: "donut"; centerValue: string; centerLabel: string; slices: DonutSlice[] };
+  | { type: "donut"; centerValue: string; centerLabel: string; slices: DonutSlice[] }
+  | { type: "bars"; bars: Bar[] };
 
-export interface TileTrend {
-  delta: number;
-  spark: number[];
-} // lower is better for identity metrics
+export interface TileView {
+  label: string;
+  hero?: { value: number; caption: string; role: PostureRole };
+  distribution: Distribution;
+}
+
 export interface PostureTileProps {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   total: number;
   caption?: string;
   hero: { value: number; caption: string; role: PostureRole };
-  distribution: Distribution;
+  distribution?: Distribution; // single-view tiles (protocols, libraries)
+  views?: TileView[]; // multi-view tiles with a toggle (certificates, ssh)
   footerNote?: string;
   onOpen: () => void;
-  trend?: TileTrend; // optional; identity tiles only. Populated from posture history.
-  target?: string; // optional target/SLA line
-  emphasis?: boolean; // visual hierarchy: accent the most urgent tile
-}
-
-function Sparkline({ points, stroke }: { points: number[]; stroke: string }) {
-  if (!points.length) return null;
-  const max = Math.max(...points),
-    min = Math.min(...points),
-    span = max - min || 1;
-  const step = 60 / (points.length - 1 || 1);
-  const path = points.map((p, i) => `${(i * step).toFixed(1)},${(16 - ((p - min) / span) * 14).toFixed(1)}`).join(" ");
-  return (
-    <svg viewBox="0 0 60 18" className="w-[56px] h-4">
-      <polyline points={path} fill="none" stroke={stroke} strokeWidth="1.5" />
-    </svg>
-  );
+  emphasis?: boolean;
 }
 
 function Donut({
@@ -85,15 +73,14 @@ function Donut({
   centerLabel: string;
 }) {
   const total = slices.reduce((s, x) => s + x.count, 0) || 1;
-  const R = 15.915; // circumference ~= 100 for easy percentages
-  let offset = 25; // start at top
+  const R = 15.915;
+  let offset = 25;
   return (
     <div className="relative w-[88px] h-[88px] flex-shrink-0">
       <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
         <circle cx="18" cy="18" r={R} fill="none" stroke="hsl(var(--secondary))" strokeWidth="4" />
         {slices.map((s, i) => {
           const pct = (s.count / total) * 100;
-          const dash = `${pct} ${100 - pct}`;
           const el = (
             <circle
               key={i}
@@ -103,7 +90,7 @@ function Donut({
               fill="none"
               stroke={s.stroke}
               strokeWidth="4"
-              strokeDasharray={dash}
+              strokeDasharray={`${pct} ${100 - pct}`}
               strokeDashoffset={offset}
               className={s.onClick ? "cursor-pointer" : ""}
               onClick={s.onClick}
@@ -121,6 +108,108 @@ function Donut({
   );
 }
 
+function BarsChart({ bars }: { bars: Bar[] }) {
+  const max = Math.max(1, ...bars.map((b) => b.count));
+  const W = 248,
+    H = 108,
+    padL = 20,
+    padT = 14,
+    padB = 24;
+  const plotH = H - padT - padB;
+  const bw = (W - padL - 6) / bars.length;
+  const barW = Math.min(34, bw * 0.62);
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      className="w-full"
+      style={{ height: "108px" }}
+      role="img"
+      aria-label="Distribution by bucket"
+    >
+      <line x1={padL} y1={padT} x2={padL} y2={padT + plotH} stroke="hsl(var(--border))" strokeWidth="1" />
+      <line x1={padL} y1={padT + plotH} x2={W - 4} y2={padT + plotH} stroke="hsl(var(--border))" strokeWidth="1" />
+      <text x={padL - 3} y={padT + 4} textAnchor="end" fontSize="8" fill="hsl(var(--muted-foreground))">
+        {max}
+      </text>
+      <text x={padL - 3} y={padT + plotH} textAnchor="end" fontSize="8" fill="hsl(var(--muted-foreground))">
+        0
+      </text>
+      {bars.map((b, i) => {
+        const h = (b.count / max) * plotH;
+        const x = padL + i * bw + (bw - barW) / 2;
+        const y = padT + plotH - h;
+        return (
+          <g key={b.label} className={b.onClick ? "cursor-pointer" : ""} onClick={b.onClick}>
+            <rect x={x} y={y} width={barW} height={Math.max(h, 1)} fill={b.color} rx="1.5" />
+            <text
+              x={x + barW / 2}
+              y={y - 3}
+              textAnchor="middle"
+              fontSize="8.5"
+              fontWeight="600"
+              fill="hsl(var(--foreground))"
+            >
+              {b.count}
+            </text>
+            <text
+              x={x + barW / 2}
+              y={padT + plotH + 11}
+              textAnchor="middle"
+              fontSize="7.8"
+              fill="hsl(var(--muted-foreground))"
+            >
+              {b.label}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+function DistributionView({ d }: { d: Distribution }) {
+  if (d.type === "rows") {
+    return (
+      <div className="flex flex-col gap-1 mt-1">
+        {d.rows.map((r) => (
+          <button
+            key={r.label}
+            onClick={r.onClick}
+            className="w-full flex items-center gap-2 px-1 py-1 rounded hover:bg-secondary/50 transition-colors text-left group/row"
+          >
+            <span className={`w-[2px] h-3 flex-shrink-0 ${ROLE_TICK[r.role]}`} />
+            <span className="text-[11px] text-muted-foreground flex-1 truncate">{r.label}</span>
+            <span className="text-[11px] text-foreground font-medium tabular-nums flex-shrink-0">
+              {r.count.toLocaleString()}
+            </span>
+            <ArrowRight className="w-2.5 h-2.5 text-teal opacity-0 group-hover/row:opacity-100 transition-opacity flex-shrink-0" />
+          </button>
+        ))}
+      </div>
+    );
+  }
+  if (d.type === "bars")
+    return (
+      <div className="mt-1">
+        <BarsChart bars={d.bars} />
+      </div>
+    );
+  return (
+    <div className="flex items-center gap-3 mt-1.5">
+      <Donut slices={d.slices} centerValue={d.centerValue} centerLabel={d.centerLabel} />
+      <div className="flex-1 flex flex-col gap-1">
+        {d.slices.map((s) => (
+          <button key={s.label} onClick={s.onClick} className="w-full flex items-center gap-1.5 text-left group/row">
+            <span className="w-2 h-2 rounded-sm flex-shrink-0" style={{ background: s.stroke }} />
+            <span className="text-[10.5px] text-muted-foreground flex-1 truncate">{s.label}</span>
+            <span className="text-[10.5px] text-foreground tabular-nums flex-shrink-0">{s.count.toLocaleString()}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function PostureTile({
   icon: Icon,
   label,
@@ -128,17 +217,15 @@ export default function PostureTile({
   caption,
   hero,
   distribution,
+  views,
   footerNote,
   onOpen,
-  trend,
-  target,
   emphasis,
 }: PostureTileProps) {
-  const up = trend ? trend.delta > 0 : false;
-  const flat = trend ? trend.delta === 0 : true;
-  const trendColor = flat ? "text-muted-foreground" : up ? "text-coral" : "text-teal";
-  const trendStroke = flat ? "hsl(var(--muted-foreground))" : up ? "hsl(var(--coral))" : "hsl(var(--teal))";
-  const TrendIcon = flat ? Minus : up ? TrendingUp : TrendingDown;
+  const [active, setActive] = useState(0);
+  const view = views ? views[active] : null;
+  const dist = view ? view.distribution : distribution!;
+  const shownHero = view && view.hero ? view.hero : hero;
   return (
     <div
       className={`bg-card rounded-xl p-4 flex flex-col transition-all ${emphasis ? "border-2 border-coral" : "border border-border hover:border-border/80"}`}
@@ -153,74 +240,29 @@ export default function PostureTile({
 
       <button onClick={onOpen} className="flex items-baseline gap-1.5 text-left mt-1 group">
         <span
-          className={`text-[32px] font-semibold leading-none ${ROLE_TEXT[hero.role]}`}
+          className={`text-[32px] font-semibold leading-none ${ROLE_TEXT[shownHero.role]}`}
           style={{ fontFamily: "var(--font-serif, Georgia, serif)" }}
         >
-          {hero.value.toLocaleString()}
+          {shownHero.value.toLocaleString()}
         </span>
-        <span className="text-[11px] text-muted-foreground">{hero.caption}</span>
+        <span className="text-[11px] text-muted-foreground">{shownHero.caption}</span>
       </button>
 
-      {(trend || target) && (
-        <div className="flex items-center justify-between mt-2">
-          <div className="flex items-center gap-3">
-            {trend && (
-              <span className={`flex items-center gap-1 text-[10.5px] ${trendColor}`}>
-                <TrendIcon className="w-3 h-3" />
-                {trend.delta > 0 ? "+" : ""}
-                {trend.delta} <span className="text-muted-foreground text-[9.5px]">vs 30d</span>
-              </span>
-            )}
-            {target && <span className="text-[10px] text-muted-foreground">{target}</span>}
-          </div>
-          {trend && <Sparkline points={trend.spark} stroke={trendStroke} />}
+      {views && views.length > 1 && (
+        <div className="flex gap-1 mt-3 mb-0.5">
+          {views.map((v, i) => (
+            <button
+              key={v.label}
+              onClick={() => setActive(i)}
+              className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${i === active ? "border-teal/50 text-teal bg-teal/10" : "border-border text-muted-foreground hover:text-foreground"}`}
+            >
+              {v.label}
+            </button>
+          ))}
         </div>
       )}
 
-      {distribution.type === "rows" ? (
-        <>
-          <div className="text-[10px] text-muted-foreground mt-2 mb-1.5">Breakdown</div>
-          <div className="flex flex-col gap-1">
-            {distribution.rows.map((r) => (
-              <button
-                key={r.label}
-                onClick={r.onClick}
-                className="w-full flex items-center gap-2 px-1 py-1 rounded hover:bg-secondary/50 transition-colors text-left group/row"
-              >
-                <span className={`w-[2px] h-3 flex-shrink-0 ${ROLE_TICK[r.role]}`} />
-                <span className="text-[11px] text-muted-foreground flex-1 truncate">{r.label}</span>
-                <span className="text-[11px] text-foreground font-medium tabular-nums flex-shrink-0">
-                  {r.count.toLocaleString()}
-                </span>
-                <ArrowRight className="w-2.5 h-2.5 text-teal opacity-0 group-hover/row:opacity-100 transition-opacity flex-shrink-0" />
-              </button>
-            ))}
-          </div>
-        </>
-      ) : (
-        <div className="flex items-center gap-3 mt-1.5">
-          <Donut
-            slices={distribution.slices}
-            centerValue={distribution.centerValue}
-            centerLabel={distribution.centerLabel}
-          />
-          <div className="flex-1 flex flex-col gap-1">
-            {distribution.slices.map((s) => (
-              <button
-                key={s.label}
-                onClick={s.onClick}
-                className="w-full flex items-center gap-1.5 text-left group/row"
-              >
-                <span className="w-2 h-2 rounded-sm flex-shrink-0" style={{ background: s.stroke }} />
-                <span className="text-[10.5px] text-muted-foreground flex-1 truncate">{s.label}</span>
-                <span className="text-[10.5px] text-foreground tabular-nums flex-shrink-0">
-                  {s.count.toLocaleString()}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      <DistributionView d={dist} />
 
       <div className="mt-auto pt-2.5 flex items-center justify-between border-t border-border/50 mt-3">
         {footerNote ? <span className="text-[10px] text-muted-foreground">{footerNote}</span> : <span />}
