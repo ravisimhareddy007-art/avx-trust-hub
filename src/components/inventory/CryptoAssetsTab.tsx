@@ -924,16 +924,10 @@ export default function CryptoAssetsTab({ onCreateTicket }: { onCreateTicket: (c
   const { filters: navFilters } = useNav();
 
   useEffect(() => {
-    if (navFilters.tab === "crypto-assets" && navFilters.objectId) {
-      if (navFilters.view === "libraries") {
-        setView("libraries");
-        setOpenLib(navFilters.objectId);
-        setOpenProto(null);
-      } else {
-        setView("protocols");
-        setOpenProto(navFilters.objectId);
-        setOpenLib(null);
-      }
+    if (navFilters.tab === "crypto-assets") {
+      if (navFilters.view === "libraries") setView("libraries");
+      else if (navFilters.view === "protocols") setView("protocols");
+      if (navFilters.q) setSearch(navFilters.q);
     }
   }, [navFilters]);
 
