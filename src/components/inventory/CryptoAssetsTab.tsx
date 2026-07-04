@@ -260,8 +260,8 @@ function SectionHeading({ label, count }: { label: string; count?: number }) {
 function MetaRow({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {
   return (
     <div className="grid grid-cols-[130px_1fr] gap-2 py-1.5 border-b border-border/30 last:border-0 items-start">
-      <span className="text-muted-foreground leading-tight pt-0.5">{label}</span>
-      <span className={`text-foreground font-medium break-words leading-tight ${mono ? "font-mono" : ""}`}>
+      <span className="text-[11px] text-muted-foreground leading-tight pt-0.5">{label}</span>
+      <span className={`text-[11px] text-foreground font-medium break-words leading-tight ${mono ? "font-mono" : ""}`}>
         {value}
       </span>
     </div>
@@ -274,7 +274,7 @@ function OfferedCiphers({ suites, isSSH }: { suites: CipherSuite[]; isSSH: boole
     <div>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1 text-foreground hover:text-teal"
+        className="inline-flex items-center gap-1 text-[11px] text-foreground hover:text-teal"
       >
         {suites.length} offered · weakest <span className={suiteColor[weakest.strength]}>{weakest.enc}</span>
         {open ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
@@ -283,12 +283,12 @@ function OfferedCiphers({ suites, isSSH }: { suites: CipherSuite[]; isSSH: boole
         <div className="mt-1.5 space-y-1">
           {suites.map((c) => (
             <div key={c.id} className="flex items-center justify-between gap-2">
-              <span className="font-mono text-muted-foreground truncate">{c.name}</span>
+              <span className="font-mono text-[10px] text-muted-foreground truncate">{c.name}</span>
               <span className={`font-medium ${suiteColor[c.strength]}`}>{c.strength}</span>
             </div>
           ))}
           {!isSSH && (
-            <div className="text-muted-foreground pt-0.5">
+            <div className="text-[9.5px] text-muted-foreground pt-0.5">
               Offered set; one suite is negotiated per connection. Weak suites on the menu enable downgrade.
             </div>
           )}
@@ -331,17 +331,17 @@ function Gauge({ score, factors, violationCount }: { score: number; factors: Fac
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className={`font-semibold ${col}`}>{band} risk</span>
-            <span className="text-muted-foreground">CRS</span>
+            <span className={`text-[12px] font-semibold ${col}`}>{band} risk</span>
+            <span className="text-[10px] text-muted-foreground">CRS</span>
             <button
               onClick={() => setOpen((v) => !v)}
-              className="ml-auto inline-flex items-center gap-0.5 text-muted-foreground/70 hover:text-teal transition-colors"
+              className="ml-auto inline-flex items-center gap-0.5 text-[10px] text-muted-foreground/70 hover:text-teal transition-colors"
             >
               <Info className="w-3 h-3" /> Explain{" "}
               {open ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
             </button>
           </div>
-          <p className="leading-snug mt-0.5">
+          <p className="text-[10px] leading-snug mt-0.5">
             {violationCount > 0 ? (
               <span className="text-coral font-medium">
                 {violationCount} active violation{violationCount !== 1 ? "s" : ""}
@@ -359,7 +359,7 @@ function Gauge({ score, factors, violationCount }: { score: number; factors: Fac
             const pct = Math.min(100, f.raw);
             return (
               <div key={f.id} className="flex items-center gap-2" title={f.why}>
-                <span className="text-muted-foreground w-[88px] flex-shrink-0 truncate">{f.label}</span>
+                <span className="text-[9.5px] text-muted-foreground w-[88px] flex-shrink-0 truncate">{f.label}</span>
                 <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
                   <div
                     className="h-full rounded-full"
@@ -409,8 +409,8 @@ function ViolationsSection({
             <div key={i} className="flex items-start gap-2 py-1.5 border-b border-border/30 last:border-0">
               <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 ${SEV_DOT[v.severity]}`} />
               <div className="flex-1 min-w-0">
-                <div className="text-foreground">{name}</div>
-                <span className="font-mono text-muted-foreground/70">{v.id}</span>
+                <div className="text-[11px] text-foreground">{name}</div>
+                <span className="font-mono text-[9.5px] text-muted-foreground/70">{v.id}</span>
               </div>
               {excepted ? (
                 <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber/10 text-amber font-medium whitespace-nowrap">
@@ -419,7 +419,7 @@ function ViolationsSection({
               ) : (
                 <button
                   onClick={() => setCtx({ policyId: v.id, policyName: name })}
-                  className="px-2 py-0.5 rounded border border-amber/30 text-amber hover:bg-amber/10 whitespace-nowrap"
+                  className="text-[10px] px-2 py-0.5 rounded border border-amber/30 text-amber hover:bg-amber/10 whitespace-nowrap"
                 >
                   Add exception
                 </button>
@@ -450,7 +450,7 @@ function LinkedInfra({ assets, note, onNavigate }: { assets: ITAsset[]; note?: s
     <div className="px-4 py-3">
       <div className="flex items-center gap-2 mb-2">
         <SectionHeading label={`Linked infrastructure (${assets.length})`} />
-        {assets.length > 0 && <span className="text-amber ml-auto">failure affects all</span>}
+        {assets.length > 0 && <span className="text-[10px] text-amber ml-auto">failure affects all</span>}
       </div>
       {assets.length > 0 ? (
         <div className="space-y-0.5">
@@ -464,7 +464,9 @@ function LinkedInfra({ assets, note, onNavigate }: { assets: ITAsset[]; note?: s
               }}
               className="w-full flex items-center gap-2 rounded px-2 py-1.5 hover:bg-secondary/50 transition-colors text-left group"
             >
-              <span className="text-foreground font-medium flex-1 truncate group-hover:text-teal">{a.name}</span>
+              <span className="text-[11px] text-foreground font-medium flex-1 truncate group-hover:text-teal">
+                {a.name}
+              </span>
               <span className="text-muted-foreground flex-shrink-0 text-[10px]">{a.type}</span>
               <EnvBadge env={a.environment} />
               <ArrowRight className="w-3 h-3 text-muted-foreground/40 group-hover:text-teal flex-shrink-0" />
@@ -506,7 +508,7 @@ function PanelShell({
   return (
     <div className="fixed inset-0 z-50 flex">
       <div className="flex-1 bg-foreground/10 backdrop-blur-sm" onClick={onClose} />
-      <div className="w-[38%] min-w-[420px] bg-card border-l border-border shadow-2xl h-full flex flex-col animate-slide-in-right">
+      <div className="w-[38%] bg-card border-l border-border shadow-2xl h-full flex flex-col animate-slide-in-right">
         <div className="px-4 py-3 border-b border-border flex-shrink-0 bg-secondary/30">
           <div className="flex items-start justify-between gap-2 mb-1">
             <p className="text-[13px] font-semibold text-foreground truncate font-mono">{title}</p>
@@ -514,7 +516,7 @@ function PanelShell({
               <X className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
           </div>
-          <p className="text-muted-foreground mb-2.5">{subtitle}</p>
+          <p className="text-[11px] text-muted-foreground mb-2.5">{subtitle}</p>
           <div className="flex items-center gap-1.5">{pills}</div>
           <Gauge score={crs} factors={factors} violationCount={violationCount} />
         </div>
@@ -686,8 +688,8 @@ function LibraryPanel({
                   {c.cvss.toFixed(1)}
                 </span>
                 <div className="min-w-0">
-                  <div className="font-mono text-foreground">{c.id}</div>
-                  <div className="text-muted-foreground">{c.title}</div>
+                  <div className="font-mono text-[11px] text-foreground">{c.id}</div>
+                  <div className="text-[10px] text-muted-foreground">{c.title}</div>
                 </div>
               </div>
             ))}
@@ -699,7 +701,7 @@ function LibraryPanel({
         <SectionHeading label="Implements" />
         <div className="flex flex-wrap gap-1">
           {l.implementsList.map((i) => (
-            <span key={i} className="text-muted-foreground bg-secondary/60 px-1.5 py-0.5 rounded">
+            <span key={i} className="text-[10px] text-muted-foreground bg-secondary/60 px-1.5 py-0.5 rounded">
               {i}
             </span>
           ))}
@@ -763,7 +765,9 @@ export default function CryptoAssetsTab({ onCreateTicket }: { onCreateTicket: (c
             </button>
           ))}
         </div>
-        <span className="ml-auto text-muted-foreground">Discovered via Tenable, Qualys, and CBOM ingestion</span>
+        <span className="ml-auto text-[10px] text-muted-foreground">
+          Discovered via Tenable, Qualys, and CBOM ingestion
+        </span>
       </div>
 
       <div className="flex-1 min-h-0 overflow-auto scrollbar-thin">
