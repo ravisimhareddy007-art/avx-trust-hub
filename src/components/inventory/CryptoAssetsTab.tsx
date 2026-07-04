@@ -8,7 +8,6 @@ import {
   X,
   Ticket,
   ArrowRight,
-  ArrowUpRight,
   Info,
   Search,
   SlidersHorizontal,
@@ -654,17 +653,30 @@ function LibraryPanel({
   const assets = l.assetsAffected.map(assetByFqdn).filter((a): a is ITAsset => !!a);
   const factors = libraryFactors(l);
   const violations = l.policyViolations.map((id) => ({ id, severity: l.severity }));
+  const [metaOpen, setMetaOpen] = useState(false);
+  const eolCol = l.eolStatus === "End-of-Life" ? "text-coral" : l.eolStatus === "Outdated" ? "text-amber" : "text-teal";
+  const kev = l.cves.some((c: any) => c.kev);
+  const epss = l.cves.length ? Math.max(...l.cves.map((c: any) => c.epss)) : 0;
+  const prod = l.assetsAffected.filter((f) => assetByFqdn(f)?.environment === "Production").length;
+  const netFacing = l.assetsAffected.filter((f) =>
+    mockProtocols.some((p) => p.fqdn === f && p.exposure === "Internet-facing"),
+  ).length;
   return (
     <PanelShell
       title={`${l.name} ${l.version}`}
-      subtitle={`${l.provider} · ${l.inUse ? "In use" : "Dormant"} · ${l.assetsAffected.length} assets`}
+      subtitle={`${l.eolStatus === "End-of-Life" ? "EOL" : l.eolStatus} · ${l.inUse ? "In use" : "Dormant"} · ${l.assetsAffected.length} assets`}
       pills={
         <>
           <span
             className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${l.eolStatus === "End-of-Life" ? "bg-coral/15 text-coral" : l.eolStatus === "Outdated" ? "bg-amber/15 text-amber" : "bg-teal/15 text-teal"}`}
           >
-            {l.eolStatus}
+            {l.eolStatus === "End-of-Life" ? "EOL" : l.eolStatus}
           </span>
+          {kev && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-coral/15 text-coral">
+              KEV ✓
+            </span>
+          )}
           <span
             className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${SEV_PILL[l.severity]}`}
           >
@@ -680,61 +692,110 @@ function LibraryPanel({
       ticketLabel="Raise upgrade ticket"
     >
       <div className="px-4 py-3">
-        <SectionHeading label="Lifecycle" />
+        <SectionHeading label="Risk summary" />
         <MetaRow
-          label="Status"
+          label="Lifecycle"
           value={
-            <span
-              className={
-                l.eolStatus === "End-of-Life" ? "text-coral" : l.eolStatus === "Outdated" ? "text-amber" : "text-teal"
-              }
-            >
+            <span className={eolCol}>
               {l.eolStatus}
               {l.eolDate !== "Active" ? ` since ${l.eolDate}` : ""}
             </span>
           }
         />
-        <MetaRow label="Recommended version" value={l.latestSafe} />
-        <MetaRow label="Discovery source" value={l.discoverySource} />
+        <MetaRow
+          label="Exploitability"
+          value={
+            kev ? (
+              <span className="text-coral font-medium">KEV ✓ actively exploited</span>
+            ) : l.cves.length ? (
+              <span className={epss >= 0.5 ? "text-coral" : epss >= 0.1 ? "text-amber" : "text-foreground"}>
+                EPSS {Math.round(epss * 100)}% (max)
+              </span>
+            ) : (
+              <span className="text-muted-foreground">No known CVEs</span>
+            )
+          }
+        />
+        <MetaRow
+          label="Runtime status"
+          value={
+            l.inUse ? (
+              <span className="text-coral">In use (reached in production)</span>
+            ) : (
+              <span className="text-muted-foreground">Dormant</span>
+            )
+          }
+        />
+      </div>
+
+      <div className="px-4 py-3">
+        <SectionHeading label="Upgrade guidance" />
+        <MetaRow label="Current version" value={l.version} mono />
+        <MetaRow label="Recommended version" value={<span className="text-teal font-mono">{l.latestSafe}</span>} />
+        <MetaRow
+          label="Support status"
+          value={
+            l.eolStatus === "Supported"
+              ? "Vendor-supported"
+              : `${l.eolStatus}${l.eolDate !== "Active" ? ` since ${l.eolDate}` : ""}`
+          }
+        />
+      </div>
+
+      <div className="px-4 py-3">
+        <SectionHeading label="Impact" />
+        <MetaRow label="Assets affected" value={l.assetsAffected.length} />
+        <MetaRow
+          label="Production"
+          value={<span className={prod ? "text-coral" : "text-muted-foreground"}>{prod}</span>}
+        />
+        <MetaRow
+          label="Internet-facing"
+          value={
+            <span className={netFacing ? "text-coral" : "text-muted-foreground"}>
+              {netFacing}
+              <span className="text-[9px] text-muted-foreground ml-1">derived</span>
+            </span>
+          }
+        />
+        <MetaRow
+          label="Owner"
+          value={
+            <span className={l.owner === "Unassigned" ? "text-coral" : "text-foreground"}>
+              {l.owner} · {l.team}
+            </span>
+          }
+        />
       </div>
 
       {l.cves.length > 0 && (
         <div className="px-4 py-3">
-          <SectionHeading label={`Known vulnerabilities (${l.cveCount})`} />
+          <SectionHeading label={`Vulnerabilities (${l.cves.length})`} />
           <div className="space-y-1.5">
-            {l.cves.map((c) => (
-              <div key={c.id} className="flex items-start gap-2">
-                <span
-                  className={`font-semibold px-1.5 py-0.5 rounded tabular-nums ${c.cvss >= 7 ? "text-coral bg-coral/10" : "text-amber bg-amber/10"}`}
-                >
-                  {c.cvss.toFixed(1)}
-                </span>
-                <div className="min-w-0">
-                  <div className="font-mono text-[11px] text-foreground">{c.id}</div>
-                  <div className="text-[10px] text-muted-foreground">{c.title}</div>
+            {l.cves
+              .slice()
+              .sort((a: any, b: any) => b.cvss - a.cvss)
+              .map((c: any) => (
+                <div key={c.id} className="flex items-start gap-2">
+                  <span
+                    className={`font-semibold px-1.5 py-0.5 rounded tabular-nums text-[10px] ${c.cvss >= 9 ? "text-coral bg-coral/10" : c.cvss >= 7 ? "text-amber bg-amber/10" : "text-muted-foreground bg-secondary"}`}
+                  >
+                    {c.cvss.toFixed(1)}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="font-mono text-[11px] text-foreground">
+                      {c.id}
+                      {c.kev && <span className="ml-1.5 text-[9px] text-coral font-semibold">KEV</span>}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">
+                      {c.title} · EPSS {Math.round(c.epss * 100)}%
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
           </div>
         </div>
       )}
-
-      <div className="px-4 py-3">
-        <SectionHeading label="Implements" />
-        <div className="flex flex-wrap gap-1">
-          {l.implementsList.map((i) => (
-            <span key={i} className="text-[10px] text-muted-foreground bg-secondary/60 px-1.5 py-0.5 rounded">
-              {i}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      <div className="px-4 py-2 flex items-center gap-2 text-[10.5px]">
-        <span className="text-muted-foreground">Owner</span>
-        <span className={l.owner === "Unassigned" ? "text-coral" : "text-foreground"}>{l.owner}</span>
-        <span className="text-muted-foreground">· {l.team}</span>
-      </div>
 
       <ViolationsSection
         objectId={l.id}
@@ -743,6 +804,28 @@ function LibraryPanel({
         parentAsset={l.assetsAffected[0]}
         violations={violations}
       />
+
+      <div className="px-4 py-3">
+        <button onClick={() => setMetaOpen((v) => !v)} className="w-full flex items-center gap-2 mb-1 text-left">
+          <span className="text-[11px] font-semibold text-muted-foreground">Metadata</span>
+          <span className="ml-auto text-muted-foreground/50">
+            {metaOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </span>
+        </button>
+        {metaOpen && (
+          <>
+            <MetaRow label="Provider" value={l.provider} />
+            <MetaRow
+              label="Package identifier"
+              value={<span className="font-mono text-[10px] break-all">{l.packageId}</span>}
+            />
+            <MetaRow label="Implements" value={l.implementsList.join(", ")} />
+            <MetaRow label="Discovery source" value={l.discoverySource} />
+            <MetaRow label="Last seen" value={l.lastSeen} />
+          </>
+        )}
+      </div>
+
       <LinkedInfra assets={assets} onNavigate={onClose} />
     </PanelShell>
   );
@@ -754,7 +837,7 @@ interface ColDef {
   label: string;
   always?: boolean;
   center?: boolean;
-  render: (row: any) => React.ReactNode;
+  render: (row: any, nav?: { goToAssets: (row: any) => void }) => React.ReactNode;
 }
 interface Facet {
   key: string;
@@ -807,7 +890,6 @@ const PROTO_COLS: ColDef[] = [
       const shown = suites.slice(0, 3);
       return (
         <span className="inline-flex items-center gap-1 flex-wrap">
-          <span className="text-muted-foreground">{suites.length} offered ·</span>
           {shown.map((c, i) => (
             <span key={c.id} className={suiteColor[c.strength]}>
               {c.enc}
@@ -854,6 +936,16 @@ const PROTO_COLS: ColDef[] = [
   },
   { key: "source", label: "Source", render: (p) => <span className="text-muted-foreground">{p.discoverySource}</span> },
 ];
+const cveBands = (cves: any[]) => ({
+  c: cves.filter((v) => v.cvss >= 9).length,
+  h: cves.filter((v) => v.cvss >= 7 && v.cvss < 9).length,
+  m: cves.filter((v) => v.cvss >= 4 && v.cvss < 7).length,
+});
+const prodCount = (l: LibraryAsset) =>
+  l.assetsAffected.filter((f) => assetByFqdn(f)?.environment === "Production").length;
+const topEpss = (l: LibraryAsset) => (l.cves.length ? Math.max(...l.cves.map((c: any) => c.epss)) : 0);
+const hasKev = (l: LibraryAsset) => l.cves.some((c: any) => c.kev);
+
 const LIB_COLS: ColDef[] = [
   {
     key: "library",
@@ -865,31 +957,72 @@ const LIB_COLS: ColDef[] = [
       </span>
     ),
   },
-  { key: "provider", label: "Provider", render: (l) => <span className="text-muted-foreground">{l.provider}</span> },
   {
     key: "eol",
-    label: "EOL",
+    label: "Lifecycle",
     render: (l) => (
       <span
         className={
           l.eolStatus === "End-of-Life" ? "text-coral" : l.eolStatus === "Outdated" ? "text-amber" : "text-teal"
         }
       >
-        {l.eolStatus}
+        {l.eolStatus === "End-of-Life" ? "EOL" : l.eolStatus}
       </span>
     ),
   },
+  { key: "upgrade", label: "Upgrade To", render: (l) => <span className="text-teal font-mono">{l.latestSafe}</span> },
   {
     key: "cves",
-    label: "CVEs (max CVSS)",
-    center: true,
+    label: "CVEs",
     render: (l) => {
-      const n = l.cves.length;
-      const mx = n ? Math.max(...l.cves.map((c: any) => c.cvss)) : 0;
+      if (!l.cves.length) return <span className="text-muted-foreground">None</span>;
+      const b = cveBands(l.cves);
+      const bands: React.ReactNode[] = [];
+      if (b.c)
+        bands.push(
+          <span key="c" className="text-coral">
+            C{b.c}
+          </span>,
+        );
+      if (b.h)
+        bands.push(
+          <span key="h" className="text-amber">
+            H{b.h}
+          </span>,
+        );
+      if (b.m)
+        bands.push(
+          <span key="m" className="text-muted-foreground">
+            M{b.m}
+          </span>,
+        );
       return (
-        <span className={mx >= 7 ? "text-coral" : n ? "text-amber" : "text-muted-foreground"}>
-          {n ? `${n} · ${mx.toFixed(1)}` : "None"}
+        <span className="whitespace-nowrap">
+          <span className="text-foreground font-medium">{l.cves.length}</span>{" "}
+          <span className="text-[10px]">
+            (
+            {bands.map((x, i) => (
+              <React.Fragment key={i}>
+                {i > 0 ? " · " : ""}
+                {x}
+              </React.Fragment>
+            ))}
+            )
+          </span>
         </span>
+      );
+    },
+  },
+  {
+    key: "exploit",
+    label: "Exploitability",
+    render: (l) => {
+      if (!l.cves.length) return <span className="text-muted-foreground">None</span>;
+      if (hasKev(l)) return <span className="text-coral font-medium">KEV ✓</span>;
+      const e = topEpss(l);
+      const pct = Math.round(e * 100);
+      return (
+        <span className={e >= 0.5 ? "text-coral" : e >= 0.1 ? "text-amber" : "text-muted-foreground"}>EPSS {pct}%</span>
       );
     },
   },
@@ -897,19 +1030,21 @@ const LIB_COLS: ColDef[] = [
     key: "assets",
     label: "Assets",
     center: true,
-    render: (l) => (
-      <span className="inline-flex items-center gap-1 text-foreground">
-        <ArrowUpRight className="w-3 h-3 text-muted-foreground" />
-        {l.assetsAffected.length}
-      </span>
-    ),
-  },
-  {
-    key: "inuse",
-    label: "In use",
-    render: (l) => (
-      <span className={l.inUse ? "text-coral" : "text-muted-foreground"}>{l.inUse ? "In use" : "Dormant"}</span>
-    ),
+    render: (l, nav) => {
+      const prod = prodCount(l);
+      return (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            nav?.goToAssets(l);
+          }}
+          className="whitespace-nowrap text-foreground hover:text-teal transition-colors underline-offset-2 hover:underline"
+          title="View these hosts in Infrastructure"
+        >
+          {l.assetsAffected.length} <span className="text-[10px] text-muted-foreground">({prod} Prod)</span>
+        </button>
+      );
+    },
   },
   {
     key: "crs",
@@ -937,6 +1072,17 @@ const PROTO_FACETS: Facet[] = [
 const LIB_FACETS: Facet[] = [
   { key: "severity", label: "Severity", options: ["Critical", "High", "Medium", "Low"], value: (l) => l.severity },
   { key: "eol", label: "Lifecycle", options: ["End-of-Life", "Outdated", "Supported"], value: (l) => l.eolStatus },
+  {
+    key: "exploit",
+    label: "Exploitability",
+    options: ["KEV", "High EPSS", "None"],
+    value: (l) =>
+      l.cves.some((c: any) => c.kev)
+        ? "KEV"
+        : l.cves.length && Math.max(...l.cves.map((c: any) => c.epss)) >= 0.1
+          ? "High EPSS"
+          : "None",
+  },
   { key: "inuse", label: "Usage", options: ["In use", "Dormant"], value: (l) => (l.inUse ? "In use" : "Dormant") },
   { key: "source", label: "Source", options: ["CBOM Ingestion", "Tenable", "Qualys"], value: (l) => l.discoverySource },
 ];
@@ -957,7 +1103,16 @@ export default function CryptoAssetsTab({ onCreateTicket }: { onCreateTicket: (c
   const [hiddenP, setHiddenP] = useState<Set<string>>(new Set());
   const [hiddenL, setHiddenL] = useState<Set<string>>(new Set());
   const [popover, setPopover] = useState<"filters" | "columns" | null>(null);
-  const { filters: navFilters } = useNav();
+  const { filters: navFilters, setFilters: navSetFilters, setCurrentPage: navSetPage } = useNav();
+
+  const goToAssets = (l: any) => {
+    const ids = (l.assetsAffected as string[])
+      .map((f) => assetByFqdn(f)?.id)
+      .filter(Boolean)
+      .join(",");
+    navSetFilters({ tab: "infrastructure", assetIds: ids });
+    navSetPage("inventory" as never);
+  };
 
   useEffect(() => {
     if (navFilters.tab === "crypto-assets") {
@@ -1164,7 +1319,7 @@ export default function CryptoAssetsTab({ onCreateTicket }: { onCreateTicket: (c
               >
                 {visibleCols.map((c) => (
                   <td key={c.key} className={`py-2.5 px-3 ${c.center ? "text-center" : ""}`}>
-                    {c.render(row)}
+                    {c.render(row, { goToAssets })}
                   </td>
                 ))}
                 <td className="py-2.5 px-2">
