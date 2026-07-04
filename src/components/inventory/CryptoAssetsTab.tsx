@@ -560,7 +560,7 @@ function ProtocolPanel({
   return (
     <PanelShell
       title={`${p.fqdn}:${p.port}`}
-      subtitle={`${p.protocol} protocol · ${p.environment} · ${p.exposure}`}
+      subtitle={`${p.service} · ${p.application} · ${p.environment} · ${p.exposure}`}
       pills={
         <>
           <span
@@ -584,6 +584,14 @@ function ProtocolPanel({
     >
       <div className="px-4 py-3">
         <SectionHeading label="Protocol details" />
+        <MetaRow
+          label="Service"
+          value={
+            <span>
+              {p.service} <span className="text-muted-foreground">· {p.application}</span>
+            </span>
+          }
+        />
         <MetaRow label="Protocol" value={p.protocol} />
         <MetaRow label="Version" value={p.version} />
         <MetaRow label="Endpoint" value={`${p.fqdn}:${p.port}`} mono />
@@ -763,6 +771,16 @@ const PROTO_COLS: ColDef[] = [
     ),
   },
   {
+    key: "service",
+    label: "Service",
+    render: (p) => (
+      <span className="min-w-0 inline-block align-middle">
+        <span className="text-foreground font-medium block">{p.service}</span>
+        <span className="text-[9px] text-muted-foreground">{p.application}</span>
+      </span>
+    ),
+  },
+  {
     key: "endpoint",
     label: "Endpoint",
     always: true,
@@ -894,6 +912,7 @@ const LIB_COLS: ColDef[] = [
 ];
 const PROTO_FACETS: Facet[] = [
   { key: "severity", label: "Severity", options: ["Critical", "High", "Medium", "Low"], value: (p) => p.severity },
+  { key: "service", label: "Service", options: ["HTTPS", "SMTPS", "PostgreSQL", "SSH"], value: (p) => p.service },
   { key: "exposure", label: "Exposure", options: ["Internet-facing", "Internal"], value: (p) => p.exposure },
   { key: "source", label: "Source", options: ["Tenable", "Qualys"], value: (p) => p.discoverySource },
   { key: "binding", label: "Binding", options: ["Bound", "Unbound"], value: (p) => (p.bound ? "Bound" : "Unbound") },
@@ -905,7 +924,7 @@ const LIB_FACETS: Facet[] = [
   { key: "source", label: "Source", options: ["CBOM Ingestion", "Tenable", "Qualys"], value: (l) => l.discoverySource },
 ];
 const protoText = (p: ProtocolAsset) =>
-  `${p.protocol} ${p.version} ${p.fqdn}:${p.port} ${p.discoverySource} ${p.owner}`.toLowerCase();
+  `${p.protocol} ${p.version} ${p.service} ${p.application} ${p.fqdn}:${p.port} ${p.discoverySource} ${p.owner}`.toLowerCase();
 const libText = (l: LibraryAsset) =>
   `${l.name} ${l.version} ${l.provider} ${l.discoverySource} ${l.owner}`.toLowerCase();
 
