@@ -246,7 +246,7 @@ function libraryDraft(l: LibraryAsset): TicketDraft {
 function SectionHeading({ label, count }: { label: string; count?: number }) {
   return (
     <div className="flex items-center gap-2 mb-2">
-      <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{label}</span>
+      <span className="uppercase tracking-wider text-muted-foreground font-semibold">{label}</span>
       {count !== undefined && count > 0 && (
         <span className="text-[9px] font-semibold text-coral bg-coral/15 rounded-full w-4 h-4 flex items-center justify-center">
           {count}
@@ -257,9 +257,41 @@ function SectionHeading({ label, count }: { label: string; count?: number }) {
 }
 function MetaRow({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {
   return (
-    <div className="flex items-start gap-3 py-1.5 text-[11px]">
-      <span className="text-muted-foreground w-36 flex-shrink-0">{label}</span>
-      <span className={`text-foreground ${mono ? "font-mono" : ""}`}>{value}</span>
+    <div className="grid grid-cols-[130px_1fr] gap-2 py-1.5 border-b border-border/30 last:border-0 items-start">
+      <span className="text-muted-foreground leading-tight pt-0.5">{label}</span>
+      <span className={`text-foreground font-medium break-words leading-tight ${mono ? "font-mono" : ""}`}>
+        {value}
+      </span>
+    </div>
+  );
+}
+function OfferedCiphers({ suites, isSSH }: { suites: CipherSuite[]; isSSH: boolean }) {
+  const [open, setOpen] = useState(false);
+  const weakest = suites[0];
+  return (
+    <div>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex items-center gap-1 text-foreground hover:text-teal"
+      >
+        {suites.length} offered · weakest <span className={suiteColor[weakest.strength]}>{weakest.enc}</span>
+        {open ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+      </button>
+      {open && (
+        <div className="mt-1.5 space-y-1">
+          {suites.map((c) => (
+            <div key={c.id} className="flex items-center justify-between gap-2">
+              <span className="font-mono text-muted-foreground truncate">{c.name}</span>
+              <span className={`font-medium ${suiteColor[c.strength]}`}>{c.strength}</span>
+            </div>
+          ))}
+          {!isSSH && (
+            <div className="text-muted-foreground pt-0.5">
+              Offered set; one suite is negotiated per connection. Weak suites on the menu enable downgrade.
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -297,17 +329,17 @@ function Gauge({ score, factors, violationCount }: { score: number; factors: Fac
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className={`text-[12px] font-semibold ${col}`}>{band} risk</span>
-            <span className="text-[10px] text-muted-foreground">CRS</span>
+            <span className={`font-semibold ${col}`}>{band} risk</span>
+            <span className="text-muted-foreground">CRS</span>
             <button
               onClick={() => setOpen((v) => !v)}
-              className="ml-auto inline-flex items-center gap-0.5 text-[10px] text-muted-foreground/70 hover:text-teal transition-colors"
+              className="ml-auto inline-flex items-center gap-0.5 text-muted-foreground/70 hover:text-teal transition-colors"
             >
               <Info className="w-3 h-3" /> Explain{" "}
               {open ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
             </button>
           </div>
-          <p className="text-[10px] leading-snug mt-0.5">
+          <p className="leading-snug mt-0.5">
             {violationCount > 0 ? (
               <span className="text-coral font-medium">
                 {violationCount} active violation{violationCount !== 1 ? "s" : ""}
@@ -325,7 +357,7 @@ function Gauge({ score, factors, violationCount }: { score: number; factors: Fac
             const pct = Math.min(100, f.raw);
             return (
               <div key={f.id} className="flex items-center gap-2" title={f.why}>
-                <span className="text-[9.5px] text-muted-foreground w-[88px] flex-shrink-0 truncate">{f.label}</span>
+                <span className="text-muted-foreground w-[88px] flex-shrink-0 truncate">{f.label}</span>
                 <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
                   <div
                     className="h-full rounded-full"
@@ -375,8 +407,8 @@ function ViolationsSection({
             <div key={i} className="flex items-start gap-2 py-1.5 border-b border-border/30 last:border-0">
               <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 ${SEV_DOT[v.severity]}`} />
               <div className="flex-1 min-w-0">
-                <div className="text-[11px] text-foreground">{name}</div>
-                <span className="text-[9.5px] font-mono text-muted-foreground/70">{v.id}</span>
+                <div className="text-foreground">{name}</div>
+                <span className="font-mono text-muted-foreground/70">{v.id}</span>
               </div>
               {excepted ? (
                 <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber/10 text-amber font-medium whitespace-nowrap">
@@ -385,7 +417,7 @@ function ViolationsSection({
               ) : (
                 <button
                   onClick={() => setCtx({ policyId: v.id, policyName: name })}
-                  className="text-[10px] px-2 py-0.5 rounded border border-amber/30 text-amber hover:bg-amber/10 whitespace-nowrap"
+                  className="px-2 py-0.5 rounded border border-amber/30 text-amber hover:bg-amber/10 whitespace-nowrap"
                 >
                   Add exception
                 </button>
@@ -416,7 +448,7 @@ function LinkedInfra({ assets, note, onNavigate }: { assets: ITAsset[]; note?: s
     <div className="px-4 py-3">
       <div className="flex items-center gap-2 mb-2">
         <SectionHeading label={`Linked infrastructure (${assets.length})`} />
-        {assets.length > 0 && <span className="text-[10px] text-amber ml-auto">failure affects all</span>}
+        {assets.length > 0 && <span className="text-amber ml-auto">failure affects all</span>}
       </div>
       {assets.length > 0 ? (
         <div className="space-y-0.5">
@@ -428,7 +460,7 @@ function LinkedInfra({ assets, note, onNavigate }: { assets: ITAsset[]; note?: s
                 setCurrentPage("inventory" as never);
                 onNavigate();
               }}
-              className="w-full flex items-center gap-2 text-[11px] rounded px-2 py-1.5 hover:bg-secondary/50 transition-colors text-left group"
+              className="w-full flex items-center gap-2 rounded px-2 py-1.5 hover:bg-secondary/50 transition-colors text-left group"
             >
               <span className="text-foreground font-medium flex-1 truncate group-hover:text-teal">{a.name}</span>
               <span className="text-muted-foreground flex-shrink-0 text-[10px]">{a.type}</span>
@@ -438,7 +470,7 @@ function LinkedInfra({ assets, note, onNavigate }: { assets: ITAsset[]; note?: s
           ))}
         </div>
       ) : (
-        <div className="rounded-lg border border-border/40 px-3 py-3 text-[11px] text-amber">
+        <div className="rounded-lg border border-border/40 px-3 py-3 text-amber">
           {note || "Not bound to any tracked infrastructure asset."}
         </div>
       )}
@@ -480,7 +512,7 @@ function PanelShell({
               <X className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
           </div>
-          <p className="text-[11px] text-muted-foreground mb-2.5">{subtitle}</p>
+          <p className="text-muted-foreground mb-2.5">{subtitle}</p>
           <div className="flex items-center gap-1.5">{pills}</div>
           <Gauge score={crs} factors={factors} violationCount={violationCount} />
         </div>
@@ -489,7 +521,7 @@ function PanelShell({
             <SectionHeading label="Actions" />
             <button
               onClick={onTicket}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-purple/30 text-purple-light hover:bg-purple/10 transition-colors"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded font-semibold border border-purple/30 text-purple-light hover:bg-purple/10 transition-colors"
             >
               <Ticket className="w-3 h-3" /> {ticketLabel}
             </button>
@@ -523,10 +555,10 @@ function ProtocolPanel({
       subtitle={`${p.protocol} ${p.version} · ${p.environment} · ${p.exposure}`}
       pills={
         <>
-          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${crsChip(p.crs)}`}>{p.version}</span>
+          <span className={`font-semibold px-2 py-0.5 rounded ${crsChip(p.crs)}`}>{p.version}</span>
           <span className="inline-flex items-center gap-1.5">
             <span className={`w-1.5 h-1.5 rounded-full ${SEV_DOT[p.severity]}`} />
-            <span className={`text-[10px] font-semibold uppercase ${SEV_TEXT[p.severity]}`}>{p.severity}</span>
+            <span className={`font-semibold uppercase ${SEV_TEXT[p.severity]}`}>{p.severity}</span>
           </span>
         </>
       }
@@ -538,31 +570,24 @@ function ProtocolPanel({
       ticketLabel="Raise remediation ticket"
     >
       <div className="px-4 py-3">
-        <SectionHeading label={isSSH ? "Negotiated algorithms" : "Negotiated cipher suites"} />
-        <div className="border border-border rounded-lg overflow-hidden">
-          <div className="grid grid-cols-[1fr_auto] gap-2 px-2.5 py-1.5 bg-secondary/40 text-[9px] uppercase tracking-wide text-muted-foreground">
-            <span>{isSSH ? "Cipher · KEX · MAC" : "Suite · KEX · Auth · Enc · MAC"}</span>
-            <span>Strength</span>
-          </div>
-          {suites.map((c) => (
-            <div key={c.id} className="grid grid-cols-[1fr_auto] gap-2 px-2.5 py-2 border-t border-border/50">
-              <div className="min-w-0">
-                <div className="text-[11px] font-mono text-foreground truncate">{c.name}</div>
-                <div className="text-[9.5px] text-muted-foreground">
-                  {isSSH ? `${c.enc} · ${c.kex} · ${c.mac}` : `${c.kex} · ${c.auth} · ${c.enc} · ${c.mac} · ${c.id}`}
-                </div>
-              </div>
-              <span className={`text-[10px] font-semibold ${suiteColor[c.strength]}`}>{c.strength}</span>
-            </div>
-          ))}
-        </div>
-        <div className="text-[10px] text-muted-foreground mt-2">
-          Key exchange: <span className="text-foreground">{p.kexStrength}</span>
-        </div>
-      </div>
-
-      <div className="px-4 py-3">
-        <MetaRow label="Deployed endpoint" value={`${p.fqdn}:${p.port}`} mono />
+        <SectionHeading label="Protocol details" />
+        <MetaRow label="Protocol" value={p.protocol} />
+        <MetaRow label="Version" value={p.version} />
+        <MetaRow label="Endpoint" value={`${p.fqdn}:${p.port}`} mono />
+        <MetaRow label="Key exchange" value={p.kexStrength} />
+        <MetaRow
+          label="Weakest offered cipher"
+          value={
+            <span className={suiteColor[suites[0].strength]}>
+              {suites[0].enc} ({suites[0].strength})
+            </span>
+          }
+        />
+        <MetaRow label="Exposure" value={p.exposure} />
+        <MetaRow
+          label={isSSH ? "Offered algorithms" : "Offered cipher suites"}
+          value={<OfferedCiphers suites={suites} isSSH={isSSH} />}
+        />
         <MetaRow label="Discovery source" value={p.discoverySource} />
         <MetaRow label="Last seen" value={p.lastSeen} />
       </div>
@@ -611,13 +636,13 @@ function LibraryPanel({
       pills={
         <>
           <span
-            className={`text-[10px] font-semibold px-2 py-0.5 rounded ${l.eolStatus === "End-of-Life" ? "text-coral bg-coral/12" : l.eolStatus === "Outdated" ? "text-amber bg-amber/12" : "text-teal bg-teal/12"}`}
+            className={`font-semibold px-2 py-0.5 rounded ${l.eolStatus === "End-of-Life" ? "text-coral bg-coral/12" : l.eolStatus === "Outdated" ? "text-amber bg-amber/12" : "text-teal bg-teal/12"}`}
           >
             {l.eolStatus}
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className={`w-1.5 h-1.5 rounded-full ${SEV_DOT[l.severity]}`} />
-            <span className={`text-[10px] font-semibold uppercase ${SEV_TEXT[l.severity]}`}>{l.severity}</span>
+            <span className={`font-semibold uppercase ${SEV_TEXT[l.severity]}`}>{l.severity}</span>
           </span>
         </>
       }
@@ -654,13 +679,13 @@ function LibraryPanel({
             {l.cves.map((c) => (
               <div key={c.id} className="flex items-start gap-2">
                 <span
-                  className={`text-[10px] font-semibold px-1.5 py-0.5 rounded tabular-nums ${c.cvss >= 7 ? "text-coral bg-coral/10" : "text-amber bg-amber/10"}`}
+                  className={`font-semibold px-1.5 py-0.5 rounded tabular-nums ${c.cvss >= 7 ? "text-coral bg-coral/10" : "text-amber bg-amber/10"}`}
                 >
                   {c.cvss.toFixed(1)}
                 </span>
                 <div className="min-w-0">
-                  <div className="text-[11px] font-mono text-foreground">{c.id}</div>
-                  <div className="text-[10px] text-muted-foreground">{c.title}</div>
+                  <div className="font-mono text-foreground">{c.id}</div>
+                  <div className="text-muted-foreground">{c.title}</div>
                 </div>
               </div>
             ))}
@@ -672,7 +697,7 @@ function LibraryPanel({
         <SectionHeading label="Implements" />
         <div className="flex flex-wrap gap-1">
           {l.implementsList.map((i) => (
-            <span key={i} className="text-[10px] text-muted-foreground bg-secondary/60 px-1.5 py-0.5 rounded">
+            <span key={i} className="text-muted-foreground bg-secondary/60 px-1.5 py-0.5 rounded">
               {i}
             </span>
           ))}
@@ -719,7 +744,7 @@ export default function CryptoAssetsTab({ onCreateTicket }: { onCreateTicket: (c
               setView("protocols");
               setOpenLib(null);
             }}
-            className={`inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 transition-colors ${view === "protocols" ? "bg-teal text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            className={`inline-flex items-center gap-1.5 font-medium px-3 py-1.5 transition-colors ${view === "protocols" ? "bg-teal text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             <Network className="w-3.5 h-3.5" /> Protocols <span className="opacity-70">{protocols.length}</span>
           </button>
@@ -728,30 +753,28 @@ export default function CryptoAssetsTab({ onCreateTicket }: { onCreateTicket: (c
               setView("libraries");
               setOpenProto(null);
             }}
-            className={`inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 transition-colors ${view === "libraries" ? "bg-teal text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            className={`inline-flex items-center gap-1.5 font-medium px-3 py-1.5 transition-colors ${view === "libraries" ? "bg-teal text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             <Package className="w-3.5 h-3.5" /> Libraries <span className="opacity-70">{libraries.length}</span>
           </button>
         </div>
-        <span className="ml-auto text-[10px] text-muted-foreground">
-          Discovered via Tenable, Qualys, and CBOM ingestion
-        </span>
+        <span className="ml-auto text-muted-foreground">Discovered via Tenable, Qualys, and CBOM ingestion</span>
       </div>
 
       <div className="flex-1 min-h-0 overflow-auto scrollbar-thin">
         {view === "protocols" ? (
-          <table className="w-full text-left">
+          <table className="w-full min-w-max text-xs table-auto text-left">
             <thead className="sticky top-0 bg-card z-[1]">
-              <tr className="text-[9.5px] uppercase tracking-wide text-muted-foreground border-b border-border">
-                <th className="py-2 px-3 font-medium">Protocol / Version</th>
-                <th className="py-2 px-3 font-medium">Endpoint</th>
-                <th className="py-2 px-3 font-medium">Weakest cipher</th>
-                <th className="py-2 px-3 font-medium">Key exchange</th>
-                <th className="py-2 px-3 font-medium">Exposure</th>
-                <th className="py-2 px-3 font-medium text-center">CRS</th>
-                <th className="py-2 px-3 font-medium">Severity</th>
-                <th className="py-2 px-3 font-medium">Violations</th>
-                <th className="py-2 px-3 font-medium">Source</th>
+              <tr className="text-muted-foreground border-b border-border">
+                <th className="py-2.5 px-3 font-medium whitespace-nowrap">Protocol / Version</th>
+                <th className="py-2.5 px-3 font-medium whitespace-nowrap">Endpoint</th>
+                <th className="py-2.5 px-3 font-medium whitespace-nowrap">Weakest cipher</th>
+                <th className="py-2.5 px-3 font-medium whitespace-nowrap">Key exchange</th>
+                <th className="py-2.5 px-3 font-medium whitespace-nowrap">Exposure</th>
+                <th className="py-2.5 px-3 font-medium whitespace-nowrap text-center">CRS</th>
+                <th className="py-2.5 px-3 font-medium whitespace-nowrap">Severity</th>
+                <th className="py-2.5 px-3 font-medium whitespace-nowrap">Violations</th>
+                <th className="py-2.5 px-3 font-medium whitespace-nowrap">Source</th>
                 <th className="py-2 px-2" />
               </tr>
             </thead>
@@ -768,49 +791,43 @@ export default function CryptoAssetsTab({ onCreateTicket }: { onCreateTicket: (c
                     className="border-b border-border/40 hover:bg-secondary/30 cursor-pointer"
                   >
                     <td className="py-2.5 px-3">
-                      <span className="text-[12px] text-foreground font-medium">
+                      <span className="text-foreground font-medium">
                         {p.protocol} {p.version.replace(p.protocol, "").trim() || p.version}
                       </span>
                     </td>
                     <td className="py-2.5 px-3">
-                      <span className="text-[11px] font-mono text-muted-foreground">
+                      <span className="font-mono text-muted-foreground">
                         {p.fqdn}:{p.port}
                       </span>
                       {!p.bound && <span className="ml-1.5 text-[9px] text-amber">unbound</span>}
                     </td>
                     <td className="py-2.5 px-3">
-                      <span className={`text-[11px] ${suiteColor[weakest.strength]}`}>{weakest.enc}</span>
+                      <span className={`${suiteColor[weakest.strength]}`}>{weakest.enc}</span>
                     </td>
                     <td className="py-2.5 px-3">
-                      <span className="text-[11px] text-muted-foreground">{p.kexStrength}</span>
+                      <span className="text-muted-foreground">{p.kexStrength}</span>
                     </td>
                     <td className="py-2.5 px-3">
-                      <span
-                        className={`text-[11px] ${p.exposure === "Internet-facing" ? "text-coral" : "text-muted-foreground"}`}
-                      >
+                      <span className={`${p.exposure === "Internet-facing" ? "text-coral" : "text-muted-foreground"}`}>
                         {p.exposure}
                       </span>
                     </td>
                     <td className="py-2.5 px-3 text-center">
-                      <span
-                        className={`text-[11px] font-semibold px-1.5 py-0.5 rounded tabular-nums ${crsChip(p.crs)}`}
-                      >
+                      <span className={`font-semibold px-1.5 py-0.5 rounded tabular-nums ${crsChip(p.crs)}`}>
                         {p.crs}
                       </span>
                     </td>
                     <td className="py-2.5 px-3">
                       <span className="inline-flex items-center gap-1.5">
                         <span className={`w-1.5 h-1.5 rounded-full ${SEV_DOT[p.severity]}`} />
-                        <span className={`text-[10px] font-semibold uppercase ${SEV_TEXT[p.severity]}`}>
-                          {p.severity}
-                        </span>
+                        <span className={`font-semibold uppercase ${SEV_TEXT[p.severity]}`}>{p.severity}</span>
                       </span>
                     </td>
                     <td className="py-2.5 px-3">
-                      <span className="text-[11px] text-muted-foreground">{p.policyViolations.length || "0"}</span>
+                      <span className="text-muted-foreground">{p.policyViolations.length || "0"}</span>
                     </td>
                     <td className="py-2.5 px-3">
-                      <span className="text-[10px] text-muted-foreground">{p.discoverySource}</span>
+                      <span className="text-muted-foreground">{p.discoverySource}</span>
                     </td>
                     <td className="py-2.5 px-2">
                       <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
@@ -821,18 +838,18 @@ export default function CryptoAssetsTab({ onCreateTicket }: { onCreateTicket: (c
             </tbody>
           </table>
         ) : (
-          <table className="w-full text-left">
+          <table className="w-full min-w-max text-xs table-auto text-left">
             <thead className="sticky top-0 bg-card z-[1]">
-              <tr className="text-[9.5px] uppercase tracking-wide text-muted-foreground border-b border-border">
-                <th className="py-2 px-3 font-medium">Library / Version</th>
-                <th className="py-2 px-3 font-medium">Provider</th>
-                <th className="py-2 px-3 font-medium">EOL</th>
-                <th className="py-2 px-3 font-medium text-center">CVEs</th>
-                <th className="py-2 px-3 font-medium text-center">Assets</th>
-                <th className="py-2 px-3 font-medium">In use</th>
-                <th className="py-2 px-3 font-medium text-center">CRS</th>
-                <th className="py-2 px-3 font-medium">Severity</th>
-                <th className="py-2 px-3 font-medium">Source</th>
+              <tr className="text-muted-foreground border-b border-border">
+                <th className="py-2.5 px-3 font-medium whitespace-nowrap">Library / Version</th>
+                <th className="py-2.5 px-3 font-medium whitespace-nowrap">Provider</th>
+                <th className="py-2.5 px-3 font-medium whitespace-nowrap">EOL</th>
+                <th className="py-2.5 px-3 font-medium whitespace-nowrap text-center">CVEs</th>
+                <th className="py-2.5 px-3 font-medium whitespace-nowrap text-center">Assets</th>
+                <th className="py-2.5 px-3 font-medium whitespace-nowrap">In use</th>
+                <th className="py-2.5 px-3 font-medium whitespace-nowrap text-center">CRS</th>
+                <th className="py-2.5 px-3 font-medium whitespace-nowrap">Severity</th>
+                <th className="py-2.5 px-3 font-medium whitespace-nowrap">Source</th>
                 <th className="py-2 px-2" />
               </tr>
             </thead>
@@ -844,53 +861,51 @@ export default function CryptoAssetsTab({ onCreateTicket }: { onCreateTicket: (c
                   className="border-b border-border/40 hover:bg-secondary/30 cursor-pointer"
                 >
                   <td className="py-2.5 px-3">
-                    <span className="text-[12px] text-foreground font-medium font-mono">
+                    <span className="text-foreground font-medium font-mono">
                       {l.name} {l.version}
                     </span>
                   </td>
                   <td className="py-2.5 px-3">
-                    <span className="text-[11px] text-muted-foreground">{l.provider}</span>
+                    <span className="text-muted-foreground">{l.provider}</span>
                   </td>
                   <td className="py-2.5 px-3">
                     <span
-                      className={`text-[11px] ${l.eolStatus === "End-of-Life" ? "text-coral" : l.eolStatus === "Outdated" ? "text-amber" : "text-teal"}`}
+                      className={`${l.eolStatus === "End-of-Life" ? "text-coral" : l.eolStatus === "Outdated" ? "text-amber" : "text-teal"}`}
                     >
                       {l.eolStatus}
                     </span>
                   </td>
                   <td className="py-2.5 px-3 text-center">
                     <span
-                      className={`text-[11px] ${l.maxCvss >= 7 ? "text-coral" : l.cveCount ? "text-amber" : "text-muted-foreground"}`}
+                      className={`${l.maxCvss >= 7 ? "text-coral" : l.cveCount ? "text-amber" : "text-muted-foreground"}`}
                     >
                       {l.cveCount ? `${l.cveCount} · ${l.maxCvss.toFixed(1)}` : "0"}
                     </span>
                   </td>
                   <td className="py-2.5 px-3 text-center">
-                    <span className="inline-flex items-center gap-1 text-[11px] text-foreground">
+                    <span className="inline-flex items-center gap-1 text-foreground">
                       <ArrowUpRight className="w-3 h-3 text-muted-foreground" />
                       {l.assetsAffected.length}
                     </span>
                   </td>
                   <td className="py-2.5 px-3">
-                    <span className={`text-[11px] ${l.inUse ? "text-coral" : "text-muted-foreground"}`}>
+                    <span className={`${l.inUse ? "text-coral" : "text-muted-foreground"}`}>
                       {l.inUse ? "In use" : "Dormant"}
                     </span>
                   </td>
                   <td className="py-2.5 px-3 text-center">
-                    <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded tabular-nums ${crsChip(l.crs)}`}>
+                    <span className={`font-semibold px-1.5 py-0.5 rounded tabular-nums ${crsChip(l.crs)}`}>
                       {l.crs}
                     </span>
                   </td>
                   <td className="py-2.5 px-3">
                     <span className="inline-flex items-center gap-1.5">
                       <span className={`w-1.5 h-1.5 rounded-full ${SEV_DOT[l.severity]}`} />
-                      <span className={`text-[10px] font-semibold uppercase ${SEV_TEXT[l.severity]}`}>
-                        {l.severity}
-                      </span>
+                      <span className={`font-semibold uppercase ${SEV_TEXT[l.severity]}`}>{l.severity}</span>
                     </span>
                   </td>
                   <td className="py-2.5 px-3">
-                    <span className="text-[10px] text-muted-foreground">{l.discoverySource}</span>
+                    <span className="text-muted-foreground">{l.discoverySource}</span>
                   </td>
                   <td className="py-2.5 px-2">
                     <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
