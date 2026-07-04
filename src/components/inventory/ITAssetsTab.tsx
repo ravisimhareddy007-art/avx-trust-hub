@@ -785,7 +785,7 @@ function ITAssetDetailPanel({
                     <button
                       key={p.id}
                       onClick={() => {
-                        setFilters({ tab: "crypto-assets", view: "protocols", objectId: p.id });
+                        setFilters({ tab: "crypto-assets", view: "protocols", q: `${p.fqdn}:${p.port}` });
                         setCurrentPage("inventory");
                         onClose();
                       }}
@@ -811,7 +811,7 @@ function ITAssetDetailPanel({
                     <button
                       key={l.id}
                       onClick={() => {
-                        setFilters({ tab: "crypto-assets", view: "libraries", objectId: l.id });
+                        setFilters({ tab: "crypto-assets", view: "libraries", q: `${l.name} ${l.version}` });
                         setCurrentPage("inventory");
                         onClose();
                       }}
@@ -1351,6 +1351,20 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                     </td>
                     <td className="py-2 px-2 text-center text-foreground font-medium">
                       {asset.cryptoObjectIds.length}
+                      {(() => {
+                        const sc =
+                          mockProtocols.filter((p) => p.fqdn === asset.name).length +
+                          mockLibraries.filter((l) => l.assetsAffected.includes(asset.name)).length;
+                        return sc > 0 ? (
+                          <span
+                            title="Protocols & libraries on this host"
+                            className="ml-1.5 inline-flex items-center gap-0.5 text-[9px] px-1 py-0.5 rounded bg-teal/10 text-teal align-middle"
+                          >
+                            <Network className="w-2.5 h-2.5" />
+                            {sc}
+                          </span>
+                        ) : null;
+                      })()}
                     </td>
                     <td
                       className="py-2 px-2 text-center"
