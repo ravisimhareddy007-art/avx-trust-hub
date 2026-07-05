@@ -38,7 +38,6 @@ export default function CryptoPostureGrid() {
   };
 
   const c = POSTURE.certs;
-  const certHero = c.expired + c.day7.reduce((a, b) => a + b, 0);
   const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const today = new Date();
   const dateLabel = (offsetDays: number) => {
@@ -264,7 +263,7 @@ export default function CryptoPostureGrid() {
           icon={FileBadge}
           label="Certificates"
           total={c.total}
-          hero={{ value: certHero, caption: "expired or expiring \u2264 7d", role: "critical" }}
+          hero={{ value: c.expired, caption: "expired", role: "critical" }}
           views={[
             {
               label: "7 days",
@@ -279,7 +278,6 @@ export default function CryptoPostureGrid() {
               distribution: { type: "bars", bars: win90Bars, xLabel: "Expiry date", yLabel: "Certificates" },
             },
           ]}
-          emphasis
           onOpen={() => go({ tab: "identities", type: "TLS Certificate" })}
         />
 
