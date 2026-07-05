@@ -18,6 +18,7 @@ import {
   ChevronUp,
   Shield,
   Key,
+  Server,
   Lock,
   X,
   Info,
@@ -115,6 +116,10 @@ const getPolicyTypeMeta = (type: PolicyType) => {
       return { label: "Secrets & Tokens", icon: Lock, cls: "bg-purple/10 text-purple border-purple/20" };
     case "encryption-keys":
       return { label: "Encryption Keys", icon: Key, cls: "bg-teal/10 text-teal border-teal/20" };
+    case "cloud-kms-key":
+      return { label: "Cloud KMS Keys", icon: Key, cls: "bg-teal/10 text-teal border-teal/20" };
+    case "hsm-key":
+      return { label: "HSM Keys", icon: Server, cls: "bg-amber/10 text-amber border-amber/20" };
     case "protocol-cipher":
       return { label: "Protocol & Cipher", icon: Shield, cls: "bg-purple/10 text-purple border-purple/20" };
     case "cbom":
@@ -161,6 +166,8 @@ function emptyTicket(): TicketConfig {
 }
 
 function assetTypeFor(policyType: string) {
+  if (policyType.includes("Cloud KMS Key")) return "Cloud KMS Key";
+  if (policyType.includes("HSM Key")) return "HSM Key";
   if (policyType.includes("SSH Certificate")) return "SSH Certificate";
   if (policyType.includes("Certificate")) return "TLS Certificate";
   if (policyType.includes("SSH")) return "SSH Key";
