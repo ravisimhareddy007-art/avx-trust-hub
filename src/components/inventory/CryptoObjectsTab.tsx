@@ -34,7 +34,6 @@ import { ticketForObject } from "@/lib/ticketStore";
 import { computeCRS } from "@/lib/risk/crs";
 import { useExceptions, effectiveViolations } from "@/lib/exceptions/ExceptionsContext";
 import { RaiseExceptionModal } from "@/lib/exceptions/ExceptionComponents";
-import TicketTriageModal from "@/components/dashboards/TicketTriageModal";
 
 // Map a violation label → its built-in policy (id + name). Returns null for
 // Returns null for labels with no backing policy.
@@ -74,6 +73,8 @@ const TYPE_FILTERS = [
   { key: "Code-Signing Certificate", label: "Code Signing" },
   { key: "K8s Workload Cert", label: "K8s Certs" },
   { key: "Encryption Key", label: "Enc Keys" },
+  { key: "Cloud KMS Key", label: "Cloud KMS Keys" },
+  { key: "HSM Key", label: "HSM Keys" },
   { key: "AI Agent Token", label: "AI Tokens" },
   { key: "API Key / Secret", label: "Secrets" },
 ];
@@ -163,6 +164,27 @@ const COLS: Record<string, ColDef[]> = {
     { key: "encPurpose", label: "Purpose", cls: "w-24" },
     { key: "lastRotated", label: "Last Rotated", cls: "w-28" },
     { key: "pqcRisk", label: "PQC", cls: "w-20" },
+    { key: "riskScore", label: "Risk", cls: "w-20" },
+  ],
+  "Cloud KMS Key": [
+    { key: "name", label: "Key Name", cls: "min-w-[180px] flex-1" },
+    { key: "cloudProvider", label: "Provider", cls: "w-20" },
+    { key: "certAlgSize", label: "Algorithm / Size", cls: "w-32" },
+    { key: "cloudRotation", label: "Rotation", cls: "w-24" },
+    { key: "cloudProtection", label: "Protection", cls: "w-24" },
+    { key: "pqcRisk", label: "PQC", cls: "w-20" },
+    { key: "owner", label: "Owner", cls: "w-28" },
+    { key: "violations", label: "Violations", cls: "w-20" },
+    { key: "riskScore", label: "Risk", cls: "w-20" },
+  ],
+  "HSM Key": [
+    { key: "name", label: "Key Name", cls: "min-w-[180px] flex-1" },
+    { key: "hsmVendor", label: "HSM", cls: "w-24" },
+    { key: "hsmClass", label: "Class", cls: "w-20" },
+    { key: "certAlgSize", label: "Algorithm / Size", cls: "w-32" },
+    { key: "hsmExtractable", label: "Assurance", cls: "w-28" },
+    { key: "pqcRisk", label: "PQC", cls: "w-20" },
+    { key: "violations", label: "Violations", cls: "w-20" },
     { key: "riskScore", label: "Risk", cls: "w-20" },
   ],
   "API Key / Secret": [
@@ -321,6 +343,36 @@ const ENC_AVAILABLE: ColDef[] = [
   { key: "discoverySource", label: "Discovery Source", cls: "w-32" },
 ];
 
+const CLOUD_AVAILABLE: ColDef[] = [
+  { key: "name", label: "Key Name", cls: "min-w-[180px] flex-1", defaultOn: true },
+  { key: "cloudProvider", label: "Provider", cls: "w-20", defaultOn: true },
+  { key: "certAlgSize", label: "Algorithm / Size", cls: "w-32", defaultOn: true },
+  { key: "cloudRotation", label: "Rotation", cls: "w-24", defaultOn: true },
+  { key: "cloudProtection", label: "Protection", cls: "w-24", defaultOn: true },
+  { key: "pqcRisk", label: "PQC", cls: "w-20", defaultOn: true },
+  { key: "owner", label: "Owner", cls: "w-28", defaultOn: true },
+  { key: "violations", label: "Violations", cls: "w-20", defaultOn: true },
+  { key: "riskScore", label: "Risk", cls: "w-20", defaultOn: true },
+  { key: "status", label: "Key State", cls: "w-24" },
+  { key: "environment", label: "Environment", cls: "w-24" },
+  { key: "lastRotated", label: "Last Rotated", cls: "w-28" },
+  { key: "discoverySource", label: "Discovery Source", cls: "w-32" },
+];
+
+const HSM_AVAILABLE: ColDef[] = [
+  { key: "name", label: "Key Name", cls: "min-w-[180px] flex-1", defaultOn: true },
+  { key: "hsmVendor", label: "HSM", cls: "w-24", defaultOn: true },
+  { key: "hsmClass", label: "Class", cls: "w-20", defaultOn: true },
+  { key: "certAlgSize", label: "Algorithm / Size", cls: "w-32", defaultOn: true },
+  { key: "hsmExtractable", label: "Assurance", cls: "w-28", defaultOn: true },
+  { key: "pqcRisk", label: "PQC", cls: "w-20", defaultOn: true },
+  { key: "violations", label: "Violations", cls: "w-20", defaultOn: true },
+  { key: "riskScore", label: "Risk", cls: "w-20", defaultOn: true },
+  { key: "owner", label: "Owner", cls: "w-28" },
+  { key: "environment", label: "Environment", cls: "w-24" },
+  { key: "discoverySource", label: "Discovery Source", cls: "w-32" },
+];
+
 const SEC_AVAILABLE: ColDef[] = [
   { key: "name", label: "Secret Name", cls: "min-w-[180px] flex-1", defaultOn: true },
   { key: "secretType", label: "Type", cls: "w-28", defaultOn: true },
@@ -365,6 +417,8 @@ const AVAILABLE_COLS: Record<string, ColDef[]> = {
   "SSH Key": SSHKEY_AVAILABLE,
   "SSH Certificate": SSHCERT_AVAILABLE,
   "Encryption Key": ENC_AVAILABLE,
+  "Cloud KMS Key": CLOUD_AVAILABLE,
+  "HSM Key": HSM_AVAILABLE,
   "API Key / Secret": SEC_AVAILABLE,
 };
 
@@ -621,6 +675,41 @@ function CellValue({ col, co }: { col: ColDef; co: CryptoAsset }) {
       return <span className="text-[10px] text-muted-foreground truncate">{co.encKey?.store ?? co.caIssuer}</span>;
     case "encPurpose":
       return <span className="text-[10px] text-muted-foreground">{co.encKey?.purpose ?? "-"}</span>;
+    // ── Cloud KMS Key cells ──
+    case "cloudProvider":
+      return <span className="text-[10px] font-medium text-muted-foreground">{co.cloudKey?.cloudProvider ?? "-"}</span>;
+    case "cloudRotation": {
+      const ck = co.cloudKey;
+      const bad = ck ? ck.rotationEnabled === false || (ck.daysSinceRotation ?? 0) > 365 : false;
+      return (
+        <span className={`text-[10px] font-medium ${bad ? "text-coral" : "text-teal"}`}>
+          {ck?.rotationEnabled === false ? "Disabled" : bad ? "Overdue" : "On"}
+        </span>
+      );
+    }
+    case "cloudProtection":
+      return (
+        <span
+          className={`text-[10px] font-medium ${co.cloudKey?.protectionLevel === "Software" ? "text-amber" : "text-teal"}`}
+        >
+          {co.cloudKey?.protectionLevel ?? "-"}
+        </span>
+      );
+    // ── HSM Key cells ──
+    case "hsmVendor":
+      return <span className="text-[10px] font-medium text-muted-foreground">{co.hsmKey?.hsmVendor ?? "-"}</span>;
+    case "hsmClass":
+      return <span className="text-[10px] text-muted-foreground">{co.hsmKey?.keyClass ?? "-"}</span>;
+    case "hsmExtractable": {
+      const hk = co.hsmKey;
+      if (!hk) return <span className="text-muted-foreground text-[10px]">-</span>;
+      const risk = hk.extractable === true || hk.sensitive === false;
+      return (
+        <span className={`text-[10px] font-medium ${risk ? "text-coral" : "text-teal"}`}>
+          {hk.extractable === true ? "Extractable" : hk.sensitive === false ? "Non-sensitive" : "Protected"}
+        </span>
+      );
+    }
     // ── Secret cells ──
     case "secStore":
       return <span className="text-[10px] text-muted-foreground truncate">{co.secret?.store ?? co.caIssuer}</span>;
@@ -881,6 +970,8 @@ function TypeMetadata({ co }: { co: CryptoAsset }) {
     sk = co.sshKey,
     sc = co.sshCert,
     ek = co.encKey,
+    ck = co.cloudKey,
+    hk = co.hsmKey,
     se = co.secret;
   const validity = `${co.issueDate}  ->  ${co.expiryDate}`;
   const expiresIn =
@@ -1208,6 +1299,182 @@ function TypeMetadata({ co }: { co: CryptoAsset }) {
     );
   }
 
+  if (co.type === "Cloud KMS Key") {
+    const rotBad = ck ? ck.rotationEnabled === false || (ck.daysSinceRotation ?? 0) > 365 : false;
+    const exposed = ck ? ck.publicAccess === true || ck.wildcardDecrypt === true : false;
+    return (
+      <>
+        <MetaRow
+          label="Key reference"
+          value={<span className="font-mono text-[10px] break-all">{ck?.keyRef ?? co.serial}</span>}
+        />
+        <MetaRow label="Cloud provider" value={ck?.cloudProvider ?? "-"} />
+        <MetaRow label="Key manager" value={ck?.keyManager ?? "-"} />
+        <MetaRow label="Algorithm / size" value={`${co.algorithm} · ${co.keyLength} bits`} />
+        <MetaRow label="Quantum readiness" value={quantum} />
+        <MetaRow
+          label="Protection level"
+          value={
+            <span className={ck?.protectionLevel === "Software" ? "text-amber" : "text-teal"}>
+              {ck?.protectionLevel ?? "-"}
+            </span>
+          }
+        />
+        <MetaRow
+          label="Key state"
+          value={
+            <span
+              className={
+                ck?.keyState === "PendingDeletion"
+                  ? "text-coral"
+                  : ck?.keyState === "Disabled"
+                    ? "text-amber"
+                    : "text-teal"
+              }
+            >
+              {ck?.keyState ?? "Enabled"}
+            </span>
+          }
+        />
+        <MetaRow
+          label="Rotation"
+          value={
+            <span className={rotBad ? "text-coral" : "text-teal"}>
+              {ck?.rotationEnabled === false ? "Disabled" : `Every ${ck?.rotationInterval ?? "?"}d`}
+              {ck?.daysSinceRotation != null ? ` · ${ck.daysSinceRotation}d since last rotation` : ""}
+            </span>
+          }
+        />
+        <MetaRow
+          label="Expiration set"
+          value={
+            <span className={ck?.expirationSet ? "text-teal" : "text-muted-foreground"}>
+              {ck?.expirationSet ? "Yes" : "No"}
+            </span>
+          }
+        />
+        <MetaRow
+          label="Access exposure"
+          value={
+            <span className={exposed ? "text-coral" : "text-teal"}>
+              {ck?.publicAccess
+                ? "Publicly accessible"
+                : ck?.wildcardDecrypt
+                  ? "Wildcard decrypt allowed"
+                  : "Least-privilege"}
+            </span>
+          }
+        />
+        <MetaRow
+          label="Deletion protection"
+          value={
+            <span className={ck?.deletionProtection ? "text-teal" : "text-amber"}>
+              {ck?.deletionProtection ? "Enabled" : "Disabled"}
+            </span>
+          }
+        />
+        <MetaRow
+          label="Audit logging"
+          value={
+            <span className={ck?.auditLogging ? "text-teal" : "text-amber"}>
+              {ck?.auditLogging ? "Enabled" : "Disabled"}
+            </span>
+          }
+        />
+        {ck?.purpose && <MetaRow label="Purpose" value={ck.purpose} />}
+        <MetaRow
+          label="Governance"
+          value={
+            <span className="text-muted-foreground">
+              Monitor only. Remediation is by ticket; the platform does not rotate or delete cloud keys.
+            </span>
+          }
+        />
+        <MetaRow label="Discovery source" value={co.discoverySource} />
+      </>
+    );
+  }
+
+  if (co.type === "HSM Key") {
+    const multiPurpose =
+      (hk?.usageFlags?.length ?? 0) > 1 &&
+      (hk?.usageFlags?.some((u) => u === "Sign" || u === "Verify") ?? false) &&
+      (hk?.usageFlags?.some((u) => u === "Encrypt" || u === "Decrypt" || u === "Wrap" || u === "Unwrap") ?? false);
+    return (
+      <>
+        <MetaRow
+          label="Key label"
+          value={<span className="font-mono text-[10px] break-all">{hk?.label ?? co.name}</span>}
+        />
+        <MetaRow
+          label="Object identifier"
+          value={<span className="font-mono text-[10px] break-all">{co.serial}</span>}
+        />
+        <MetaRow
+          label="HSM vendor / module"
+          value={`${hk?.hsmVendor ?? "-"}${hk?.moduleModel ? " · " + hk.moduleModel : ""}`}
+        />
+        <MetaRow
+          label="Partition / slot"
+          value={`${hk?.partition ?? "-"}${hk?.slot != null ? " · slot " + hk.slot : ""}`}
+        />
+        <MetaRow label="Key class" value={hk?.keyClass ?? "-"} />
+        <MetaRow label="Algorithm / size" value={`${co.algorithm} · ${co.keyLength} bits`} />
+        <MetaRow label="Quantum readiness" value={quantum} />
+        <MetaRow
+          label="Extractable"
+          value={
+            <span className={hk?.extractable ? "text-coral" : "text-teal"}>
+              {hk?.extractable
+                ? "Yes. Key material can leave the module, weakens the HSM guarantee."
+                : "No. Key material cannot leave the module."}
+            </span>
+          }
+        />
+        <MetaRow
+          label="Sensitive"
+          value={
+            <span className={hk?.sensitive === false ? "text-coral" : "text-teal"}>
+              {hk?.sensitive === false
+                ? "No. Key material may be read in the clear."
+                : "Yes. Key material is protected."}
+            </span>
+          }
+        />
+        <MetaRow
+          label="Never extractable / always sensitive"
+          value={`${hk?.neverExtractable ? "Yes" : "No"} · ${hk?.alwaysSensitive ? "Yes" : "No"}`}
+        />
+        <MetaRow
+          label="Usage"
+          value={
+            <span className={multiPurpose ? "text-amber" : "text-muted-foreground"}>
+              {hk?.usageFlags?.join(", ") ?? "-"}
+              {multiPurpose ? " · multiple purposes (key-separation risk)" : ""}
+            </span>
+          }
+        />
+        <MetaRow
+          label="Module FIPS mode"
+          value={
+            <span className={hk?.fipsMode === "FIPS-Approved" ? "text-teal" : "text-amber"}>{hk?.fipsMode ?? "-"}</span>
+          }
+        />
+        <MetaRow label="Validity" value={`${hk?.startDate ?? co.issueDate}  ->  ${hk?.endDate ?? "No end date"}`} />
+        <MetaRow
+          label="Governance"
+          value={
+            <span className="text-muted-foreground">
+              Monitor only. Enumerated read-only over PKCS#11; the platform does not generate, rotate, or delete keys in
+              the HSM.
+            </span>
+          }
+        />
+        <MetaRow label="Discovery source" value={co.discoverySource} />
+      </>
+    );
+  }
+
   if (co.type === "API Key / Secret") {
     const stale = co.rotationFrequency === "Never" || (se?.lastUsed != null && se.lastUsed < "2025-06-01");
     return (
@@ -1466,7 +1733,8 @@ function DetailPanel({
                 <div className="flex flex-wrap gap-1.5">
                   {objectTicket ? (
                     <span className="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[10px] font-semibold border border-teal/30 text-teal bg-teal/5">
-                      <Ticket className="w-3 h-3" /> Ticket {objectTicket.id} raised{objectTicket.externalSystem ? ` · ${objectTicket.externalSystem}` : ''}
+                      <Ticket className="w-3 h-3" /> Ticket {objectTicket.id} raised
+                      {objectTicket.externalSystem ? ` · ${objectTicket.externalSystem}` : ""}
                     </span>
                   ) : (
                     <>
@@ -1487,7 +1755,9 @@ function DetailPanel({
                         </button>
                       )}
                       {!hasPolicyViol && !isPqc && (
-                        <span className="text-[10px] text-muted-foreground">No policy violations. No action required.</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          No policy violations. No action required.
+                        </span>
                       )}
                     </>
                   )}
@@ -1512,7 +1782,11 @@ function DetailPanel({
                           ? "Workload details"
                           : co.type === "Encryption Key"
                             ? "Key details"
-                            : "Secret details"
+                            : co.type === "Cloud KMS Key"
+                              ? "Cloud key details"
+                              : co.type === "HSM Key"
+                                ? "HSM key details"
+                                : "Secret details"
               }
             />
             <TypeMetadata co={co} />
@@ -2024,7 +2298,6 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
   const [deployAsset, setDeployAsset] = useState<CryptoAsset | null>(null);
   const [sortKey, setSortKey] = useState<"riskScore" | "daysToExpiry">("riskScore");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  const [triageOpen, setTriageOpen] = useState(false);
 
   const { manualIdentities } = useInventoryRegistry();
   const { setSelectedEntity } = useAgent();
@@ -2284,16 +2557,15 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
                   )}
                 </button>
                 <span className="text-[10px] text-muted-foreground ml-auto tabular-nums">
-                  {navFilters.navTotal
-                    ? <>Showing <span className="font-semibold text-foreground">{filtered.length}</span> of {Number(navFilters.navTotal).toLocaleString()}</>
-                    : <>{filtered.length} identities</>}
+                  {navFilters.navTotal ? (
+                    <>
+                      Showing <span className="font-semibold text-foreground">{filtered.length}</span> of{" "}
+                      {Number(navFilters.navTotal).toLocaleString()}
+                    </>
+                  ) : (
+                    <>{filtered.length} identities</>
+                  )}
                 </span>
-                <button
-                  onClick={() => setTriageOpen(true)}
-                  className="flex items-center gap-1 text-[10px] px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors whitespace-nowrap"
-                >
-                  <Ticket className="w-3 h-3" /> Create tickets
-                </button>
                 <button
                   onClick={() => {
                     exportObjectsCsv(filtered, totalActive > 0 ? "filtered" : "all");
@@ -2474,8 +2746,6 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
         visibleColKeys={visibleColKeys}
         setVisibleColKeys={setVisibleColKeys}
       />
-
-      {triageOpen && <TicketTriageModal initialType="All" onClose={() => setTriageOpen(false)} />}
 
       <FilterPanel
         open={filterPanelOpen}
