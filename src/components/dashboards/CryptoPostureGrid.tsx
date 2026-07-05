@@ -1,6 +1,6 @@
 import React from "react";
 import { useNav } from "@/context/NavigationContext";
-import { FileBadge, FileKey, Key, Lock, Network, Package } from "lucide-react";
+import { FileBadge, FileKey, Key, Server, Lock, Network, Package } from "lucide-react";
 import { mockProtocols, mockLibraries } from "@/data/cryptoStackMockData";
 import PostureTile, { PostureRow, DonutSlice, Bar } from "./PostureTile";
 
@@ -26,7 +26,8 @@ const POSTURE = {
     age: [1240, 1980, 2360, 3540], // 0-30, 30-60, 60-90, 90+
     risks: { suspicious: 1204, misplaced: 642, shared: 588, rogue: 496, weak: 312 },
   },
-  enc: { total: 2847, oop: 1204, rotation: 642, quantum: 388, software: 724, unowned: 156 },
+  cloud: { total: 2847, oop: 1148, rotation: 642, access: 118, quantum: 388 },
+  hsm: { total: 1240, quantum: 96, extractable: 27, nonsensitive: 14, quantumSafe: 214 },
   secrets: { total: 6240, act: 3980, unrotated: 3210, orphaned: 512, noPolicy: 258 },
 };
 
@@ -124,31 +125,46 @@ export default function CryptoPostureGrid() {
     },
   ];
 
-  const e = POSTURE.enc;
-  const encRows: PostureRow[] = [
+  const cloud = POSTURE.cloud;
+  const cloudRows: PostureRow[] = [
     {
       label: "Rotation disabled / overdue",
-      count: e.rotation,
+      count: cloud.rotation,
       role: "critical",
-      onClick: () => go({ tab: "identities", type: "Encryption Key" }),
+      onClick: () => go({ tab: "identities", type: "Cloud KMS Key", filterId: "cloud_rotation_disabled" }),
+    },
+    {
+      label: "Publicly accessible / permissive",
+      count: cloud.access,
+      role: "critical",
+      onClick: () => go({ tab: "identities", type: "Cloud KMS Key", filterId: "cloud_public_access" }),
     },
     {
       label: "Quantum-vulnerable (RSA / ECC)",
-      count: e.quantum,
+      count: cloud.quantum,
       role: "high",
-      onClick: () => go({ tab: "identities", type: "Encryption Key" }),
+      onClick: () => go({ tab: "identities", type: "Cloud KMS Key", filterId: "cloud_quantum" }),
+    },
+  ];
+  const hsm = POSTURE.hsm;
+  const hsmRows: PostureRow[] = [
+    {
+      label: "Quantum-vulnerable (RSA / ECC)",
+      count: hsm.quantum,
+      role: "high",
+      onClick: () => go({ tab: "identities", type: "HSM Key", filterId: "hsm_quantum" }),
     },
     {
-      label: "Software-protected (not HSM)",
-      count: e.software,
-      role: "medium",
-      onClick: () => go({ tab: "identities", type: "Encryption Key" }),
+      label: "Extractable keys",
+      count: hsm.extractable,
+      role: "critical",
+      onClick: () => go({ tab: "identities", type: "HSM Key", filterId: "hsm_extractable" }),
     },
     {
-      label: "Unowned / untagged",
-      count: e.unowned,
-      role: "medium",
-      onClick: () => go({ tab: "identities", type: "Encryption Key" }),
+      label: "Non-sensitive keys",
+      count: hsm.nonsensitive,
+      role: "critical",
+      onClick: () => go({ tab: "identities", type: "HSM Key", filterId: "hsm_nonsensitive" }),
     },
   ];
   const s = POSTURE.secrets;
@@ -304,13 +320,24 @@ export default function CryptoPostureGrid() {
 
         <PostureTile
           icon={Key}
-          label="Encryption keys"
-          total={e.total}
-          caption={"AWS \u00b7 Azure \u00b7 GCP \u00b7 central visibility"}
-          hero={{ value: e.oop, caption: "out of policy", role: "high" }}
-          distribution={{ type: "rows", rows: encRows }}
+          label="Cloud KMS Keys"
+          total={cloud.total}
+          caption={"AWS \u00b7 Azure \u00b7 central visibility"}
+          hero={{ value: cloud.oop, caption: "out of policy", role: "high" }}
+          distribution={{ type: "rows", rows: cloudRows }}
           footerNote={"Monitor only \u00b7 ticket to act"}
-          onOpen={() => go({ tab: "identities", type: "Encryption Key" })}
+          onOpen={() => go({ tab: "identities", type: "Cloud KMS Key" })}
+        />
+
+        <PostureTile
+          icon={Server}
+          label="HSM Keys"
+          total={hsm.total}
+          caption={"Utimaco \u00b7 Crypto4A \u00b7 hardware root of trust"}
+          hero={{ value: hsm.quantum, caption: "quantum-vulnerable", role: "high" }}
+          distribution={{ type: "rows", rows: hsmRows }}
+          footerNote={"Monitor only \u00b7 ticket to act"}
+          onOpen={() => go({ tab: "identities", type: "HSM Key" })}
         />
 
         <PostureTile
