@@ -15,11 +15,11 @@ const REDDARK = "#b23524";
 // pattern as ESTATE_SUMMARY. Replace with live aggregates when the backend lands.
 const POSTURE = {
   certs: {
-    total: 18402,
-    expired: 213,
-    day7: [41, 28, 35, 22, 47, 31, 39], // per day, next 7 days
-    win30: [188, 142, 165, 121, 98, 84], // 5-day intervals to 30 days
-    win90: [512, 388, 305, 261, 198, 176], // 15-day intervals to 90 days
+    total: 42860,
+    expired: 486,
+    day7: [412, 288, 355, 221, 470, 312, 393], // per day, next 7 days
+    win30: [1880, 1420, 1650, 1210, 980, 840], // 5-day intervals to 30 days
+    win90: [5120, 3880, 3050, 2610, 1980, 1760], // 15-day intervals to 90 days
   },
   ssh: {
     total: 9120,
@@ -39,22 +39,27 @@ export default function CryptoPostureGrid() {
 
   const c = POSTURE.certs;
   const certHero = c.expired + c.day7.reduce((a, b) => a + b, 0);
+  const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const today = new Date();
+  const dateLabel = (offsetDays: number) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + offsetDays);
+    return `${d.getDate()} ${MON[d.getMonth()]}`;
+  };
   const day7Bars: Bar[] = c.day7.map((n, i) => ({
-    label: String(i + 1),
+    label: dateLabel(i + 1),
     count: n,
     color: CORAL,
     onClick: () => go({ tab: "identities", type: "TLS Certificate", filterId: "cert_expiring_7d" }),
   }));
-  const w30Labels = ["0-5", "5-10", "10-15", "15-20", "20-25", "25-30"];
   const win30Bars: Bar[] = c.win30.map((n, i) => ({
-    label: w30Labels[i],
+    label: dateLabel(i * 5),
     count: n,
     color: AMBER,
     onClick: () => go({ tab: "identities", type: "TLS Certificate", filterId: "cert_expiring_30d" }),
   }));
-  const w90Labels = ["0-15", "15-30", "30-45", "45-60", "60-75", "75-90"];
   const win90Bars: Bar[] = c.win90.map((n, i) => ({
-    label: w90Labels[i],
+    label: dateLabel(i * 15),
     count: n,
     color: MUTED,
     onClick: () => go({ tab: "identities", type: "TLS Certificate" }),
@@ -92,31 +97,31 @@ export default function CryptoPostureGrid() {
       label: "Suspicious keys",
       count: r.suspicious,
       role: "critical",
-      onClick: () => go({ tab: "identities", filterId: "ssh_suspicious" }),
+      onClick: () => go({ tab: "identities", type: "SSH Key", filterId: "ssh_suspicious" }),
     },
     {
       label: "Misplaced keys",
       count: r.misplaced,
       role: "high",
-      onClick: () => go({ tab: "identities", filterId: "ssh_misplaced" }),
+      onClick: () => go({ tab: "identities", type: "SSH Key", filterId: "ssh_misplaced" }),
     },
     {
       label: "Shared keys",
       count: r.shared,
       role: "high",
-      onClick: () => go({ tab: "identities", filterId: "ssh_shared_user" }),
+      onClick: () => go({ tab: "identities", type: "SSH Key", filterId: "ssh_shared_user" }),
     },
     {
       label: "Rogue keys",
       count: r.rogue,
       role: "critical",
-      onClick: () => go({ tab: "identities", filterId: "ssh_rogue" }),
+      onClick: () => go({ tab: "identities", type: "SSH Key", filterId: "ssh_rogue" }),
     },
     {
       label: "Weak keys",
       count: r.weak,
       role: "medium",
-      onClick: () => go({ tab: "identities", filterId: "ssh_weak_user" }),
+      onClick: () => go({ tab: "identities", type: "SSH Key", filterId: "ssh_weak_user" }),
     },
   ];
 
@@ -261,9 +266,18 @@ export default function CryptoPostureGrid() {
           total={c.total}
           hero={{ value: certHero, caption: "expired or expiring \u2264 7d", role: "critical" }}
           views={[
-            { label: "7 days", distribution: { type: "bars", bars: day7Bars } },
-            { label: "30 days", distribution: { type: "bars", bars: win30Bars } },
-            { label: "90 days", distribution: { type: "bars", bars: win90Bars } },
+            {
+              label: "7 days",
+              distribution: { type: "bars", bars: day7Bars, xLabel: "Expiry date", yLabel: "Certificates" },
+            },
+            {
+              label: "30 days",
+              distribution: { type: "bars", bars: win30Bars, xLabel: "Expiry date", yLabel: "Certificates" },
+            },
+            {
+              label: "90 days",
+              distribution: { type: "bars", bars: win90Bars, xLabel: "Expiry date", yLabel: "Certificates" },
+            },
           ]}
           emphasis
           onOpen={() => go({ tab: "identities", type: "TLS Certificate" })}
@@ -278,7 +292,7 @@ export default function CryptoPostureGrid() {
             {
               label: "Key age",
               hero: { value: POSTURE.ssh.age[3], caption: "not rotated 90d+", role: "high" },
-              distribution: { type: "bars", bars: sshAgeBars },
+              distribution: { type: "bars", bars: sshAgeBars, xLabel: "Key age (days)", yLabel: "SSH keys" },
             },
             {
               label: "Risks",
