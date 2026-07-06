@@ -18793,22 +18793,22 @@ export const policyRules = [
 
   {
     id: "oob-ck-2",
-    name: "Publicly Accessible or Overly Permissive Key Policy",
+    name: "Overly Permissive Key Policy",
     type: "Cloud KMS Key",
     description:
-      "Cloud KMS key policy allows public access or grants decrypt to overly broad principals (wildcard). AWS Security Hub KMS.1, KMS.2 and KMS.5 and NIST SP 800-53 AC-6 require least-privilege key access.",
+      "Cloud KMS key policy grants decrypt to overly broad principals: broad kms:Decrypt on all keys, a wildcard or cross-account principal, or public access. Overly permissive key policies are the most common KMS misconfiguration. AWS Security Hub KMS.1, KMS.2 and KMS.5 and NIST SP 800-53 AC-6 require least-privilege key access.",
     severity: "Critical",
-    affectedAssets: 118,
+    affectedAssets: 214,
     enabled: true,
     lastTriggered: "3 hours ago",
     framework: "AWS Security Hub KMS.1 / KMS.2 / KMS.5 | NIST SP 800-53 AC-6",
     source: "Built-in",
     readOnly: true,
-    conditionText: "Publicly Accessible is true OR Wildcard Decrypt Allowed is true",
+    conditionText: "Wildcard Decrypt Allowed is true OR Publicly Accessible is true",
     conditionGroups: [
       _g("oob-ck-2-g1", "OR", [
-        { field: "public_access", operator: "is_true", value: "" },
         { field: "wildcard_decrypt", operator: "is_true", value: "" },
+        { field: "public_access", operator: "is_true", value: "" },
       ]),
     ],
     groupLogic: "OR" as const,
@@ -18854,19 +18854,24 @@ export const policyRules = [
 
   {
     id: "oob-hk-2",
-    name: "Non-Sensitive Key (Material Readable)",
+    name: "Weak or Deprecated Algorithm",
     type: "HSM Key",
     description:
-      "HSM key is not marked sensitive (CKA_SENSITIVE false), so key material may be read in the clear. NIST SP 800-57 and FIPS 140 require key material to be sensitive.",
-    severity: "Critical",
-    affectedAssets: 14,
+      "HSM key uses a below-baseline or deprecated algorithm (for example RSA-2048 or smaller, or a deprecated key type). NIST SP 800-57 sets minimum strengths (AES-256, RSA-3072, ECDSA P-256).",
+    severity: "High",
+    affectedAssets: 62,
     enabled: true,
     lastTriggered: "6 hours ago",
-    framework: "NIST SP 800-57 | FIPS 140",
+    framework: "NIST SP 800-57 (minimum key strengths)",
     source: "Built-in",
     readOnly: true,
-    conditionText: "Sensitive is false",
-    conditionGroups: [_g("oob-hk-2-g1", "AND", [{ field: "sensitive", operator: "is_false", value: "" }])],
+    conditionText: "Key Type equals RSA AND Key Length Bits less than 3072",
+    conditionGroups: [
+      _g("oob-hk-2-g1", "AND", [
+        { field: "key_type", operator: "eq", value: "RSA" },
+        { field: "key_bits", operator: "lt", value: "3072" },
+      ]),
+    ],
     groupLogic: "AND" as const,
   },
 
