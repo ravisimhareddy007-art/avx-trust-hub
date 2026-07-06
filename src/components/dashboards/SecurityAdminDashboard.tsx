@@ -78,8 +78,8 @@ export default function SecurityAdminDashboard() {
 
               <EnterpriseRiskScore />
 
-              <CryptoPostureGrid />
               <InfrastructurePostureStrip />
+              <CryptoPostureGrid />
             </div>
           </div>
         </div>
