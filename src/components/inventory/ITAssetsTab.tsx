@@ -173,16 +173,11 @@ function parseInfra(infra: string): string[] {
 }
 
 const assetTypeIcons: Record<string, string> = {
-  "Web Server": "🌐",
-  "Application Server": "📦",
-  "Database Server": "🗃️",
+  Host: "🖥️",
+  Application: "📦",
+  Database: "🗃️",
   "API Gateway": "🔌",
-  "K8s Cluster": "☸️",
-  "Mail Server": "📧",
-  "Bastion Host": "🏰",
-  HSM: "🔐",
-  "Vault Server": "🗝️",
-  "AI Platform": "🤖",
+  "Kubernetes Workload": "☸️",
 };
 
 function RiskGauge({ score, size = 80 }: { score: number; size?: number }) {
@@ -863,7 +858,10 @@ function ITAssetDetailPanel({
                       </button>
                     ),
                   },
-                  { label: "Type", value: asset.type },
+                  { label: "Class", value: asset.assetClass },
+                  ...(asset.role ? [{ label: "Role", value: asset.role }] : []),
+                  ...(asset.technology ? [{ label: "Technology", value: asset.technology }] : []),
+                  { label: "Source", value: asset.source },
                   { label: "Environment", value: asset.environment },
                   { label: "Owner team", value: asset.ownerTeam },
                   { label: "Infrastructure", value: asset.infrastructure },
@@ -1018,7 +1016,7 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
       );
     }
     if (envFilter) result = result.filter((x) => x.asset.environment === envFilter);
-    if (typeFilter) result = result.filter((x) => x.asset.type === typeFilter);
+    if (typeFilter) result = result.filter((x) => x.asset.assetClass === typeFilter);
     if (teamFilter) result = result.filter((x) => x.asset.ownerTeam === teamFilter);
     if (biFilter) result = result.filter((x) => x.bi === biFilter);
     result = result.filter((x) => x.ars >= riskRange[0] && x.ars <= riskRange[1]);
@@ -1057,7 +1055,7 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
   ]);
 
   const uniqueTeams = [...new Set(allAssets.map((a) => a.ownerTeam))];
-  const uniqueTypes = [...new Set(allAssets.map((a) => a.type))];
+  const uniqueTypes = [...new Set(allAssets.map((a) => a.assetClass))];
 
   const isManual = (a: ITAsset) => manualITAssets.some((m) => m.id === a.id);
 
@@ -1328,7 +1326,7 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                     </td>
                     <td className="py-2 px-3">
                       <div className="flex items-center gap-2">
-                        <span>{assetTypeIcons[asset.type] || "📋"}</span>
+                        <span>{assetTypeIcons[asset.assetClass] || "📋"}</span>
                         <span className="min-w-0">
                           <span className="font-medium text-foreground truncate max-w-[220px] block">{asset.name}</span>
                           <span className="text-[10px] text-muted-foreground/70 truncate max-w-[220px] block">
@@ -1345,7 +1343,10 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
                         )}
                       </div>
                     </td>
-                    <td className="py-2 px-2 text-muted-foreground">{asset.type}</td>
+                    <td className="py-2 px-2 text-muted-foreground">
+                      {asset.assetClass}
+                      {asset.role && asset.role !== asset.assetClass ? ` · ${asset.role}` : ""}
+                    </td>
                     <td className="py-2 px-2">
                       <EnvBadge env={asset.environment} />
                     </td>
