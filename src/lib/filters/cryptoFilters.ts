@@ -190,17 +190,61 @@ export const VIOLATION_FILTERS: Record<string, DashboardFilter> = {
     pts: 8,
     filters: { type: "Cloud KMS Key", filterId: "cloud_rotation_disabled", tab: "identities" },
   },
-  cloud_public_access: {
-    id: "cloud_public_access",
-    label: "Cloud KMS keys: publicly accessible or overly permissive",
+  cloud_overpermissive: {
+    id: "cloud_overpermissive",
+    label: "Cloud KMS keys: overly permissive access",
     countNoun: "keys",
     predicate: (a) =>
       a.type === "Cloud KMS Key" &&
       !!a.cloudKey &&
       (a.cloudKey.publicAccess === true || a.cloudKey.wildcardDecrypt === true),
-    enterpriseCount: 118,
+    enterpriseCount: 214,
     pts: 8,
-    filters: { type: "Cloud KMS Key", filterId: "cloud_public_access", tab: "identities" },
+    filters: { type: "Cloud KMS Key", filterId: "cloud_overpermissive", tab: "identities" },
+  },
+  cloud_lifecycle: {
+    id: "cloud_lifecycle",
+    label: "Cloud KMS keys: unused or pending deletion",
+    countNoun: "keys",
+    predicate: (a) =>
+      a.type === "Cloud KMS Key" &&
+      (a.status === "Orphaned" ||
+        (!!a.cloudKey && (a.cloudKey.keyState === "PendingDeletion" || a.cloudKey.keyState === "Disabled"))),
+    enterpriseCount: 168,
+    pts: 5,
+    filters: { type: "Cloud KMS Key", filterId: "cloud_lifecycle", tab: "identities" },
+  },
+  cloud_prot_software: {
+    id: "cloud_prot_software",
+    label: "Cloud KMS keys: software-protected",
+    countNoun: "keys",
+    predicate: (a) => a.type === "Cloud KMS Key" && a.cloudKey?.protectionLevel === "Software",
+    enterpriseCount: 724,
+    filters: { type: "Cloud KMS Key", filterId: "cloud_prot_software", tab: "identities" },
+  },
+  cloud_prot_hsm: {
+    id: "cloud_prot_hsm",
+    label: "Cloud KMS keys: HSM-protected",
+    countNoun: "keys",
+    predicate: (a) => a.type === "Cloud KMS Key" && a.cloudKey?.protectionLevel === "HSM",
+    enterpriseCount: 1680,
+    filters: { type: "Cloud KMS Key", filterId: "cloud_prot_hsm", tab: "identities" },
+  },
+  cloud_prot_cloudhsm: {
+    id: "cloud_prot_cloudhsm",
+    label: "Cloud KMS keys: CloudHSM-protected",
+    countNoun: "keys",
+    predicate: (a) => a.type === "Cloud KMS Key" && a.cloudKey?.protectionLevel === "CloudHSM",
+    enterpriseCount: 328,
+    filters: { type: "Cloud KMS Key", filterId: "cloud_prot_cloudhsm", tab: "identities" },
+  },
+  cloud_prot_externalhsm: {
+    id: "cloud_prot_externalhsm",
+    label: "Cloud KMS keys: External HSM-protected",
+    countNoun: "keys",
+    predicate: (a) => a.type === "Cloud KMS Key" && a.cloudKey?.protectionLevel === "External HSM",
+    enterpriseCount: 115,
+    filters: { type: "Cloud KMS Key", filterId: "cloud_prot_externalhsm", tab: "identities" },
   },
   cloud_quantum: {
     id: "cloud_quantum",
@@ -239,6 +283,34 @@ export const VIOLATION_FILTERS: Record<string, DashboardFilter> = {
     enterpriseCount: 96,
     pts: 5,
     filters: { type: "HSM Key", filterId: "hsm_quantum", tab: "identities" },
+  },
+  hsm_weak_algo: {
+    id: "hsm_weak_algo",
+    label: "HSM keys: weak or deprecated algorithm",
+    countNoun: "keys",
+    predicate: (a) =>
+      a.type === "HSM Key" &&
+      ((/^RSA/.test(a.algorithm) && parseInt(String(a.keyLength), 10) < 3072) ||
+        /^(DSA|DH|MD5|SHA-1)/.test(a.algorithm)),
+    enterpriseCount: 62,
+    pts: 5,
+    filters: { type: "HSM Key", filterId: "hsm_weak_algo", tab: "identities" },
+  },
+  hsm_classical: {
+    id: "hsm_classical",
+    label: "HSM keys: classical algorithm (RSA / ECC)",
+    countNoun: "keys",
+    predicate: (a) => a.type === "HSM Key" && /^(RSA|ECC|ECDSA|ECDH|DSA|DH)\b/.test(a.algorithm),
+    enterpriseCount: 1026,
+    filters: { type: "HSM Key", filterId: "hsm_classical", tab: "identities" },
+  },
+  hsm_pqc: {
+    id: "hsm_pqc",
+    label: "HSM keys: post-quantum algorithm",
+    countNoun: "keys",
+    predicate: (a) => a.type === "HSM Key" && /^(ML-KEM|ML-DSA|SLH-DSA|LMS|XMSS)/.test(a.algorithm),
+    enterpriseCount: 214,
+    filters: { type: "HSM Key", filterId: "hsm_pqc", tab: "identities" },
   },
 };
 
