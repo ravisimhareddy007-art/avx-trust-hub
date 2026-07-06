@@ -1,7 +1,6 @@
 import React from "react";
 import { Server, Package, Database, Globe, Boxes } from "lucide-react";
 import { useNav } from "@/context/NavigationContext";
-import { mockITAssets } from "@/data/inventoryMockData";
 
 // Infrastructure Coverage. IT assets are carriers of crypto objects, not governed
 // entities, so this strip is pure inventory: how many assets of each class we
@@ -14,14 +13,40 @@ interface ClassTile {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   color: string;
+  // Estate-scale figures for the dashboard. The inventory shows the discovered
+  // sample with a "showing X of Y" note; the dashboard reports estate totals,
+  // the same pattern as the cryptographic posture tiles.
+  assets: number;
+  objects: number;
 }
 
 const CLASSES: ClassTile[] = [
-  { assetClass: "Host", label: "Hosts", icon: Server, color: "hsl(var(--teal))" },
-  { assetClass: "Application", label: "Applications", icon: Package, color: "#7c6bd6" },
-  { assetClass: "Database", label: "Databases", icon: Database, color: "hsl(var(--amber))" },
-  { assetClass: "API Gateway", label: "API Gateways", icon: Globe, color: "hsl(var(--coral))" },
-  { assetClass: "Kubernetes Workload", label: "K8s Workloads", icon: Boxes, color: "#3b82c4" },
+  { assetClass: "Host", label: "Hosts", icon: Server, color: "hsl(var(--teal))", assets: 12400, objects: 38200 },
+  { assetClass: "Application", label: "Applications", icon: Package, color: "#7c6bd6", assets: 3850, objects: 12400 },
+  {
+    assetClass: "Database",
+    label: "Databases",
+    icon: Database,
+    color: "hsl(var(--amber))",
+    assets: 1240,
+    objects: 3100,
+  },
+  {
+    assetClass: "API Gateway",
+    label: "API Gateways",
+    icon: Globe,
+    color: "hsl(var(--coral))",
+    assets: 1840,
+    objects: 5600,
+  },
+  {
+    assetClass: "Kubernetes Workload",
+    label: "K8s Workloads",
+    icon: Boxes,
+    color: "#3b82c4",
+    assets: 2760,
+    objects: 8900,
+  },
 ];
 
 export default function InfrastructurePostureStrip() {
@@ -34,16 +59,12 @@ export default function InfrastructurePostureStrip() {
 
   const { stats, totalAssets, totalObjects } = React.useMemo(() => {
     const m: Record<string, { assets: number; objects: number }> = {};
-    for (const c of CLASSES) m[c.assetClass] = { assets: 0, objects: 0 };
     let ta = 0;
     let to = 0;
-    for (const a of mockITAssets) {
-      const bucket = m[a.assetClass];
-      if (!bucket) continue;
-      bucket.assets += 1;
-      bucket.objects += a.cryptoObjectIds.length;
-      ta += 1;
-      to += a.cryptoObjectIds.length;
+    for (const c of CLASSES) {
+      m[c.assetClass] = { assets: c.assets, objects: c.objects };
+      ta += c.assets;
+      to += c.objects;
     }
     return { stats: m, totalAssets: ta, totalObjects: to };
   }, []);
