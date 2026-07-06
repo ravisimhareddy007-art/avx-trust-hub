@@ -1123,7 +1123,26 @@ export default function ITAssetsTab({ onCreateTicket, onOpenPolicyDrawer }: Prop
             )}
           </button>
           <span className="text-[10px] text-muted-foreground">
-            {filtered.length} assets · sorted by{" "}
+            {navFilters.enterpriseCount && typeFilter ? (
+              <>
+                Showing <span className="font-semibold text-foreground">{filtered.length}</span>{" "}
+                {typeFilter === "Host"
+                  ? "hosts"
+                  : typeFilter === "Database"
+                    ? "databases"
+                    : typeFilter === "Application"
+                      ? "applications"
+                      : typeFilter === "API Gateway"
+                        ? "API gateways"
+                        : typeFilter === "Kubernetes Workload"
+                          ? "K8s workloads"
+                          : "assets"}{" "}
+                of {parseInt(navFilters.enterpriseCount).toLocaleString()} in estate
+              </>
+            ) : (
+              <>{filtered.length} assets</>
+            )}
+            {" · sorted by "}
             {sortKey === "rps"
               ? "priority"
               : sortKey === "ars"
