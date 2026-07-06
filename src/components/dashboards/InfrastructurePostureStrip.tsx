@@ -52,8 +52,8 @@ const CLASSES: ClassTile[] = [
 export default function InfrastructurePostureStrip() {
   const { setCurrentPage, setFilters } = useNav();
 
-  const navTile = (assetClass: string) => {
-    setFilters({ type: assetClass, tab: "infrastructure" });
+  const navTile = (assetClass: string, assets: number) => {
+    setFilters({ type: assetClass, tab: "infrastructure", enterpriseCount: String(assets) });
     setCurrentPage("inventory");
   };
 
@@ -74,7 +74,7 @@ export default function InfrastructurePostureStrip() {
       {/* Header */}
       <div className="flex items-end justify-between mb-3">
         <div>
-          <h2 className="text-sm font-semibold text-foreground">Infrastructure Coverage</h2>
+          <h2 className="text-sm font-semibold text-foreground">Infrastructure Estate</h2>
           <p className="text-[10px] text-muted-foreground mt-0.5">
             Where your discovered crypto objects live. Click a class to drill in.
           </p>
@@ -97,7 +97,7 @@ export default function InfrastructurePostureStrip() {
           return (
             <button
               key={c.assetClass}
-              onClick={() => navTile(c.assetClass)}
+              onClick={() => navTile(c.assetClass, c.assets)}
               title={`${c.label}: ${s.objects} crypto objects`}
               className="h-full transition-opacity hover:opacity-80"
               style={{ width: `${pct}%`, background: c.color }}
@@ -115,7 +115,7 @@ export default function InfrastructurePostureStrip() {
           return (
             <button
               key={tile.assetClass}
-              onClick={() => navTile(tile.assetClass)}
+              onClick={() => navTile(tile.assetClass, tile.assets)}
               className="rounded-lg border border-border/60 hover:border-border bg-secondary/20 hover:bg-secondary/40 transition-all flex flex-col text-left p-3 group"
               style={{ borderLeft: `3px solid ${tile.color}` }}
             >
