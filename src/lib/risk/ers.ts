@@ -287,7 +287,7 @@ export function computeERS(assets: ITAsset[], bi: Record<string, BusinessImpact>
 
 export function defaultBI(asset: ITAsset): BusinessImpact {
   if (asset.environment !== "Production") return asset.environment === "Staging" ? "Moderate" : "Low";
-  if (/Vault|HSM|Database|API Gateway/.test(asset.type)) return "Critical";
+  if (/Database|API Gateway/.test(asset.assetClass)) return "Critical";
   if (asset.criticalViolations >= 2) return "Critical";
   if (asset.criticalViolations >= 1) return "High";
   return "Moderate";
