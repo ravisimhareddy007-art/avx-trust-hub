@@ -72,7 +72,6 @@ const TYPE_FILTERS = [
   { key: "SSH Certificate", label: "SSH Certs" },
   { key: "Code-Signing Certificate", label: "Code Signing" },
   { key: "K8s Workload Cert", label: "K8s Certs" },
-  { key: "Encryption Key", label: "Enc Keys" },
   { key: "Cloud KMS Key", label: "Cloud KMS Keys" },
   { key: "HSM Key", label: "HSM Keys" },
   { key: "AI Agent Token", label: "AI Tokens" },
@@ -346,10 +345,11 @@ const ENC_AVAILABLE: ColDef[] = [
 const CLOUD_AVAILABLE: ColDef[] = [
   { key: "name", label: "Key Name", cls: "min-w-[180px] flex-1", defaultOn: true },
   { key: "cloudProvider", label: "Provider", cls: "w-20", defaultOn: true },
+  { key: "cloudRegion", label: "Region", cls: "w-24", defaultOn: true },
   { key: "certAlgSize", label: "Algorithm / Size", cls: "w-32", defaultOn: true },
+  { key: "cloudProtection", label: "Protection Level", cls: "w-28", defaultOn: true },
+  { key: "cloudPurpose", label: "Usage / Purpose", cls: "w-32", defaultOn: true },
   { key: "cloudRotation", label: "Rotation", cls: "w-24", defaultOn: true },
-  { key: "cloudProtection", label: "Protection", cls: "w-24", defaultOn: true },
-  { key: "pqcRisk", label: "PQC", cls: "w-20", defaultOn: true },
   { key: "owner", label: "Owner", cls: "w-28", defaultOn: true },
   { key: "violations", label: "Violations", cls: "w-20", defaultOn: true },
   { key: "riskScore", label: "Risk", cls: "w-20", defaultOn: true },
@@ -362,12 +362,15 @@ const CLOUD_AVAILABLE: ColDef[] = [
 const HSM_AVAILABLE: ColDef[] = [
   { key: "name", label: "Key Name", cls: "min-w-[180px] flex-1", defaultOn: true },
   { key: "hsmVendor", label: "HSM", cls: "w-24", defaultOn: true },
-  { key: "hsmClass", label: "Class", cls: "w-20", defaultOn: true },
+  { key: "hsmPartition", label: "Partition", cls: "w-24", defaultOn: true },
+  { key: "hsmKeyType", label: "Key Type", cls: "w-28", defaultOn: true },
+  { key: "hsmPurpose", label: "Purpose", cls: "w-32", defaultOn: true },
   { key: "certAlgSize", label: "Algorithm / Size", cls: "w-32", defaultOn: true },
   { key: "hsmExtractable", label: "Assurance", cls: "w-28", defaultOn: true },
-  { key: "pqcRisk", label: "PQC", cls: "w-20", defaultOn: true },
+  { key: "hsmKeyState", label: "Key State", cls: "w-24", defaultOn: true },
   { key: "violations", label: "Violations", cls: "w-20", defaultOn: true },
   { key: "riskScore", label: "Risk", cls: "w-20", defaultOn: true },
+  { key: "pqcRisk", label: "PQC", cls: "w-20" },
   { key: "owner", label: "Owner", cls: "w-28" },
   { key: "environment", label: "Environment", cls: "w-24" },
   { key: "discoverySource", label: "Discovery Source", cls: "w-32" },
@@ -678,6 +681,8 @@ function CellValue({ col, co }: { col: ColDef; co: CryptoAsset }) {
     // ── Cloud KMS Key cells ──
     case "cloudProvider":
       return <span className="text-[10px] font-medium text-muted-foreground">{co.cloudKey?.cloudProvider ?? "-"}</span>;
+    case "cloudRegion":
+      return <span className="text-[10px] text-muted-foreground font-mono">{co.cloudKey?.region ?? "-"}</span>;
     case "cloudRotation": {
       const ck = co.cloudKey;
       const bad = ck ? ck.rotationEnabled === false || (ck.daysSinceRotation ?? 0) > 365 : false;
@@ -687,19 +692,33 @@ function CellValue({ col, co }: { col: ColDef; co: CryptoAsset }) {
         </span>
       );
     }
-    case "cloudProtection":
+    case "cloudProtection": {
+      const pl = co.cloudKey?.protectionLevel;
       return (
-        <span
-          className={`text-[10px] font-medium ${co.cloudKey?.protectionLevel === "Software" ? "text-amber" : "text-teal"}`}
-        >
-          {co.cloudKey?.protectionLevel ?? "-"}
-        </span>
+        <span className={`text-[10px] font-medium ${pl === "Software" ? "text-amber" : "text-teal"}`}>{pl ?? "-"}</span>
       );
+    }
+    case "cloudPurpose":
+      return <span className="text-[10px] text-muted-foreground">{co.cloudKey?.purpose ?? "-"}</span>;
     // ── HSM Key cells ──
     case "hsmVendor":
       return <span className="text-[10px] font-medium text-muted-foreground">{co.hsmKey?.hsmVendor ?? "-"}</span>;
-    case "hsmClass":
-      return <span className="text-[10px] text-muted-foreground">{co.hsmKey?.keyClass ?? "-"}</span>;
+    case "hsmPartition":
+      return <span className="text-[10px] text-muted-foreground">{co.hsmKey?.partition ?? "-"}</span>;
+    case "hsmKeyType": {
+      const kc = co.hsmKey?.keyClass;
+      const human =
+        kc === "Secret" ? "Symmetric Key" : kc === "Private" ? "Private Key" : kc === "Public" ? "Public Key" : "-";
+      return <span className="text-[10px] text-muted-foreground">{human}</span>;
+    }
+    case "hsmPurpose":
+      return <span className="text-[10px] text-muted-foreground">{co.hsmKey?.purpose ?? "-"}</span>;
+    case "hsmKeyState": {
+      const ks = co.hsmKey?.keyState;
+      const cls =
+        ks === "Destroyed" ? "text-coral" : ks === "Inactive" || ks === "Archived" ? "text-amber" : "text-teal";
+      return <span className={`text-[10px] font-medium ${cls}`}>{ks ?? "-"}</span>;
+    }
     case "hsmExtractable": {
       const hk = co.hsmKey;
       if (!hk) return <span className="text-muted-foreground text-[10px]">-</span>;
@@ -1309,6 +1328,8 @@ function TypeMetadata({ co }: { co: CryptoAsset }) {
           value={<span className="font-mono text-[10px] break-all">{ck?.keyRef ?? co.serial}</span>}
         />
         <MetaRow label="Cloud provider" value={ck?.cloudProvider ?? "-"} />
+        <MetaRow label="Region" value={<span className="font-mono text-[10px]">{ck?.region ?? "-"}</span>} />
+        <MetaRow label="Usage / purpose" value={ck?.purpose ?? "-"} />
         <MetaRow label="Key manager" value={ck?.keyManager ?? "-"} />
         <MetaRow label="Algorithm / size" value={`${co.algorithm} · ${co.keyLength} bits`} />
         <MetaRow label="Quantum readiness" value={quantum} />
@@ -1381,7 +1402,6 @@ function TypeMetadata({ co }: { co: CryptoAsset }) {
             </span>
           }
         />
-        {ck?.purpose && <MetaRow label="Purpose" value={ck.purpose} />}
         <MetaRow
           label="Governance"
           value={
@@ -1414,11 +1434,37 @@ function TypeMetadata({ co }: { co: CryptoAsset }) {
           label="HSM vendor / module"
           value={`${hk?.hsmVendor ?? "-"}${hk?.moduleModel ? " · " + hk.moduleModel : ""}`}
         />
+        <MetaRow label="Partition / token" value={hk?.partition ?? "-"} />
+        <MetaRow label="Slot" value={hk?.slot != null ? String(hk.slot) : "-"} />
         <MetaRow
-          label="Partition / slot"
-          value={`${hk?.partition ?? "-"}${hk?.slot != null ? " · slot " + hk.slot : ""}`}
+          label="Key type"
+          value={
+            hk?.keyClass === "Secret"
+              ? "Symmetric Key"
+              : hk?.keyClass === "Private"
+                ? "Private Key"
+                : hk?.keyClass === "Public"
+                  ? "Public Key"
+                  : "-"
+          }
         />
-        <MetaRow label="Key class" value={hk?.keyClass ?? "-"} />
+        <MetaRow label="Usage / purpose" value={hk?.purpose ?? "-"} />
+        <MetaRow
+          label="Key state"
+          value={
+            <span
+              className={
+                hk?.keyState === "Destroyed"
+                  ? "text-coral"
+                  : hk?.keyState === "Inactive" || hk?.keyState === "Archived"
+                    ? "text-amber"
+                    : "text-teal"
+              }
+            >
+              {hk?.keyState ?? "-"}
+            </span>
+          }
+        />
         <MetaRow label="Algorithm / size" value={`${co.algorithm} · ${co.keyLength} bits`} />
         <MetaRow label="Quantum readiness" value={quantum} />
         <MetaRow
