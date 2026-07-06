@@ -1,7 +1,6 @@
 import React from "react";
 import { useNav } from "@/context/NavigationContext";
 import { FileBadge, FileKey, Key, Server, Lock, Network, Package } from "lucide-react";
-import { mockProtocols, mockLibraries } from "@/data/cryptoStackMockData";
 import PostureTile, { PostureRow, DonutSlice, Bar } from "./PostureTile";
 
 const CORAL = "hsl(var(--coral))",
@@ -38,6 +37,11 @@ const POSTURE = {
   },
   hsm: { total: 1240, extractable: 27, quantum: 96, weakAlgo: 62, classical: 1026, pqc: 214 },
   secrets: { total: 6240, act: 3980, unrotated: 3210, orphaned: 512, noPolicy: 258 },
+  // Estate-scale protocol and library figures. The crypto-stack inventory holds
+  // the discovered sample; the dashboard reports estate totals. Drill-through
+  // still routes to the live crypto-stack views.
+  protocols: { total: 18600, ssl: 240, t10: 890, t11: 1340, t12: 9200, t13ssh: 6930 },
+  libraries: { total: 14200, eol: 1180, outdated: 3400, supported: 9620 },
 };
 
 export default function CryptoPostureGrid() {
@@ -246,17 +250,20 @@ export default function CryptoPostureGrid() {
     },
   ];
 
-  // Protocols + libraries: unchanged, computed live from the crypto-stack data.
-  const ssl = mockProtocols.filter((p) => p.family === "SSL").length;
-  const t10 = mockProtocols.filter((p) => p.family === "TLS" && p.version.startsWith("1.0")).length;
-  const t11 = mockProtocols.filter((p) => p.family === "TLS" && p.version.startsWith("1.1")).length;
-  const t12 = mockProtocols.filter((p) => p.family === "TLS" && p.version.startsWith("1.2")).length;
-  const t13 = mockProtocols.filter((p) => p.family === "TLS" && p.version.startsWith("1.3")).length;
-  const sshP = mockProtocols.filter((p) => p.family === "SSH").length;
+  // Protocols + libraries: estate-scale figures for the dashboard; drill-through
+  // routes to the live crypto-stack views (which show the discovered sample).
+  const pp = POSTURE.protocols;
+  const ll = POSTURE.libraries;
+  const ssl = pp.ssl,
+    t10 = pp.t10,
+    t11 = pp.t11,
+    t12 = pp.t12;
+  const t13 = pp.t13ssh,
+    sshP = 0;
   const pLegacy = ssl + t10 + t11;
-  const lEol = mockLibraries.filter((l) => l.eolStatus === "End-of-Life").length;
-  const lOut = mockLibraries.filter((l) => l.eolStatus === "Outdated").length;
-  const lSup = mockLibraries.filter((l) => l.eolStatus === "Supported").length;
+  const lEol = ll.eol,
+    lOut = ll.outdated,
+    lSup = ll.supported;
 
   const protoSlices: DonutSlice[] = [
     {
@@ -328,7 +335,7 @@ export default function CryptoPostureGrid() {
             Every number is a count. Click to drill into inventory with filters pre-applied.
           </p>
         </div>
-        <span className="text-[10px] text-muted-foreground">6 categories</span>
+        <span className="text-[10px] text-muted-foreground">7 categories</span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -426,7 +433,7 @@ export default function CryptoPostureGrid() {
         <PostureTile
           icon={Network}
           label="Protocols"
-          total={mockProtocols.length}
+          total={pp.total}
           hero={{ value: pLegacy, caption: "legacy versions", role: "critical" }}
           distribution={{ type: "donut", centerValue: String(pLegacy), centerLabel: "legacy", slices: protoSlices }}
           onOpen={() => go({ tab: "crypto-assets", view: "protocols" })}
@@ -435,7 +442,7 @@ export default function CryptoPostureGrid() {
         <PostureTile
           icon={Package}
           label="Libraries"
-          total={mockLibraries.length}
+          total={ll.total}
           hero={{ value: lEol, caption: "end-of-life", role: "critical" }}
           distribution={{ type: "donut", centerValue: String(lEol), centerLabel: "EOL", slices: libSlices }}
           onOpen={() => go({ tab: "crypto-assets", view: "libraries" })}
