@@ -26,8 +26,17 @@ const POSTURE = {
     age: [1240, 1980, 2360, 3540], // 0-30, 30-60, 60-90, 90+
     risks: { suspicious: 1204, misplaced: 642, shared: 588, rogue: 496, weak: 312 },
   },
-  cloud: { total: 2847, oop: 1148, rotation: 642, access: 118, quantum: 388 },
-  hsm: { total: 1240, quantum: 96, extractable: 27, nonsensitive: 14, quantumSafe: 214 },
+  cloud: {
+    total: 2847,
+    rotationDisabledOrOverdue: 642,
+    overpermissive: 214,
+    lifecycle: 168,
+    protSoftware: 724,
+    protHSM: 1680,
+    protCloudHSM: 328,
+    protExternalHSM: 115,
+  },
+  hsm: { total: 1240, extractable: 27, quantum: 96, weakAlgo: 62, classical: 1026, pqc: 214 },
   secrets: { total: 6240, act: 3980, unrotated: 3210, orphaned: 512, noPolicy: 258 },
 };
 
@@ -128,32 +137,57 @@ export default function CryptoPostureGrid() {
   const cloud = POSTURE.cloud;
   const cloudRows: PostureRow[] = [
     {
-      label: "Rotation disabled / overdue",
-      count: cloud.rotation,
+      label: "Rotation disabled or overdue",
+      count: cloud.rotationDisabledOrOverdue,
       role: "critical",
       onClick: () => go({ tab: "identities", type: "Cloud KMS Key", filterId: "cloud_rotation_disabled" }),
     },
     {
-      label: "Publicly accessible / permissive",
-      count: cloud.access,
+      label: "Overly permissive access",
+      count: cloud.overpermissive,
       role: "critical",
-      onClick: () => go({ tab: "identities", type: "Cloud KMS Key", filterId: "cloud_public_access" }),
+      onClick: () => go({ tab: "identities", type: "Cloud KMS Key", filterId: "cloud_overpermissive" }),
     },
     {
-      label: "Quantum-vulnerable (RSA / ECC)",
-      count: cloud.quantum,
+      label: "Unused or pending deletion",
+      count: cloud.lifecycle,
       role: "high",
-      onClick: () => go({ tab: "identities", type: "Cloud KMS Key", filterId: "cloud_quantum" }),
+      onClick: () => go({ tab: "identities", type: "Cloud KMS Key", filterId: "cloud_lifecycle" }),
     },
   ];
+  const cloudProtSlices: DonutSlice[] = [
+    {
+      label: "Software",
+      count: cloud.protSoftware,
+      stroke: AMBER,
+      text: "text-amber",
+      onClick: () => go({ tab: "identities", type: "Cloud KMS Key", filterId: "cloud_prot_software" }),
+    },
+    {
+      label: "HSM",
+      count: cloud.protHSM,
+      stroke: TEAL,
+      text: "text-teal",
+      onClick: () => go({ tab: "identities", type: "Cloud KMS Key", filterId: "cloud_prot_hsm" }),
+    },
+    {
+      label: "CloudHSM",
+      count: cloud.protCloudHSM,
+      stroke: "#3a9d8f",
+      text: "text-teal",
+      onClick: () => go({ tab: "identities", type: "Cloud KMS Key", filterId: "cloud_prot_cloudhsm" }),
+    },
+    {
+      label: "External HSM",
+      count: cloud.protExternalHSM,
+      stroke: MUTED,
+      text: "text-muted-foreground",
+      onClick: () => go({ tab: "identities", type: "Cloud KMS Key", filterId: "cloud_prot_externalhsm" }),
+    },
+  ];
+
   const hsm = POSTURE.hsm;
   const hsmRows: PostureRow[] = [
-    {
-      label: "Quantum-vulnerable (RSA / ECC)",
-      count: hsm.quantum,
-      role: "high",
-      onClick: () => go({ tab: "identities", type: "HSM Key", filterId: "hsm_quantum" }),
-    },
     {
       label: "Extractable keys",
       count: hsm.extractable,
@@ -161,12 +195,35 @@ export default function CryptoPostureGrid() {
       onClick: () => go({ tab: "identities", type: "HSM Key", filterId: "hsm_extractable" }),
     },
     {
-      label: "Non-sensitive keys",
-      count: hsm.nonsensitive,
-      role: "critical",
-      onClick: () => go({ tab: "identities", type: "HSM Key", filterId: "hsm_nonsensitive" }),
+      label: "Quantum-vulnerable (RSA / ECC)",
+      count: hsm.quantum,
+      role: "high",
+      onClick: () => go({ tab: "identities", type: "HSM Key", filterId: "hsm_quantum" }),
+    },
+    {
+      label: "Weak or deprecated algorithm",
+      count: hsm.weakAlgo,
+      role: "high",
+      onClick: () => go({ tab: "identities", type: "HSM Key", filterId: "hsm_weak_algo" }),
     },
   ];
+  const hsmAlgoSlices: DonutSlice[] = [
+    {
+      label: "Classical (RSA / ECC)",
+      count: hsm.classical,
+      stroke: AMBER,
+      text: "text-amber",
+      onClick: () => go({ tab: "identities", type: "HSM Key", filterId: "hsm_classical" }),
+    },
+    {
+      label: "Post-quantum (ML-KEM / ML-DSA / LMS)",
+      count: hsm.pqc,
+      stroke: TEAL,
+      text: "text-teal",
+      onClick: () => go({ tab: "identities", type: "HSM Key", filterId: "hsm_pqc" }),
+    },
+  ];
+  const hsmPqcPct = Math.round((hsm.pqc / hsm.total) * 100);
   const s = POSTURE.secrets;
   const secretRows: PostureRow[] = [
     {
@@ -323,8 +380,19 @@ export default function CryptoPostureGrid() {
           label="Cloud KMS Keys"
           total={cloud.total}
           caption={"AWS \u00b7 Azure \u00b7 central visibility"}
-          hero={{ value: cloud.oop, caption: "out of policy", role: "high" }}
-          distribution={{ type: "rows", rows: cloudRows }}
+          hero={{ value: cloud.rotationDisabledOrOverdue, caption: "rotation out of policy", role: "high" }}
+          views={[
+            { label: "Posture", distribution: { type: "rows", rows: cloudRows } },
+            {
+              label: "Protection level",
+              distribution: {
+                type: "donut",
+                centerValue: cloud.total.toLocaleString(),
+                centerLabel: "keys",
+                slices: cloudProtSlices,
+              },
+            },
+          ]}
           footerNote={"Monitor only \u00b7 ticket to act"}
           onOpen={() => go({ tab: "identities", type: "Cloud KMS Key" })}
         />
@@ -334,8 +402,14 @@ export default function CryptoPostureGrid() {
           label="HSM Keys"
           total={hsm.total}
           caption={"Utimaco \u00b7 Crypto4A \u00b7 hardware root of trust"}
-          hero={{ value: hsm.quantum, caption: "quantum-vulnerable", role: "high" }}
-          distribution={{ type: "rows", rows: hsmRows }}
+          hero={{ value: hsm.extractable, caption: "extractable", role: "critical" }}
+          views={[
+            { label: "Posture", distribution: { type: "rows", rows: hsmRows } },
+            {
+              label: "Algorithm",
+              distribution: { type: "donut", centerValue: `${hsmPqcPct}%`, centerLabel: "PQC", slices: hsmAlgoSlices },
+            },
+          ]}
           footerNote={"Monitor only \u00b7 ticket to act"}
           onOpen={() => go({ tab: "identities", type: "HSM Key" })}
         />
