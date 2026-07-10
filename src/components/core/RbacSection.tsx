@@ -54,6 +54,15 @@ import {
   type PrincipalType,
 } from "@/data/rbac";
 
+/**
+ * Separation-of-duties warnings. Shown only while authoring a CUSTOM role,
+ * where a human is about to create the conflict. System roles are exempt:
+ * Platform Administrator holds every toxic pair by construction, exactly as
+ * Vault's root policy and Keyfactor's immutable Administrator role do.
+ * Set to false to disable the check entirely.
+ */
+const SHOW_SOD_WARNINGS = true;
+
 /* ------------------------------------------------------------------ */
 /* Primitives                                                          */
 /* ------------------------------------------------------------------ */
@@ -647,7 +656,8 @@ export default function RbacSection() {
           </thead>
           <tbody>
             {visible.map((r) => {
-              const sod = sodViolations(r.permissions);
+              // System roles are exempt. A superuser role holding every pair is not a finding.
+              const sod = SHOW_SOD_WARNINGS && !r.isSystem ? sodViolations(r.permissions) : [];
               return (
                 <tr key={r.id} className="border-t border-border hover:bg-muted/20 group">
                   <td className="px-4 py-3">
@@ -839,7 +849,8 @@ function RoleEditor({
 
   const added = existing ? [...selected].filter((a) => !existing.permissions.includes(a)) : [];
   const removed = existing ? existing.permissions.filter((a) => !selected.has(a)) : [];
-  const sod = sodViolations(selected);
+  // Authoring-time guardrail only. Not shown when viewing, and not shown for system roles.
+  const sod = SHOW_SOD_WARNINGS && !readOnly && !draft.isSystem ? sodViolations(selected) : [];
   const title = { create: "Create role", clone: "Clone role", edit: "Edit role", view: initial.name }[mode];
 
   return (
