@@ -72,30 +72,43 @@ const Chip = ({ children, tone = "muted" }: { children: React.ReactNode; tone?: 
   </span>
 );
 
-const IconBtn = ({
+/** Icon-only row action. The label lives in the tooltip, not on screen. */
+const ActionBtn = ({
   icon: Icon,
-  label,
+  title,
   onClick,
   disabled,
-  title,
+  danger,
 }: {
   icon: React.ElementType;
-  label: string;
+  title: string;
   onClick?: () => void;
   disabled?: boolean;
-  title?: string;
+  danger?: boolean;
 }) => (
   <button
     onClick={onClick}
     disabled={disabled}
     title={title}
-    className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] border transition-colors ${
+    aria-label={title}
+    className={`w-7 h-7 rounded flex items-center justify-center transition-colors ${
       disabled
-        ? "border-border/50 text-muted-foreground/40 cursor-not-allowed"
-        : "border-border text-muted-foreground hover:text-foreground hover:border-teal"
+        ? "text-muted-foreground/25 cursor-not-allowed"
+        : danger
+          ? "text-muted-foreground hover:text-red-400 hover:bg-red-500/10"
+          : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
     }`}
   >
-    <Icon className="w-3 h-3" /> {label}
+    <Icon className="w-3.5 h-3.5" />
+  </button>
+);
+
+const ToolBtn = ({ icon: Icon, label, onClick }: { icon: React.ElementType; label: string; onClick: () => void }) => (
+  <button
+    onClick={onClick}
+    className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-border text-[11px] text-muted-foreground hover:text-foreground hover:border-teal transition-colors whitespace-nowrap"
+  >
+    <Icon className="w-3.5 h-3.5" /> {label}
   </button>
 );
 
@@ -516,7 +529,7 @@ type Modal =
   | { kind: "members"; role: Role }
   | { kind: "assign"; role: Role }
   | { kind: "delete"; role: Role }
-  | { kind: "effective"; principalId: string }
+  | { kind: "effective"; principalId?: string }
   | { kind: "reverse" };
 
 /** The signed-in actor. In production this arrives in the token introspection payload. */
@@ -571,11 +584,12 @@ export default function RbacSection() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-end justify-between gap-4">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs text-muted-foreground">
             {roles.length} roles · {new Set(bindings.map((b) => b.principalId)).size} principals · {bindings.length}{" "}
-            bindings · {TOTAL_ATOMS} permissions in taxonomy
+            bindings
           </p>
           <p className="text-[10px] text-muted-foreground/70 mt-0.5">
             Scope is a property of the binding, not of the role. Assign a role to a tenant and business units under
@@ -591,8 +605,9 @@ export default function RbacSection() {
         </button>
       </div>
 
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1 max-w-xs">
+      {/* Toolbar */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="relative w-56">
           <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-muted-foreground" />
           <input
             value={q}
@@ -612,80 +627,83 @@ export default function RbacSection() {
             </button>
           ))}
         </div>
+
+        <div className="flex-1" />
+
+        <ToolBtn icon={ShieldCheck} label="Effective permissions" onClick={() => setModal({ kind: "effective" })} />
+        <ToolBtn icon={Search} label="Who can…" onClick={() => setModal({ kind: "reverse" })} />
       </div>
 
+      {/* Roles */}
       <div className="border border-border rounded overflow-hidden">
         <table className="w-full">
           <thead className="bg-muted/30">
             <tr>
-              {["Role", "Type", "Members", "Permissions", "Actions"].map((h) => (
-                <th key={h} className="text-left px-4 py-2 text-[11px] font-medium text-muted-foreground">
-                  {h}
-                </th>
-              ))}
+              <th className="text-left px-4 py-2 text-[11px] font-medium text-muted-foreground">Role</th>
+              <th className="text-right px-4 py-2 text-[11px] font-medium text-muted-foreground w-24">Members</th>
+              <th className="text-right px-4 py-2 text-[11px] font-medium text-muted-foreground w-32">Permissions</th>
+              <th className="w-40" />
             </tr>
           </thead>
           <tbody>
             {visible.map((r) => {
               const sod = sodViolations(r.permissions);
               return (
-                <tr key={r.id} className="border-t border-border hover:bg-muted/20">
+                <tr key={r.id} className="border-t border-border hover:bg-muted/20 group">
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-medium">{r.name}</span>
-                      {r.isSystem && <Lock className="w-3 h-3 text-muted-foreground" />}
-                    </div>
-                    <p className="text-[10px] text-muted-foreground mt-0.5 max-w-lg">{r.description}</p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Chip tone={r.isSystem ? "muted" : "teal"}>{r.isSystem ? "System" : "Custom"}</Chip>
-                  </td>
-                  <td className="px-4 py-3 text-xs font-medium">{memberCount(r.id)}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs">{r.permissions.length}</span>
-                      <div className="w-16 h-1 rounded-full bg-muted overflow-hidden">
-                        <div
-                          className="h-full bg-teal"
-                          style={{ width: `${(r.permissions.length / TOTAL_ATOMS) * 100}%` }}
-                        />
-                      </div>
-                      {r.permissions.some(isSensitive) && <AlertTriangle className="w-3 h-3 text-amber-400" />}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => openEditor("view", r)}
+                        className="text-xs font-medium hover:text-teal transition-colors"
+                      >
+                        {r.name}
+                      </button>
+                      {r.isSystem && <Lock className="w-3 h-3 text-muted-foreground/60" />}
+                      <Chip tone={r.isSystem ? "muted" : "teal"}>{r.isSystem ? "System" : "Custom"}</Chip>
                       {!!sod.length && (
-                        <span title={sod.map((p) => p.reason).join(" · ")}>
-                          <ShieldAlert className="w-3 h-3 text-red-400" />
+                        <span
+                          title={sod.map((p) => p.reason).join(" · ")}
+                          className="flex items-center gap-1 text-red-400"
+                        >
+                          <ShieldAlert className="w-3 h-3" />
+                          <span className="text-[10px]">SoD</span>
                         </span>
                       )}
                     </div>
+                    <p className="text-[10px] text-muted-foreground mt-1 line-clamp-1 max-w-2xl" title={r.description}>
+                      {r.description}
+                    </p>
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-1.5">
-                      <IconBtn icon={Eye} label="View" onClick={() => openEditor("view", r)} />
-                      <IconBtn
+                  <td className="px-4 py-3 text-right text-xs tabular-nums">{memberCount(r.id)}</td>
+                  <td className="px-4 py-3 text-right text-xs tabular-nums">
+                    {r.permissions.length}
+                    <span className="text-muted-foreground/50"> / {TOTAL_ATOMS}</span>
+                  </td>
+                  <td className="px-3 py-3">
+                    <div className="flex justify-end gap-0.5 opacity-60 group-hover:opacity-100 transition-opacity">
+                      <ActionBtn icon={Eye} title="View permissions" onClick={() => openEditor("view", r)} />
+                      <ActionBtn
                         icon={UsersIcon}
-                        label="Members"
+                        title="Manage members"
                         onClick={() => setModal({ kind: "members", role: r })}
                       />
-                      <IconBtn icon={Copy} label="Clone" onClick={() => openEditor("clone", r)} />
-                      <IconBtn
+                      <ActionBtn icon={Copy} title="Clone into a custom role" onClick={() => openEditor("clone", r)} />
+                      <ActionBtn
                         icon={Pencil}
-                        label="Edit"
                         disabled={r.isSystem}
-                        title={
-                          r.isSystem ? "System roles cannot be edited. Clone this role to customise it." : undefined
-                        }
+                        title={r.isSystem ? "System roles cannot be edited. Clone to customise." : "Edit role"}
                         onClick={() => openEditor("edit", r)}
                       />
-                      <IconBtn
+                      <ActionBtn
                         icon={Trash2}
-                        label="Delete"
+                        danger
                         disabled={r.isSystem || memberCount(r.id) > 0}
                         title={
                           r.isSystem
                             ? "System roles cannot be deleted."
                             : memberCount(r.id) > 0
                               ? `Bound to ${memberCount(r.id)} principals. Revoke first.`
-                              : undefined
+                              : "Delete role"
                         }
                         onClick={() => setModal({ kind: "delete", role: r })}
                       />
@@ -696,7 +714,7 @@ export default function RbacSection() {
             })}
             {!visible.length && (
               <tr>
-                <td colSpan={5} className="px-4 py-10 text-center">
+                <td colSpan={4} className="px-4 py-10 text-center">
                   <p className="text-xs text-muted-foreground">No custom roles yet.</p>
                   <button
                     onClick={() => openEditor("clone", roles[roles.length - 1])}
@@ -709,45 +727,6 @@ export default function RbacSection() {
             )}
           </tbody>
         </table>
-      </div>
-
-      {/* Forward and reverse lookup */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="flex items-center justify-between gap-3 px-4 py-3 rounded border border-border bg-muted/20">
-          <div className="flex items-center gap-2 min-w-0">
-            <ShieldCheck className="w-4 h-4 text-teal shrink-0" />
-            <div className="min-w-0">
-              <p className="text-xs font-medium">Effective permissions</p>
-              <p className="text-[10px] text-muted-foreground truncate">What can this principal actually do?</p>
-            </div>
-          </div>
-          <select
-            value=""
-            onChange={(e) => e.target.value && setModal({ kind: "effective", principalId: e.target.value })}
-            className="px-2 py-1.5 rounded bg-muted/40 border border-border text-[11px] outline-none focus:border-teal shrink-0"
-          >
-            <option value="">Select…</option>
-            {PRINCIPALS.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <button
-          onClick={() => setModal({ kind: "reverse" })}
-          className="flex items-center justify-between gap-3 px-4 py-3 rounded border border-border bg-muted/20 hover:border-teal text-left"
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <Search className="w-4 h-4 text-teal shrink-0" />
-            <div className="min-w-0">
-              <p className="text-xs font-medium">Reverse lookup</p>
-              <p className="text-[10px] text-muted-foreground truncate">Who can export private key material?</p>
-            </div>
-          </div>
-          <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-        </button>
       </div>
 
       {modal.kind === "editor" && (
@@ -818,7 +797,7 @@ export default function RbacSection() {
 
       {modal.kind === "effective" && (
         <EffectiveDrawer
-          principalId={modal.principalId}
+          initialPrincipalId={modal.principalId}
           bindings={bindings}
           roles={roles}
           onClose={() => setModal({ kind: "none" })}
@@ -1196,21 +1175,57 @@ function DeleteDialog({ role, onClose, onConfirm }: { role: Role; onClose: () =>
 /* ------------------------------------------------------------------ */
 
 function EffectiveDrawer({
-  principalId,
+  initialPrincipalId,
   bindings,
   roles,
   onClose,
 }: {
-  principalId: string;
+  initialPrincipalId?: string;
   bindings: Binding[];
   roles: Role[];
   onClose: () => void;
 }) {
+  const [principalId, setPrincipalId] = useState<string | undefined>(initialPrincipalId);
+  const [q, setQ] = useState("");
+
+  if (!principalId) {
+    return (
+      <Drawer
+        title="Effective permissions"
+        subtitle="Pick a principal to see everything they can actually do."
+        onClose={onClose}
+      >
+        <div className="space-y-0.5">
+          {(["user", "group", "service_account"] as PrincipalType[]).map((t) => (
+            <React.Fragment key={t}>
+              <p className="text-[9px] uppercase tracking-wider text-muted-foreground/60 px-2 pt-3 pb-1">
+                {PRINCIPAL_TYPE_LABEL[t]}s
+              </p>
+              {PRINCIPALS.filter((p) => p.type === t).map((p) => {
+                const n = bindings.filter((b) => b.principalId === p.id).length;
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => setPrincipalId(p.id)}
+                    className="flex items-center justify-between gap-3 w-full px-2 py-2 rounded hover:bg-muted/40 text-left"
+                  >
+                    <PrincipalRow p={p} />
+                    <span className="text-[10px] text-muted-foreground shrink-0">
+                      {n} binding{n === 1 ? "" : "s"}
+                    </span>
+                  </button>
+                );
+              })}
+            </React.Fragment>
+          ))}
+        </div>
+      </Drawer>
+    );
+  }
+
   const principal = PRINCIPALS.find((p) => p.id === principalId)!;
   const mine = bindings.filter((b) => b.principalId === principalId);
   const eff = effectivePermissions(principalId, bindings, roles);
-  const [q, setQ] = useState("");
-
   const entries = [...eff.entries()]
     .filter(([atom]) => !q.trim() || atom.includes(q.toLowerCase()))
     .sort(([a], [b]) => a.localeCompare(b));
@@ -1218,15 +1233,24 @@ function EffectiveDrawer({
   return (
     <Drawer
       wide
-      title={`What can ${principal.name} do?`}
+      title={principal.name}
       subtitle={`${eff.size} of ${TOTAL_ATOMS} permissions, from ${mine.length} binding${mine.length === 1 ? "" : "s"}`}
       onClose={onClose}
     >
       <div className="space-y-4">
+        {!initialPrincipalId && (
+          <button
+            onClick={() => setPrincipalId(undefined)}
+            className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="w-3 h-3" /> All principals
+          </button>
+        )}
+
         {principal.type === "group" && (
           <p className="px-3 py-2 rounded bg-muted/30 border border-border text-[10px] text-muted-foreground">
-            This is a group principal. AVX does not hold its membership. Permissions apply to whoever presents this
-            group claim from {principal.source} at sign-in.
+            Group principal. AVX does not hold its membership. These permissions apply to whoever presents this group
+            claim from {principal.source} at sign-in.
           </p>
         )}
 
@@ -1325,7 +1349,7 @@ function ReverseDrawer({ bindings, roles, onClose }: { bindings: Binding[]; role
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Or search any of the 145 permissions"
+            placeholder={`Or search any of the ${TOTAL_ATOMS} permissions`}
             className="w-full pl-8 pr-3 py-2 rounded bg-muted/40 border border-border text-xs outline-none focus:border-teal"
           />
           {!!options.length && (
