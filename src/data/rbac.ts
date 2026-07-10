@@ -434,7 +434,7 @@ export const SYSTEM_ROLES: Role[] = [
     id: "rol_compliance_officer",
     name: "Compliance Officer",
     description:
-      "Owns the control plane. Authors and tunes policies and packs, sets risk scoring, adjudicates exceptions, owns compliance reporting. Cannot run discovery or mutate inventory.",
+      "Owns the control plane. Authors and tunes policies and packs, adjudicates exceptions, owns compliance reporting. Cannot run discovery or mutate inventory.",
     isSystem: true,
     permissions: expandImplied([
       ...atomsFor("policy", "definition"),
