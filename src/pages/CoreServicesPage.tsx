@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { StatusBadge } from '@/components/shared/UIComponents';
 import { users, auditLog } from '@/data/mockData';
+import RbacSection from '@/components/core/RbacSection';
 
 type PillarTab = 'license' | 'health' | 'multitenancy' | 'telemetry' | 'users' | 'infra-integrations' | 'infrastructure' | 'mcp';
 
@@ -416,15 +417,6 @@ function TelemetryPanel() {
 function UserManagement() {
   const [subTab, setSubTab] = useState<'users' | 'roles' | 'sessions' | 'auth'>('users');
 
-  const roles = [
-    { name: 'Platform Admin', users: 3, permissions: 'Full access — all modules, settings, tenant management', scope: 'Global' },
-    { name: 'Security Admin', users: 8, permissions: 'Policies, remediation, integrations, dashboards', scope: 'Global' },
-    { name: 'PKI Engineer', users: 15, permissions: 'Certificates, discovery, inventory, key management', scope: 'Assigned BUs' },
-    { name: 'Compliance Officer', users: 5, permissions: 'Read-only policies, reports, audit log, compliance dashboard', scope: 'Global' },
-    { name: 'Application Owner', users: 42, permissions: 'Request certs, view own inventory, self-service portal', scope: 'Assigned Apps' },
-    { name: 'Read-Only Auditor', users: 6, permissions: 'Read-only all modules, export capabilities', scope: 'Global' },
-    { name: 'Tenant Admin', users: 4, permissions: 'Manage users, settings within assigned tenant', scope: 'Tenant' },
-  ];
 
   const sessions = [
     { user: 'alice@acme.com', role: 'Platform Admin', ip: '10.0.1.42', started: '14:22 UTC', mfa: true, status: 'Active' },
@@ -492,36 +484,7 @@ function UserManagement() {
         </div>
       )}
 
-      {subTab === 'roles' && (
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <p className="text-xs text-muted-foreground">{roles.length} roles · {roles.reduce((a, r) => a + r.users, 0)} assigned users</p>
-            <button onClick={() => toast.info('Creating custom role')} className="flex items-center gap-1 px-3 py-1.5 rounded bg-teal text-primary-foreground text-xs hover:bg-teal-light"><Plus className="w-3 h-3" /> Create Role</button>
-          </div>
-          <div className="bg-card rounded-lg border border-border overflow-hidden">
-            <table className="w-full text-xs">
-              <thead className="bg-muted/50"><tr className="border-b border-border">
-                {['Role', 'Users', 'Permissions', 'Scope', 'Actions'].map(h => <th key={h} className="text-left py-2 px-3 font-medium text-muted-foreground">{h}</th>)}
-              </tr></thead>
-              <tbody>
-                {roles.map((r, i) => (
-                  <tr key={i} className="border-b border-border hover:bg-muted/30">
-                    <td className="py-2 px-3 font-medium">{r.name}</td>
-                    <td className="py-2 px-3">{r.users}</td>
-                    <td className="py-2 px-3 text-muted-foreground max-w-[250px] truncate">{r.permissions}</td>
-                    <td className="py-2 px-3"><span className="px-2 py-0.5 rounded-full bg-teal/10 text-teal text-[10px]">{r.scope}</span></td>
-                    <td className="py-2 px-3 flex gap-1">
-                      <button onClick={() => toast.info(`Editing ${r.name}`)} className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80">Edit</button>
-                      <button onClick={() => toast.info(`Viewing ${r.name} members`)} className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80">Members</button>
-                      <button onClick={() => toast.info(`Cloning ${r.name}`)} className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80">Clone</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      {subTab === 'roles' && <RbacSection />}
 
       {subTab === 'sessions' && (
         <div className="space-y-4">
