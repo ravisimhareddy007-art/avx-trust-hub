@@ -78,7 +78,7 @@ export default function QuantumPosturePage() {
   const pageCount = Math.max(1, Math.ceil(vulnerable.length / PAGE));
   const pageRows = vulnerable.slice(page * PAGE, page * PAGE + PAGE);
 
-  const blockers = useMemo(() => blockerGraph(mockAssets, mockLibraries, mockProtocols), []);
+  const blockers = useMemo(() => blockerGraph(mockAssets, mockLibraries, mockProtocols).map((b) => b.library), []);
 
   const active = lens === "qes" ? { score: qes.qes, sev: qes.severity } : { score: ers.ers, sev: ers.severity };
   const sevColor = (s: string) =>
