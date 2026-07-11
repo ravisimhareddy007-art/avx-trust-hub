@@ -315,16 +315,18 @@ export default function QuantumPosturePage() {
             </thead>
             <tbody>
               {blockers.map((b) => (
-                <tr key={b.library} className="border-b border-border/50 last:border-0 hover:bg-secondary/30">
+                <tr key={b.id} className="border-b border-border/50 last:border-0 hover:bg-secondary/30">
                   <td className="py-2 px-3">
                     <button onClick={goLibraries} className="text-left hover:text-teal font-medium text-foreground">
-                      {b.library}
+                      {b.name} {b.version}
                     </button>
                   </td>
-                  <td className="py-2 px-3 font-mono text-[11px] text-teal">{b.fix}</td>
-                  <td className="py-2 px-3 text-right tabular-nums font-semibold">{b.objectsUnblocked}</td>
-                  <td className={`py-2 px-3 text-[10px] ${b.severity === "hard" ? "text-coral" : "text-amber"}`}>
-                    {b.severity === "hard" ? "Hard blocker" : "Soft blocker"}
+                  <td className="py-2 px-3 font-mono text-[11px] text-teal">
+                    {b.name} {b.version} &rarr; {b.latestSafe}
+                  </td>
+                  <td className="py-2 px-3 text-right tabular-nums font-semibold">{b.assetsAffected.length}</td>
+                  <td className={`py-2 px-3 text-[10px] ${b.eolStatus === "End-of-Life" ? "text-coral" : "text-amber"}`}>
+                    {b.eolStatus === "End-of-Life" ? "Hard blocker" : "Soft blocker"}
                   </td>
                 </tr>
               ))}
