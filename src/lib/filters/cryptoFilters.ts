@@ -222,6 +222,7 @@ export const VIOLATION_FILTERS: Record<string, DashboardFilter> = {
     countNoun: "keys",
     predicate: (a) => a.type === "Cloud KMS Key" && a.cloudKey?.protectionLevel === "Software",
     enterpriseCount: 724,
+    pts: 3,
     filters: { type: "Cloud KMS Key", filterId: "cloud_prot_software", tab: "identities" },
   },
   cloud_prot_hsm: {
@@ -230,6 +231,7 @@ export const VIOLATION_FILTERS: Record<string, DashboardFilter> = {
     countNoun: "keys",
     predicate: (a) => a.type === "Cloud KMS Key" && a.cloudKey?.protectionLevel === "HSM",
     enterpriseCount: 1680,
+    pts: 3,
     filters: { type: "Cloud KMS Key", filterId: "cloud_prot_hsm", tab: "identities" },
   },
   cloud_prot_cloudhsm: {
@@ -238,6 +240,7 @@ export const VIOLATION_FILTERS: Record<string, DashboardFilter> = {
     countNoun: "keys",
     predicate: (a) => a.type === "Cloud KMS Key" && a.cloudKey?.protectionLevel === "CloudHSM",
     enterpriseCount: 328,
+    pts: 3,
     filters: { type: "Cloud KMS Key", filterId: "cloud_prot_cloudhsm", tab: "identities" },
   },
   cloud_prot_externalhsm: {
@@ -246,6 +249,7 @@ export const VIOLATION_FILTERS: Record<string, DashboardFilter> = {
     countNoun: "keys",
     predicate: (a) => a.type === "Cloud KMS Key" && a.cloudKey?.protectionLevel === "External HSM",
     enterpriseCount: 115,
+    pts: 3,
     filters: { type: "Cloud KMS Key", filterId: "cloud_prot_externalhsm", tab: "identities" },
   },
   cloud_quantum: {
@@ -304,6 +308,7 @@ export const VIOLATION_FILTERS: Record<string, DashboardFilter> = {
     countNoun: "keys",
     predicate: (a) => a.type === "HSM Key" && /^(RSA|ECC|ECDSA|ECDH|DSA|DH)\b/.test(a.algorithm),
     enterpriseCount: 1026,
+    pts: 3,
     filters: { type: "HSM Key", filterId: "hsm_classical", tab: "identities" },
   },
   hsm_pqc: {
@@ -312,6 +317,7 @@ export const VIOLATION_FILTERS: Record<string, DashboardFilter> = {
     countNoun: "keys",
     predicate: (a) => a.type === "HSM Key" && /^(ML-KEM|ML-DSA|SLH-DSA|LMS|XMSS)/.test(a.algorithm),
     enterpriseCount: 214,
+    pts: 3,
     filters: { type: "HSM Key", filterId: "hsm_pqc", tab: "identities" },
   },
 
