@@ -223,7 +223,7 @@ export default function QuantumPosturePage() {
           </button>
 
           <button
-            onClick={() => goInventory({ agilityBlocked: "true" })}
+            onClick={() => goInventory({ filterId: "agility-blocked" })}
             className="bg-card rounded-xl border border-border p-5 text-left hover:border-teal/40 transition-all group"
           >
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Cannot migrate today</p>
@@ -234,13 +234,19 @@ export default function QuantumPosturePage() {
             </div>
           </button>
 
-          <div className="bg-card rounded-xl border border-border p-5">
+          <button
+            onClick={() => { setFilters({ tab: "crypto-assets", shadow: "true" }); setCurrentPage("inventory"); }}
+            className="bg-card rounded-xl border border-border p-5 text-left hover:border-teal/40 transition-all group"
+          >
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Shadow endpoints</p>
             <p className="text-3xl font-bold tabular-nums text-purple-light">{shadow.length}</p>
-            <p className="text-[10px] text-muted-foreground mt-1">
-              quantum-vulnerable services on hosts absent from IT inventory
-            </p>
-          </div>
+            <div className="flex items-center justify-between mt-1">
+              <p className="text-[10px] text-muted-foreground">
+                quantum-vulnerable services on hosts absent from IT inventory
+              </p>
+              <ArrowRight className="w-3 h-3 text-teal opacity-0 group-hover:opacity-100 ml-2 shrink-0" />
+            </div>
+          </button>
         </div>
 
         {/* The dual axis. The single most important panel on the page. */}

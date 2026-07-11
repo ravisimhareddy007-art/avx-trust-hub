@@ -1,9 +1,11 @@
 import type { CryptoAsset } from "@/data/mockData";
-import { ESTATE_SUMMARY } from "@/data/mockData";
+import { ESTATE_SUMMARY, mockAssets } from "@/data/mockData";
+import { assessAgility } from "@/lib/risk/qes";
 
 export interface DashboardFilter {
   id: string;
   label: string;
+  description?: string;
   countNoun: string;
   predicate: (a: CryptoAsset) => boolean;
   enterpriseCount: number;
@@ -311,6 +313,19 @@ export const VIOLATION_FILTERS: Record<string, DashboardFilter> = {
     predicate: (a) => a.type === "HSM Key" && /^(ML-KEM|ML-DSA|SLH-DSA|LMS|XMSS)/.test(a.algorithm),
     enterpriseCount: 214,
     filters: { type: "HSM Key", filterId: "hsm_pqc", tab: "identities" },
+  },
+
+  // ── Quantum agility ───────────────────────────────────────────────────────
+
+  "agility-blocked": {
+    id: "agility-blocked",
+    label: "Cannot migrate today (agility-blocked)",
+    description: "Quantum-vulnerable objects that cannot be made safe by changing the certificate, because a blocking library or CA has no PQC path.",
+    countNoun: "objects",
+    predicate: (a) => !assessAgility(a).agile,
+    enterpriseCount: mockAssets.filter((a) => !assessAgility(a).agile).length,
+    pts: 5,
+    filters: { filterId: "agility-blocked", tab: "identities" },
   },
 };
 
