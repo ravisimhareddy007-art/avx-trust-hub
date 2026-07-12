@@ -159,7 +159,7 @@ function ersScoreOver(objects: CryptoAsset[]): number {
 // live ERS. This is illustrative sample data, not stored telemetry. When real ERS
 // snapshots are persisted, swap this for the stored series (same shape).
 function ersHistory(current: number): { label: string; value: number }[] {
-  const N = 6;
+  const N = 12;
   const start = Math.min(100, current + 16);
   const now = new Date();
   const pts: { label: string; value: number }[] = [];
