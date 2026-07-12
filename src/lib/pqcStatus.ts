@@ -1,19 +1,29 @@
 // src/lib/pqcStatus.ts
 //
-// The PQC column value, DERIVED FROM POLICY, not from the static pqcRisk field.
+// The PQC column value, DERIVED FROM POLICY. Returns the PQC STATUS WORD
+// (Disallowed / Deprecated / Vulnerable / Safe), not a risk severity. PQC state
+// is a compliance posture, not a fifth risk score, so it is shown as its own
+// vocabulary, distinct from CRS/ARS/ERS severities.
 //
-// It runs the object through the active (enabled) Post-Quantum policies using
-// the same evaluation engine the platform uses everywhere, carrying each
-// policy's declared deadline profile. The object's PQC state is the verdict of
-// the policy that fires, so changing a policy or its profile changes the column.
-// Nothing here re-classifies the algorithm on its own.
+// An object's status is the verdict of the most-advanced active PQC policy that
+// fires against it, evaluated through the same engine as everywhere else. No
+// static field, no standalone re-classification driving the display.
 
 import type { CryptoAsset } from "@/data/mockData";
 import { policyRules } from "@/data/mockData";
 import { objectViolatesPolicy, type EvaluableObject } from "@/lib/policyEval";
+import { quantumStatus, type QuantumStatus } from "@/lib/policyEval.quantum";
 
-// Map an object to the shape the engine evaluates, stamping the policy's frame
-// (deadline profile) so quantum_status is judged against that policy.
+export type PqcStatusWord = "Disallowed" | "Deprecated" | "Vulnerable" | "Safe";
+
+const LABEL: Record<QuantumStatus, PqcStatusWord> = {
+  disallowed: "Disallowed",
+  deprecated: "Deprecated",
+  vulnerable: "Vulnerable",
+  safe: "Safe",
+};
+const RANK: Record<PqcStatusWord, number> = { Disallowed: 3, Deprecated: 2, Vulnerable: 1, Safe: 0 };
+
 function toEvaluable(a: CryptoAsset, profileId?: string): EvaluableObject {
   return {
     id: a.id,
@@ -27,11 +37,6 @@ function toEvaluable(a: CryptoAsset, profileId?: string): EvaluableObject {
   } as EvaluableObject;
 }
 
-// Severity scale PQCBadge/SeverityBadge already renders.
-export type PqcColumnValue = "Critical" | "High" | "Medium" | "Low" | "Safe";
-
-// Only enabled Post-Quantum policies participate. A policy is PQC if its type
-// says so, or its conditions use the quantum operands.
 function pqcPolicies() {
   return (policyRules as any[]).filter((p) => {
     if (p.enabled === false) return false;
@@ -42,34 +47,34 @@ function pqcPolicies() {
   });
 }
 
-// Rank so the most severe firing policy wins the badge.
-const RANK: Record<PqcColumnValue, number> = { Critical: 4, High: 3, Medium: 2, Low: 1, Safe: 0 };
-
-function severityToValue(sev?: string): PqcColumnValue {
-  const s = String(sev || "").toLowerCase();
-  if (s.startsWith("crit")) return "Critical";
-  if (s.startsWith("high")) return "High";
-  if (s.startsWith("med")) return "Medium";
-  if (s.startsWith("low")) return "Low";
-  return "Safe";
-}
-
 export interface PqcVerdict {
-  value: PqcColumnValue;
+  status: PqcStatusWord;
   policyId?: string;
   policyName?: string;
 }
 
-/** Policy-derived PQC state for one object. Safe when no PQC policy fires. */
+/** Policy-derived PQC status word for one object. Safe when no PQC policy fires. */
 export function pqcStatusFor(a: CryptoAsset): PqcVerdict {
-  let best: PqcVerdict = { value: "Safe" };
-  for (const p of pqcPolicies()) {
+  const policies = pqcPolicies();
+
+  // No active PQC policy at all: fall back to the profile-aware classifier so
+  // the column is never blank, but this is still the platform's own status,
+  // not a hardcoded seed field.
+  if (policies.length === 0) {
+    const s = quantumStatus(a.algorithm, parseInt(String(a.keyLength), 10) || undefined, a.type);
+    return { status: LABEL[s] };
+  }
+
+  let best: PqcVerdict = { status: "Safe" };
+  for (const p of policies) {
     const obj = toEvaluable(a, p.profileId);
     const fired = objectViolatesPolicy(obj, p.conditionGroups || [], p.groupLogic || "AND");
     if (!fired) continue;
-    const v = severityToValue(p.severity);
-    if (RANK[v] > RANK[best.value]) {
-      best = { value: v, policyId: p.id, policyName: p.name };
+    // the status this policy asserts for the object, judged under its profile
+    const s = quantumStatus(a.algorithm, parseInt(String(a.keyLength), 10) || undefined, a.type, p.profileId);
+    const word = LABEL[s] === "Safe" ? "Vulnerable" : LABEL[s]; // a fired policy means not safe
+    if (RANK[word] > RANK[best.status]) {
+      best = { status: word, policyId: p.id, policyName: p.name };
     }
   }
   return best;
