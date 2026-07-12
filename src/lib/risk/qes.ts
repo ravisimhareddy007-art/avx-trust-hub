@@ -677,7 +677,7 @@ export function computeQES(
       detail: `KEM ${q.kem} / SIG ${q.sig}${q.shadow ? " · shadow host" : ""}`,
       vulnerable: q.kem === "Classical",
       harvestable: q.harvestable,
-      sensitivity: q.exposure === "Internet-facing" ? "Restricted" : q.exposure === "Internal" ? "Confidential" : "Internal",
+      sensitivity: p.exposure === "Internet-facing" ? "Restricted" : p.exposure === "Internal" ? "Confidential" : "Internal",
       shelfLife: 2,
     };
   });
