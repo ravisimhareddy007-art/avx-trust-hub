@@ -11,23 +11,16 @@
 // ── Algorithm classification ────────────────────────────────────────────────
 
 const PQC_KEM = ["ML-KEM", "KYBER"];
-
 const PQC_SIG = ["ML-DSA", "SLH-DSA", "DILITHIUM", "SPHINCS", "FALCON", "FN-DSA", "XMSS", "LMS"];
 
 const CLASSICAL_KEM = ["ECDH", "DH", "DHE", "ECDHE", "X25519", "X448"];
-
 const CLASSICAL_SIG = ["ECDSA", "DSA", "ED25519", "ED448", "RSA-PSS", "RSASSA"];
-
 // RSA is both: key transport (kem-like) and signatures. Resolved by object type below.
 
 export type QuantumAxis = "kem" | "signature" | "both" | "symmetric" | "hash" | "none";
-
 export type PqcPosture = "classical" | "hybrid" | "pqc";
-
 export type QuantumStatus = "safe" | "vulnerable" | "deprecated" | "disallowed";
-
-export type DeadlineClass =
-  | "kem_2030" | "sig_2031" | "disallow_2035" | "cnsa_per_class" | "none";
+export type DeadlineClass = "kem_2030" | "sig_2031" | "disallow_2035" | "cnsa_per_class" | "none";
 
 function norm(algorithm?: string): string {
   return (algorithm || "").toUpperCase().trim();
@@ -47,7 +40,6 @@ function isHybrid(algo: string): boolean {
 }
 
 // ── Axis: what the algorithm is FOR ─────────────────────────────────────────
-
 // objectType lets RSA resolve correctly: an RSA *certificate* signs (signature),
 // an RSA *KMS/HSM key* or RSA in a TLS key exchange establishes keys (kem).
 
@@ -67,11 +59,9 @@ export function quantumAxis(algorithm?: string, objectType?: string): QuantumAxi
     if (keyContext) return "kem";
     return "both"; // unknown context: RSA can do either, so flag both
   }
-
   if (CLASSICAL_SIG.some((s) => algo.includes(s)) || PQC_SIG.some((s) => algo.includes(s))) return "signature";
   if (CLASSICAL_KEM.some((k) => algo.includes(k)) || PQC_KEM.some((k) => algo.includes(k))) return "kem";
   if (algo.startsWith("ECC")) return signContext ? "signature" : "kem";
-
   return "none";
 }
 
@@ -85,18 +75,13 @@ export function pqcPosture(algorithm?: string): PqcPosture {
 }
 
 // ── Time-aware status per IR 8547 ───────────────────────────────────────────
-
 // qDay is the assumed quantum-relevant date the user selected. The schedule is
 // fixed: deprecated after 2030, disallowed after 2035. Symmetric AES-256 and
 // SHA-2+ are NOT on the schedule (Grover only halves strength).
 
 const CURRENT_YEAR = 2026;
 
-export function quantumStatus(
-  algorithm?: string,
-  keyLengthBits?: number,
-  qDay: number = 2035,
-): QuantumStatus {
+export function quantumStatus(algorithm?: string, keyLengthBits?: number, qDay: number = 2035): QuantumStatus {
   const algo = norm(algorithm);
   const axis = quantumAxis(algorithm);
   const posture = pqcPosture(algorithm);
@@ -109,7 +94,6 @@ export function quantumStatus(
     if (algo.startsWith("AES")) return (keyLengthBits ?? 256) >= 256 ? "safe" : "vulnerable";
     return "vulnerable";
   }
-
   if (axis === "hash") {
     if (algo.includes("SHA-1") || algo.includes("SHA1") || algo.includes("MD5")) return "disallowed";
     return "safe"; // SHA-256+ not on the PQC schedule
@@ -127,18 +111,14 @@ export function quantumStatus(
 export function deadlineClass(algorithm?: string, objectType?: string): DeadlineClass {
   const axis = quantumAxis(algorithm, objectType);
   const posture = pqcPosture(algorithm);
-
   if (posture !== "classical") return "none";
-
-  if (axis === "kem" || axis === "both") return "kem_2030";   // EO 14412 key establishment
-  if (axis === "signature") return "sig_2031";                // EO 14412 signatures
-  if (axis === "symmetric") return "cnsa_per_class";          // CNSA 2.0 AES-256 for NSS
-
+  if (axis === "kem" || axis === "both") return "kem_2030"; // EO 14412 key establishment
+  if (axis === "signature") return "sig_2031"; // EO 14412 signatures
+  if (axis === "symmetric") return "cnsa_per_class"; // CNSA 2.0 AES-256 for NSS
   return "none";
 }
 
 // ── Derived binary, kept for backward compatibility ─────────────────────────
-
 // Existing policies reading `quantum_vuln` keep working: it is now a view over
 // the model, not the model itself.
 
@@ -148,20 +128,17 @@ export function quantumVulnDerived(algorithm?: string, keyLengthBits?: number, q
 }
 
 // ── Protocol cipher-suite operands (for Classical-Key-Establishment policy) ──
-
 // ProtocolAsset carries cipherSuites[] with {kex, auth, enc, mac, strength}.
 
 export function kexList(obj: any): string {
-  return [
-    ...(obj.cipherSuites?.map((c: any) => c.kex) ?? []),
-    obj.kexStrength,
-  ].filter(Boolean).join(", ").toLowerCase();
+  return [...(obj.cipherSuites?.map((c: any) => c.kex) ?? []), obj.kexStrength]
+    .filter(Boolean)
+    .join(", ")
+    .toLowerCase();
 }
-
 export function cipherEncList(obj: any): string {
   return (obj.cipherSuites?.map((c: any) => c.enc) ?? []).filter(Boolean).join(", ").toLowerCase();
 }
-
 export function cipherMacList(obj: any): string {
   return (obj.cipherSuites?.map((c: any) => c.mac) ?? []).filter(Boolean).join(", ").toLowerCase();
 }
