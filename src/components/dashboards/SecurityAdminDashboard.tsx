@@ -8,6 +8,8 @@ import EnterpriseRiskScore from "./ers/EnterpriseRiskScore";
 import CryptoPostureGrid from "./CryptoPostureGrid";
 
 import InfrastructurePostureStrip from "./InfrastructurePostureStrip";
+import MigrationReadinessStrip from "@/components/dashboards/quantum/MigrationReadinessStrip";
+
 
 export default function SecurityAdminDashboard() {
   const { notifications, markRead } = useNotifications();
