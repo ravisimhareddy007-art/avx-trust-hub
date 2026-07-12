@@ -600,6 +600,8 @@ export interface QesBreakdown {
     algorithm: string;
     detail: string;
     kind: "object" | "protocol";
+    sensitivity: DataSensitivity;
+    shelfLife: number;
   }[];
 }
 
@@ -610,7 +612,7 @@ export function qesSeverity(s: number): QesBreakdown["severity"] {
   return "Low";
 }
 
-type Row = QesBreakdown["topObjects"][number] & { vulnerable: boolean; harvestable: boolean };
+type Row = QesBreakdown["topObjects"][number] & { vulnerable: boolean; harvestable: boolean; sensitivity: DataSensitivity; shelfLife: number };
 
 function aggregate(rows: Row[]): QesBreakdown {
   const qoes = rows.map((r) => r.qoe);
