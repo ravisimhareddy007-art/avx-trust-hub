@@ -704,7 +704,7 @@ export const canGrant = (
   target: Scope,
   bindings: Binding[],
   roles: Role[],
-): { ok: true } | { ok: false; reason: string } => {
+): { ok: boolean; reason?: string } => {
   const held = new Set(effectivePermissions(actorId, bindings, roles).keys());
   const missing = role.permissions.filter((a) => !held.has(a));
   if (missing.length) {

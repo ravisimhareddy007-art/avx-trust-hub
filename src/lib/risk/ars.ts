@@ -34,7 +34,7 @@ export interface ArsBreakdown {
 // Kept local to avoid a circular import, since ers.ts already imports ars.ts.
 function biFor(asset: ITAsset): BusinessImpact {
   if (asset.environment !== 'Production') return asset.environment === 'Staging' ? 'Moderate' : 'Low';
-  if (/Vault|HSM|Database|API Gateway/.test(asset.type)) return 'Critical';
+  if (/Vault|HSM|Database|API Gateway/.test(asset.assetClass)) return 'Critical';
   if (asset.criticalViolations >= 2) return 'Critical';
   if (asset.criticalViolations >= 1) return 'High';
   return 'Moderate';
