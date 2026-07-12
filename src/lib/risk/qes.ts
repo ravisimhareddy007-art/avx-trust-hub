@@ -687,7 +687,7 @@ export function qesSeverity(s: number): QesBreakdown["severity"] {
 
 type Row = QesBreakdown["topObjects"][number] & { vulnerable: boolean; harvestable: boolean; sensitivity: DataSensitivity; shelfLife: number };
 
-function aggregate(rows: Row[]): QesBreakdown {
+function aggregate(rows: Row[], objects: CryptoAsset[], qDay: number): QesBreakdown {
   const qoes = rows.map((r) => r.qoe);
   const asc = [...qoes].sort((a, b) => a - b);
   const maxQoe = qoes.length ? Math.max(...qoes) : 0;
@@ -711,7 +711,7 @@ function aggregate(rows: Row[]): QesBreakdown {
     topObjects: [...rows].sort((a, b) => b.qoe - a.qoe).slice(0, 8),
     history: qesHistory(qes),
     historySample: true,
-    driverBuckets: qesDriverBuckets(rows.filter((r) => r.kind === "object") as CryptoAsset[], qDay),
+    driverBuckets: qesDriverBuckets(objects, qDay),
   };
 }
 
