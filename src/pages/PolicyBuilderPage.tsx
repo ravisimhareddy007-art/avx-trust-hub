@@ -1141,6 +1141,8 @@ export default function PolicyBuilderPage() {
       notify: { ...notify },
       ticket: { ...ticket },
       effectiveFrom: effectiveFrom || null,
+      frame: formFrame,
+      profileId: formFrame === "pqc" ? formProfileId : undefined,
     };
 
     if (editingPolicy) setUserPolicies((prev) => prev.map((p) => (p.id === editingPolicy ? newPolicy : p)));
