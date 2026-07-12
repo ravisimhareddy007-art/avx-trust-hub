@@ -2337,6 +2337,50 @@ export default function PolicyBuilderPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <div className="flex items-center gap-1.5 mb-1">
+                    <label className="block text-[11px] font-medium">Policy Frame*</label>
+                  </div>
+                  <select
+                    value={formFrame}
+                    onChange={(e) => {
+                      const f = e.target.value as PolicyFrame;
+                      setFormFrame(f);
+                      const p = DEFAULT_PROFILE_FOR_FRAME[f];
+                      if (p) setFormProfileId(p);
+                      setConditionGroups([emptyGroup()]);
+                      markUserEdit("conditions");
+                    }}
+                    className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground [&>option]:bg-card [&>option]:text-foreground focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal/40 transition-colors"
+                  >
+                    {POLICY_FRAMES.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.label}
+                      </option>
+                    ))}
+                  </select>
+                  {formFrame === "pqc" && (
+                    <div className="mt-3">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <label className="block text-[11px] font-medium">Deadline Profile*</label>
+                      </div>
+                      <select
+                        value={formProfileId}
+                        onChange={(e) => setFormProfileId(e.target.value as DeadlineProfileId)}
+                        className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground [&>option]:bg-card [&>option]:text-foreground focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal/40 transition-colors"
+                      >
+                        {Object.values(DEADLINE_PROFILES).map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.label}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-1.5 text-[10px] text-muted-foreground leading-snug">
+                        {DEADLINE_PROFILES[formProfileId]?.note}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5 mb-1">
                     <label className="block text-[11px] font-medium">Policy Type*</label>
                     <AIMarker show={aiTouched.has("policyType")} />
                   </div>
@@ -2348,7 +2392,7 @@ export default function PolicyBuilderPage() {
                       markUserEdit("policyType");
                       markUserEdit("conditions");
                     }}
-                    className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal/40 transition-colors"
+                    className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground [&>option]:bg-card [&>option]:text-foreground focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal/40 transition-colors"
                   >
                     {POLICY_TYPES.map((o) => (
                       <option key={o}>{o}</option>
