@@ -12,7 +12,7 @@ import {
   quantumAxis,
   pqcPosture,
   quantumStatus,
-  deadlineClass,
+  deadlineClassFor,
   quantumVulnDerived,
   kexList,
   cipherEncList,
@@ -50,6 +50,9 @@ export interface EvaluableObject {
   cipherSuite?: string;
   hasExpiry?: boolean;
   protectionLevel?: string; // "HSM-Protected" | "Software-Protected"
+  // policy frame, stamped onto the object at evaluation time:
+  profileId?: string; // deadline profile the evaluating policy declares
+  asOfYear?: number; // assumed Q-day / evaluation horizon
 }
 
 // --- field derivation: map a policy field id to a comparable value on the object
@@ -101,15 +104,15 @@ function deriveFieldValue(obj: EvaluableObject, field: string): string | number 
       return Math.max(0, Math.round(d));
     }
     case "quantum_axis":
-      return quantumAxis(obj.algorithm, (obj as any).type);
+      return quantumAxis(obj.algorithm, obj.type);
     case "pqc_posture":
       return pqcPosture(obj.algorithm);
     case "quantum_status":
-      return quantumStatus(obj.algorithm, keyBits, (obj as any).qDay);
+      return quantumStatus(obj.algorithm, keyBits, obj.type, obj.profileId as any, obj.asOfYear);
     case "deadline_class":
-      return deadlineClass(obj.algorithm, (obj as any).type);
-    case "quantum_vuln": // derived view over the model
-      return quantumVulnDerived(obj.algorithm, keyBits, (obj as any).qDay);
+      return deadlineClassFor(obj.algorithm, obj.type);
+    case "quantum_vuln": // legacy view for seed policies; not authorable
+      return quantumVulnDerived(obj.algorithm, keyBits, obj.type, obj.profileId as any, obj.asOfYear);
     case "kex_list":
       return kexList(obj);
     case "cipher_enc_list":
