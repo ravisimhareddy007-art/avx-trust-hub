@@ -47,7 +47,9 @@ export interface ErsDriver {
   urgency: string; // grounded urgency signal (expiry clock, exposure, etc.)
   urgencyScore: number; // for the "urgency" sort lens
   filters: Record<string, string>; // inventory deep-link filters
+  recencyLabel?: string;
 }
+
 
 interface DriverDef {
   id: string;
@@ -219,6 +221,8 @@ function buildDriverBuckets(): ErsDriver[] {
       urgency: def.urgency(objs),
       urgencyScore: def.urgencyWeight + maxCrs,
       filters: def.filters,
+      recencyLabel: "seen this scan",
+
     }))
     .sort((a, b) => b.pts - a.pts);
 }

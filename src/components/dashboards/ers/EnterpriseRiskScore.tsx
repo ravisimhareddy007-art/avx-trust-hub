@@ -25,11 +25,12 @@ function TrendChart({ points, hsl }: { points: { label: string; value: number }[
   const [hover, setHover] = useState<number | null>(null);
   const ref = useRef<SVGSVGElement>(null);
   const W = 300,
-    H = 130,
+    H = 140,
     L = 22,
     R = 250,
-    T = 8,
+    T = 18,
     B = 108;
+
   const y = (v: number) => T + (1 - v / 100) * (B - T);
   const x = (i: number) => L + (i / (points.length - 1)) * (R - L);
   const line = points.map((p, i) => `${i === 0 ? "M" : "L"} ${x(i).toFixed(1)} ${y(p.value).toFixed(1)}`).join(" ");
@@ -214,9 +215,22 @@ export default function EnterpriseRiskScore() {
           <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
           <div className="absolute left-0 top-5 z-50 hidden group-hover:block w-80 bg-card border border-border rounded-lg shadow-lg px-3 py-2.5">
             <p className="text-[11px] text-foreground leading-relaxed">
-              Enterprise Risk Score (ERS) is a single executive-level risk score for your organization. It is calculated
-              as a business-impact-weighted average of every asset's risk, with a floor rule that prevents a single
-              critical production asset from being masked by a large number of healthy assets.
+              {lens === "qes" ? (
+                <>
+                  Quantum Exposure Score (QES) is a single executive-level measure of your organization's
+                  exposure to quantum attack. It is anchored on the worst quantum-vulnerable objects (not a
+                  dilutable average), so a few critical harvest-now-decrypt-later objects cannot be masked by
+                  many safe ones. It is scored separately from operational risk (ERS).
+                </>
+              ) : (
+                <>
+                  Enterprise Risk Score (ERS) is a single executive-level risk score for your organization.
+                  It is calculated as a business-impact-weighted average of every asset's risk, with a floor
+                  rule that prevents a single critical production asset from being masked by a large number
+                  of healthy assets.
+                </>
+              )}
+
             </p>
           </div>
         </div>
@@ -297,8 +311,9 @@ export default function EnterpriseRiskScore() {
                 }}
                 className={`text-[10px] px-2.5 py-0.5 transition-colors ${sort === "urgency" ? "bg-teal text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
               >
-                Urgency
+                Most recent
               </button>
+
             </div>
           </div>
 
@@ -324,8 +339,9 @@ export default function EnterpriseRiskScore() {
                 <div className="min-w-0">
                   <div className="text-[12px] text-foreground truncate">{d.label}</div>
                   <div className="text-[10px] text-muted-foreground truncate">
-                    {d.count.toLocaleString()} objects · {d.urgency}
+                    {d.count.toLocaleString()} objects · {(d as any).recencyLabel ?? "seen this scan"}
                   </div>
+
                 </div>
                 <div className="text-right">
                   {d.fullyTicketed ? (
