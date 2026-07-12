@@ -269,17 +269,6 @@ export const VIOLATION_FILTERS: Record<string, DashboardFilter> = {
     pts: 5,
     filters: { type: "Cloud KMS Key", filterId: "cloud_quantum", tab: "identities" },
   },
-  "agility-blocked": {
-    id: "agility-blocked",
-    label: "Cannot migrate today (agility-blocked)",
-    description:
-      "Quantum-vulnerable objects that a certificate change cannot fix: a blocking library or CA has no PQC path.",
-    countNoun: "objects",
-    predicate: (a) => isQuantumVulnerable(a) && !assessAgility(a).agile,
-    enterpriseCount: 0,
-    pts: 8,
-    filters: { filterId: "agility-blocked", tab: "identities" },
-  },
   hsm_extractable: {
     id: "hsm_extractable",
     label: "HSM keys: extractable key material",
