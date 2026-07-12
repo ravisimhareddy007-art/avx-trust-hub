@@ -1,5 +1,5 @@
-import type { CryptoAsset } from '@/data/mockData';
-import { algVuln, computeQOE } from '@/lib/risk/qes';
+import type { CryptoAsset } from "@/data/mockData";
+import { algVuln, computeQOE } from "@/lib/risk/qes";
 
 // Canonical, single source of truth for the policy violations of a cryptographic
 // object. Every surface (Inventory, Quantum Readiness, Violations page, drawers,
@@ -9,15 +9,17 @@ import { algVuln, computeQOE } from '@/lib/risk/qes';
 // attributes, so the named items always match the object's actual algorithm,
 // expiry, ownership, and quantum status.
 
-export type ViolationKind = 'operational' | 'quantum';
+export type ViolationKind = "operational" | "quantum";
 
 export interface CryptoViolation {
-  id: string;                 // stable per object+rule
+  id: string; // stable per object+rule
   kind: ViolationKind;
-  severity: 'Critical' | 'High' | 'Medium' | 'Low';
-  title: string;              // the named violation, e.g. "Quantum-vulnerable algorithm (RSA-2048)"
-  policyMapping: string;      // the policy/standard it breaches
+  severity: "Critical" | "High" | "Medium" | "Low";
+  title: string; // the named violation, e.g. "Quantum-vulnerable algorithm (RSA-2048)"
+  policyMapping: string; // the policy/standard it breaches
   recommendation: string;
+  frame?: "classical" | "pqc"; // which lens raised it
+  clause?: string; // the specific cited regulatory clause
 }
 
 const WEAK_KEYS = /^(RSA-1024|DSA|DSA-1024|RSA-1536)/i;
@@ -27,58 +29,81 @@ export function getCryptoViolations(asset: CryptoAsset): CryptoViolation[] {
   const oid = asset.id;
 
   // ── Operational violations (from the object's real lifecycle facts) ──
-  if (asset.status === 'Expired' || asset.daysToExpiry === 0) {
+  if (asset.status === "Expired" || asset.daysToExpiry === 0) {
     v.push({
-      id: `${oid}-op-expired`, kind: 'operational', severity: 'Critical',
-      title: 'Certificate expired',
-      policyMapping: 'CA/Browser Forum Baseline Requirements; internal renewal SLA',
-      recommendation: 'Renew and replace immediately; investigate dependent services.',
+      id: `${oid}-op-expired`,
+      kind: "operational",
+      severity: "Critical",
+      title: "Certificate expired",
+      policyMapping: "CA/Browser Forum Baseline Requirements; internal renewal SLA",
+      recommendation: "Renew and replace immediately; investigate dependent services.",
     });
   } else if (asset.daysToExpiry > 0 && asset.daysToExpiry <= 7) {
     v.push({
-      id: `${oid}-op-expiring`, kind: 'operational', severity: 'Critical',
-      title: 'Certificate expiring in under 7 days',
-      policyMapping: 'Internal renewal SLA',
-      recommendation: 'Schedule renewal now to avoid an outage.',
+      id: `${oid}-op-expiring`,
+      kind: "operational",
+      severity: "Critical",
+      title: "Certificate expiring in under 7 days",
+      policyMapping: "Internal renewal SLA",
+      recommendation: "Schedule renewal now to avoid an outage.",
     });
   }
 
-  if (asset.rotationFrequency === 'Never' || asset.status === 'Orphaned') {
+  if (asset.rotationFrequency === "Never" || asset.status === "Orphaned") {
     v.push({
-      id: `${oid}-op-rotation`, kind: 'operational', severity: 'High',
-      title: 'Rotation overdue (no rotation policy)',
-      policyMapping: 'NIST SP 800-57 key lifecycle',
-      recommendation: 'Assign a rotation schedule and rotate the key.',
+      id: `${oid}-op-rotation`,
+      kind: "operational",
+      severity: "High",
+      title: "Rotation overdue (no rotation policy)",
+      policyMapping: "NIST SP 800-57 key lifecycle",
+      recommendation: "Assign a rotation schedule and rotate the key.",
     });
   }
 
-  if (asset.owner === 'Unassigned') {
+  if (asset.owner === "Unassigned") {
     v.push({
-      id: `${oid}-op-owner`, kind: 'operational', severity: 'Medium',
-      title: 'No assigned owner',
-      policyMapping: 'Internal ownership policy',
-      recommendation: 'Assign an accountable owner and team.',
+      id: `${oid}-op-owner`,
+      kind: "operational",
+      severity: "Medium",
+      title: "No assigned owner",
+      policyMapping: "Internal ownership policy",
+      recommendation: "Assign an accountable owner and team.",
     });
   }
 
   if (WEAK_KEYS.test(asset.algorithm)) {
     v.push({
-      id: `${oid}-op-weak`, kind: 'operational', severity: 'High',
+      id: `${oid}-op-weak`,
+      kind: "operational",
+      severity: "High",
       title: `Deprecated key strength (${asset.algorithm})`,
-      policyMapping: 'NIST SP 800-131A Rev 2',
-      recommendation: 'Replace with an acceptable key length or PQC-safe algorithm.',
+      policyMapping: "NIST SP 800-131A Rev 2",
+      recommendation: "Replace with an acceptable key length or PQC-safe algorithm.",
     });
   }
 
   // ── Quantum violations (from the object's real algorithm + exposure) ──
   if (algVuln(asset.algorithm) >= 90) {
     const q = computeQOE(asset);
-    const severity: CryptoViolation['severity'] = q.qoe >= 80 ? 'Critical' : q.qoe >= 60 ? 'High' : 'Medium';
+    const severity: CryptoViolation["severity"] = q.qoe >= 80 ? "Critical" : q.qoe >= 60 ? "High" : "Medium";
+    const axisNote =
+      q.axis === "kem" || q.axis === "both"
+        ? "Key establishment: harvest-now-decrypt-later. Migrate to ML-KEM (FIPS 203)."
+        : q.axis === "signature"
+          ? "Signature: future-forgery risk. Migrate to ML-DSA (FIPS 204)."
+          : "Prioritise by harvest-now-decrypt-later exposure.";
     v.push({
-      id: `${oid}-q-algo`, kind: 'quantum', severity,
+      id: `${oid}-q-algo`,
+      kind: "quantum",
+      severity,
       title: `Quantum-vulnerable algorithm (${asset.algorithm})`,
-      policyMapping: 'NIST IR 8547; NSA CNSA 2.0 (deprecate by 2030)',
-      recommendation: 'Plan migration to a FIPS 203/204 algorithm; prioritise by harvest-now-decrypt-later exposure.',
+      policyMapping: "NIST IR 8547; NSA CNSA 2.0",
+      recommendation: `Plan migration to a FIPS 203/204 algorithm. ${axisNote}`,
+      frame: "pqc",
+      clause:
+        q.axis === "signature"
+          ? "NIST IR 8547 (signatures); EO 14412 (2031)"
+          : "NIST IR 8547 (key establishment); EO 14412 (2030)",
     });
   }
 
@@ -90,9 +115,9 @@ export function cryptoViolationCount(asset: CryptoAsset): number {
 }
 
 export function cryptoQuantumViolationCount(asset: CryptoAsset): number {
-  return getCryptoViolations(asset).filter(x => x.kind === 'quantum').length;
+  return getCryptoViolations(asset).filter((x) => x.kind === "quantum").length;
 }
 
 export function cryptoOperationalViolationCount(asset: CryptoAsset): number {
-  return getCryptoViolations(asset).filter(x => x.kind === 'operational').length;
+  return getCryptoViolations(asset).filter((x) => x.kind === "operational").length;
 }
