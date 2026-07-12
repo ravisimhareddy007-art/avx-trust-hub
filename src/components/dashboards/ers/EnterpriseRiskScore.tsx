@@ -339,8 +339,9 @@ export default function EnterpriseRiskScore() {
                 <div className="min-w-0">
                   <div className="text-[12px] text-foreground truncate">{d.label}</div>
                   <div className="text-[10px] text-muted-foreground truncate">
-                    {d.count.toLocaleString()} objects · {d.urgency}
+                    {d.count.toLocaleString()} objects · {(d as any).recencyLabel ?? "seen this scan"}
                   </div>
+
                 </div>
                 <div className="text-right">
                   {d.fullyTicketed ? (
