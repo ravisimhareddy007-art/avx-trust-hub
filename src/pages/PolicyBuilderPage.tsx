@@ -7,6 +7,11 @@ import { mockGroups } from "@/data/inventoryMockData";
 import { SeverityBadge, Modal } from "@/components/shared/UIComponents";
 import ConditionBuilder, { ConditionGroup, emptyGroup } from "@/components/policies/ConditionBuilder";
 import { POLICY_TYPES, describeCondition, FIELDS_BY_POLICY_TYPE } from "@/components/policies/policyFields";
+import {
+  POLICY_FRAMES, DEFAULT_PROFILE_FOR_FRAME, fieldsForFrame,
+  type PolicyFrame,
+} from "@/components/policies/policyFrame";
+import { DEADLINE_PROFILES, type DeadlineProfileId } from "@/lib/risk/qes";
 import { toast } from "sonner";
 import { useExceptions } from "@/lib/exceptions/ExceptionsContext";
 import { ExceptionsList } from "@/lib/exceptions/ExceptionComponents";
@@ -86,6 +91,8 @@ interface CustomPolicy {
   notify?: NotifyConfig;
   ticket?: TicketConfig;
   effectiveFrom?: string | null;
+  frame?: PolicyFrame;
+  profileId?: DeadlineProfileId;
   // Pack provenance (when a policy was created via a Policy Pack import)
   source?: string; // e.g. "Pack: PCI DSS v4.0"; falls back to 'Custom'
   packId?: string;
@@ -833,6 +840,8 @@ export default function PolicyBuilderPage() {
   // Create-policy modal state
   const [createOpen, setCreateOpen] = useState(false);
   const [formPolicyType, setFormPolicyType] = useState("Certificate Policy");
+  const [formFrame, setFormFrame] = useState<PolicyFrame>("classical");
+  const [formProfileId, setFormProfileId] = useState<DeadlineProfileId>("NIST_IR_8547");
   const [formName, setFormName] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const [formTags, setFormTags] = useState<string[]>([]);
@@ -897,6 +906,8 @@ export default function PolicyBuilderPage() {
 
   const resetCreateForm = () => {
     setFormPolicyType("Certificate Policy");
+    setFormFrame("classical");
+    setFormProfileId("NIST_IR_8547");
     setFormName("");
     setFormDescription("");
     setFormTags([]);
@@ -1132,6 +1143,8 @@ export default function PolicyBuilderPage() {
       notify: { ...notify },
       ticket: { ...ticket },
       effectiveFrom: effectiveFrom || null,
+      frame: formFrame,
+      profileId: formFrame === "pqc" ? formProfileId : undefined,
     };
 
     if (editingPolicy) setUserPolicies((prev) => prev.map((p) => (p.id === editingPolicy ? newPolicy : p)));
@@ -1158,6 +1171,9 @@ export default function PolicyBuilderPage() {
     else if (at.includes("Protocol") || at.includes("Cipher")) setFormPolicyType("Protocol & Cipher Policy");
     else if (at.includes("CBOM") || at.includes("Code")) setFormPolicyType("Code / CBOM Policy");
     else setFormPolicyType("Certificate Policy");
+    setFormFrame(p.frame || "classical");
+    const restoredProfile = p.profileId || DEFAULT_PROFILE_FOR_FRAME[p.frame || "classical"];
+    if (restoredProfile) setFormProfileId(restoredProfile);
     setConditionGroups(p.conditionGroups?.length ? p.conditionGroups : [emptyGroup()]);
     setGroupLogic(p.groupLogic || "AND");
     setScope(p.scope ? { ...emptyScope(), ...p.scope } : emptyScope());
@@ -2330,6 +2346,50 @@ export default function PolicyBuilderPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <div className="flex items-center gap-1.5 mb-1">
+                    <label className="block text-[11px] font-medium">Policy Frame*</label>
+                  </div>
+                  <select
+                    value={formFrame}
+                    onChange={(e) => {
+                      const f = e.target.value as PolicyFrame;
+                      setFormFrame(f);
+                      const p = DEFAULT_PROFILE_FOR_FRAME[f];
+                      if (p) setFormProfileId(p);
+                      setConditionGroups([emptyGroup()]);
+                      markUserEdit("conditions");
+                    }}
+                    className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground [&>option]:bg-card [&>option]:text-foreground focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal/40 transition-colors"
+                  >
+                    {POLICY_FRAMES.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.label}
+                      </option>
+                    ))}
+                  </select>
+                  {formFrame === "pqc" && (
+                    <div className="mt-3">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <label className="block text-[11px] font-medium">Deadline Profile*</label>
+                      </div>
+                      <select
+                        value={formProfileId}
+                        onChange={(e) => setFormProfileId(e.target.value as DeadlineProfileId)}
+                        className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground [&>option]:bg-card [&>option]:text-foreground focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal/40 transition-colors"
+                      >
+                        {Object.values(DEADLINE_PROFILES).map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.label}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-1.5 text-[10px] text-muted-foreground leading-snug">
+                        {DEADLINE_PROFILES[formProfileId]?.note}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5 mb-1">
                     <label className="block text-[11px] font-medium">Policy Type*</label>
                     <AIMarker show={aiTouched.has("policyType")} />
                   </div>
@@ -2341,7 +2401,7 @@ export default function PolicyBuilderPage() {
                       markUserEdit("policyType");
                       markUserEdit("conditions");
                     }}
-                    className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal/40 transition-colors"
+                    className="w-full border border-border rounded-lg px-3 py-2 text-[11px] bg-card text-foreground [&>option]:bg-card [&>option]:text-foreground focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal/40 transition-colors"
                   >
                     {POLICY_TYPES.map((o) => (
                       <option key={o}>{o}</option>
@@ -2419,6 +2479,10 @@ export default function PolicyBuilderPage() {
               policyType={formPolicyType}
               groups={conditionGroups}
               groupLogic={groupLogic}
+              fields={fieldsForFrame(
+                FIELDS_BY_POLICY_TYPE[formPolicyType] || [],
+                formFrame
+              )}
               onChange={(g) => {
                 setConditionGroups(g);
                 markUserEdit("conditions");

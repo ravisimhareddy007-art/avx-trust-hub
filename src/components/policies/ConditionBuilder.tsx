@@ -20,6 +20,7 @@ interface Props {
   groupLogic: "AND" | "OR";
   onChange: (groups: ConditionGroup[]) => void;
   onGroupLogicChange: (logic: "AND" | "OR") => void;
+  fields?: FieldDef[];
 }
 
 const uid = (prefix: string) => `${prefix}-${Math.random().toString(36).slice(2, 8)}`;
@@ -108,8 +109,8 @@ function ValueInput({ field, row, onValue }: { field?: FieldDef; row: ConditionR
   );
 }
 
-export default function ConditionBuilder({ policyType, groups, groupLogic, onChange, onGroupLogicChange }: Props) {
-  const fields = fieldsFor(policyType);
+export default function ConditionBuilder({ policyType, groups, groupLogic, onChange, onGroupLogicChange, fields: fieldsProp }: Props) {
+  const fields = fieldsProp ?? fieldsFor(policyType);
 
   const update = (next: ConditionGroup[]) => onChange(next);
 
