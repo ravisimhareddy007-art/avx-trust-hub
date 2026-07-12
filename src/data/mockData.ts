@@ -18409,22 +18409,6 @@ export const workflows = [
     steps: ["Identify keys", "Generate new keys", "Await approval", "Deploy keys", "Revoke old keys", "Verify access"],
   },
   {
-    id: "wf-003",
-    name: "PQC Migration - Batch 1 Payments",
-    type: "PQC Migration",
-    triggeredBy: "Manual",
-    status: "Scheduled",
-    progress: 0,
-    steps: [
-      "Select assets",
-      "Choose algorithm (ML-DSA)",
-      "Generate certs",
-      "Deploy hybrid certs",
-      "Monitor",
-      "Remove classical",
-    ],
-  },
-  {
     id: "wf-004",
     name: "Onboarding - New Microservice",
     type: "Application Onboarding",
@@ -18827,9 +18811,12 @@ export const policyRules = [
     framework: "NIST PQC transition (FIPS 203/204/205)",
     source: "Built-in",
     readOnly: true,
-    conditionText: "Quantum Vulnerability equals Quantum-Vulnerable",
+    conditionText: "PQC Posture is classical AND Quantum Axis is in kem, both",
     conditionGroups: [
-      _g("oob-ck-3-g1", "AND", [{ field: "quantum_vuln", operator: "eq", value: "Quantum-Vulnerable" }]),
+      _g("oob-ck-3-g1", "AND", [
+        { field: "pqc_posture", operator: "eq", value: "classical" },
+        { field: "quantum_axis", operator: "in", value: "kem, both" },
+      ]),
     ],
     groupLogic: "AND" as const,
   },
@@ -18888,9 +18875,12 @@ export const policyRules = [
     framework: "NIST PQC transition (FIPS 203/204/205)",
     source: "Built-in",
     readOnly: true,
-    conditionText: "Quantum Vulnerability equals Quantum-Vulnerable",
+    conditionText: "PQC Posture is classical AND Quantum Axis is in kem, both",
     conditionGroups: [
-      _g("oob-hk-3-g1", "AND", [{ field: "quantum_vuln", operator: "eq", value: "Quantum-Vulnerable" }]),
+      _g("oob-hk-3-g1", "AND", [
+        { field: "pqc_posture", operator: "eq", value: "classical" },
+        { field: "quantum_axis", operator: "in", value: "kem, both" },
+      ]),
     ],
     groupLogic: "AND" as const,
   },
