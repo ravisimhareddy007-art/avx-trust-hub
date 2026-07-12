@@ -1669,7 +1669,7 @@ function DetailPanel({
           </p>
           <div className="flex items-center gap-1.5">
             <StatusBadge status={co.status} />
-            {isPqc && <PQCBadge risk={co.pqcRisk} />}
+            {isPqc && <PQCBadge risk={pqcStatusFor(co).value} />}
           </div>
 
           {/* Risk-forward header: a real gauge + factor bars, not three flat tiles. */}
