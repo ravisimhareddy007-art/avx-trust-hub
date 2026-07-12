@@ -709,6 +709,9 @@ function aggregate(rows: Row[]): QesBreakdown {
     totalScored: rows.length,
     severity: qesSeverity(qes),
     topObjects: [...rows].sort((a, b) => b.qoe - a.qoe).slice(0, 8),
+    history: qesHistory(qes),
+    historySample: true,
+    driverBuckets: qesDriverBuckets(rows.filter((r) => r.kind === "object") as CryptoAsset[], qDay),
   };
 }
 
