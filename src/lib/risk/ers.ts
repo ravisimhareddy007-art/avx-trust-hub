@@ -46,6 +46,7 @@ export interface ErsDriver {
   severity: Severity;
   urgency: string; // grounded urgency signal (expiry clock, exposure, etc.)
   urgencyScore: number; // for the "urgency" sort lens
+  filters: Record<string, string>; // inventory deep-link filters
 }
 
 interface DriverDef {
@@ -57,6 +58,7 @@ interface DriverDef {
   urgencyWeight: number;
   predicate: (a: CryptoAsset) => boolean;
   urgency: (objs: CryptoAsset[]) => string;
+  filters: Record<string, string>;
 }
 
 const DRIVER_DEFS: DriverDef[] = [
