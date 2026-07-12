@@ -100,8 +100,18 @@ export function EnvBadge({ env }: { env: string }) {
   return <StatusBadge status={env} />;
 }
 
-export function PQCBadge({ risk }: { risk: string }) {
-  return <SeverityBadge severity={risk} />;
+export function PQCBadge({ status }: { status: string }) {
+  const colors: Record<string, string> = {
+    Disallowed: "bg-coral/10 text-coral",
+    Deprecated: "bg-amber/10 text-amber",
+    Vulnerable: "bg-purple/10 text-purple",
+    Safe: "bg-success/10 text-success",
+  };
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${colors[status] || "bg-muted text-muted-foreground"}`}>
+      {status}
+    </span>
+  );
 }
 
 export function DaysToExpiry({ days }: { days: number }) {

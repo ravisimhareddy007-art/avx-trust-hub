@@ -97,7 +97,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: "type", label: "Type", cls: "w-36" },
     { key: "keyAttribute", label: "Key Attribute", cls: "w-32" },
     { key: "status", label: "Status", cls: "w-24" },
-    { key: "pqcRisk", label: "PQC", cls: "w-20" },
+    { key: "pqcRisk", label: "PQC Status", cls: "w-20" },
     { key: "owner", label: "Owner", cls: "w-32" },
     { key: "environment", label: "Env", cls: "w-24" },
     { key: "violations", label: "Violations", cls: "w-20" },
@@ -163,7 +163,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: "encStore", label: "Store", cls: "w-36" },
     { key: "encPurpose", label: "Purpose", cls: "w-24" },
     { key: "lastRotated", label: "Last Rotated", cls: "w-28" },
-    { key: "pqcRisk", label: "PQC", cls: "w-20" },
+    { key: "pqcRisk", label: "PQC Status", cls: "w-20" },
     { key: "riskScore", label: "Risk", cls: "w-20" },
   ],
   "Cloud KMS Key": [
@@ -172,7 +172,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: "certAlgSize", label: "Algorithm / Size", cls: "w-32" },
     { key: "cloudRotation", label: "Rotation", cls: "w-24" },
     { key: "cloudProtection", label: "Protection", cls: "w-24" },
-    { key: "pqcRisk", label: "PQC", cls: "w-20" },
+    { key: "pqcRisk", label: "PQC Status", cls: "w-20" },
     { key: "owner", label: "Owner", cls: "w-28" },
     { key: "violations", label: "Violations", cls: "w-20" },
     { key: "riskScore", label: "Risk", cls: "w-20" },
@@ -183,7 +183,7 @@ const COLS: Record<string, ColDef[]> = {
     { key: "hsmClass", label: "Class", cls: "w-20" },
     { key: "certAlgSize", label: "Algorithm / Size", cls: "w-32" },
     { key: "hsmExtractable", label: "Assurance", cls: "w-28" },
-    { key: "pqcRisk", label: "PQC", cls: "w-20" },
+    { key: "pqcRisk", label: "PQC Status", cls: "w-20" },
     { key: "violations", label: "Violations", cls: "w-20" },
     { key: "riskScore", label: "Risk", cls: "w-20" },
   ],
@@ -228,7 +228,7 @@ const CERT_AVAILABLE: ColDef[] = [
   { key: "certSki", label: "Subject Key Identifier", cls: "w-40" },
   { key: "certAki", label: "Authority Key Identifier", cls: "w-40" },
   { key: "certThumb", label: "Thumbprint (SHA-256)", cls: "w-44" },
-  { key: "pqcRisk", label: "PQC / Quantum Readiness", cls: "w-24" },
+  { key: "pqcRisk", label: "PQC Status", cls: "w-24" },
   { key: "owner", label: "Owner", cls: "w-32" },
   { key: "team", label: "Team", cls: "w-32" },
   { key: "environment", label: "Environment", cls: "w-24" },
@@ -256,7 +256,7 @@ const K8S_AVAILABLE: ColDef[] = [
   { key: "certKeyUsage", label: "Key Usage", cls: "w-40" },
   { key: "certEku", label: "Extended Key Usage", cls: "w-40" },
   { key: "certThumb", label: "Thumbprint (SHA-256)", cls: "w-44" },
-  { key: "pqcRisk", label: "PQC / Quantum Readiness", cls: "w-24" },
+  { key: "pqcRisk", label: "PQC Status", cls: "w-24" },
   { key: "owner", label: "Owner", cls: "w-32" },
   { key: "environment", label: "Environment", cls: "w-24" },
   { key: "discoverySource", label: "Discovery Source", cls: "w-32" },
@@ -277,7 +277,7 @@ const CS_AVAILABLE: ColDef[] = [
   { key: "certIssuerDN", label: "Issuer DN", cls: "w-56" },
   { key: "certEku", label: "Extended Key Usage", cls: "w-40" },
   { key: "certThumb", label: "Thumbprint (SHA-256)", cls: "w-44" },
-  { key: "pqcRisk", label: "PQC / Quantum Readiness", cls: "w-24" },
+  { key: "pqcRisk", label: "PQC Status", cls: "w-24" },
   { key: "owner", label: "Owner", cls: "w-32" },
   { key: "discoverySource", label: "Discovery Source", cls: "w-32" },
 ];
@@ -299,7 +299,7 @@ const SSHKEY_AVAILABLE: ColDef[] = [
   { key: "sshHost", label: "Host Endpoints", cls: "w-44" },
   { key: "lastRotated", label: "Last Rotated", cls: "w-28" },
   { key: "rotationFrequency", label: "Rotation Policy", cls: "w-28" },
-  { key: "pqcRisk", label: "PQC", cls: "w-20" },
+  { key: "pqcRisk", label: "PQC Status", cls: "w-20" },
   { key: "owner", label: "Owner", cls: "w-32" },
   { key: "environment", label: "Environment", cls: "w-24" },
   { key: "discoverySource", label: "Discovery Source", cls: "w-32" },
@@ -331,7 +331,7 @@ const ENC_AVAILABLE: ColDef[] = [
   { key: "encStore", label: "Store", cls: "w-36", defaultOn: true },
   { key: "encPurpose", label: "Purpose", cls: "w-24", defaultOn: true },
   { key: "lastRotated", label: "Last Rotated", cls: "w-28", defaultOn: true },
-  { key: "pqcRisk", label: "PQC", cls: "w-20", defaultOn: true },
+  { key: "pqcRisk", label: "PQC Status", cls: "w-20", defaultOn: true },
   { key: "riskScore", label: "Risk", cls: "w-20", defaultOn: true },
   { key: "encState", label: "Key State", cls: "w-24" },
   { key: "encExportable", label: "Exportable", cls: "w-24" },
@@ -371,7 +371,7 @@ const HSM_AVAILABLE: ColDef[] = [
   { key: "hsmKeyState", label: "Key State", cls: "w-24", defaultOn: true },
   { key: "violations", label: "Violations", cls: "w-20", defaultOn: true },
   { key: "riskScore", label: "Risk", cls: "w-20", defaultOn: true },
-  { key: "pqcRisk", label: "PQC", cls: "w-20" },
+  { key: "pqcRisk", label: "PQC Status", cls: "w-20" },
   { key: "owner", label: "Owner", cls: "w-28" },
   { key: "environment", label: "Environment", cls: "w-24" },
   { key: "discoverySource", label: "Discovery Source", cls: "w-32" },
@@ -401,7 +401,7 @@ const ALL_AVAILABLE: ColDef[] = [
   { key: "type", label: "Type", cls: "w-36", defaultOn: true },
   { key: "keyAttribute", label: "Key Attribute", cls: "w-32", defaultOn: true },
   { key: "status", label: "Status", cls: "w-24", defaultOn: true },
-  { key: "pqcRisk", label: "PQC", cls: "w-20", defaultOn: true },
+  { key: "pqcRisk", label: "PQC Status", cls: "w-20", defaultOn: true },
   { key: "owner", label: "Owner", cls: "w-32", defaultOn: true },
   { key: "environment", label: "Env", cls: "w-24", defaultOn: true },
   { key: "violations", label: "Violations", cls: "w-20", defaultOn: true },
@@ -544,8 +544,8 @@ function CellValue({ col, co }: { col: ColDef; co: CryptoAsset }) {
       // policy-derived: badge reflects the active PQC policy verdict, not the
       // static pqcRisk field. Title names the policy that set it.
       return (
-        <span title={v.policyName ? `Set by policy: ${v.policyName}` : "No PQC policy fired"}>
-          <PQCBadge risk={v.value} />
+        <span title={v.policyName ? `Set by policy: ${v.policyName}` : "Platform-derived PQC status"}>
+          <PQCBadge status={v.status} />
         </span>
       );
     }
@@ -1669,7 +1669,7 @@ function DetailPanel({
           </p>
           <div className="flex items-center gap-1.5">
             <StatusBadge status={co.status} />
-            {isPqc && <PQCBadge risk={pqcStatusFor(co).value} />}
+            {isPqc && <PQCBadge status={pqcStatusFor(co).status} />}
           </div>
 
           {/* Risk-forward header: a real gauge + factor bars, not three flat tiles. */}
@@ -2309,7 +2309,7 @@ function exportObjectsCsv(objs: CryptoAsset[], context: string) {
     { h: "Type", get: (o) => o.type },
     { h: "Algorithm", get: (o) => (o as any).algorithm || "" },
     { h: "Status", get: (o) => o.status },
-    { h: "PQC Risk", get: (o) => pqcStatusFor(o).value },
+    { h: "PQC Status", get: (o) => pqcStatusFor(o).status },
     { h: "CRS", get: (o) => String(computeCRS(o).crs) },
     { h: "Owner", get: (o) => o.owner },
     { h: "Team", get: (o) => o.team },
