@@ -603,6 +603,79 @@ export interface QesBreakdown {
     sensitivity: DataSensitivity;
     shelfLife: number;
   }[];
+  history: { label: string; value: number }[];
+  historySample: boolean;
+  driverBuckets: QesDriver[];
+}
+
+export interface QesDriver {
+  id: string;
+  label: string;          // PQC violation type, monitoring-safe wording
+  count: number;          // objects in this group
+  contribution: number;   // summed QOE = QES mass this group represents
+  pts: number;            // display -pts against QES
+  objectIds: string[];    // for ticket coverage
+  severity: "Critical" | "High" | "Medium" | "Low";
+  urgency: string;
+}
+
+// Deterministic 12-month sample series ending at the live QES. Illustrative,
+// not stored telemetry (historySample=true), identical approach to ersHistory.
+function qesHistory(current: number): { label: string; value: number }[] {
+  const N = 12;
+  const start = Math.min(100, current + 14);
+  const now = new Date();
+  const pts: { label: string; value: number }[] = [];
+  for (let i = 0; i < N; i++) {
+    const base = start + (current - start) * (i / (N - 1));
+    const wiggle = i === N - 1 ? 0 : Math.sin(i * 1.7) * 3.2 + Math.cos(i * 0.9) * 2.0;
+    const v = Math.max(0, Math.min(100, Math.round(base + wiggle)));
+    const d = new Date(now.getFullYear(), now.getMonth() - (N - 1 - i), 1);
+    pts.push({ label: d.toLocaleString("en-US", { month: "short" }), value: v });
+  }
+  return pts;
+}
+
+// Group the vulnerable estate by PQC violation type. contribution = summed QOE
+// of the objects in the group (real mass, not a made-up weight). Grouping keys
+// off the axis/status the engine already computes per object.
+function qesDriverBuckets(objects: CryptoAsset[], qDay: number): QesDriver[] {
+  type Acc = { count: number; contribution: number; ids: string[]; maxQoe: number };
+  const groups: Record<string, Acc> = {};
+  const add = (key: string, id: string, qoe: number) => {
+    const g = (groups[key] ||= { count: 0, contribution: 0, ids: [], maxQoe: 0 });
+    g.count++; g.contribution += qoe; g.maxQoe = Math.max(g.maxQoe, qoe);
+    if (g.ids.length < 50) g.ids.push(id);
+  };
+  for (const a of objects) {
+    if (!isQuantumVulnerable(a.algorithm)) continue;
+    const q = computeQOE(a, qDay);
+    const axis = q.axis;
+    let key: string;
+    if (axis === "signature") key = "Classical signature (forgery risk)";
+    else if (axis === "kem" || axis === "both") key = "Classical key establishment (harvest-now)";
+    else if (String(a.algorithm).toUpperCase().startsWith("AES")) key = "Weak symmetric strength";
+    else key = "Quantum-vulnerable algorithm";
+    add(key, a.id, q.qoe);
+  }
+  const sevOf = (maxQoe: number): QesDriver["severity"] =>
+    maxQoe >= 80 ? "Critical" : maxQoe >= 60 ? "High" : maxQoe >= 30 ? "Medium" : "Low";
+  const urgencyOf = (key: string) =>
+    key.includes("harvest") ? "harvest-now-decrypt-later" :
+    key.includes("forgery") ? "future-forgery exposure" : "priced against the deadline";
+  const total = Object.values(groups).reduce((s, g) => s + g.contribution, 0) || 1;
+  return Object.entries(groups)
+    .map(([label, g], i) => ({
+      id: `qes-drv-${i}`,
+      label,
+      count: g.count,
+      contribution: Math.round(g.contribution),
+      pts: Math.max(1, Math.round((g.contribution / total) * 40)),
+      objectIds: g.ids,
+      severity: sevOf(g.maxQoe),
+      urgency: urgencyOf(label),
+    }))
+    .sort((a, b) => b.contribution - a.contribution);
 }
 
 export function qesSeverity(s: number): QesBreakdown["severity"] {
@@ -614,7 +687,7 @@ export function qesSeverity(s: number): QesBreakdown["severity"] {
 
 type Row = QesBreakdown["topObjects"][number] & { vulnerable: boolean; harvestable: boolean; sensitivity: DataSensitivity; shelfLife: number };
 
-function aggregate(rows: Row[]): QesBreakdown {
+function aggregate(rows: Row[], objects: CryptoAsset[], qDay: number): QesBreakdown {
   const qoes = rows.map((r) => r.qoe);
   const asc = [...qoes].sort((a, b) => a - b);
   const maxQoe = qoes.length ? Math.max(...qoes) : 0;
@@ -636,6 +709,9 @@ function aggregate(rows: Row[]): QesBreakdown {
     totalScored: rows.length,
     severity: qesSeverity(qes),
     topObjects: [...rows].sort((a, b) => b.qoe - a.qoe).slice(0, 8),
+    history: qesHistory(qes),
+    historySample: true,
+    driverBuckets: qesDriverBuckets(objects, qDay),
   };
 }
 
@@ -682,7 +758,7 @@ export function computeQES(
     };
   });
 
-  return aggregate([...objRows, ...protoRows]);
+  return aggregate([...objRows, ...protoRows], objects, qDay);
 }
 
 /** Asset-level quantum exposure. Same aggregation, scoped to one IT asset. */
