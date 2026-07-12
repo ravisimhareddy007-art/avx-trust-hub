@@ -539,8 +539,16 @@ function CellValue({ col, co }: { col: ColDef; co: CryptoAsset }) {
       return <span className="font-medium text-foreground truncate">{co.name}</span>;
     case "status":
       return <StatusBadge status={co.status} />;
-    case "pqcRisk":
-      return <PQCBadge risk={co.pqcRisk} />;
+    case "pqcRisk": {
+      const v = pqcStatusFor(co);
+      // policy-derived: badge reflects the active PQC policy verdict, not the
+      // static pqcRisk field. Title names the policy that set it.
+      return (
+        <span title={v.policyName ? `Set by policy: ${v.policyName}` : "No PQC policy fired"}>
+          <PQCBadge risk={v.value} />
+        </span>
+      );
+    }
     case "environment":
       return <EnvBadge env={co.environment} />;
     case "daysToExpiry":
