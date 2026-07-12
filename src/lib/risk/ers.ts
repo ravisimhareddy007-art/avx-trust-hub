@@ -47,7 +47,9 @@ export interface ErsDriver {
   urgency: string; // grounded urgency signal (expiry clock, exposure, etc.)
   urgencyScore: number; // for the "urgency" sort lens
   filters: Record<string, string>; // inventory deep-link filters
+  recencyLabel?: string;
 }
+
 
 interface DriverDef {
   id: string;
