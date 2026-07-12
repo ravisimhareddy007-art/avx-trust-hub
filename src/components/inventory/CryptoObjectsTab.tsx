@@ -9,6 +9,7 @@ import { useInventoryRegistry } from "@/context/InventoryRegistryContext";
 import { useAgent } from "@/context/AgentContext";
 import { useNav } from "@/context/NavigationContext";
 import { StatusBadge, EnvBadge, PQCBadge, DaysToExpiry } from "@/components/shared/UIComponents";
+import { pqcStatusFor } from "@/lib/pqcStatus";
 import {
   Search,
   X,
