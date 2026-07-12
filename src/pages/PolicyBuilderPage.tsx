@@ -1169,6 +1169,9 @@ export default function PolicyBuilderPage() {
     else if (at.includes("Protocol") || at.includes("Cipher")) setFormPolicyType("Protocol & Cipher Policy");
     else if (at.includes("CBOM") || at.includes("Code")) setFormPolicyType("Code / CBOM Policy");
     else setFormPolicyType("Certificate Policy");
+    setFormFrame(p.frame || "classical");
+    const restoredProfile = p.profileId || DEFAULT_PROFILE_FOR_FRAME[p.frame || "classical"];
+    if (restoredProfile) setFormProfileId(restoredProfile);
     setConditionGroups(p.conditionGroups?.length ? p.conditionGroups : [emptyGroup()]);
     setGroupLogic(p.groupLogic || "AND");
     setScope(p.scope ? { ...emptyScope(), ...p.scope } : emptyScope());
