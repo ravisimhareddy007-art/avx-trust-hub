@@ -23,6 +23,7 @@ import {
   type DeadlineProfileId,
 } from "@/lib/risk/qes";
 import TicketDraftModal from "@/components/inventory/TicketDraftModal";
+import MigrationReadinessStrip from "@/components/dashboards/quantum/MigrationReadinessStrip";
 
 const PAGE = 15;
 
