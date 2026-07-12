@@ -1,6 +1,14 @@
 import type { CryptoAsset } from "@/data/mockData";
 import { ESTATE_SUMMARY, mockAssets } from "@/data/mockData";
 import { assessAgility } from "@/lib/risk/qes";
+import { pqcPosture, quantumStatus } from "@/lib/policyEval.quantum";
+
+// Shared quantum predicate: an object is quantum-vulnerable when its posture is
+// classical AND the engine does not rate it safe. Filters MUST use this so the
+// inventory drill-through matches the policy-engine verdict exactly.
+const isQuantumVulnerable = (a: CryptoAsset): boolean =>
+  pqcPosture(a.algorithm) === "classical" &&
+  quantumStatus(a.algorithm, parseInt(String(a.keyLength), 10) || undefined, a.type) !== "safe";
 
 export interface DashboardFilter {
   id: string;
@@ -256,12 +264,21 @@ export const VIOLATION_FILTERS: Record<string, DashboardFilter> = {
     id: "cloud_quantum",
     label: "Cloud KMS keys: quantum-vulnerable algorithm",
     countNoun: "keys",
-    predicate: (a) =>
-      a.type === "Cloud KMS Key" &&
-      (a.pqcRisk === "High" || a.pqcRisk === "Critical" || /^(RSA|ECC|ECDSA|ECDH|DSA|DH)\b/.test(a.algorithm)),
+    predicate: (a) => a.type === "Cloud KMS Key" && isQuantumVulnerable(a),
     enterpriseCount: 388,
     pts: 5,
     filters: { type: "Cloud KMS Key", filterId: "cloud_quantum", tab: "identities" },
+  },
+  "agility-blocked": {
+    id: "agility-blocked",
+    label: "Cannot migrate today (agility-blocked)",
+    description:
+      "Quantum-vulnerable objects that a certificate change cannot fix: a blocking library or CA has no PQC path.",
+    countNoun: "objects",
+    predicate: (a) => isQuantumVulnerable(a) && !assessAgility(a).agile,
+    enterpriseCount: 0,
+    pts: 8,
+    filters: { filterId: "agility-blocked", tab: "identities" },
   },
   hsm_extractable: {
     id: "hsm_extractable",
@@ -285,7 +302,7 @@ export const VIOLATION_FILTERS: Record<string, DashboardFilter> = {
     id: "hsm_quantum",
     label: "HSM keys: quantum-vulnerable algorithm",
     countNoun: "keys",
-    predicate: (a) => a.type === "HSM Key" && /^(RSA|ECC|ECDSA|ECDH|DSA|DH)\b/.test(a.algorithm),
+    predicate: (a) => a.type === "HSM Key" && isQuantumVulnerable(a),
     enterpriseCount: 96,
     pts: 5,
     filters: { type: "HSM Key", filterId: "hsm_quantum", tab: "identities" },
@@ -306,7 +323,7 @@ export const VIOLATION_FILTERS: Record<string, DashboardFilter> = {
     id: "hsm_classical",
     label: "HSM keys: classical algorithm (RSA / ECC)",
     countNoun: "keys",
-    predicate: (a) => a.type === "HSM Key" && /^(RSA|ECC|ECDSA|ECDH|DSA|DH)\b/.test(a.algorithm),
+    predicate: (a) => a.type === "HSM Key" && isQuantumVulnerable(a),
     enterpriseCount: 1026,
     pts: 3,
     filters: { type: "HSM Key", filterId: "hsm_classical", tab: "identities" },
@@ -326,7 +343,8 @@ export const VIOLATION_FILTERS: Record<string, DashboardFilter> = {
   "agility-blocked": {
     id: "agility-blocked",
     label: "Cannot migrate today (agility-blocked)",
-    description: "Quantum-vulnerable objects that cannot be made safe by changing the certificate, because a blocking library or CA has no PQC path.",
+    description:
+      "Quantum-vulnerable objects that cannot be made safe by changing the certificate, because a blocking library or CA has no PQC path.",
     countNoun: "objects",
     predicate: (a) => !assessAgility(a).agile,
     enterpriseCount: mockAssets.filter((a) => !assessAgility(a).agile).length,
