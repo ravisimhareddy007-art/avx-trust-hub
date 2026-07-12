@@ -8,6 +8,10 @@
 // protocol version, revocation status) are read from optional enrichment fields.
 
 import { OPERATORS } from '@/components/policies/policyFields';
+import {
+  quantumAxis, pqcPosture, quantumStatus, deadlineClass,
+  quantumVulnDerived, kexList, cipherEncList, cipherMacList,
+} from "./policyEval.quantum";
 
 export interface EvalCondition { id: string; field: string; operator: string; value: string; }
 export interface EvalGroup { id: string; innerLogic: 'AND' | 'OR'; rows: EvalCondition[]; }
@@ -71,11 +75,22 @@ function deriveFieldValue(obj: EvaluableObject, field: string): string | number 
       const d = (Date.now() - new Date(obj.lastRotated).getTime()) / 86400000;
       return Math.max(0, Math.round(d));
     }
-    case 'quantum_vuln': {
-      if (algo.startsWith('ML-KEM') || algo.startsWith('ML-DSA') || algo.startsWith('SLH') || algo.startsWith('AES')) return 'Quantum-Safe';
-      if (algo.startsWith('RSA') || algo.startsWith('ECC') || algo.startsWith('ECDSA') || algo.startsWith('DH') || algo.startsWith('ED25519')) return 'Quantum-Vulnerable';
-      return undefined;
-    }
+    case 'quantum_axis':
+      return quantumAxis(obj.algorithm, (obj as any).type);
+    case 'pqc_posture':
+      return pqcPosture(obj.algorithm);
+    case 'quantum_status':
+      return quantumStatus(obj.algorithm, keyBits, (obj as any).qDay);
+    case 'deadline_class':
+      return deadlineClass(obj.algorithm, (obj as any).type);
+    case 'quantum_vuln': // kept: now a derived VIEW over the model, not the model
+      return quantumVulnDerived(obj.algorithm, keyBits, (obj as any).qDay);
+    case 'kex_list':
+      return kexList(obj);
+    case 'cipher_enc_list':
+      return cipherEncList(obj);
+    case 'cipher_mac_list':
+      return cipherMacList(obj);
     default: return undefined;
   }
 }
