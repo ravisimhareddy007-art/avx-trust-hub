@@ -906,6 +906,8 @@ export default function PolicyBuilderPage() {
 
   const resetCreateForm = () => {
     setFormPolicyType("Certificate Policy");
+    setFormFrame("classical");
+    setFormProfileId("NIST_IR_8547");
     setFormName("");
     setFormDescription("");
     setFormTags([]);
