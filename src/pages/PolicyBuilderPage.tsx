@@ -838,6 +838,8 @@ export default function PolicyBuilderPage() {
   // Create-policy modal state
   const [createOpen, setCreateOpen] = useState(false);
   const [formPolicyType, setFormPolicyType] = useState("Certificate Policy");
+  const [formFrame, setFormFrame] = useState<PolicyFrame>("classical");
+  const [formProfileId, setFormProfileId] = useState<DeadlineProfileId>("NIST_IR_8547");
   const [formName, setFormName] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const [formTags, setFormTags] = useState<string[]>([]);
