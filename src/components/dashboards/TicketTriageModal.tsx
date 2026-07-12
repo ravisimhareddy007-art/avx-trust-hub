@@ -759,7 +759,7 @@ export default function TicketTriageModal({
                       {ita ? (
                         <span className="flex flex-col leading-tight min-w-0">
                           <span className="text-foreground truncate">{ita.name}</span>
-                          <span className="text-[9px] text-muted-foreground/70 truncate">{ita.type}</span>
+                          <span className="text-[9px] text-muted-foreground/70 truncate">{ita.assetClass}</span>
                         </span>
                       ) : (
                         <span className="text-muted-foreground/50">unbound</span>

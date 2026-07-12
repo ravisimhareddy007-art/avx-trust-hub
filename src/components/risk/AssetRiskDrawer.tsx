@@ -77,7 +77,7 @@ export default function AssetRiskDrawer({ asset, onClose, onOpenObject }: Props)
                 {asset.name}
               </h2>
               <p className="text-[10px] text-muted-foreground truncate">
-                {asset.type} · {asset.environment}
+                {asset.assetClass} · {asset.environment}
               </p>
             </div>
           </div>
