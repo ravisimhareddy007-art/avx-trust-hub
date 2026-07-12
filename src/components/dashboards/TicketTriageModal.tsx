@@ -578,6 +578,7 @@ export default function TicketTriageModal({
       jira = 0;
     selectedObjs.forEach((o) => {
       const d = drafts[o.id] ?? buildDraft(withIssue(o), violationFor(o));
+      const vid = violationFor(o);
       if (d.system === "ServiceNow") sn++;
       else jira++;
       addTicket(
@@ -587,6 +588,12 @@ export default function TicketTriageModal({
           priority: draftPriority(crsPriority(o.crs)),
           assignee: o.assignee,
           module: moduleFor(o.category),
+          description: d.description,
+          rootCause: rootCause(o, vid),
+          remediationSteps: [remediation(vid)],
+          affectedSystems: o.itAsset?.name || o.asset.infrastructure || o.name,
+          complianceImpact: VIOLATION_CATALOG[vid]?.framework ?? "Internal Security Policy",
+          sla: draftPriority(crsPriority(o.crs)) === "Critical" ? "24 hours" : "5 business days",
         },
         {
           objectId: o.id,
