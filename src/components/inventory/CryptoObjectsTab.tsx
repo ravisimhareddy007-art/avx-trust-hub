@@ -2309,7 +2309,7 @@ function exportObjectsCsv(objs: CryptoAsset[], context: string) {
     { h: "Type", get: (o) => o.type },
     { h: "Algorithm", get: (o) => (o as any).algorithm || "" },
     { h: "Status", get: (o) => o.status },
-    { h: "PQC Risk", get: (o) => o.pqcRisk },
+    { h: "PQC Risk", get: (o) => pqcStatusFor(o).value },
     { h: "CRS", get: (o) => String(computeCRS(o).crs) },
     { h: "Owner", get: (o) => o.owner },
     { h: "Team", get: (o) => o.team },
