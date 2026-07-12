@@ -617,7 +617,10 @@ export interface QesDriver {
   objectIds: string[];    // for ticket coverage
   severity: "Critical" | "High" | "Medium" | "Low";
   urgency: string;
+  urgencyScore?: number;
+  recencyLabel?: string;
 }
+
 
 // Deterministic 12-month sample series ending at the live QES. Illustrative,
 // not stored telemetry (historySample=true), identical approach to ersHistory.
