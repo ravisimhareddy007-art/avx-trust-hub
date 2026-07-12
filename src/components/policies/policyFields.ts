@@ -1,3 +1,4 @@
+import { QUANTUM_PROPERTY_FIELDS, PROTOCOL_QUANTUM_FIELDS } from "./quantumFields";
 // Field / operator catalog for the Custom Policy condition builder.
 // Scope: supported cryptographic objects only.
 // A policy can only evaluate an attribute that Discovery writes to Inventory.
@@ -74,14 +75,7 @@ export const FIELDS_BY_POLICY_TYPE: Record<string, FieldDef[]> = {
       options: ["RC4", "3DES", "NULL", "Export-grade", "AES-GCM", "ChaCha20"],
     },
     { id: "revocation_status", label: "Revocation Status", kind: "enum", options: ["Valid", "Revoked", "Unknown"] },
-    {
-      id: "quantum_vuln",
-      label: "Quantum Vulnerability",
-      kind: "enum",
-      options: ["Quantum-Vulnerable", "Quantum-Safe"],
-      derived: true,
-      hint: "Derived from the algorithm. RSA/ECC/DH = Vulnerable; ML-KEM/ML-DSA/SLH-DSA = Safe.",
-    },
+    ...QUANTUM_PROPERTY_FIELDS,
     {
       id: "deployment_scope",
       label: "Deployment Scope",
@@ -114,14 +108,7 @@ export const FIELDS_BY_POLICY_TYPE: Record<string, FieldDef[]> = {
       computed: true,
       hint: "Requires managed SSH source",
     },
-    {
-      id: "quantum_vuln",
-      label: "Quantum Vulnerability",
-      kind: "enum",
-      options: ["Quantum-Vulnerable", "Quantum-Safe"],
-      derived: true,
-      hint: "Derived from the algorithm. RSA/ECC/DH = Vulnerable; ML-KEM/ML-DSA/SLH-DSA = Safe.",
-    },
+    ...QUANTUM_PROPERTY_FIELDS,
   ],
   // SSH certificates are a distinct object from SSH keys: validity, signing CA,
   // principals, key ID, KRL revocation status (per AVX SSH Cert LCM).
@@ -145,14 +132,7 @@ export const FIELDS_BY_POLICY_TYPE: Record<string, FieldDef[]> = {
       hint: "Revoked = present on a Key Revocation List (KRL).",
     },
     { id: "key_type", label: "Key Type", kind: "enum", options: ["RSA", "ECDSA", "Ed25519"] },
-    {
-      id: "quantum_vuln",
-      label: "Quantum Vulnerability",
-      kind: "enum",
-      options: ["Quantum-Vulnerable", "Quantum-Safe"],
-      derived: true,
-      hint: "Derived from the algorithm.",
-    },
+    ...QUANTUM_PROPERTY_FIELDS,
   ],
   "Secrets & Tokens Policy": [
     {
@@ -234,14 +214,7 @@ export const FIELDS_BY_POLICY_TYPE: Record<string, FieldDef[]> = {
       kind: "enum",
       options: ["AWS KMS", "Azure Key Vault", "GCP KMS", "Fortanix", "Crypto4A"],
     },
-    {
-      id: "quantum_vuln",
-      label: "Quantum Vulnerability",
-      kind: "enum",
-      options: ["Quantum-Vulnerable", "Quantum-Safe"],
-      derived: true,
-      hint: "Derived from the algorithm. RSA/ECC/DH = Vulnerable; ML-KEM/ML-DSA/SLH-DSA = Safe.",
-    },
+    ...QUANTUM_PROPERTY_FIELDS,
   ],
   // Cipher and protocol posture from the Network Probe handshake.
   // Field model follows CycloneDX protocolProperties (type, version, cipherSuites).
@@ -271,14 +244,8 @@ export const FIELDS_BY_POLICY_TYPE: Record<string, FieldDef[]> = {
       kind: "boolean",
       hint: "True when the endpoint negotiates ECDHE or DHE.",
     },
-    {
-      id: "quantum_vuln",
-      label: "Quantum Vulnerability",
-      kind: "enum",
-      options: ["Quantum-Vulnerable", "Quantum-Safe"],
-      derived: true,
-      hint: "Derived from the negotiated key exchange and cipher.",
-    },
+    ...QUANTUM_PROPERTY_FIELDS,
+    ...PROTOCOL_QUANTUM_FIELDS,
   ],
   // Code-found crypto ingested as CBOM (OWASP CycloneDX cryptoProperties).
   // Distinct from other types via the occurrence/evidence model: file, line, confidence.
@@ -318,14 +285,7 @@ export const FIELDS_BY_POLICY_TYPE: Record<string, FieldDef[]> = {
       options: ["high", "medium", "low"],
       hint: "CBOM occurrence confidence. Low-confidence findings may be false positives.",
     },
-    {
-      id: "quantum_vuln",
-      label: "Quantum Vulnerability",
-      kind: "enum",
-      options: ["Quantum-Vulnerable", "Quantum-Safe"],
-      derived: true,
-      hint: "Derived from the algorithm in the CBOM finding.",
-    },
+    ...QUANTUM_PROPERTY_FIELDS,
   ],
 
   "Cloud KMS Key Policy": [
@@ -338,14 +298,7 @@ export const FIELDS_BY_POLICY_TYPE: Record<string, FieldDef[]> = {
       options: ["AES-256", "RSA-2048", "RSA-3072", "RSA-4096", "ECC P-256", "ECC P-384", "ML-KEM", "ML-DSA"],
     },
     { id: "key_bits", label: "Key Length (bits)", kind: "number", unit: "bits" },
-    {
-      id: "quantum_vuln",
-      label: "Quantum Vulnerability",
-      kind: "enum",
-      options: ["Quantum-Vulnerable", "Quantum-Safe"],
-      derived: true,
-      hint: "Derived from the algorithm. RSA/ECC = Vulnerable; ML-KEM/ML-DSA = Safe.",
-    },
+    ...QUANTUM_PROPERTY_FIELDS,
     { id: "rotation_enabled", label: "Rotation Enabled", kind: "boolean" },
     { id: "days_since_rotation", label: "Days Since Last Rotation", kind: "number", unit: "days", computed: true },
     { id: "rotation_interval", label: "Rotation Interval", kind: "number", unit: "days" },
@@ -365,14 +318,7 @@ export const FIELDS_BY_POLICY_TYPE: Record<string, FieldDef[]> = {
     { id: "key_class", label: "Key Class", kind: "enum", options: ["Public", "Private", "Secret"] },
     { id: "key_type", label: "Key Type", kind: "enum", options: ["RSA", "ECDSA", "AES", "ML-DSA", "ML-KEM", "LMS"] },
     { id: "key_bits", label: "Key Length (bits)", kind: "number", unit: "bits" },
-    {
-      id: "quantum_vuln",
-      label: "Quantum Vulnerability",
-      kind: "enum",
-      options: ["Quantum-Vulnerable", "Quantum-Safe"],
-      derived: true,
-      hint: "Derived from the algorithm. RSA/ECC = Vulnerable; ML-KEM/ML-DSA/LMS = Safe.",
-    },
+    ...QUANTUM_PROPERTY_FIELDS,
     { id: "extractable", label: "Extractable (CKA_EXTRACTABLE)", kind: "boolean" },
     { id: "sensitive", label: "Sensitive (CKA_SENSITIVE)", kind: "boolean" },
     { id: "never_extractable", label: "Never Extractable", kind: "boolean" },
