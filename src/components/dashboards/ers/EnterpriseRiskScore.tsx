@@ -215,9 +215,22 @@ export default function EnterpriseRiskScore() {
           <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
           <div className="absolute left-0 top-5 z-50 hidden group-hover:block w-80 bg-card border border-border rounded-lg shadow-lg px-3 py-2.5">
             <p className="text-[11px] text-foreground leading-relaxed">
-              Enterprise Risk Score (ERS) is a single executive-level risk score for your organization. It is calculated
-              as a business-impact-weighted average of every asset's risk, with a floor rule that prevents a single
-              critical production asset from being masked by a large number of healthy assets.
+              {lens === "qes" ? (
+                <>
+                  Quantum Exposure Score (QES) is a single executive-level measure of your organization's
+                  exposure to quantum attack. It is anchored on the worst quantum-vulnerable objects (not a
+                  dilutable average), so a few critical harvest-now-decrypt-later objects cannot be masked by
+                  many safe ones. It is scored separately from operational risk (ERS).
+                </>
+              ) : (
+                <>
+                  Enterprise Risk Score (ERS) is a single executive-level risk score for your organization.
+                  It is calculated as a business-impact-weighted average of every asset's risk, with a floor
+                  rule that prevents a single critical production asset from being masked by a large number
+                  of healthy assets.
+                </>
+              )}
+
             </p>
           </div>
         </div>
