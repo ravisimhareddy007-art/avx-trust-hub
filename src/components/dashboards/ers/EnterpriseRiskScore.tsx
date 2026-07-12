@@ -25,11 +25,12 @@ function TrendChart({ points, hsl }: { points: { label: string; value: number }[
   const [hover, setHover] = useState<number | null>(null);
   const ref = useRef<SVGSVGElement>(null);
   const W = 300,
-    H = 130,
+    H = 140,
     L = 22,
     R = 250,
-    T = 8,
+    T = 18,
     B = 108;
+
   const y = (v: number) => T + (1 - v / 100) * (B - T);
   const x = (i: number) => L + (i / (points.length - 1)) * (R - L);
   const line = points.map((p, i) => `${i === 0 ? "M" : "L"} ${x(i).toFixed(1)} ${y(p.value).toFixed(1)}`).join(" ");
