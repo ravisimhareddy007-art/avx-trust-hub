@@ -23,7 +23,7 @@ export default function TopHNDLExposure({ objects, onSelect }: Props) {
             band={top.qoe >= 80 ? 'Critical' : top.qoe >= 60 ? 'High' : top.qoe >= 30 ? 'Medium' : 'Low'}
             factors={[
               { label: 'Algorithm', value: top.algorithm.match(/ML-KEM|ML-DSA|SLH-DSA|AES-256/) ? 0 : top.algorithm.includes('Ed25519') ? 90 : top.algorithm.includes('AES-128') ? 30 : 100, weightPct: 35, detail: top.algorithm },
-              { label: 'Harvest value', value: ({ Restricted: 100, Confidential: 75, Internal: 50, Public: 25 } as Record<string, number>)[top.sensitivity] * Math.min(1, top.lifespanYears / 10), weightPct: 35, detail: `${top.sensitivity}, ${top.lifespanYears}y` },
+              { label: 'Harvest value', value: ({ Restricted: 100, Confidential: 75, Internal: 50, Public: 25 } as Record<string, number>)[top.sensitivity] * Math.min(1, top.shelfLife / 10), weightPct: 35, detail: `${top.sensitivity}, ${top.shelfLife}y` },
               { label: 'Exposure', value: 60, weightPct: 30 },
             ]}
             why="Rows rank by per-object QOE: quantum-vulnerable algorithm times the value and lifespan of the data it protects."
@@ -40,7 +40,7 @@ export default function TopHNDLExposure({ objects, onSelect }: Props) {
           >
             <div className="min-w-0">
               <p className="text-[11px] font-medium text-foreground truncate">{o.name}</p>
-              <p className="text-[9.5px] text-muted-foreground">{o.algorithm} · {o.sensitivity} · {o.lifespanYears}y lifespan</p>
+              <p className="text-[9.5px] text-muted-foreground">{o.algorithm} · {o.sensitivity} · {o.shelfLife}y lifespan</p>
             </div>
             <span className={`text-[10px] font-bold tabular-nums px-2 py-0.5 rounded shrink-0 ${sevColor(o.qoe)}`}>QOE {o.qoe}</span>
           </button>
