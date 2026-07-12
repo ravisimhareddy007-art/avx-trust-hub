@@ -9,6 +9,7 @@ import { useInventoryRegistry } from "@/context/InventoryRegistryContext";
 import { useAgent } from "@/context/AgentContext";
 import { useNav } from "@/context/NavigationContext";
 import { StatusBadge, EnvBadge, PQCBadge, DaysToExpiry } from "@/components/shared/UIComponents";
+import { pqcStatusFor } from "@/lib/pqcStatus";
 import {
   Search,
   X,
@@ -538,8 +539,16 @@ function CellValue({ col, co }: { col: ColDef; co: CryptoAsset }) {
       return <span className="font-medium text-foreground truncate">{co.name}</span>;
     case "status":
       return <StatusBadge status={co.status} />;
-    case "pqcRisk":
-      return <PQCBadge risk={co.pqcRisk} />;
+    case "pqcRisk": {
+      const v = pqcStatusFor(co);
+      // policy-derived: badge reflects the active PQC policy verdict, not the
+      // static pqcRisk field. Title names the policy that set it.
+      return (
+        <span title={v.policyName ? `Set by policy: ${v.policyName}` : "No PQC policy fired"}>
+          <PQCBadge risk={v.value} />
+        </span>
+      );
+    }
     case "environment":
       return <EnvBadge env={co.environment} />;
     case "daysToExpiry":
@@ -1660,7 +1669,7 @@ function DetailPanel({
           </p>
           <div className="flex items-center gap-1.5">
             <StatusBadge status={co.status} />
-            {isPqc && <PQCBadge risk={co.pqcRisk} />}
+            {isPqc && <PQCBadge risk={pqcStatusFor(co).value} />}
           </div>
 
           {/* Risk-forward header: a real gauge + factor bars, not three flat tiles. */}
@@ -2300,7 +2309,7 @@ function exportObjectsCsv(objs: CryptoAsset[], context: string) {
     { h: "Type", get: (o) => o.type },
     { h: "Algorithm", get: (o) => (o as any).algorithm || "" },
     { h: "Status", get: (o) => o.status },
-    { h: "PQC Risk", get: (o) => o.pqcRisk },
+    { h: "PQC Risk", get: (o) => pqcStatusFor(o).value },
     { h: "CRS", get: (o) => String(computeCRS(o).crs) },
     { h: "Owner", get: (o) => o.owner },
     { h: "Team", get: (o) => o.team },
