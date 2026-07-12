@@ -91,6 +91,8 @@ interface CustomPolicy {
   notify?: NotifyConfig;
   ticket?: TicketConfig;
   effectiveFrom?: string | null;
+  frame?: PolicyFrame;
+  profileId?: DeadlineProfileId;
   // Pack provenance (when a policy was created via a Policy Pack import)
   source?: string; // e.g. "Pack: PCI DSS v4.0"; falls back to 'Custom'
   packId?: string;
