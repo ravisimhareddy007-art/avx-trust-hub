@@ -23,6 +23,7 @@ import {
   type DeadlineProfileId,
 } from "@/lib/risk/qes";
 import TicketDraftModal from "@/components/inventory/TicketDraftModal";
+import MigrationReadinessStrip from "@/components/dashboards/quantum/MigrationReadinessStrip";
 
 const PAGE = 15;
 
@@ -129,6 +130,8 @@ export default function QuantumPosturePage() {
           </div>
         </div>
       </div>
+
+      <MigrationReadinessStrip />
 
       {/* EXPOSURE — score with ERS/QES toggle + two real drills */}
       <section className="space-y-3">
