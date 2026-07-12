@@ -6,11 +6,11 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
 import { mockITAssets } from "@/data/inventoryMockData";
 import { computeERS, defaultBI, type ErsBreakdown } from "@/lib/risk/ers";
-import { type BusinessImpact } from "@/lib/risk/types";
 // (A) NEW: QES + quantum inputs
 import { computeQES, DEFAULT_PROFILE, DEFAULT_Q_DAY, type QesBreakdown, type DeadlineProfileId } from "@/lib/risk/qes";
 import { mockAssets } from "@/data/mockData";
 import { mockProtocols } from "@/data/cryptoStackMockData";
+import { computePqcReadiness, type PqcReadiness } from "@/lib/pqcReadiness";
 
 export interface BiAuditEntry {
   ts: string;
@@ -27,6 +27,7 @@ interface RiskCtx {
   ers: ErsBreakdown;
   // (B) NEW: quantum lens flows through the same context
   qes: QesBreakdown;
+  readiness: PqcReadiness;
   profileId: DeadlineProfileId;
   setProfileId: (p: DeadlineProfileId) => void;
   qDay: number;
@@ -72,12 +73,15 @@ export function RiskProvider({ children }: { children: React.ReactNode }) {
   const [profileId, setProfileId] = useState<DeadlineProfileId>(DEFAULT_PROFILE);
   const [qDay, setQDay] = useState<number>(DEFAULT_Q_DAY);
   const qes = useMemo(() => computeQES(mockAssets, mockProtocols, qDay), [qDay]);
+  const readiness = useMemo(() => computePqcReadiness(mockAssets, qDay), [qDay]);
 
   const auditFor = useCallback((assetId: string) => audit.filter((a) => a.assetId === assetId), [audit]);
 
   return (
     // (D) NEW: qes, profileId, setProfileId, qDay, setQDay added to the value
-    <Ctx.Provider value={{ biMap, setBI, ers, qes, profileId, setProfileId, qDay, setQDay, audit, auditFor }}>
+    <Ctx.Provider
+      value={{ biMap, setBI, ers, qes, readiness, profileId, setProfileId, qDay, setQDay, audit, auditFor }}
+    >
       {children}
     </Ctx.Provider>
   );
