@@ -623,18 +623,20 @@ export interface QesDriver {
 // not stored telemetry (historySample=true), identical approach to ersHistory.
 function qesHistory(current: number): { label: string; value: number }[] {
   const N = 12;
-  const start = Math.min(100, current + 14);
+  const start = Math.min(100, current + 14);   // 12 months ago: worse
   const now = new Date();
   const pts: { label: string; value: number }[] = [];
   for (let i = 0; i < N; i++) {
+    // linear glide DOWN from start to current, with mild wiggle, ending exactly at current
     const base = start + (current - start) * (i / (N - 1));
-    const wiggle = i === N - 1 ? 0 : Math.sin(i * 1.7) * 3.2 + Math.cos(i * 0.9) * 2.0;
+    const wiggle = i === N - 1 ? 0 : Math.sin(i * 1.3) * 2.4 + Math.cos(i * 0.7) * 1.6;
     const v = Math.max(0, Math.min(100, Math.round(base + wiggle)));
     const d = new Date(now.getFullYear(), now.getMonth() - (N - 1 - i), 1);
     pts.push({ label: d.toLocaleString("en-US", { month: "short" }), value: v });
   }
   return pts;
 }
+
 
 // Group the vulnerable estate by PQC violation type. contribution = summed QOE
 // of the objects in the group (real mass, not a made-up weight). Grouping keys
