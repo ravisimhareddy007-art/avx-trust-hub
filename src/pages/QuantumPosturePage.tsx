@@ -131,6 +131,8 @@ export default function QuantumPosturePage() {
         </div>
       </div>
 
+      <MigrationReadinessStrip />
+
       {/* EXPOSURE — score with ERS/QES toggle + two real drills */}
       <section className="space-y-3">
         <h2 className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Exposure</h2>
