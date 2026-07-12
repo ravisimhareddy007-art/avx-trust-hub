@@ -1084,7 +1084,7 @@ function AssignDrawer({
       onClose={onClose}
       footer={
         <div className="space-y-2">
-          {!guard.ok && (
+          {!guard.ok && guard.reason && (
             <div className="flex items-start gap-1.5 px-2 py-1.5 rounded bg-red-500/10 border border-red-500/30">
               <Ban className="w-3.5 h-3.5 text-red-400 mt-px shrink-0" />
               <p className="text-[10px] text-red-400">{guard.reason}</p>

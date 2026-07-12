@@ -46,6 +46,7 @@ export interface ErsDriver {
   severity: Severity;
   urgency: string; // grounded urgency signal (expiry clock, exposure, etc.)
   urgencyScore: number; // for the "urgency" sort lens
+  filters: Record<string, string>; // inventory deep-link filters
 }
 
 interface DriverDef {
@@ -57,6 +58,7 @@ interface DriverDef {
   urgencyWeight: number;
   predicate: (a: CryptoAsset) => boolean;
   urgency: (objs: CryptoAsset[]) => string;
+  filters: Record<string, string>;
 }
 
 const DRIVER_DEFS: DriverDef[] = [
@@ -69,6 +71,7 @@ const DRIVER_DEFS: DriverDef[] = [
     urgencyWeight: 100,
     predicate: VIOLATION_FILTERS.cert_expired.predicate,
     urgency: () => "expired, still serving live traffic",
+    filters: { tab: "identities", type: "TLS Certificate", status: "Expired" },
   },
   {
     id: "1",
@@ -79,6 +82,7 @@ const DRIVER_DEFS: DriverDef[] = [
     urgencyWeight: 90,
     predicate: VIOLATION_FILTERS.cert_expiring_7d.predicate,
     urgency: () => "expiring within 7 days",
+    filters: { tab: "identities", type: "TLS Certificate", status: "Expiring" },
   },
   {
     id: "3",
@@ -89,6 +93,7 @@ const DRIVER_DEFS: DriverDef[] = [
     urgencyWeight: 80,
     predicate: VIOLATION_FILTERS.ssh_suspicious.predicate,
     urgency: () => "anomalous access on production",
+    filters: { tab: "identities", type: "SSH Key", risk: "Suspicious" },
   },
   {
     id: "6",
@@ -99,6 +104,7 @@ const DRIVER_DEFS: DriverDef[] = [
     urgencyWeight: 50,
     predicate: VIOLATION_FILTERS.cert_weak_algo.predicate,
     urgency: () => "below approved key strength",
+    filters: { tab: "identities", type: "TLS Certificate", algorithm: "weak" },
   },
   {
     id: "9",
@@ -109,6 +115,7 @@ const DRIVER_DEFS: DriverDef[] = [
     urgencyWeight: 60,
     predicate: VIOLATION_FILTERS.ssh_rogue.predicate,
     urgency: () => "unmanaged host keys off-platform",
+    filters: { tab: "identities", type: "SSH Key", provenance: "Rogue" },
   },
   {
     id: "8",
@@ -119,6 +126,7 @@ const DRIVER_DEFS: DriverDef[] = [
     urgencyWeight: 40,
     predicate: VIOLATION_FILTERS.secret_unrotated_90d.predicate,
     urgency: () => "not rotated in 90+ days",
+    filters: { tab: "identities", type: "API Key / Secret", rotation: "overdue" },
   },
   {
     id: "orphaned",
@@ -129,6 +137,7 @@ const DRIVER_DEFS: DriverDef[] = [
     urgencyWeight: 45,
     predicate: VIOLATION_FILTERS.secret_orphaned.predicate,
     urgency: () => "no assigned owner",
+    filters: { tab: "identities", type: "API Key / Secret", owner: "Unassigned" },
   },
 ];
 
@@ -209,6 +218,7 @@ function buildDriverBuckets(): ErsDriver[] {
       severity: severityFor(maxCrs),
       urgency: def.urgency(objs),
       urgencyScore: def.urgencyWeight + maxCrs,
+      filters: def.filters,
     }))
     .sort((a, b) => b.pts - a.pts);
 }

@@ -100,6 +100,8 @@ type PolicyType =
   | "certificates"
   | "secrets"
   | "encryption-keys"
+  | "cloud-kms-key"
+  | "hsm-key"
   | "protocol-cipher"
   | "cbom"
   | "";

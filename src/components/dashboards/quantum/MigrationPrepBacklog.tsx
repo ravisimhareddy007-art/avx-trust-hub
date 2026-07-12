@@ -4,7 +4,7 @@ import { qmBacklog, type BacklogItem } from '@/lib/risk/qes';
 import type { CryptoAsset } from '@/data/mockData';
 import ScoreExplainer from '@/components/risk/ScoreExplainer';
 
-type SortKey = 'priority' | 'qoe' | 'lifespanYears';
+type SortKey = 'priority' | 'qoe' | 'shelfLife';
 
 const sevColor = (q: number) =>
   q >= 80 ? 'bg-coral/15 text-coral' : q >= 60 ? 'bg-purple/15 text-purple-light'
@@ -51,7 +51,7 @@ export default function MigrationPrepBacklog({ objects, onRaiseTicket, onSelect 
             band={top.qoe >= 80 ? 'Critical' : top.qoe >= 60 ? 'High' : 'Medium'}
             factors={[
               { label: 'Data sensitivity', value: ({ Restricted: 100, Confidential: 75, Internal: 50, Public: 25 } as Record<string, number>)[top.sensitivity], weightPct: 100, detail: top.sensitivity },
-              { label: 'Lifespan', value: Math.min(100, top.lifespanYears * 10), weightPct: 100, detail: `${top.lifespanYears}y` },
+              { label: 'Lifespan', value: Math.min(100, top.shelfLife * 10), weightPct: 100, detail: `${top.shelfLife}y` },
               { label: 'Object exposure (QOE)', value: top.qoe, weightPct: 100 },
             ]}
             why="Ordered so the most harvest-exposed, longest-lived objects are prepared first. Urgency is floored so prioritisation holds after 2030."
@@ -67,7 +67,7 @@ export default function MigrationPrepBacklog({ objects, onRaiseTicket, onSelect 
             <tr>
               <th className="py-2 px-2 text-left font-medium">Object</th>
               <th className="py-2 px-2 text-left font-medium">Algorithm</th>
-              <Header k="lifespanYears" label="Data" />
+              <Header k="shelfLife" label="Data" />
               <Header k="qoe" label="QOE" num />
               <Header k="priority" label="Priority" num />
               <th className="py-2 px-2 text-left font-medium">Stage</th>
@@ -84,12 +84,12 @@ export default function MigrationPrepBacklog({ objects, onRaiseTicket, onSelect 
                   </button>
                 </td>
                 <td className="py-2 px-2 text-muted-foreground">{it.asset.algorithm}</td>
-                <td className="py-2 px-2 text-muted-foreground">{it.sensitivity} · {it.lifespanYears}y</td>
+                <td className="py-2 px-2 text-muted-foreground">{it.sensitivity} · {it.shelfLife}y</td>
                 <td className="py-2 px-2 text-right">
                   <span className={`tabular-nums px-1.5 py-0.5 rounded ${sevColor(it.qoe)}`}>{it.qoe}</span>
                 </td>
                 <td className="py-2 px-2 text-right tabular-nums font-semibold text-foreground">{it.priority.toFixed(1)}</td>
-                <td className={`py-2 px-2 ${statusColor[it.qthStatus] ?? 'text-muted-foreground'}`}>{it.qthStatus}</td>
+                <td className={`py-2 px-2 ${statusColor[it.status] ?? 'text-muted-foreground'}`}>{it.status}</td>
                 <td className="py-2 px-2 text-right">
                   <button
                     onClick={() => onRaiseTicket(it.asset)}

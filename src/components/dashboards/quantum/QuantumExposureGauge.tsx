@@ -18,7 +18,7 @@ export default function QuantumExposureGauge({ objects, vulnerableCount, totalCo
   const q = React.useMemo(() => computeQES(objects), [objects]);
   const sev = qesSeverity(q.qes);
   const distribution = 0.6 * q.p90 + 0.4 * q.p75;
-  const criticalFloor = q.criticalHNDLCount > 0 ? Math.min(100, 52 + 4.8 * Math.log(q.criticalHNDLCount)) : 0;
+  const criticalFloor = q.criticalCount > 0 ? Math.min(100, 52 + 4.8 * Math.log(q.criticalCount)) : 0;
 
   return (
     <div className="bg-card rounded-xl border border-border p-5 space-y-4">
@@ -33,7 +33,7 @@ export default function QuantumExposureGauge({ objects, vulnerableCount, totalCo
           factors={[
             { label: 'Worst object (max QOE)', value: q.maxQoe, weightPct: 55 },
             { label: 'Distribution (P90/P75)', value: distribution, weightPct: 45 },
-            { label: 'Critical concentration floor', value: criticalFloor, weightPct: 100, detail: `${q.criticalHNDLCount} critical` },
+            { label: 'Critical concentration floor', value: criticalFloor, weightPct: 100, detail: `${q.criticalCount} critical` },
           ]}
           why={explainQES(q)}
           formula="max( 0.55·max(QOE) + 0.45·dist , 52 + 4.8·ln(criticalCount) )"
@@ -48,7 +48,7 @@ export default function QuantumExposureGauge({ objects, vulnerableCount, totalCo
 
       <div className="grid grid-cols-3 gap-3 pt-2 border-t border-border">
         <div>
-          <p className="text-2xl font-bold tabular-nums text-coral">{q.criticalHNDLCount}</p>
+          <p className="text-2xl font-bold tabular-nums text-coral">{q.criticalCount}</p>
           <p className="text-[10px] text-muted-foreground leading-tight">HNDL-critical objects</p>
         </div>
         <div>

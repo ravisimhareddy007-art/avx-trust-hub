@@ -464,7 +464,7 @@ function LinkedInfra({ assets, note, onNavigate }: { assets: ITAsset[]; note?: s
               <span className="text-[11px] text-foreground font-medium flex-1 truncate group-hover:text-teal">
                 {a.name}
               </span>
-              <span className="text-muted-foreground flex-shrink-0 text-[10px]">{a.type}</span>
+              <span className="text-muted-foreground flex-shrink-0 text-[10px]">{a.assetClass}</span>
               <EnvBadge env={a.environment} />
               <ArrowRight className="w-3 h-3 text-muted-foreground/40 group-hover:text-teal flex-shrink-0" />
             </button>

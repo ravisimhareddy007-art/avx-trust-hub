@@ -51,10 +51,10 @@ const IDENTITY_TYPE_MAP: Record<string, CryptoAsset['type']> = {
   
 };
 
-const ASSET_TYPE_MAP: Record<string, ITAsset['type']> = {
-  'Linux Host': 'Application Server',
-  'Windows Server': 'Application Server',
-  'K8s Cluster': 'K8s Cluster',
+const ASSET_TYPE_MAP: Record<string, ITAsset['assetClass']> = {
+  'Linux Host': 'Host',
+  'Windows Server': 'Host',
+  'K8s Cluster': 'Kubernetes Workload',
   'AWS Account': 'API Gateway', // closest semantic match in existing enum
 };
 
@@ -165,7 +165,8 @@ export default function AddResourceModal({ open, onClose, initialKind }: Props) 
     const asset: ManualITAsset = {
       id,
       name: aAddress.trim(),
-      type: canonicalType,
+      assetClass: canonicalType,
+      source: 'CMDB',
       scanned: false,
       environment: aEnv,
       ownerTeam: 'Unassigned',

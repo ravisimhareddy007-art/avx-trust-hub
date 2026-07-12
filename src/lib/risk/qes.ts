@@ -600,6 +600,8 @@ export interface QesBreakdown {
     algorithm: string;
     detail: string;
     kind: "object" | "protocol";
+    sensitivity: DataSensitivity;
+    shelfLife: number;
   }[];
 }
 
@@ -610,7 +612,7 @@ export function qesSeverity(s: number): QesBreakdown["severity"] {
   return "Low";
 }
 
-type Row = QesBreakdown["topObjects"][number] & { vulnerable: boolean; harvestable: boolean };
+type Row = QesBreakdown["topObjects"][number] & { vulnerable: boolean; harvestable: boolean; sensitivity: DataSensitivity; shelfLife: number };
 
 function aggregate(rows: Row[]): QesBreakdown {
   const qoes = rows.map((r) => r.qoe);
@@ -659,6 +661,8 @@ export function computeQES(
       detail: `${b.sensitivity} · ${b.shelfLife}y shelf · KEM ${b.kem} / SIG ${b.sig}`,
       vulnerable: b.vulnerable,
       harvestable: b.harvestable && b.vulnerable,
+      sensitivity: b.sensitivity,
+      shelfLife: b.shelfLife,
     };
   });
 
@@ -673,6 +677,8 @@ export function computeQES(
       detail: `KEM ${q.kem} / SIG ${q.sig}${q.shadow ? " · shadow host" : ""}`,
       vulnerable: q.kem === "Classical",
       harvestable: q.harvestable,
+      sensitivity: p.exposure === "Internet-facing" ? "Restricted" : p.exposure === "Internal" ? "Confidential" : "Internal",
+      shelfLife: 2,
     };
   });
 

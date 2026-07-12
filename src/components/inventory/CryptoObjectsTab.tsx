@@ -1941,7 +1941,7 @@ function DetailPanel({
                     className="w-full flex items-center gap-2 text-[11px] rounded px-2 py-1.5 hover:bg-secondary/50 transition-colors text-left group"
                   >
                     <span className="text-foreground font-medium flex-1 truncate group-hover:text-teal">{a.name}</span>
-                    <span className="text-muted-foreground flex-shrink-0 text-[10px]">{a.type}</span>
+                    <span className="text-muted-foreground flex-shrink-0 text-[10px]">{a.assetClass}</span>
                     <EnvBadge env={a.environment} />
                     <ArrowRight className="w-3 h-3 text-muted-foreground/40 group-hover:text-teal flex-shrink-0" />
                   </button>
