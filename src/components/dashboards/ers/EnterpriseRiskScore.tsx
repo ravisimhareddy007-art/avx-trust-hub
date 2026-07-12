@@ -183,13 +183,13 @@ export default function EnterpriseRiskScore() {
       const fullyTicketed = d.objectIds.length > 0 && ticketed >= d.objectIds.length;
       return { ...d, ticketed, fullyTicketed };
     });
-    const active = withCov.filter((d) => !d.fullyTicketed);
+    const activeRows = withCov.filter((d) => !d.fullyTicketed);
     const done = withCov.filter((d) => d.fullyTicketed);
     const cmp =
       sort === "impact"
-        ? (a: (typeof active)[0], b: (typeof active)[0]) => b.pts - a.pts
-        : (a: (typeof active)[0], b: (typeof active)[0]) => b.urgencyScore - a.urgencyScore;
-    return [...active.sort(cmp), ...done];
+        ? (a: (typeof activeRows)[0], b: (typeof activeRows)[0]) => b.pts - a.pts
+        : (a: (typeof activeRows)[0], b: (typeof activeRows)[0]) => b.urgencyScore - a.urgencyScore;
+    return [...activeRows.sort(cmp), ...done];
   }, [active.driverBuckets, sort]);
 
   const pageCount = Math.ceil(rows.length / PAGE);
