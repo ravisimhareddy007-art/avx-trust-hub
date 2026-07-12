@@ -221,6 +221,8 @@ function buildDriverBuckets(): ErsDriver[] {
       urgency: def.urgency(objs),
       urgencyScore: def.urgencyWeight + maxCrs,
       filters: def.filters,
+      recencyLabel: "seen this scan",
+
     }))
     .sort((a, b) => b.pts - a.pts);
 }
