@@ -79,6 +79,8 @@ export default function SecurityAdminDashboard() {
               )}
 
               <EnterpriseRiskScore />
+              <MigrationReadinessStrip />
+
 
               <InfrastructurePostureStrip />
               <CryptoPostureGrid />
