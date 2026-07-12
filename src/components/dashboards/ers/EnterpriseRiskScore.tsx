@@ -156,27 +156,29 @@ function TrendChart({ points, hsl }: { points: { label: string; value: number }[
 type SortKey = "impact" | "urgency";
 
 export default function EnterpriseRiskScore() {
-  const { ers } = useRisk();
+  const { ers, qes } = useRisk();
+  const [lens, setLens] = useState<"ers" | "qes">("ers");
   const [triage, setTriage] = useState<{ type: string; violationId?: string } | null>(null);
   const [sort, setSort] = useState<SortKey>("impact");
   const [page, setPage] = useState(0);
 
-  const score = ers.ers;
-  const severity = ers.severity;
+  const active = lens === "qes" ? qes : ers;
+  const score = lens === "qes" ? qes.qes : ers.ers;
+  const severity = active.severity;
   const hsl = severityHsl(severity);
-  const hist = ers.history;
+  const hist = active.history;
   const startVal = hist[0]?.value ?? score;
   const delta = score - startVal;
   const improving = delta < 0;
 
-  const topThree = [...ers.driverBuckets].sort((a, b) => b.pts - a.pts).slice(0, 3);
+  const topThree = [...active.driverBuckets].sort((a, b) => b.pts - a.pts).slice(0, 3);
   const projected = Math.max(0, score - topThree.reduce((s, d) => s + d.pts, 0));
   const peak = Math.max(...hist.map((p) => p.value));
 
   const coverageFor = (ids: string[]) => ids.reduce((n, id) => n + (ticketForObject(id) ? 1 : 0), 0);
 
   const rows = useMemo(() => {
-    const withCov = ers.driverBuckets.map((d) => {
+    const withCov = active.driverBuckets.map((d) => {
       const ticketed = coverageFor(d.objectIds);
       const fullyTicketed = d.objectIds.length > 0 && ticketed >= d.objectIds.length;
       return { ...d, ticketed, fullyTicketed };
@@ -188,7 +190,7 @@ export default function EnterpriseRiskScore() {
         ? (a: (typeof active)[0], b: (typeof active)[0]) => b.pts - a.pts
         : (a: (typeof active)[0], b: (typeof active)[0]) => b.urgencyScore - a.urgencyScore;
     return [...active.sort(cmp), ...done];
-  }, [ers.driverBuckets, sort]);
+  }, [active.driverBuckets, sort]);
 
   const pageCount = Math.ceil(rows.length / PAGE);
   const pageRows = rows.slice(page * PAGE, page * PAGE + PAGE);
@@ -198,9 +200,16 @@ export default function EnterpriseRiskScore() {
       <div className="flex items-center gap-2 px-4 pt-3 pb-2.5 border-b border-border">
         <Sparkles className="w-4 h-4 text-teal" />
         <h2 className="text-sm font-semibold text-foreground">Enterprise Risk</h2>
-        <span className="text-[9px] uppercase tracking-wider text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">
-          ERS
-        </span>
+        <div className="flex rounded-md border border-border overflow-hidden ml-1">
+          <button
+            onClick={() => { setLens("ers"); setPage(0); }}
+            className={`px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${lens === "ers" ? "bg-teal/15 text-teal" : "text-muted-foreground"}`}
+          >ERS</button>
+          <button
+            onClick={() => { setLens("qes"); setPage(0); }}
+            className={`px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${lens === "qes" ? "bg-purple/15 text-purple-light" : "text-muted-foreground"}`}
+          >QES</button>
+        </div>
         <div className="relative group">
           <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
           <div className="absolute left-0 top-5 z-50 hidden group-hover:block w-80 bg-card border border-border rounded-lg shadow-lg px-3 py-2.5">
@@ -297,7 +306,12 @@ export default function EnterpriseRiskScore() {
             {pageRows.map((d) => (
               <button
                 key={d.id}
-                onClick={() => setTriage({ type: d.triageType, violationId: d.id })}
+                onClick={() =>
+                  setTriage({
+                    type: lens === "qes" ? "pqc" : (d as any).triageType,
+                    violationId: d.id,
+                  })
+                }
                 className={`group grid items-center gap-3 py-2.5 border-b border-border/40 text-left ${d.fullyTicketed ? "opacity-55" : ""}`}
                 style={{ gridTemplateColumns: "84px minmax(0,1fr) 44px 16px" }}
               >
@@ -323,7 +337,7 @@ export default function EnterpriseRiskScore() {
                       <div className={`text-[13px] font-semibold tabular-nums leading-none ${SEV_TEXT[d.severity]}`}>
                         -{d.pts}
                       </div>
-                      <div className="text-[8px] text-muted-foreground uppercase tracking-wide">ERS</div>
+                      <div className="text-[8px] text-muted-foreground uppercase tracking-wide">{lens === "qes" ? "QES" : "ERS"}</div>
                     </>
                   )}
                 </div>
