@@ -6,6 +6,7 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
 import { mockITAssets } from "@/data/inventoryMockData";
 import { computeERS, defaultBI, type ErsBreakdown } from "@/lib/risk/ers";
+import { type BusinessImpact } from "@/lib/risk/types";
 // (A) NEW: QES + quantum inputs
 import { computeQES, DEFAULT_PROFILE, DEFAULT_Q_DAY, type QesBreakdown, type DeadlineProfileId } from "@/lib/risk/qes";
 import { mockAssets } from "@/data/mockData";
