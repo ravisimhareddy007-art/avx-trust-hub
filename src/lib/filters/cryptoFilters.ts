@@ -335,8 +335,8 @@ export const VIOLATION_FILTERS: Record<string, DashboardFilter> = {
     description:
       "Quantum-vulnerable objects that cannot be made safe by changing the certificate, because a blocking library or CA has no PQC path.",
     countNoun: "objects",
-    predicate: (a) => !assessAgility(a).agile,
-    enterpriseCount: mockAssets.filter((a) => !assessAgility(a).agile).length,
+    predicate: (a) => isQuantumVulnerable(a) && !assessAgility(a).agile,
+    enterpriseCount: mockAssets.filter((a) => isQuantumVulnerable(a) && !assessAgility(a).agile).length,
     pts: 5,
     filters: { filterId: "agility-blocked", tab: "identities" },
   },
