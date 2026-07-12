@@ -758,7 +758,7 @@ export function computeQES(
     };
   });
 
-  return aggregate([...objRows, ...protoRows]);
+  return aggregate([...objRows, ...protoRows], objects, qDay);
 }
 
 /** Asset-level quantum exposure. Same aggregation, scoped to one IT asset. */
