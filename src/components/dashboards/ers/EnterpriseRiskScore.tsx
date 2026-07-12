@@ -311,8 +311,9 @@ export default function EnterpriseRiskScore() {
                 }}
                 className={`text-[10px] px-2.5 py-0.5 transition-colors ${sort === "urgency" ? "bg-teal text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
               >
-                Urgency
+                Most recent
               </button>
+
             </div>
           </div>
 
