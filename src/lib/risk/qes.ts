@@ -679,9 +679,12 @@ function qesDriverBuckets(objects: CryptoAsset[], qDay: number): QesDriver[] {
       objectIds: g.ids,
       severity: sevOf(g.maxQoe),
       urgency: urgencyOf(label),
+      urgencyScore: Math.round(g.contribution),
+      recencyLabel: g.count > 0 ? "identified since last scan" : "no change",
     }))
     .sort((a, b) => b.contribution - a.contribution);
 }
+
 
 export function qesSeverity(s: number): QesBreakdown["severity"] {
   if (s >= 80) return "Critical";
