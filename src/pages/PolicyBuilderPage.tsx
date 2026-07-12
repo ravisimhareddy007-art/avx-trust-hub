@@ -2470,6 +2470,10 @@ export default function PolicyBuilderPage() {
               policyType={formPolicyType}
               groups={conditionGroups}
               groupLogic={groupLogic}
+              fields={fieldsForFrame(
+                FIELDS_BY_POLICY_TYPE[formPolicyType] || [],
+                formFrame
+              )}
               onChange={(g) => {
                 setConditionGroups(g);
                 markUserEdit("conditions");
