@@ -34,7 +34,7 @@ const POSTURE = {
     lifecycle: 19,
     hwRequired: 7,
   },
-  hsm: { total: 1240, extractable: 27, quantum: 96, weakAlgo: 62, classical: 1026, pqc: 214 },
+  hsm: { total: 1240, extractable: 27, dualControl: 74, weakAlgo: 62, utimaco: 604, crypto4a: 412, fortanix: 224 },
   secrets: { total: 6240, act: 3980, unrotated: 3210, orphaned: 512, noPolicy: 258 },
   // Estate-scale protocol and library figures. The crypto-stack inventory holds
   // the discovered sample; the dashboard reports estate totals. Drill-through
@@ -140,25 +140,25 @@ export default function CryptoPostureGrid() {
   const cloud = POSTURE.cloud;
   const cloudRows: PostureRow[] = [
     {
-      label: "Rotation",
+      label: "Automatic rotation disabled",
       count: cloud.rotation,
       role: "critical",
       onClick: () => go({ tab: "identities", type: "Cloud KMS Key", filterId: "cloud_rotation_disabled" }),
     },
     {
-      label: "Access",
+      label: "Wildcard principal in key policy",
       count: cloud.access,
       role: "critical",
       onClick: () => go({ tab: "identities", type: "Cloud KMS Key", filterId: "cloud_overpermissive" }),
     },
     {
-      label: "Lifecycle",
+      label: "Unused key idle 90+ days",
       count: cloud.lifecycle,
       role: "high",
       onClick: () => go({ tab: "identities", type: "Cloud KMS Key", filterId: "cloud_lifecycle" }),
     },
     {
-      label: "Hardware Protection Required",
+      label: "Sensitive key not HSM-backed",
       count: cloud.hwRequired,
       role: "critical",
       onClick: () => go({ tab: "identities", type: "Cloud KMS Key", filterId: "cloud_hw_required" }),
@@ -187,41 +187,51 @@ export default function CryptoPostureGrid() {
   const hsm = POSTURE.hsm;
   const hsmRows: PostureRow[] = [
     {
-      label: "Extractable keys",
+      label: "Exportable key material",
       count: hsm.extractable,
       role: "critical",
       onClick: () => go({ tab: "identities", type: "HSM Key", filterId: "hsm_extractable" }),
     },
     {
-      label: "Quantum-vulnerable (RSA / ECC)",
-      count: hsm.quantum,
-      role: "high",
-      onClick: () => go({ tab: "identities", type: "HSM Key", filterId: "hsm_quantum" }),
+      label: "No dual control (M-of-N) on key",
+      count: hsm.dualControl,
+      role: "critical",
+      onClick: () => go({ tab: "identities", type: "HSM Key", filterId: "hsm_dual_control" }),
     },
     {
-      label: "Weak or deprecated algorithm",
+      label: "Weak algorithm (RSA-1024 / SHA-1)",
       count: hsm.weakAlgo,
       role: "high",
       onClick: () => go({ tab: "identities", type: "HSM Key", filterId: "hsm_weak_algo" }),
     },
   ];
-  const hsmAlgoSlices: DonutSlice[] = [
+  // Distribution by HSM (inventory lens): which appliance holds the keys.
+  const UTIMACO_BLUE = "#5b8def";
+  const CRYPTO4A_TEAL = "#2fb3a0";
+  const FORTANIX_VIOLET = "#8b7bd8";
+  const hsmVendorSlices: DonutSlice[] = [
     {
-      label: "Classical (RSA / ECC)",
-      count: hsm.classical,
-      stroke: AMBER,
-      text: "text-amber",
-      onClick: () => go({ tab: "identities", type: "HSM Key", filterId: "hsm_classical" }),
+      label: "Utimaco",
+      count: hsm.utimaco,
+      stroke: UTIMACO_BLUE,
+      text: "text-muted-foreground",
+      onClick: () => go({ tab: "identities", type: "HSM Key", vendor: "Utimaco" }),
     },
     {
-      label: "Post-quantum (ML-KEM / ML-DSA / LMS)",
-      count: hsm.pqc,
-      stroke: TEAL,
+      label: "Crypto4A",
+      count: hsm.crypto4a,
+      stroke: CRYPTO4A_TEAL,
       text: "text-teal",
-      onClick: () => go({ tab: "identities", type: "HSM Key", filterId: "hsm_pqc" }),
+      onClick: () => go({ tab: "identities", type: "HSM Key", vendor: "Crypto4A" }),
+    },
+    {
+      label: "Fortanix",
+      count: hsm.fortanix,
+      stroke: FORTANIX_VIOLET,
+      text: "text-muted-foreground",
+      onClick: () => go({ tab: "identities", type: "HSM Key", vendor: "Fortanix" }),
     },
   ];
-  const hsmPqcPct = Math.round((hsm.pqc / hsm.total) * 100);
   const s = POSTURE.secrets;
   const secretRows: PostureRow[] = [
     {
@@ -403,13 +413,19 @@ export default function CryptoPostureGrid() {
           icon={Server}
           label="HSM Keys"
           total={hsm.total}
-          caption={"Utimaco \u00b7 Crypto4A \u00b7 hardware root of trust"}
-          hero={{ value: hsm.extractable, caption: "extractable", role: "critical" }}
+          caption={"Utimaco \u00b7 Crypto4A \u00b7 Fortanix \u00b7 hardware root of trust"}
+          hero={{ value: hsm.extractable, caption: "exportable", role: "critical" }}
           views={[
             { label: "Posture", distribution: { type: "rows", rows: hsmRows } },
             {
-              label: "Algorithm",
-              distribution: { type: "donut", centerValue: `${hsmPqcPct}%`, centerLabel: "PQC", slices: hsmAlgoSlices },
+              label: "Distribution",
+              distribution: {
+                type: "donut",
+                centerValue: hsm.total.toLocaleString(),
+                centerLabel: "keys",
+                centerClass: "text-foreground",
+                slices: hsmVendorSlices,
+              },
             },
           ]}
           footerNote={"Monitor only \u00b7 ticket to act"}
