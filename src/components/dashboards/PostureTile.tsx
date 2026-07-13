@@ -43,7 +43,7 @@ export interface Bar {
 
 export type Distribution =
   | { type: "rows"; rows: PostureRow[] }
-  | { type: "donut"; centerValue: string; centerLabel: string; slices: DonutSlice[] }
+  | { type: "donut"; centerValue: string; centerLabel: string; slices: DonutSlice[]; centerClass?: string }
   | { type: "bars"; bars: Bar[]; xLabel?: string; yLabel?: string };
 
 export interface TileView {
@@ -111,10 +111,12 @@ function Donut({
   slices,
   centerValue,
   centerLabel,
+  centerClass = "text-coral",
 }: {
   slices: DonutSlice[];
   centerValue: string;
   centerLabel: string;
+  centerClass?: string;
 }) {
   const total = slices.reduce((s, x) => s + x.count, 0) || 1;
   const R = 15.915;
@@ -145,7 +147,7 @@ function Donut({
         })}
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-        <span className="text-coral text-[15px] font-semibold leading-none">{centerValue}</span>
+        <span className={`${centerClass} text-[15px] font-semibold leading-none`}>{centerValue}</span>
         <span className="text-muted-foreground text-[9px] mt-0.5">{centerLabel}</span>
       </div>
     </div>
@@ -262,7 +264,7 @@ function DistributionView({ d }: { d: Distribution }) {
     );
   return (
     <div className="flex items-center gap-3 mt-1.5">
-      <Donut slices={d.slices} centerValue={d.centerValue} centerLabel={d.centerLabel} />
+      <Donut slices={d.slices} centerValue={d.centerValue} centerLabel={d.centerLabel} centerClass={d.centerClass} />
       <div className="flex-1 flex flex-col gap-1">
         {d.slices.map((s) => (
           <button key={s.label} onClick={s.onClick} className="w-full flex items-center gap-1.5 text-left">
@@ -305,7 +307,7 @@ export default function PostureTile({
           {hasViews ? (
             <ViewDropdown views={views!} active={active} setActive={setActive} />
           ) : (
-            <span className="text-[10.5px] text-muted-foreground tabular-nums">{total.toLocaleString()}</span>
+            <span className="text-[10.5px] text-muted-foreground tabular-nums">{total.toLocaleString()} total</span>
           )}
         </div>
       </div>
