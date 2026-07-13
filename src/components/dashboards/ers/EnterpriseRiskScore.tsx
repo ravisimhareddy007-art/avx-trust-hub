@@ -39,10 +39,10 @@ function TrendChart({ points, hsl }: { points: { label: string; value: number }[
   const peakIdx = points.reduce((best, p, i) => (i < points.length - 1 && p.value > points[best].value ? i : best), 0);
   const peak = points[peakIdx];
   const zones = [
-    { top: 100, bot: 80, c: "hsl(16 72% 51%)", label: "Crit", op: 0.055 },
-    { top: 80, bot: 60, c: "hsl(38 78% 51%)", label: "High", op: 0.06 },
-    { top: 60, bot: 30, c: "hsl(210 80% 56%)", label: "Mod", op: 0.08 },
-    { top: 30, bot: 0, c: "hsl(162 72% 42%)", label: "Low", op: 0.08 },
+    { top: 100, bot: 80, c: "hsl(14 90% 58%)", label: "Crit", op: 0.22 },
+    { top: 80, bot: 60, c: "hsl(38 95% 56%)", label: "High", op: 0.2 },
+    { top: 60, bot: 30, c: "hsl(210 92% 62%)", label: "Mod", op: 0.2 },
+    { top: 30, bot: 0, c: "hsl(158 80% 46%)", label: "Low", op: 0.2 },
   ];
   const yTicks = [100, 80, 60, 30, 0];
 
@@ -72,25 +72,25 @@ function TrendChart({ points, hsl }: { points: { label: string; value: number }[
       {zones.map((z) => (
         <g key={z.label}>
           <rect x={L} y={y(z.top)} width={R - L} height={y(z.bot) - y(z.top)} fill={z.c} opacity={z.op} />
-          <text x={R + 4} y={(y(z.top) + y(z.bot)) / 2 + 3} fontSize="7" fill={z.c} opacity="0.6">
+          <text x={R + 4} y={(y(z.top) + y(z.bot)) / 2 + 3} fontSize="7.5" fill={z.c} opacity="0.9">
             {z.label}
           </text>
         </g>
       ))}
       {yTicks.map((v) => (
-        <text key={v} x={L - 5} y={y(v) + 3} fontSize="7.5" fill="currentColor" opacity="0.4" textAnchor="end">
+        <text key={v} x={L - 5} y={y(v) + 3} fontSize="7.5" fill="currentColor" opacity="0.55" textAnchor="end">
           {v}
         </text>
       ))}
-      <path d={area} fill={hsl} fillOpacity="0.1" />
+      <path d={area} fill={hsl} fillOpacity="0.18" />
       <path
         d={line}
         fill="none"
-        stroke="currentColor"
-        strokeWidth="1.75"
+        stroke={hsl}
+        strokeWidth="2.5"
         strokeLinecap="round"
         strokeLinejoin="round"
-        opacity="0.9"
+        opacity="1"
       />
 
       {hp && (
@@ -144,7 +144,7 @@ function TrendChart({ points, hsl }: { points: { label: string; value: number }[
           y={H - 3}
           fontSize="7.5"
           fill="currentColor"
-          opacity={hover === i ? 0.9 : 0.4}
+          opacity={hover === i ? 1 : 0.6}
           textAnchor="middle"
         >
           {p.label}
