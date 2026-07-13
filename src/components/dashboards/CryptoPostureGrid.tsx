@@ -29,12 +29,11 @@ const POSTURE = {
     total: 2847,
     aws: 1720,
     azure: 1127,
-    rotation: 128,
-    access: 64,
-    lifecycle: 19,
-    hwRequired: 7,
+    publicAccess: 214,
+    lifecycle: 168,
+    sensitiveSoftware: 7,
   },
-  hsm: { total: 1240, extractable: 27, dualControl: 74, weakAlgo: 62, utimaco: 604, crypto4a: 412, fortanix: 224 },
+  hsm: { total: 1240, extractable: 27, nonSensitive: 14, weakAlgo: 62, utimaco: 604, crypto4a: 412, fortanix: 224 },
   secrets: { total: 6240, act: 3980, unrotated: 3210, orphaned: 512, noPolicy: 258 },
   // Estate-scale protocol and library figures. The crypto-stack inventory holds
   // the discovered sample; the dashboard reports estate totals. Drill-through
@@ -140,28 +139,22 @@ export default function CryptoPostureGrid() {
   const cloud = POSTURE.cloud;
   const cloudRows: PostureRow[] = [
     {
-      label: "Automatic rotation disabled",
-      count: cloud.rotation,
-      role: "critical",
-      onClick: () => go({ tab: "identities", type: "Cloud KMS Key", filterId: "cloud_rotation_disabled" }),
-    },
-    {
-      label: "Wildcard principal in key policy",
-      count: cloud.access,
+      label: "Publicly accessible key",
+      count: cloud.publicAccess,
       role: "critical",
       onClick: () => go({ tab: "identities", type: "Cloud KMS Key", filterId: "cloud_overpermissive" }),
     },
     {
-      label: "Unused key idle 90+ days",
+      label: "Unused key pending deletion",
       count: cloud.lifecycle,
       role: "high",
       onClick: () => go({ tab: "identities", type: "Cloud KMS Key", filterId: "cloud_lifecycle" }),
     },
     {
       label: "Sensitive key not HSM-backed",
-      count: cloud.hwRequired,
+      count: cloud.sensitiveSoftware,
       role: "critical",
-      onClick: () => go({ tab: "identities", type: "Cloud KMS Key", filterId: "cloud_hw_required" }),
+      onClick: () => go({ tab: "identities", type: "Cloud KMS Key", filterId: "cloud_prot_software" }),
     },
   ];
   // Provider distribution (inventory lens): where the keys live, AWS vs Azure.
@@ -173,14 +166,14 @@ export default function CryptoPostureGrid() {
       count: cloud.aws,
       stroke: AWS_ORANGE,
       text: "text-amber",
-      onClick: () => go({ tab: "identities", type: "Cloud KMS Key", provider: "AWS" }),
+      onClick: () => go({ tab: "identities", type: "Cloud KMS Key" }),
     },
     {
       label: "Azure",
       count: cloud.azure,
       stroke: AZURE_BLUE,
       text: "text-muted-foreground",
-      onClick: () => go({ tab: "identities", type: "Cloud KMS Key", provider: "Azure" }),
+      onClick: () => go({ tab: "identities", type: "Cloud KMS Key" }),
     },
   ];
 
@@ -193,10 +186,10 @@ export default function CryptoPostureGrid() {
       onClick: () => go({ tab: "identities", type: "HSM Key", filterId: "hsm_extractable" }),
     },
     {
-      label: "No dual control (M-of-N) on key",
-      count: hsm.dualControl,
+      label: "Key material readable (not sensitive)",
+      count: hsm.nonSensitive,
       role: "critical",
-      onClick: () => go({ tab: "identities", type: "HSM Key", filterId: "hsm_dual_control" }),
+      onClick: () => go({ tab: "identities", type: "HSM Key", filterId: "hsm_nonsensitive" }),
     },
     {
       label: "Weak algorithm (RSA-1024 / SHA-1)",
@@ -215,21 +208,21 @@ export default function CryptoPostureGrid() {
       count: hsm.utimaco,
       stroke: UTIMACO_BLUE,
       text: "text-muted-foreground",
-      onClick: () => go({ tab: "identities", type: "HSM Key", vendor: "Utimaco" }),
+      onClick: () => go({ tab: "identities", type: "HSM Key" }),
     },
     {
       label: "Crypto4A",
       count: hsm.crypto4a,
       stroke: CRYPTO4A_TEAL,
       text: "text-teal",
-      onClick: () => go({ tab: "identities", type: "HSM Key", vendor: "Crypto4A" }),
+      onClick: () => go({ tab: "identities", type: "HSM Key" }),
     },
     {
       label: "Fortanix",
       count: hsm.fortanix,
       stroke: FORTANIX_VIOLET,
       text: "text-muted-foreground",
-      onClick: () => go({ tab: "identities", type: "HSM Key", vendor: "Fortanix" }),
+      onClick: () => go({ tab: "identities", type: "HSM Key" }),
     },
   ];
   const s = POSTURE.secrets;
@@ -391,7 +384,7 @@ export default function CryptoPostureGrid() {
           label="Cloud KMS Keys"
           total={cloud.total}
           caption={"AWS \u00b7 Azure \u00b7 central visibility"}
-          hero={{ value: cloud.rotation, caption: "rotation out of policy", role: "high" }}
+          hero={{ value: cloud.publicAccess, caption: "publicly accessible", role: "high" }}
           views={[
             { label: "Posture", distribution: { type: "rows", rows: cloudRows } },
             {
@@ -405,7 +398,6 @@ export default function CryptoPostureGrid() {
               },
             },
           ]}
-          footerNote={"Monitor only \u00b7 ticket to act"}
           onOpen={() => go({ tab: "identities", type: "Cloud KMS Key" })}
         />
 
@@ -428,7 +420,6 @@ export default function CryptoPostureGrid() {
               },
             },
           ]}
-          footerNote={"Monitor only \u00b7 ticket to act"}
           onOpen={() => go({ tab: "identities", type: "HSM Key" })}
         />
 
