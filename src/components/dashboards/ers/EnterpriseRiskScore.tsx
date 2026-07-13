@@ -4,6 +4,9 @@ import { useRisk } from "@/context/RiskContext";
 import { severityHsl } from "@/lib/risk/types";
 import { ticketForObject } from "@/lib/ticketStore";
 import TicketTriageModal from "@/components/dashboards/TicketTriageModal";
+import { useNav } from "@/context/NavigationContext";
+import { mockAssets } from "@/data/mockData";
+import { VIOLATION_FILTERS } from "@/lib/filters/cryptoFilters";
 
 const REMEDIATION_ENABLED = false;
 const PAGE = 5;
@@ -158,7 +161,9 @@ type SortKey = "impact" | "urgency";
 
 export default function EnterpriseRiskScore() {
   const { ers, qes } = useRisk();
+  const { setCurrentPage, setFilters } = useNav();
   const [lens, setLens] = useState<"ers" | "qes">("ers");
+  const [groupBy, setGroupBy] = useState<"violation" | "asset">("violation");
   const [triage, setTriage] = useState<{ type: string; violationId?: string } | null>(null);
   const [sort, setSort] = useState<SortKey>("impact");
   const [page, setPage] = useState(0);
@@ -193,8 +198,55 @@ export default function EnterpriseRiskScore() {
     return [...activeRows.sort(cmp), ...done];
   }, [active.driverBuckets, sort]);
 
-  const pageCount = Math.ceil(rows.length / PAGE);
-  const pageRows = rows.slice(page * PAGE, page * PAGE + PAGE);
+  // IT-asset view: pivot violations onto the assets they live on, ranked by count.
+  const assetRows = useMemo(() => {
+    const filters = Object.values(VIOLATION_FILTERS);
+    const byAsset = new Map<string, { objs: Set<string>; violObjs: Set<string>; violations: number }>();
+    for (const a of mockAssets) {
+      const asset = ((a as any).infrastructure || (a as any).application || "Unassigned") as string;
+      let e = byAsset.get(asset);
+      if (!e) {
+        e = { objs: new Set(), violObjs: new Set(), violations: 0 };
+        byAsset.set(asset, e);
+      }
+      e.objs.add(a.id);
+      let hits = 0;
+      for (const f of filters) {
+        try {
+          if (f.predicate(a)) hits++;
+        } catch {
+          /* type-specific filter, skip */
+        }
+      }
+      if (hits > 0) {
+        e.violObjs.add(a.id);
+        e.violations += hits;
+      }
+    }
+    const sevOf = (v: number) => (v >= 8 ? "Critical" : v >= 4 ? "High" : v >= 1 ? "Medium" : "Low");
+    return [...byAsset.entries()]
+      .filter(([, e]) => e.violations > 0)
+      .map(([asset, e]) => ({
+        id: `asset:${asset}`,
+        isAsset: true,
+        label: asset,
+        count: e.violations,
+        countLabel: `${e.violations} violations across ${e.violObjs.size} of ${e.objs.size} objects`,
+        pts: e.violations,
+        objectIds: [...e.violObjs],
+        severity: sevOf(e.violations),
+        urgencyScore: e.violations,
+        recencyLabel: "",
+        triageType: "",
+        ticketed: 0,
+        fullyTicketed: false,
+      }))
+      .sort((a, b) => b.count - a.count);
+  }, []);
+
+  const source = groupBy === "asset" ? (assetRows as any[]) : rows;
+  const pageCount = Math.ceil(source.length / PAGE);
+  const pageRows = source.slice(page * PAGE, page * PAGE + PAGE);
 
   return (
     <div className="bg-card rounded-2xl border border-border overflow-hidden">
@@ -297,31 +349,55 @@ export default function EnterpriseRiskScore() {
 
         {/* Factors */}
         <div className="p-4 flex flex-col">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium flex-1">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <span className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">
               What's driving your risk
             </span>
-            <span className="text-[10px] text-muted-foreground">Sort</span>
             <div className="inline-flex rounded-full border border-border-strong overflow-hidden">
               <button
                 onClick={() => {
-                  setSort("impact");
+                  setGroupBy("violation");
                   setPage(0);
                 }}
-                className={`text-[10px] px-2.5 py-0.5 transition-colors ${sort === "impact" ? "bg-teal text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                className={`text-[10px] px-2.5 py-0.5 transition-colors ${groupBy === "violation" ? "bg-teal text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
               >
-                Score impact
+                By violation
               </button>
               <button
                 onClick={() => {
-                  setSort("urgency");
+                  setGroupBy("asset");
                   setPage(0);
                 }}
-                className={`text-[10px] px-2.5 py-0.5 transition-colors ${sort === "urgency" ? "bg-teal text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                className={`text-[10px] px-2.5 py-0.5 transition-colors ${groupBy === "asset" ? "bg-teal text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
               >
-                Most recent
+                By asset
               </button>
             </div>
+            {groupBy === "violation" && (
+              <>
+                <span className="text-[10px] text-muted-foreground ml-auto">Sort</span>
+                <div className="inline-flex rounded-full border border-border-strong overflow-hidden">
+                  <button
+                    onClick={() => {
+                      setSort("impact");
+                      setPage(0);
+                    }}
+                    className={`text-[10px] px-2.5 py-0.5 transition-colors ${sort === "impact" ? "bg-teal text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                  >
+                    Score impact
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSort("urgency");
+                      setPage(0);
+                    }}
+                    className={`text-[10px] px-2.5 py-0.5 transition-colors ${sort === "urgency" ? "bg-teal text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                  >
+                    Most recent
+                  </button>
+                </div>
+              </>
+            )}
           </div>
 
           <div className="flex flex-col">
@@ -329,10 +405,12 @@ export default function EnterpriseRiskScore() {
               <button
                 key={d.id}
                 onClick={() =>
-                  setTriage({
-                    type: lens === "qes" ? "pqc" : (d as any).triageType,
-                    violationId: d.id,
-                  })
+                  (d as any).isAsset
+                    ? (setFilters({ tab: "infrastructure", search: d.label }), setCurrentPage("inventory"))
+                    : setTriage({
+                        type: lens === "qes" ? "pqc" : (d as any).triageType,
+                        violationId: d.id,
+                      })
                 }
                 className={`group grid items-center gap-3 py-2.5 border-b border-border/40 text-left ${d.fullyTicketed ? "opacity-55" : ""} ${(d as any).blocker ? "bg-purple/5" : ""}`}
                 style={{ gridTemplateColumns: "84px minmax(0,1fr) 44px 16px" }}
@@ -350,7 +428,8 @@ export default function EnterpriseRiskScore() {
                     {d.label}
                   </div>
                   <div className="text-[10px] text-muted-foreground truncate">
-                    {d.count.toLocaleString()} objects · {(d as any).recencyLabel ?? "seen this scan"}
+                    {(d as any).countLabel ??
+                      `${d.count.toLocaleString()} objects · ${(d as any).recencyLabel ?? "seen this scan"}`}
                   </div>
                 </div>
                 <div className="text-right">
@@ -361,10 +440,10 @@ export default function EnterpriseRiskScore() {
                   ) : (
                     <>
                       <div className={`text-[13px] font-semibold tabular-nums leading-none ${SEV_TEXT[d.severity]}`}>
-                        -{d.pts}
+                        {(d as any).isAsset ? d.count : `-${d.pts}`}
                       </div>
                       <div className="text-[8px] text-muted-foreground uppercase tracking-wide">
-                        {lens === "qes" ? "QES" : "ERS"}
+                        {(d as any).isAsset ? "issues" : lens === "qes" ? "QES" : "ERS"}
                       </div>
                     </>
                   )}
