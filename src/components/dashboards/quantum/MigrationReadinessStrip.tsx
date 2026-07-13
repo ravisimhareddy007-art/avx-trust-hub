@@ -8,7 +8,7 @@ import { useRisk } from "@/context/RiskContext";
 
 export default function MigrationReadinessStrip() {
   const { readiness } = useRisk();
-  const { rawPct, weightedPct, ready, total, atRisk } = readiness;
+  const { rawPct, ready, total, atRisk } = readiness;
 
   const band = rawPct >= 80 ? "text-teal" : rawPct >= 50 ? "text-amber" : "text-coral";
   const barBand = rawPct >= 80 ? "bg-teal" : rawPct >= 50 ? "bg-amber" : "bg-coral";
@@ -24,9 +24,7 @@ export default function MigrationReadinessStrip() {
 
       <div className="flex items-baseline gap-3">
         <span className={`text-4xl font-bold tabular-nums ${band}`}>{rawPct}%</span>
-        <span className="text-[11px] text-muted-foreground">
-          ready · <span className="font-semibold text-foreground">{weightedPct}%</span> weighted by exposure
-        </span>
+        <span className="text-[11px] text-muted-foreground">ready</span>
       </div>
 
       <div className="h-2 w-full rounded-full overflow-hidden bg-secondary">
@@ -34,8 +32,7 @@ export default function MigrationReadinessStrip() {
       </div>
 
       <p className="text-[10px] text-muted-foreground leading-relaxed pt-2 border-t border-border">
-        <span className="text-coral font-semibold">{atRisk}</span> objects still run a quantum-vulnerable algorithm. The
-        exposure-weighted figure shows how much of the risk is retired, not just how many objects.
+        <span className="text-coral font-semibold">{atRisk}</span> objects still run a quantum-vulnerable algorithm.
       </p>
     </div>
   );
