@@ -27,13 +27,12 @@ const POSTURE = {
   },
   cloud: {
     total: 2847,
-    rotationDisabledOrOverdue: 642,
-    overpermissive: 214,
-    lifecycle: 168,
-    protSoftware: 724,
-    protHSM: 1680,
-    protCloudHSM: 328,
-    protExternalHSM: 115,
+    aws: 1720,
+    azure: 1127,
+    rotation: 128,
+    access: 64,
+    lifecycle: 19,
+    hwRequired: 7,
   },
   hsm: { total: 1240, extractable: 27, quantum: 96, weakAlgo: 62, classical: 1026, pqc: 214 },
   secrets: { total: 6240, act: 3980, unrotated: 3210, orphaned: 512, noPolicy: 258 },
@@ -141,52 +140,47 @@ export default function CryptoPostureGrid() {
   const cloud = POSTURE.cloud;
   const cloudRows: PostureRow[] = [
     {
-      label: "Rotation disabled or overdue",
-      count: cloud.rotationDisabledOrOverdue,
+      label: "Rotation",
+      count: cloud.rotation,
       role: "critical",
       onClick: () => go({ tab: "identities", type: "Cloud KMS Key", filterId: "cloud_rotation_disabled" }),
     },
     {
-      label: "Overly permissive access",
-      count: cloud.overpermissive,
+      label: "Access",
+      count: cloud.access,
       role: "critical",
       onClick: () => go({ tab: "identities", type: "Cloud KMS Key", filterId: "cloud_overpermissive" }),
     },
     {
-      label: "Unused or pending deletion",
+      label: "Lifecycle",
       count: cloud.lifecycle,
       role: "high",
       onClick: () => go({ tab: "identities", type: "Cloud KMS Key", filterId: "cloud_lifecycle" }),
     },
+    {
+      label: "Hardware Protection Required",
+      count: cloud.hwRequired,
+      role: "critical",
+      onClick: () => go({ tab: "identities", type: "Cloud KMS Key", filterId: "cloud_hw_required" }),
+    },
   ];
-  const cloudProtSlices: DonutSlice[] = [
+  // Provider distribution (inventory lens): where the keys live, AWS vs Azure.
+  const AWS_ORANGE = "#e8912a";
+  const AZURE_BLUE = "#3b82f6";
+  const cloudProviderSlices: DonutSlice[] = [
     {
-      label: "Software",
-      count: cloud.protSoftware,
-      stroke: AMBER,
+      label: "AWS",
+      count: cloud.aws,
+      stroke: AWS_ORANGE,
       text: "text-amber",
-      onClick: () => go({ tab: "identities", type: "Cloud KMS Key", filterId: "cloud_prot_software" }),
+      onClick: () => go({ tab: "identities", type: "Cloud KMS Key", provider: "AWS" }),
     },
     {
-      label: "HSM",
-      count: cloud.protHSM,
-      stroke: TEAL,
-      text: "text-teal",
-      onClick: () => go({ tab: "identities", type: "Cloud KMS Key", filterId: "cloud_prot_hsm" }),
-    },
-    {
-      label: "CloudHSM",
-      count: cloud.protCloudHSM,
-      stroke: "#3a9d8f",
-      text: "text-teal",
-      onClick: () => go({ tab: "identities", type: "Cloud KMS Key", filterId: "cloud_prot_cloudhsm" }),
-    },
-    {
-      label: "External HSM",
-      count: cloud.protExternalHSM,
-      stroke: MUTED,
+      label: "Azure",
+      count: cloud.azure,
+      stroke: AZURE_BLUE,
       text: "text-muted-foreground",
-      onClick: () => go({ tab: "identities", type: "Cloud KMS Key", filterId: "cloud_prot_externalhsm" }),
+      onClick: () => go({ tab: "identities", type: "Cloud KMS Key", provider: "Azure" }),
     },
   ];
 
@@ -387,16 +381,17 @@ export default function CryptoPostureGrid() {
           label="Cloud KMS Keys"
           total={cloud.total}
           caption={"AWS \u00b7 Azure \u00b7 central visibility"}
-          hero={{ value: cloud.rotationDisabledOrOverdue, caption: "rotation out of policy", role: "high" }}
+          hero={{ value: cloud.rotation, caption: "rotation out of policy", role: "high" }}
           views={[
             { label: "Posture", distribution: { type: "rows", rows: cloudRows } },
             {
-              label: "Protection level",
+              label: "Distribution",
               distribution: {
                 type: "donut",
                 centerValue: cloud.total.toLocaleString(),
                 centerLabel: "keys",
-                slices: cloudProtSlices,
+                centerClass: "text-foreground",
+                slices: cloudProviderSlices,
               },
             },
           ]}
