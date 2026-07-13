@@ -16,7 +16,7 @@ export default function MigrationReadinessStrip() {
   return (
     <div className="bg-card rounded-xl border border-border p-5 space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-foreground">PQC readiness</h3>
+        <h3 className="text-sm font-semibold text-foreground">PQC migration readiness</h3>
         <span className="text-[10px] text-muted-foreground">
           {ready} of {total} objects quantum-safe
         </span>
@@ -34,8 +34,8 @@ export default function MigrationReadinessStrip() {
       </div>
 
       <p className="text-[10px] text-muted-foreground leading-relaxed pt-2 border-t border-border">
-        <span className="text-coral font-semibold">{atRisk}</span> objects still violate an active PQC policy. The
-        exposure-weighted figure shows how much of what matters is done, not just object count.
+        <span className="text-coral font-semibold">{atRisk}</span> objects still run a quantum-vulnerable algorithm. The
+        exposure-weighted figure shows how much of the risk is retired, not just how many objects.
       </p>
     </div>
   );
