@@ -610,23 +610,23 @@ export interface QesBreakdown {
 
 export interface QesDriver {
   id: string;
-  label: string;          // PQC violation type, monitoring-safe wording
-  count: number;          // objects in this group
-  contribution: number;   // summed QOE = QES mass this group represents
-  pts: number;            // display -pts against QES
-  objectIds: string[];    // for ticket coverage
+  label: string; // PQC violation type, monitoring-safe wording
+  count: number; // objects in this group
+  contribution: number; // summed QOE = QES mass this group represents
+  pts: number; // display -pts against QES
+  objectIds: string[]; // for ticket coverage
   severity: "Critical" | "High" | "Medium" | "Low";
   urgency: string;
   urgencyScore?: number;
   recencyLabel?: string;
+  blocker?: boolean; // library-blocked group: fix the library, not the object
 }
-
 
 // Deterministic 12-month sample series ending at the live QES. Illustrative,
 // not stored telemetry (historySample=true), identical approach to ersHistory.
 function qesHistory(current: number): { label: string; value: number }[] {
   const N = 12;
-  const start = Math.min(100, current + 14);   // 12 months ago: worse
+  const start = Math.min(100, current + 14); // 12 months ago: worse
   const now = new Date();
   const pts: { label: string; value: number }[] = [];
   for (let i = 0; i < N; i++) {
@@ -640,7 +640,6 @@ function qesHistory(current: number): { label: string; value: number }[] {
   return pts;
 }
 
-
 // Group the vulnerable estate by PQC violation type. contribution = summed QOE
 // of the objects in the group (real mass, not a made-up weight). Grouping keys
 // off the axis/status the engine already computes per object.
@@ -649,7 +648,9 @@ function qesDriverBuckets(objects: CryptoAsset[], qDay: number): QesDriver[] {
   const groups: Record<string, Acc> = {};
   const add = (key: string, id: string, qoe: number) => {
     const g = (groups[key] ||= { count: 0, contribution: 0, ids: [], maxQoe: 0 });
-    g.count++; g.contribution += qoe; g.maxQoe = Math.max(g.maxQoe, qoe);
+    g.count++;
+    g.contribution += qoe;
+    g.maxQoe = Math.max(g.maxQoe, qoe);
     if (g.ids.length < 50) g.ids.push(id);
   };
   for (const a of objects) {
@@ -666,25 +667,64 @@ function qesDriverBuckets(objects: CryptoAsset[], qDay: number): QesDriver[] {
   const sevOf = (maxQoe: number): QesDriver["severity"] =>
     maxQoe >= 80 ? "Critical" : maxQoe >= 60 ? "High" : maxQoe >= 30 ? "Medium" : "Low";
   const urgencyOf = (key: string) =>
-    key.includes("harvest") ? "harvest-now-decrypt-later" :
-    key.includes("forgery") ? "future-forgery exposure" : "priced against the deadline";
+    key.includes("harvest")
+      ? "harvest-now-decrypt-later"
+      : key.includes("forgery")
+        ? "future-forgery exposure"
+        : "priced against the deadline";
   const total = Object.values(groups).reduce((s, g) => s + g.contribution, 0) || 1;
-  return Object.entries(groups)
-    .map(([label, g], i) => ({
-      id: `qes-drv-${i}`,
-      label,
-      count: g.count,
-      contribution: Math.round(g.contribution),
-      pts: Math.max(1, Math.round((g.contribution / total) * 40)),
-      objectIds: g.ids,
-      severity: sevOf(g.maxQoe),
-      urgency: urgencyOf(label),
-      urgencyScore: Math.round(g.contribution),
-      recencyLabel: g.count > 0 ? "identified since last scan" : "no change",
-    }))
-    .sort((a, b) => b.contribution - a.contribution);
-}
+  const axisRows: QesDriver[] = Object.entries(groups).map(([label, g], i) => ({
+    id: `qes-drv-${i}`,
+    label,
+    count: g.count,
+    contribution: Math.round(g.contribution),
+    pts: Math.max(1, Math.round((g.contribution / total) * 40)),
+    objectIds: g.ids,
+    severity: sevOf(g.maxQoe),
+    urgency: urgencyOf(label),
+    urgencyScore: Math.round(g.contribution),
+    recencyLabel: g.count > 0 ? "identified since last scan" : "no change",
+  }));
 
+  // Library-blocked group. The vulnerable objects that cannot migrate until a
+  // non-PQC library on their host is upgraded — the cert is not the thing to
+  // fix, the library is. Reuses objectsBlockedBy (the same blocker graph the
+  // sequence table is built on), so no new logic. This is an overlay lens, not
+  // a partition: its objects also sit in an axis group above, so it is scored
+  // against the same total and left out of that total to keep axis pts stable.
+  const blockedIds = new Set<string>();
+  for (const l of mockLibraries) {
+    for (const o of objectsBlockedBy(l, objects)) blockedIds.add(o.id);
+  }
+  const blockedObjs = objects.filter((o) => blockedIds.has(o.id));
+  const blockedRows: QesDriver[] = [];
+  if (blockedObjs.length > 0) {
+    let contribution = 0;
+    let maxQoe = 0;
+    const ids: string[] = [];
+    for (const o of blockedObjs) {
+      const q = computeQOE(o, qDay).qoe;
+      contribution += q;
+      maxQoe = Math.max(maxQoe, q);
+      if (ids.length < 50) ids.push(o.id);
+    }
+    blockedRows.push({
+      id: "qes-drv-blocked",
+      label: "Objects blocked by a non-PQC library",
+      count: blockedObjs.length,
+      contribution: Math.round(contribution),
+      pts: Math.max(1, Math.round((contribution / total) * 40)),
+      objectIds: ids,
+      severity: sevOf(maxQoe),
+      urgency: "cannot migrate until the blocking library is upgraded",
+      urgencyScore: Math.round(contribution),
+      recencyLabel: "library upgrade required first",
+      blocker: true,
+    });
+  }
+
+  return [...axisRows, ...blockedRows].sort((a, b) => b.contribution - a.contribution);
+}
 
 export function qesSeverity(s: number): QesBreakdown["severity"] {
   if (s >= 80) return "Critical";
@@ -693,7 +733,12 @@ export function qesSeverity(s: number): QesBreakdown["severity"] {
   return "Low";
 }
 
-type Row = QesBreakdown["topObjects"][number] & { vulnerable: boolean; harvestable: boolean; sensitivity: DataSensitivity; shelfLife: number };
+type Row = QesBreakdown["topObjects"][number] & {
+  vulnerable: boolean;
+  harvestable: boolean;
+  sensitivity: DataSensitivity;
+  shelfLife: number;
+};
 
 function aggregate(rows: Row[], objects: CryptoAsset[], qDay: number): QesBreakdown {
   const qoes = rows.map((r) => r.qoe);
@@ -761,7 +806,8 @@ export function computeQES(
       detail: `KEM ${q.kem} / SIG ${q.sig}${q.shadow ? " · shadow host" : ""}`,
       vulnerable: q.kem === "Classical",
       harvestable: q.harvestable,
-      sensitivity: p.exposure === "Internet-facing" ? "Restricted" : p.exposure === "Internal" ? "Confidential" : "Internal",
+      sensitivity:
+        p.exposure === "Internet-facing" ? "Restricted" : p.exposure === "Internal" ? "Confidential" : "Internal",
       shelfLife: 2,
     };
   });
