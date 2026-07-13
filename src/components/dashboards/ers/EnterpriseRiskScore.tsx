@@ -203,13 +203,23 @@ export default function EnterpriseRiskScore() {
         <h2 className="text-sm font-semibold text-foreground">Enterprise Risk</h2>
         <div className="flex rounded-md border border-border overflow-hidden ml-1">
           <button
-            onClick={() => { setLens("ers"); setPage(0); }}
+            onClick={() => {
+              setLens("ers");
+              setPage(0);
+            }}
             className={`px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${lens === "ers" ? "bg-teal/15 text-teal" : "text-muted-foreground"}`}
-          >ERS</button>
+          >
+            ERS
+          </button>
           <button
-            onClick={() => { setLens("qes"); setPage(0); }}
+            onClick={() => {
+              setLens("qes");
+              setPage(0);
+            }}
             className={`px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${lens === "qes" ? "bg-purple/15 text-purple-light" : "text-muted-foreground"}`}
-          >QES</button>
+          >
+            QES
+          </button>
         </div>
         <div className="relative group">
           <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
@@ -217,20 +227,18 @@ export default function EnterpriseRiskScore() {
             <p className="text-[11px] text-foreground leading-relaxed">
               {lens === "qes" ? (
                 <>
-                  Quantum Exposure Score (QES) is a single executive-level measure of your organization's
-                  exposure to quantum attack. It is anchored on the worst quantum-vulnerable objects (not a
-                  dilutable average), so a few critical harvest-now-decrypt-later objects cannot be masked by
-                  many safe ones. It is scored separately from operational risk (ERS).
+                  Quantum Exposure Score (QES) is a single executive-level measure of your organization's exposure to
+                  quantum attack. It is anchored on the worst quantum-vulnerable objects (not a dilutable average), so a
+                  few critical harvest-now-decrypt-later objects cannot be masked by many safe ones. It is scored
+                  separately from operational risk (ERS).
                 </>
               ) : (
                 <>
-                  Enterprise Risk Score (ERS) is a single executive-level risk score for your organization.
-                  It is calculated as a business-impact-weighted average of every asset's risk, with a floor
-                  rule that prevents a single critical production asset from being masked by a large number
-                  of healthy assets.
+                  Enterprise Risk Score (ERS) is a single executive-level risk score for your organization. It is
+                  calculated as a business-impact-weighted average of every asset's risk, with a floor rule that
+                  prevents a single critical production asset from being masked by a large number of healthy assets.
                 </>
               )}
-
             </p>
           </div>
         </div>
@@ -313,7 +321,6 @@ export default function EnterpriseRiskScore() {
               >
                 Most recent
               </button>
-
             </div>
           </div>
 
@@ -327,7 +334,7 @@ export default function EnterpriseRiskScore() {
                     violationId: d.id,
                   })
                 }
-                className={`group grid items-center gap-3 py-2.5 border-b border-border/40 text-left ${d.fullyTicketed ? "opacity-55" : ""}`}
+                className={`group grid items-center gap-3 py-2.5 border-b border-border/40 text-left ${d.fullyTicketed ? "opacity-55" : ""} ${(d as any).blocker ? "bg-purple/5" : ""}`}
                 style={{ gridTemplateColumns: "84px minmax(0,1fr) 44px 16px" }}
               >
                 <span className="flex items-center gap-1.5">
@@ -337,11 +344,14 @@ export default function EnterpriseRiskScore() {
                   </span>
                 </span>
                 <div className="min-w-0">
-                  <div className="text-[12px] text-foreground truncate">{d.label}</div>
+                  <div
+                    className={`text-[12px] truncate ${(d as any).blocker ? "text-purple-light font-medium" : "text-foreground"}`}
+                  >
+                    {d.label}
+                  </div>
                   <div className="text-[10px] text-muted-foreground truncate">
                     {d.count.toLocaleString()} objects · {(d as any).recencyLabel ?? "seen this scan"}
                   </div>
-
                 </div>
                 <div className="text-right">
                   {d.fullyTicketed ? (
@@ -353,7 +363,9 @@ export default function EnterpriseRiskScore() {
                       <div className={`text-[13px] font-semibold tabular-nums leading-none ${SEV_TEXT[d.severity]}`}>
                         -{d.pts}
                       </div>
-                      <div className="text-[8px] text-muted-foreground uppercase tracking-wide">{lens === "qes" ? "QES" : "ERS"}</div>
+                      <div className="text-[8px] text-muted-foreground uppercase tracking-wide">
+                        {lens === "qes" ? "QES" : "ERS"}
+                      </div>
                     </>
                   )}
                 </div>
