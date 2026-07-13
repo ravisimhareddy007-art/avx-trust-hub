@@ -467,23 +467,34 @@ export default function TicketTriageModal({
   initialViolationId?: string;
 }) {
   const { setCurrentPage } = useNav();
-  const scoped = !!initialViolationId;
-  const [tab, setTab] = useState<TabKey>(initialType);
+  // A dashboard PQC/QES driver passes a driver id (e.g. "qes-drv-0", "qes-drv-blocked")
+  // and type "pqc" — neither is a VIOLATION_CATALOG key. Resolve those to the PQC
+  // catalog entry so the scoped triage and its AI-drafted ticket build instead of
+  // dereferencing an undefined catalog row.
+  const rawType = initialType as string;
+  const violationId: string | undefined = !initialViolationId
+    ? undefined
+    : VIOLATION_CATALOG[initialViolationId]
+      ? initialViolationId
+      : rawType === "pqc" || rawType === "PQC"
+        ? "pqc-1"
+        : undefined;
+  const scoped = !!violationId;
+  const initialTab: TabKey = TABS.some((t) => t.key === initialType) ? (initialType as TabKey) : "All";
+  const [tab, setTab] = useState<TabKey>(initialTab);
   const [teamFilter, setTeamFilter] = useState<string>("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [selected, setSelected] = useState<Set<string>>(() =>
-    initialViolationId
+    violationId
       ? new Set(
-          POOL.filter((o) => VIOLATION_CATALOG[initialViolationId].match(o.asset) && !ticketForObject(o.id)).map(
-            (o) => o.id,
-          ),
+          POOL.filter((o) => VIOLATION_CATALOG[violationId].match(o.asset) && !ticketForObject(o.id)).map((o) => o.id),
         )
       : new Set(),
   );
 
-  const violationFor = (o: PoolObj) => (scoped ? initialViolationId! : o.violationId);
-  const withIssue = (o: PoolObj) => (scoped ? { ...o, issue: issueFor(o.asset, initialViolationId!) } : o);
+  const violationFor = (o: PoolObj) => (scoped ? violationId! : o.violationId);
+  const withIssue = (o: PoolObj) => (scoped ? { ...o, issue: issueFor(o.asset, violationId!) } : o);
 
   const tabCounts = useMemo(() => {
     const c: Record<TabKey, number> = {
@@ -503,9 +514,9 @@ export default function TicketTriageModal({
   }, []);
 
   const baseVisible = useMemo(() => {
-    if (scoped) return POOL.filter((o) => VIOLATION_CATALOG[initialViolationId!].match(o.asset));
+    if (scoped) return POOL.filter((o) => VIOLATION_CATALOG[violationId!].match(o.asset));
     return tab === "All" ? POOL : POOL.filter((o) => o.category === tab);
-  }, [tab, scoped, initialViolationId]);
+  }, [tab, scoped, violationId]);
 
   const teamsPresent = useMemo(() => {
     const s = new Set<string>();
@@ -612,7 +623,7 @@ export default function TicketTriageModal({
     });
   };
 
-  const scopedTotal = scoped ? VIOLATION_CATALOG[initialViolationId!].total : POOL.length;
+  const scopedTotal = scoped ? VIOLATION_CATALOG[violationId!].total : POOL.length;
   const count = selectedObjs.length;
   const COLS = "30px minmax(0,2.4fr) 46px 1.5fr 58px 1.8fr 24px";
 
@@ -635,7 +646,7 @@ export default function TicketTriageModal({
               <h2 className="text-sm font-semibold text-foreground">Remediation triage</h2>
               <span className="text-[11px] text-muted-foreground">
                 {scoped
-                  ? `${VIOLATION_CATALOG[initialViolationId!].short} · showing ${visible.length} of ${fmt(scopedTotal)}, ranked by CRS`
+                  ? `${VIOLATION_CATALOG[violationId!].short} · showing ${visible.length} of ${fmt(scopedTotal)}, ranked by CRS`
                   : "One ticket per crypto object, ranked by CRS. Select, review inline, then create."}
               </span>
             </div>
@@ -782,7 +793,7 @@ export default function TicketTriageModal({
                         <>
                           {vShort}{" "}
                           <span className="text-muted-foreground/60">
-                            · {scoped ? issueFor(o.asset, initialViolationId!) : o.issue}
+                            · {scoped ? issueFor(o.asset, violationId!) : o.issue}
                           </span>
                         </>
                       )}
