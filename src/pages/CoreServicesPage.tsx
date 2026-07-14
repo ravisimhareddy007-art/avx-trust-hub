@@ -95,6 +95,7 @@ function LicenseManagement() {
     "SSH Key Management": "ssh",
     "Secrets Management": "secrets",
     "Agentic AI Identity (Eos)": "ai",
+    "Quantum Readiness": "quantum",
   };
 
   const modules = [
@@ -102,6 +103,7 @@ function LicenseManagement() {
     { name: "SSH Key Management", status: "Active", seats: "500", usage: 67, expiry: "2027-12-31" },
     { name: "Agentic AI Identity (Eos)", status: "Trial", seats: "50", usage: 8, expiry: "2026-06-30" },
     { name: "Secrets Management", status: "Inactive", seats: "—", usage: 0, expiry: "—" },
+    { name: "Quantum Readiness", status: "Inactive", seats: "Unlimited", usage: 0, expiry: "2027-12-31" },
   ];
 
   const isOn = (m: { name: string; status: string }) => {
@@ -160,7 +162,7 @@ function LicenseManagement() {
                     {m.name}
                     {licensable && (
                       <span className="ml-2 text-[9px] uppercase tracking-wide text-muted-foreground">
-                        remediation add-on
+                        {licKey === "quantum" ? "add-on module" : "remediation add-on"}
                       </span>
                     )}
                   </td>
