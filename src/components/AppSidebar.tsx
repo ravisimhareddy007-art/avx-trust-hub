@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { usePersona, Persona } from "@/context/PersonaContext";
 import { remediationPages, policyPages, useNav } from "@/context/NavigationContext";
-import { useLicensing } from "@/context/LicensingContext";
 import {
   LayoutDashboard,
   Search,
@@ -17,7 +16,6 @@ import {
   Wrench,
   Ticket,
   Cpu,
-  Atom,
 } from "lucide-react";
 
 interface NavChild {
@@ -73,27 +71,13 @@ const personaOptions: { value: Persona; label: string }[] = [
 export default function AppSidebar() {
   const { persona, setPersona } = usePersona();
   const { currentPage, setCurrentPage, setFilters } = useNav();
-  const { licensed, anyRemediation } = useLicensing();
 
+  // Hidden for MVP R1; will be enabled in R2
+  const SHOW_REMEDIATION = false;
   const SHOW_MCP_RUNTIME = false;
-
-  // Remediation is a licensed add-on. Each object-type module appears only when
-  // its license is enabled (Platform Core -> License Management).
-  const remediationChildren = [
-    ...(licensed.clm
-      ? [{ id: "remediation-clm", label: "Certificates (CLM)", page: "remediation-clm", count: 40 }]
-      : []),
-    ...(licensed.ssh ? [{ id: "remediation-ssh", label: "SSH Keys & Certs", page: "remediation-ssh", count: 7 }] : []),
-    ...(licensed.ai ? [{ id: "remediation-ai", label: "AI Agent Tokens", page: "remediation-ai", count: 7 }] : []),
-    ...(licensed.secrets
-      ? [{ id: "remediation-secrets", label: "Secrets", page: "remediation-secrets", count: 3, icon: Lock }]
-      : []),
-  ];
-  const firstRemediationPage = remediationChildren[0]?.page ?? "remediation-clm";
 
   const navItems: NavItem[] = [
     { id: "dashboard", label: "DASHBOARD", icon: LayoutDashboard, page: "dashboards" },
-    ...(licensed.quantum ? [{ id: "quantum", label: "QUANTUM READINESS", icon: Atom, page: "quantum-posture" }] : []),
     { id: "discovery", label: "DISCOVERY", icon: Search, page: "discovery" },
     { id: "inventory", label: "INVENTORY", icon: Package, page: "inventory" },
     {
@@ -113,14 +97,19 @@ export default function AppSidebar() {
               { id: "policy-exceptions", label: "Exceptions", page: "policy-exceptions" },
             ],
     },
-    ...(anyRemediation
+    ...(SHOW_REMEDIATION
       ? [
           {
             id: "remediation",
             label: "REMEDIATION",
             icon: Wrench,
-            page: firstRemediationPage,
-            children: remediationChildren,
+            page: "remediation-clm",
+            children: [
+              { id: "remediation-clm", label: "Certificates (CLM)", page: "remediation-clm", count: 40 },
+              { id: "remediation-ssh", label: "SSH Keys & Certs", page: "remediation-ssh", count: 7 },
+              { id: "remediation-ai", label: "AI Agent Tokens", page: "remediation-ai", count: 7 },
+              { id: "remediation-secrets", label: "Secrets", page: "remediation-secrets", count: 3, icon: Lock },
+            ],
           },
         ]
       : []),
