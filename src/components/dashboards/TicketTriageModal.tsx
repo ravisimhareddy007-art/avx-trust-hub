@@ -268,6 +268,55 @@ const POOL: PoolObj[] = (() => {
   return out.sort((x, y) => y.crs - x.crs);
 })();
 
+// Remediation grouping for one IT asset, from the SAME pool the modal renders.
+// Excludes already-ticketed objects (a group is open work), and carries the exact
+// object ids so a click opens the modal filtered to precisely those objects.
+const REMEDIATION_BY_CATEGORY: Record<string, { label: string; action: string; team: string }> = {
+  Certs: { label: "certificates", action: "Renew / re-issue", team: "PKI / CA team" },
+  SSH: { label: "SSH keys", action: "Rotate or move to SSH CA", team: "Platform team" },
+  Secrets: { label: "secrets", action: "Vault and assign an owner", team: "Owning team" },
+  PQC: { label: "quantum-vulnerable objects", action: "Migrate to a PQC algorithm", team: "Crypto team" },
+  Library: { label: "libraries", action: "Upgrade to a supported version", team: "Platform team" },
+  Cipher: { label: "weak-cipher endpoints", action: "Disable weak ciphers", team: "App team" },
+  Protocol: { label: "deprecated-protocol endpoints", action: "Reconfigure protocol", team: "App team" },
+};
+
+export interface AssetRemediationGroup {
+  category: string;
+  label: string;
+  count: number;
+  objectIds: string[];
+  maxCrs: number;
+  action: string;
+  team: string;
+}
+
+export function assetRemediationGroups(itAssetId: string): AssetRemediationGroup[] {
+  const objs = POOL.filter((o) => o.itAsset?.id === itAssetId && !ticketForObject(o.id));
+  const m = new Map<string, AssetRemediationGroup>();
+  for (const o of objs) {
+    const meta = REMEDIATION_BY_CATEGORY[o.category] ?? {
+      label: String(o.category),
+      action: "Review and remediate",
+      team: "Asset owner",
+    };
+    const g = m.get(o.category) ?? {
+      category: o.category,
+      label: meta.label,
+      count: 0,
+      objectIds: [],
+      maxCrs: 0,
+      action: meta.action,
+      team: meta.team,
+    };
+    g.count += 1;
+    g.objectIds.push(o.id);
+    g.maxCrs = Math.max(g.maxCrs, o.crs);
+    m.set(o.category, g);
+  }
+  return [...m.values()].sort((a, b) => b.maxCrs - a.maxCrs);
+}
+
 // ── Helpers ─────────────────────────────────────────────────────────────────
 function crsColor(score: number) {
   if (score >= 80) return "bg-coral/15 text-coral";
@@ -462,11 +511,15 @@ export default function TicketTriageModal({
   initialType = "All",
   initialViolationId,
   initialAssetId,
+  initialObjectIds,
+  initialScopeLabel,
 }: {
   onClose: () => void;
   initialType?: TabKey;
   initialViolationId?: string;
   initialAssetId?: string;
+  initialObjectIds?: string[];
+  initialScopeLabel?: string;
 }) {
   const { setCurrentPage } = useNav();
   // A dashboard PQC/QES driver passes a driver id (e.g. "qes-drv-0", "qes-drv-blocked")
@@ -482,12 +535,15 @@ export default function TicketTriageModal({
         ? "pqc-1"
         : undefined;
   const violationScoped = !!violationId;
-  const assetScoped = !violationId && !!initialAssetId;
-  const scoped = violationScoped || assetScoped;
+  const objIdSet = useMemo(() => new Set(initialObjectIds ?? []), [initialObjectIds]);
+  const objectScoped = !violationId && objIdSet.size > 0;
+  const assetScoped = !violationId && !objectScoped && !!initialAssetId;
+  const scoped = violationScoped || objectScoped || assetScoped;
   const assetObjs = useMemo(
     () => (initialAssetId ? POOL.filter((o) => o.itAsset?.id === initialAssetId) : []),
     [initialAssetId],
   );
+  const objObjs = useMemo(() => POOL.filter((o) => objIdSet.has(o.id)), [objIdSet]);
   const assetName = assetScoped ? (assetObjs[0]?.itAsset?.name ?? initialAssetId ?? "") : "";
   const initialTab: TabKey = TABS.some((t) => t.key === initialType) ? (initialType as TabKey) : "All";
   const [tab, setTab] = useState<TabKey>(initialTab);
@@ -499,9 +555,11 @@ export default function TicketTriageModal({
       ? new Set(
           POOL.filter((o) => VIOLATION_CATALOG[violationId].match(o.asset) && !ticketForObject(o.id)).map((o) => o.id),
         )
-      : initialAssetId
-        ? new Set(POOL.filter((o) => o.itAsset?.id === initialAssetId && !ticketForObject(o.id)).map((o) => o.id))
-        : new Set(),
+      : initialObjectIds && initialObjectIds.length > 0
+        ? new Set(initialObjectIds.filter((id) => !ticketForObject(id)))
+        : initialAssetId
+          ? new Set(POOL.filter((o) => o.itAsset?.id === initialAssetId && !ticketForObject(o.id)).map((o) => o.id))
+          : new Set(),
   );
 
   const violationFor = (o: PoolObj) => (violationScoped ? violationId! : o.violationId);
@@ -526,9 +584,10 @@ export default function TicketTriageModal({
 
   const baseVisible = useMemo(() => {
     if (violationScoped) return POOL.filter((o) => VIOLATION_CATALOG[violationId!].match(o.asset));
+    if (objectScoped) return POOL.filter((o) => objIdSet.has(o.id));
     if (assetScoped) return POOL.filter((o) => o.itAsset?.id === initialAssetId);
     return tab === "All" ? POOL : POOL.filter((o) => o.category === tab);
-  }, [tab, violationScoped, assetScoped, violationId, initialAssetId]);
+  }, [tab, violationScoped, objectScoped, assetScoped, violationId, initialAssetId, objIdSet]);
 
   const teamsPresent = useMemo(() => {
     const s = new Set<string>();
@@ -637,9 +696,11 @@ export default function TicketTriageModal({
 
   const scopedTotal = violationScoped
     ? VIOLATION_CATALOG[violationId!].total
-    : assetScoped
-      ? assetObjs.length
-      : POOL.length;
+    : objectScoped
+      ? objObjs.length
+      : assetScoped
+        ? assetObjs.length
+        : POOL.length;
   const count = selectedObjs.length;
   const COLS = "30px minmax(0,2.4fr) 46px 1.5fr 58px 1.8fr 24px";
 
@@ -663,9 +724,11 @@ export default function TicketTriageModal({
               <span className="text-[11px] text-muted-foreground">
                 {violationScoped
                   ? `${VIOLATION_CATALOG[violationId!].short} · showing ${visible.length} of ${fmt(scopedTotal)}, ranked by CRS`
-                  : assetScoped
-                    ? `${assetName} · ${visible.length} objects to remediate, ranked by CRS`
-                    : "One ticket per crypto object, ranked by CRS. Select, review inline, then create."}
+                  : objectScoped
+                    ? `${initialScopeLabel ?? `${visible.length} objects`} · ranked by CRS`
+                    : assetScoped
+                      ? `${assetName} · ${visible.length} objects to remediate, ranked by CRS`
+                      : "One ticket per crypto object, ranked by CRS. Select, review inline, then create."}
               </span>
             </div>
           </div>
