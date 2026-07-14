@@ -1,53 +1,96 @@
-import { FEATURES } from '@/config/features';
-import React, { useState } from 'react';
-import { toast } from 'sonner';
+import { FEATURES } from "@/config/features";
+import React, { useState } from "react";
+import { toast } from "sonner";
 import {
-  Shield, Key, Users, UserCheck, Fingerprint,
-  Lock, Server, HardDrive,
-  FileText, Bell, AlertTriangle, Settings, Activity,
-  Plus, Download, Upload, Search, ToggleLeft, Eye, EyeOff, RefreshCw, CheckCircle, XCircle,
-  Monitor, Database, Cpu, BarChart3, Building2, Wrench, Heart,
-  CloudCog, Archive, Globe, Plug, Box, Layers
-} from 'lucide-react';
-import { StatusBadge } from '@/components/shared/UIComponents';
-import { users, auditLog } from '@/data/mockData';
-import RbacSection from '@/components/core/RbacSection';
+  Shield,
+  Key,
+  Users,
+  UserCheck,
+  Fingerprint,
+  Lock,
+  Server,
+  HardDrive,
+  FileText,
+  Bell,
+  AlertTriangle,
+  Settings,
+  Activity,
+  Plus,
+  Download,
+  Upload,
+  Search,
+  ToggleLeft,
+  Eye,
+  EyeOff,
+  RefreshCw,
+  CheckCircle,
+  XCircle,
+  Monitor,
+  Database,
+  Cpu,
+  BarChart3,
+  Building2,
+  Wrench,
+  Heart,
+  CloudCog,
+  Archive,
+  Globe,
+  Plug,
+  Box,
+  Layers,
+} from "lucide-react";
+import { StatusBadge } from "@/components/shared/UIComponents";
+import { useLicensing, LicenseModule } from "@/context/LicensingContext";
+import { users, auditLog } from "@/data/mockData";
+import RbacSection from "@/components/core/RbacSection";
 
-type PillarTab = 'license' | 'health' | 'multitenancy' | 'telemetry' | 'users' | 'infra-integrations' | 'infrastructure' | 'mcp';
+type PillarTab =
+  | "license"
+  | "health"
+  | "multitenancy"
+  | "telemetry"
+  | "users"
+  | "infra-integrations"
+  | "infrastructure"
+  | "mcp";
 
 export default function CoreServicesPage() {
-  const [pillar, setPillar] = useState<PillarTab>('license');
+  const [pillar, setPillar] = useState<PillarTab>("license");
 
   const pillars: { id: PillarTab; label: string; icon: React.ElementType }[] = [
-    { id: 'license', label: 'License Management', icon: FileText },
-    { id: 'health', label: 'Health', icon: Heart },
-    { id: 'multitenancy', label: 'Multi-Tenancy', icon: Building2 },
-    { id: 'telemetry', label: 'Telemetry', icon: BarChart3 },
-    { id: 'users', label: 'Users & RBAC', icon: Users },
-    { id: 'infra-integrations', label: 'Integrations', icon: Plug },
-    { id: 'infrastructure', label: 'Infrastructure', icon: Server },
-    { id: 'mcp', label: 'MCP Server', icon: Globe },
+    { id: "license", label: "License Management", icon: FileText },
+    { id: "health", label: "Health", icon: Heart },
+    { id: "multitenancy", label: "Multi-Tenancy", icon: Building2 },
+    { id: "telemetry", label: "Telemetry", icon: BarChart3 },
+    { id: "users", label: "Users & RBAC", icon: Users },
+    { id: "infra-integrations", label: "Integrations", icon: Plug },
+    { id: "infrastructure", label: "Infrastructure", icon: Server },
+    { id: "mcp", label: "MCP Server", icon: Globe },
   ];
 
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-bold">Platform Core</h1>
       <div className="flex gap-1 border-b border-border overflow-x-auto">
-        {pillars.map(p => (
-          <button key={p.id} onClick={() => setPillar(p.id)} className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${pillar === p.id ? 'border-teal text-teal' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
+        {pillars.map((p) => (
+          <button
+            key={p.id}
+            onClick={() => setPillar(p.id)}
+            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${pillar === p.id ? "border-teal text-teal" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          >
             <p.icon className="w-3.5 h-3.5" /> {p.label}
           </button>
         ))}
       </div>
 
-      {pillar === 'license' && <LicenseManagement />}
-      {pillar === 'health' && <HealthManagement />}
-      {pillar === 'multitenancy' && <MultiTenancy />}
-      {pillar === 'telemetry' && <TelemetryPanel />}
-      {pillar === 'users' && <UserManagement />}
-      {pillar === 'infra-integrations' && <InfraIntegrations />}
-      {pillar === 'infrastructure' && <InfrastructureResources />}
-      {pillar === 'mcp' && <MCPServerPanel />}
+      {pillar === "license" && <LicenseManagement />}
+      {pillar === "health" && <HealthManagement />}
+      {pillar === "multitenancy" && <MultiTenancy />}
+      {pillar === "telemetry" && <TelemetryPanel />}
+      {pillar === "users" && <UserManagement />}
+      {pillar === "infra-integrations" && <InfraIntegrations />}
+      {pillar === "infrastructure" && <InfrastructureResources />}
+      {pillar === "mcp" && <MCPServerPanel />}
     </div>
   );
 }
@@ -55,22 +98,38 @@ export default function CoreServicesPage() {
 /* ─── LICENSE MANAGEMENT ─── */
 function LicenseManagement() {
   const [showUpload, setShowUpload] = useState(false);
+  const { isLicensed, setLicensed } = useLicensing();
+
+  // Modules that gate a Remediation sub-module in the sidebar. Toggling these
+  // reveals/hides the capability live -- the land-and-expand demo.
+  const LICENSE_KEY: Record<string, LicenseModule> = {
+    "Certificate Lifecycle (CLM/PKI)": "clm",
+    "SSH Key Management": "ssh",
+    "Secrets Management": "secrets",
+    "Agentic AI Identity (Eos)": "ai",
+  };
 
   const modules = [
-    { name: 'Certificate Lifecycle (CLM/PKI)', status: 'Active', seats: 'Unlimited', usage: 82, expiry: '2027-12-31' },
-    { name: 'SSH Key Management', status: 'Active', seats: '500', usage: 67, expiry: '2027-12-31' },
-    { name: 'Code Signing', status: 'Active', seats: '100', usage: 23, expiry: '2027-12-31' },
-    { name: 'Kubernetes TLS', status: 'Active', seats: 'Unlimited', usage: 45, expiry: '2027-12-31' },
-    { name: 'Quantum Trust Hub', status: 'Active', seats: 'Unlimited', usage: 12, expiry: '2027-12-31' },
-    { name: 'Agentic AI Identity (Eos)', status: 'Trial', seats: '50', usage: 8, expiry: '2026-06-30' },
-    { name: 'Secrets Management', status: 'Inactive', seats: '—', usage: 0, expiry: '—' },
+    { name: "Certificate Lifecycle (CLM/PKI)", status: "Active", seats: "Unlimited", usage: 82, expiry: "2027-12-31" },
+    { name: "SSH Key Management", status: "Active", seats: "500", usage: 67, expiry: "2027-12-31" },
+    { name: "Code Signing", status: "Active", seats: "100", usage: 23, expiry: "2027-12-31" },
+    { name: "Kubernetes TLS", status: "Active", seats: "Unlimited", usage: 45, expiry: "2027-12-31" },
+    { name: "Quantum Trust Hub", status: "Active", seats: "Unlimited", usage: 12, expiry: "2027-12-31" },
+    { name: "Agentic AI Identity (Eos)", status: "Trial", seats: "50", usage: 8, expiry: "2026-06-30" },
+    { name: "Secrets Management", status: "Inactive", seats: "—", usage: 0, expiry: "—" },
   ];
+
+  const isOn = (m: { name: string; status: string }) => {
+    const k = LICENSE_KEY[m.name];
+    return k ? isLicensed(k) : m.status === "Active";
+  };
+  const activeCount = modules.filter(isOn).length;
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-4 gap-3">
         <MetricCard label="License Tier" value="Enterprise" icon={FileText} />
-        <MetricCard label="Modules Active" value="5 / 7" icon={Layers} />
+        <MetricCard label="Modules Active" value={`${activeCount} / ${modules.length}`} icon={Layers} />
         <MetricCard label="License Expiry" value="Dec 2027" icon={Activity} />
         <MetricCard label="Nodes Licensed" value="Unlimited" icon={Server} />
       </div>
@@ -79,40 +138,103 @@ function LicenseManagement() {
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <h3 className="text-sm font-semibold">Module Entitlements</h3>
           <div className="flex gap-2">
-            <button onClick={() => setShowUpload(true)} className="text-[10px] px-3 py-1.5 rounded bg-teal text-primary-foreground hover:bg-teal-light flex items-center gap-1"><Plus className="w-3 h-3" /> Upload License</button>
-            <button onClick={() => toast.info('License renewal request submitted')} className="text-[10px] px-3 py-1.5 rounded bg-muted hover:bg-muted/80">Request Renewal</button>
+            <button
+              onClick={() => setShowUpload(true)}
+              className="text-[10px] px-3 py-1.5 rounded bg-teal text-primary-foreground hover:bg-teal-light flex items-center gap-1"
+            >
+              <Plus className="w-3 h-3" /> Upload License
+            </button>
+            <button
+              onClick={() => toast.info("License renewal request submitted")}
+              className="text-[10px] px-3 py-1.5 rounded bg-muted hover:bg-muted/80"
+            >
+              Request Renewal
+            </button>
           </div>
         </div>
         <table className="w-full text-xs">
-          <thead className="bg-muted/50"><tr className="border-b border-border">
-            {['Module', 'Status', 'Seats', 'Usage', 'Expiry', 'Actions'].map(h => <th key={h} className="text-left py-2 px-3 font-medium text-muted-foreground">{h}</th>)}
-          </tr></thead>
+          <thead className="bg-muted/50">
+            <tr className="border-b border-border">
+              {["Module", "Status", "Seats", "Usage", "Expiry", "Actions"].map((h) => (
+                <th key={h} className="text-left py-2 px-3 font-medium text-muted-foreground">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
           <tbody>
-            {modules.filter(m => FEATURES.AI_IDENTITY || !m.name.includes('Eos')).map((m, i) => (
-              <tr key={i} className="border-b border-border hover:bg-muted/30">
-                <td className="py-2 px-3 font-medium">{m.name}</td>
-                <td className="py-2 px-3"><StatusBadge status={m.status === 'Active' ? 'Active' : m.status === 'Trial' ? 'Warning' : 'Inactive'} /></td>
-                <td className="py-2 px-3 text-muted-foreground">{m.seats}</td>
-                <td className="py-2 px-3">
-                  {m.usage > 0 ? (
-                    <div className="flex items-center gap-2 w-24">
-                      <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden"><div className="h-full bg-teal rounded-full" style={{ width: `${m.usage}%` }} /></div>
-                      <span className="text-[10px] text-muted-foreground">{m.usage}%</span>
-                    </div>
-                  ) : <span className="text-muted-foreground">—</span>}
-                </td>
-                <td className="py-2 px-3 text-muted-foreground font-mono text-[10px]">{m.expiry}</td>
-                <td className="py-2 px-3">
-                  {m.status === 'Inactive' ? (
-                    <button onClick={() => toast.info(`Activating ${m.name}`)} className="text-[10px] px-2 py-1 rounded bg-teal/10 text-teal hover:bg-teal/20">Activate</button>
-                  ) : m.status === 'Trial' ? (
-                    <button onClick={() => toast.info(`Converting ${m.name} to full license`)} className="text-[10px] px-2 py-1 rounded bg-amber/10 text-amber hover:bg-amber/20">Upgrade</button>
-                  ) : (
-                    <button onClick={() => toast.info(`Managing ${m.name}`)} className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80">Manage</button>
-                  )}
-                </td>
-              </tr>
-            ))}
+            {modules.map((m, i) => {
+              const licKey = LICENSE_KEY[m.name];
+              const licensable = !!licKey;
+              const on = licensable ? isLicensed(licKey) : m.status === "Active";
+              const statusLabel = licensable ? (on ? "Active" : "Inactive") : m.status;
+              const shownUsage = licensable && !on ? 0 : m.usage;
+              return (
+                <tr key={i} className="border-b border-border hover:bg-muted/30">
+                  <td className="py-2 px-3 font-medium">
+                    {m.name}
+                    {licensable && (
+                      <span className="ml-2 text-[9px] uppercase tracking-wide text-muted-foreground">
+                        remediation add-on
+                      </span>
+                    )}
+                  </td>
+                  <td className="py-2 px-3">
+                    <StatusBadge
+                      status={statusLabel === "Active" ? "Active" : statusLabel === "Trial" ? "Warning" : "Inactive"}
+                    />
+                  </td>
+                  <td className="py-2 px-3 text-muted-foreground">{m.seats}</td>
+                  <td className="py-2 px-3">
+                    {shownUsage > 0 ? (
+                      <div className="flex items-center gap-2 w-24">
+                        <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                          <div className="h-full bg-teal rounded-full" style={{ width: `${shownUsage}%` }} />
+                        </div>
+                        <span className="text-[10px] text-muted-foreground">{shownUsage}%</span>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </td>
+                  <td className="py-2 px-3 text-muted-foreground font-mono text-[10px]">{m.expiry}</td>
+                  <td className="py-2 px-3">
+                    {licensable ? (
+                      <button
+                        onClick={() => {
+                          setLicensed(licKey, !on);
+                          toast.success(`${m.name} ${!on ? "enabled" : "disabled"} \u00b7 menu updated`);
+                        }}
+                        className={`text-[10px] px-2 py-1 rounded ${on ? "bg-muted hover:bg-muted/80" : "bg-teal/10 text-teal hover:bg-teal/20"}`}
+                      >
+                        {on ? "Disable" : "Enable"}
+                      </button>
+                    ) : m.status === "Inactive" ? (
+                      <button
+                        onClick={() => toast.info(`Activating ${m.name}`)}
+                        className="text-[10px] px-2 py-1 rounded bg-teal/10 text-teal hover:bg-teal/20"
+                      >
+                        Activate
+                      </button>
+                    ) : m.status === "Trial" ? (
+                      <button
+                        onClick={() => toast.info(`Converting ${m.name} to full license`)}
+                        className="text-[10px] px-2 py-1 rounded bg-amber/10 text-amber hover:bg-amber/20"
+                      >
+                        Upgrade
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => toast.info(`Managing ${m.name}`)}
+                        className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80"
+                      >
+                        Manage
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -122,7 +244,15 @@ function LicenseManagement() {
           <h4 className="text-xs font-semibold mb-3">Upload License File</h4>
           <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
             <p className="text-xs text-muted-foreground mb-2">Drag & drop your .lic file or click to browse</p>
-            <button onClick={() => { toast.success('License uploaded & validated'); setShowUpload(false); }} className="px-3 py-1.5 rounded bg-teal text-primary-foreground text-xs">Select File</button>
+            <button
+              onClick={() => {
+                toast.success("License uploaded & validated");
+                setShowUpload(false);
+              }}
+              className="px-3 py-1.5 rounded bg-teal text-primary-foreground text-xs"
+            >
+              Select File
+            </button>
           </div>
         </div>
       )}
@@ -131,9 +261,9 @@ function LicenseManagement() {
         <h4 className="text-xs font-semibold mb-3">License Audit Trail</h4>
         <div className="space-y-2 text-xs">
           {[
-            { action: 'License renewed', date: '2026-01-15', by: 'admin@acme.com' },
-            { action: 'Eos module trial activated', date: '2026-03-01', by: 'admin@acme.com' },
-            { action: 'SSH seats expanded to 500', date: '2026-02-10', by: 'ops@acme.com' },
+            { action: "License renewed", date: "2026-01-15", by: "admin@acme.com" },
+            { action: "Eos module trial activated", date: "2026-03-01", by: "admin@acme.com" },
+            { action: "SSH seats expanded to 500", date: "2026-02-10", by: "ops@acme.com" },
           ].map((e, i) => (
             <div key={i} className="flex items-center justify-between py-1.5 border-b border-border last:border-0">
               <span className="text-muted-foreground">{e.action}</span>
@@ -152,25 +282,109 @@ function LicenseManagement() {
 /* ─── HEALTH MANAGEMENT ─── */
 function HealthManagement() {
   const services = [
-    { name: 'Trust API Gateway', status: 'Healthy', uptime: '99.99%', latency: '12ms', lastCheck: '30s ago', cpu: 24, mem: 61 },
-    { name: 'Certificate Authority (CA)', status: 'Healthy', uptime: '99.99%', latency: '8ms', lastCheck: '30s ago', cpu: 18, mem: 45 },
-    { name: 'Discovery Engine', status: 'Healthy', uptime: '99.97%', latency: '45ms', lastCheck: '30s ago', cpu: 52, mem: 72 },
-    { name: 'Policy Engine', status: 'Healthy', uptime: '99.98%', latency: '15ms', lastCheck: '30s ago', cpu: 12, mem: 38 },
-    { name: 'OCSP Responder', status: 'Degraded', uptime: '99.85%', latency: '220ms', lastCheck: '30s ago', cpu: 78, mem: 89 },
-    { name: 'Key Management Service', status: 'Healthy', uptime: '99.99%', latency: '5ms', lastCheck: '30s ago', cpu: 8, mem: 32 },
-    { name: 'Agent Token Broker', status: 'Healthy', uptime: '99.96%', latency: '18ms', lastCheck: '30s ago', cpu: 34, mem: 55 },
-    { name: 'Notification Service', status: 'Healthy', uptime: '99.95%', latency: '25ms', lastCheck: '30s ago', cpu: 10, mem: 22 },
-    { name: 'Database Cluster', status: 'Healthy', uptime: '99.99%', latency: '3ms', lastCheck: '30s ago', cpu: 42, mem: 68 },
-    { name: 'Message Queue (Kafka)', status: 'Warning', uptime: '99.90%', latency: '85ms', lastCheck: '30s ago', cpu: 65, mem: 82 },
+    {
+      name: "Trust API Gateway",
+      status: "Healthy",
+      uptime: "99.99%",
+      latency: "12ms",
+      lastCheck: "30s ago",
+      cpu: 24,
+      mem: 61,
+    },
+    {
+      name: "Certificate Authority (CA)",
+      status: "Healthy",
+      uptime: "99.99%",
+      latency: "8ms",
+      lastCheck: "30s ago",
+      cpu: 18,
+      mem: 45,
+    },
+    {
+      name: "Discovery Engine",
+      status: "Healthy",
+      uptime: "99.97%",
+      latency: "45ms",
+      lastCheck: "30s ago",
+      cpu: 52,
+      mem: 72,
+    },
+    {
+      name: "Policy Engine",
+      status: "Healthy",
+      uptime: "99.98%",
+      latency: "15ms",
+      lastCheck: "30s ago",
+      cpu: 12,
+      mem: 38,
+    },
+    {
+      name: "OCSP Responder",
+      status: "Degraded",
+      uptime: "99.85%",
+      latency: "220ms",
+      lastCheck: "30s ago",
+      cpu: 78,
+      mem: 89,
+    },
+    {
+      name: "Key Management Service",
+      status: "Healthy",
+      uptime: "99.99%",
+      latency: "5ms",
+      lastCheck: "30s ago",
+      cpu: 8,
+      mem: 32,
+    },
+    {
+      name: "Agent Token Broker",
+      status: "Healthy",
+      uptime: "99.96%",
+      latency: "18ms",
+      lastCheck: "30s ago",
+      cpu: 34,
+      mem: 55,
+    },
+    {
+      name: "Notification Service",
+      status: "Healthy",
+      uptime: "99.95%",
+      latency: "25ms",
+      lastCheck: "30s ago",
+      cpu: 10,
+      mem: 22,
+    },
+    {
+      name: "Database Cluster",
+      status: "Healthy",
+      uptime: "99.99%",
+      latency: "3ms",
+      lastCheck: "30s ago",
+      cpu: 42,
+      mem: 68,
+    },
+    {
+      name: "Message Queue (Kafka)",
+      status: "Warning",
+      uptime: "99.90%",
+      latency: "85ms",
+      lastCheck: "30s ago",
+      cpu: 65,
+      mem: 82,
+    },
   ];
 
-  const degraded = services.filter(s => s.status !== 'Healthy');
+  const degraded = services.filter((s) => s.status !== "Healthy");
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-4 gap-3">
         <MetricCard label="Services Monitored" value={String(services.length)} icon={Monitor} />
-        <MetricCard label="Healthy" value={String(services.filter(s => s.status === 'Healthy').length)} icon={CheckCircle} />
+        <MetricCard
+          label="Healthy"
+          value={String(services.filter((s) => s.status === "Healthy").length)}
+          icon={CheckCircle}
+        />
         <MetricCard label="Degraded / Warning" value={String(degraded.length)} icon={AlertTriangle} accent />
         <MetricCard label="Avg Uptime" value="99.96%" icon={Activity} />
       </div>
@@ -182,11 +396,23 @@ function HealthManagement() {
             <div key={i} className="flex items-center justify-between py-1.5 text-xs">
               <div>
                 <span className="font-medium">{s.name}</span>
-                <span className="text-muted-foreground ml-2">— Latency: {s.latency}, CPU: {s.cpu}%, Memory: {s.mem}%</span>
+                <span className="text-muted-foreground ml-2">
+                  — Latency: {s.latency}, CPU: {s.cpu}%, Memory: {s.mem}%
+                </span>
               </div>
               <div className="flex gap-1">
-                <button onClick={() => toast.info(`Restarting ${s.name}`)} className="text-[10px] px-2 py-1 rounded bg-amber/10 text-amber hover:bg-amber/20">Restart</button>
-                <button onClick={() => toast.info(`Viewing ${s.name} logs`)} className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80">Logs</button>
+                <button
+                  onClick={() => toast.info(`Restarting ${s.name}`)}
+                  className="text-[10px] px-2 py-1 rounded bg-amber/10 text-amber hover:bg-amber/20"
+                >
+                  Restart
+                </button>
+                <button
+                  onClick={() => toast.info(`Viewing ${s.name} logs`)}
+                  className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80"
+                >
+                  Logs
+                </button>
               </div>
             </div>
           ))}
@@ -196,35 +422,70 @@ function HealthManagement() {
       <div className="bg-card rounded-lg border border-border overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <h3 className="text-sm font-semibold">All Services</h3>
-          <button onClick={() => toast.info('Running health check on all services...')} className="text-[10px] px-3 py-1.5 rounded bg-teal text-primary-foreground hover:bg-teal-light flex items-center gap-1"><RefreshCw className="w-3 h-3" /> Check All</button>
+          <button
+            onClick={() => toast.info("Running health check on all services...")}
+            className="text-[10px] px-3 py-1.5 rounded bg-teal text-primary-foreground hover:bg-teal-light flex items-center gap-1"
+          >
+            <RefreshCw className="w-3 h-3" /> Check All
+          </button>
         </div>
         <table className="w-full text-xs">
-          <thead className="bg-muted/50"><tr className="border-b border-border">
-            {['Service', 'Status', 'Uptime', 'Latency', 'CPU', 'Memory', 'Last Check', 'Actions'].map(h => <th key={h} className="text-left py-2 px-3 font-medium text-muted-foreground">{h}</th>)}
-          </tr></thead>
+          <thead className="bg-muted/50">
+            <tr className="border-b border-border">
+              {["Service", "Status", "Uptime", "Latency", "CPU", "Memory", "Last Check", "Actions"].map((h) => (
+                <th key={h} className="text-left py-2 px-3 font-medium text-muted-foreground">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
           <tbody>
             {services.map((s, i) => (
               <tr key={i} className="border-b border-border hover:bg-muted/30">
                 <td className="py-2 px-3 font-medium">{s.name}</td>
-                <td className="py-2 px-3"><StatusBadge status={s.status === 'Healthy' ? 'Active' : s.status === 'Degraded' ? 'Critical' : 'Warning'} /></td>
+                <td className="py-2 px-3">
+                  <StatusBadge
+                    status={s.status === "Healthy" ? "Active" : s.status === "Degraded" ? "Critical" : "Warning"}
+                  />
+                </td>
                 <td className="py-2 px-3 text-muted-foreground">{s.uptime}</td>
                 <td className="py-2 px-3 text-muted-foreground">{s.latency}</td>
                 <td className="py-2 px-3">
                   <div className="flex items-center gap-1 w-16">
-                    <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden"><div className={`h-full rounded-full ${s.cpu > 70 ? 'bg-coral' : s.cpu > 50 ? 'bg-amber' : 'bg-teal'}`} style={{ width: `${s.cpu}%` }} /></div>
+                    <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${s.cpu > 70 ? "bg-coral" : s.cpu > 50 ? "bg-amber" : "bg-teal"}`}
+                        style={{ width: `${s.cpu}%` }}
+                      />
+                    </div>
                     <span className="text-[10px]">{s.cpu}%</span>
                   </div>
                 </td>
                 <td className="py-2 px-3">
                   <div className="flex items-center gap-1 w-16">
-                    <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden"><div className={`h-full rounded-full ${s.mem > 80 ? 'bg-coral' : s.mem > 60 ? 'bg-amber' : 'bg-teal'}`} style={{ width: `${s.mem}%` }} /></div>
+                    <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${s.mem > 80 ? "bg-coral" : s.mem > 60 ? "bg-amber" : "bg-teal"}`}
+                        style={{ width: `${s.mem}%` }}
+                      />
+                    </div>
                     <span className="text-[10px]">{s.mem}%</span>
                   </div>
                 </td>
                 <td className="py-2 px-3 text-muted-foreground text-[10px]">{s.lastCheck}</td>
                 <td className="py-2 px-3 flex gap-1">
-                  <button onClick={() => toast.info(`Restarting ${s.name}`)} className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80">Restart</button>
-                  <button onClick={() => toast.info(`Viewing ${s.name} details`)} className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80">Details</button>
+                  <button
+                    onClick={() => toast.info(`Restarting ${s.name}`)}
+                    className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80"
+                  >
+                    Restart
+                  </button>
+                  <button
+                    onClick={() => toast.info(`Viewing ${s.name} details`)}
+                    className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80"
+                  >
+                    Details
+                  </button>
                 </td>
               </tr>
             ))}
@@ -240,11 +501,56 @@ function MultiTenancy() {
   const [showCreateTenant, setShowCreateTenant] = useState(false);
 
   const tenants = [
-    { name: 'ACME Corp (Primary)', id: 'tenant-001', users: 342, assets: '2.1M', plan: 'Enterprise', status: 'Active', region: 'US-East', isolation: 'Dedicated DB' },
-    { name: 'ACME EMEA', id: 'tenant-002', users: 128, assets: '1.4M', plan: 'Enterprise', status: 'Active', region: 'EU-West', isolation: 'Dedicated DB' },
-    { name: 'ACME APAC', id: 'tenant-003', users: 87, assets: '980K', plan: 'Enterprise', status: 'Active', region: 'AP-Southeast', isolation: 'Shared (Schema)' },
-    { name: 'Partner: FinSecure', id: 'tenant-004', users: 24, assets: '320K', plan: 'Partner', status: 'Active', region: 'US-West', isolation: 'Dedicated DB' },
-    { name: 'Sandbox / QA', id: 'tenant-005', users: 12, assets: '45K', plan: 'Dev', status: 'Active', region: 'US-East', isolation: 'Shared (Schema)' },
+    {
+      name: "ACME Corp (Primary)",
+      id: "tenant-001",
+      users: 342,
+      assets: "2.1M",
+      plan: "Enterprise",
+      status: "Active",
+      region: "US-East",
+      isolation: "Dedicated DB",
+    },
+    {
+      name: "ACME EMEA",
+      id: "tenant-002",
+      users: 128,
+      assets: "1.4M",
+      plan: "Enterprise",
+      status: "Active",
+      region: "EU-West",
+      isolation: "Dedicated DB",
+    },
+    {
+      name: "ACME APAC",
+      id: "tenant-003",
+      users: 87,
+      assets: "980K",
+      plan: "Enterprise",
+      status: "Active",
+      region: "AP-Southeast",
+      isolation: "Shared (Schema)",
+    },
+    {
+      name: "Partner: FinSecure",
+      id: "tenant-004",
+      users: 24,
+      assets: "320K",
+      plan: "Partner",
+      status: "Active",
+      region: "US-West",
+      isolation: "Dedicated DB",
+    },
+    {
+      name: "Sandbox / QA",
+      id: "tenant-005",
+      users: 12,
+      assets: "45K",
+      plan: "Dev",
+      status: "Active",
+      region: "US-East",
+      isolation: "Shared (Schema)",
+    },
   ];
 
   return (
@@ -259,12 +565,23 @@ function MultiTenancy() {
       <div className="bg-card rounded-lg border border-border overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <h3 className="text-sm font-semibold">Tenant Management</h3>
-          <button onClick={() => setShowCreateTenant(true)} className="text-[10px] px-3 py-1.5 rounded bg-teal text-primary-foreground hover:bg-teal-light flex items-center gap-1"><Plus className="w-3 h-3" /> Create Tenant</button>
+          <button
+            onClick={() => setShowCreateTenant(true)}
+            className="text-[10px] px-3 py-1.5 rounded bg-teal text-primary-foreground hover:bg-teal-light flex items-center gap-1"
+          >
+            <Plus className="w-3 h-3" /> Create Tenant
+          </button>
         </div>
         <table className="w-full text-xs">
-          <thead className="bg-muted/50"><tr className="border-b border-border">
-            {['Tenant', 'ID', 'Users', 'Assets', 'Plan', 'Region', 'Isolation', 'Status', 'Actions'].map(h => <th key={h} className="text-left py-2 px-3 font-medium text-muted-foreground">{h}</th>)}
-          </tr></thead>
+          <thead className="bg-muted/50">
+            <tr className="border-b border-border">
+              {["Tenant", "ID", "Users", "Assets", "Plan", "Region", "Isolation", "Status", "Actions"].map((h) => (
+                <th key={h} className="text-left py-2 px-3 font-medium text-muted-foreground">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
           <tbody>
             {tenants.map((t, i) => (
               <tr key={i} className="border-b border-border hover:bg-muted/30">
@@ -272,13 +589,27 @@ function MultiTenancy() {
                 <td className="py-2 px-3 text-muted-foreground font-mono text-[10px]">{t.id}</td>
                 <td className="py-2 px-3">{t.users}</td>
                 <td className="py-2 px-3">{t.assets}</td>
-                <td className="py-2 px-3"><span className="px-2 py-0.5 rounded-full bg-teal/10 text-teal text-[10px]">{t.plan}</span></td>
+                <td className="py-2 px-3">
+                  <span className="px-2 py-0.5 rounded-full bg-teal/10 text-teal text-[10px]">{t.plan}</span>
+                </td>
                 <td className="py-2 px-3 text-muted-foreground">{t.region}</td>
                 <td className="py-2 px-3 text-[10px] text-muted-foreground">{t.isolation}</td>
-                <td className="py-2 px-3"><StatusBadge status={t.status === 'Active' ? 'Active' : 'Inactive'} /></td>
+                <td className="py-2 px-3">
+                  <StatusBadge status={t.status === "Active" ? "Active" : "Inactive"} />
+                </td>
                 <td className="py-2 px-3 flex gap-1">
-                  <button onClick={() => toast.info(`Managing ${t.name}`)} className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80">Settings</button>
-                  <button onClick={() => toast.info(`Switching to ${t.name}`)} className="text-[10px] px-2 py-1 rounded bg-teal/10 text-teal hover:bg-teal/20">Switch</button>
+                  <button
+                    onClick={() => toast.info(`Managing ${t.name}`)}
+                    className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80"
+                  >
+                    Settings
+                  </button>
+                  <button
+                    onClick={() => toast.info(`Switching to ${t.name}`)}
+                    className="text-[10px] px-2 py-1 rounded bg-teal/10 text-teal hover:bg-teal/20"
+                  >
+                    Switch
+                  </button>
                 </td>
               </tr>
             ))}
@@ -290,26 +621,51 @@ function MultiTenancy() {
         <div className="bg-card rounded-lg border border-teal/30 p-4 space-y-3">
           <h4 className="text-xs font-semibold">Create New Tenant</h4>
           <div className="grid grid-cols-2 gap-3">
-            <div><label className="text-[10px] text-muted-foreground">Tenant Name</label><input className="w-full mt-1 px-3 py-1.5 bg-muted border border-border rounded text-xs" placeholder="e.g. ACME LATAM" /></div>
-            <div><label className="text-[10px] text-muted-foreground">Region</label>
+            <div>
+              <label className="text-[10px] text-muted-foreground">Tenant Name</label>
+              <input
+                className="w-full mt-1 px-3 py-1.5 bg-muted border border-border rounded text-xs"
+                placeholder="e.g. ACME LATAM"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-muted-foreground">Region</label>
               <select className="w-full mt-1 px-3 py-1.5 bg-muted border border-border rounded text-xs">
-                <option>US-East</option><option>US-West</option><option>EU-West</option><option>AP-Southeast</option>
+                <option>US-East</option>
+                <option>US-West</option>
+                <option>EU-West</option>
+                <option>AP-Southeast</option>
               </select>
             </div>
-            <div><label className="text-[10px] text-muted-foreground">Isolation Mode</label>
+            <div>
+              <label className="text-[10px] text-muted-foreground">Isolation Mode</label>
               <select className="w-full mt-1 px-3 py-1.5 bg-muted border border-border rounded text-xs">
-                <option>Dedicated Database</option><option>Shared (Schema Isolation)</option>
+                <option>Dedicated Database</option>
+                <option>Shared (Schema Isolation)</option>
               </select>
             </div>
-            <div><label className="text-[10px] text-muted-foreground">Plan</label>
+            <div>
+              <label className="text-[10px] text-muted-foreground">Plan</label>
               <select className="w-full mt-1 px-3 py-1.5 bg-muted border border-border rounded text-xs">
-                <option>Enterprise</option><option>Partner</option><option>Dev/Sandbox</option>
+                <option>Enterprise</option>
+                <option>Partner</option>
+                <option>Dev/Sandbox</option>
               </select>
             </div>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => { toast.success('Tenant created & provisioning started'); setShowCreateTenant(false); }} className="px-3 py-1.5 rounded bg-teal text-primary-foreground text-xs">Create & Provision</button>
-            <button onClick={() => setShowCreateTenant(false)} className="px-3 py-1.5 rounded bg-muted text-xs">Cancel</button>
+            <button
+              onClick={() => {
+                toast.success("Tenant created & provisioning started");
+                setShowCreateTenant(false);
+              }}
+              className="px-3 py-1.5 rounded bg-teal text-primary-foreground text-xs"
+            >
+              Create & Provision
+            </button>
+            <button onClick={() => setShowCreateTenant(false)} className="px-3 py-1.5 rounded bg-muted text-xs">
+              Cancel
+            </button>
           </div>
         </div>
       )}
@@ -320,22 +676,22 @@ function MultiTenancy() {
 /* ─── TELEMETRY ─── */
 function TelemetryPanel() {
   const metrics = [
-    { metric: 'API Requests / min', current: '14,280', trend: '+5%', status: 'Normal' },
-    { metric: 'Certificate Issuances / hr', current: '842', trend: '+12%', status: 'Normal' },
-    { metric: 'Discovery Scans Running', current: '3', trend: '—', status: 'Normal' },
-    { metric: 'Policy Evaluations / min', current: '2,840', trend: '-2%', status: 'Normal' },
-    { metric: 'OCSP Responses / min', current: '45,200', trend: '+8%', status: 'High' },
-    { metric: 'Agent Token Validations / min', current: '8,120', trend: '+15%', status: 'Normal' },
-    { metric: 'Webhook Deliveries (24h)', current: '12,420', trend: '+3%', status: 'Normal' },
-    { metric: 'Failed Operations (24h)', current: '23', trend: '-8%', status: 'Normal' },
+    { metric: "API Requests / min", current: "14,280", trend: "+5%", status: "Normal" },
+    { metric: "Certificate Issuances / hr", current: "842", trend: "+12%", status: "Normal" },
+    { metric: "Discovery Scans Running", current: "3", trend: "—", status: "Normal" },
+    { metric: "Policy Evaluations / min", current: "2,840", trend: "-2%", status: "Normal" },
+    { metric: "OCSP Responses / min", current: "45,200", trend: "+8%", status: "High" },
+    { metric: "Agent Token Validations / min", current: "8,120", trend: "+15%", status: "Normal" },
+    { metric: "Webhook Deliveries (24h)", current: "12,420", trend: "+3%", status: "Normal" },
+    { metric: "Failed Operations (24h)", current: "23", trend: "-8%", status: "Normal" },
   ];
 
   const exportTargets = [
-    { name: 'Splunk SIEM', status: 'Active', type: 'Syslog/HEC', lastExport: '2m ago' },
-    { name: 'Datadog', status: 'Active', type: 'API', lastExport: '1m ago' },
-    { name: 'Elastic/OpenSearch', status: 'Active', type: 'Filebeat', lastExport: '5m ago' },
-    { name: 'AWS CloudWatch', status: 'Inactive', type: 'CloudWatch Agent', lastExport: '—' },
-    { name: 'Prometheus/Grafana', status: 'Active', type: 'Metrics Endpoint', lastExport: 'Live' },
+    { name: "Splunk SIEM", status: "Active", type: "Syslog/HEC", lastExport: "2m ago" },
+    { name: "Datadog", status: "Active", type: "API", lastExport: "1m ago" },
+    { name: "Elastic/OpenSearch", status: "Active", type: "Filebeat", lastExport: "5m ago" },
+    { name: "AWS CloudWatch", status: "Inactive", type: "CloudWatch Agent", lastExport: "—" },
+    { name: "Prometheus/Grafana", status: "Active", type: "Metrics Endpoint", lastExport: "Live" },
   ];
 
   return (
@@ -350,19 +706,44 @@ function TelemetryPanel() {
       <div className="bg-card rounded-lg border border-border overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <h3 className="text-sm font-semibold">Real-Time Metrics</h3>
-          <button onClick={() => toast.info('Refreshing metrics...')} className="text-[10px] px-3 py-1.5 rounded bg-muted hover:bg-muted/80 flex items-center gap-1"><RefreshCw className="w-3 h-3" /> Refresh</button>
+          <button
+            onClick={() => toast.info("Refreshing metrics...")}
+            className="text-[10px] px-3 py-1.5 rounded bg-muted hover:bg-muted/80 flex items-center gap-1"
+          >
+            <RefreshCw className="w-3 h-3" /> Refresh
+          </button>
         </div>
         <table className="w-full text-xs">
-          <thead className="bg-muted/50"><tr className="border-b border-border">
-            {['Metric', 'Current', 'Trend', 'Status'].map(h => <th key={h} className="text-left py-2 px-3 font-medium text-muted-foreground">{h}</th>)}
-          </tr></thead>
+          <thead className="bg-muted/50">
+            <tr className="border-b border-border">
+              {["Metric", "Current", "Trend", "Status"].map((h) => (
+                <th key={h} className="text-left py-2 px-3 font-medium text-muted-foreground">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
           <tbody>
             {metrics.map((m, i) => (
               <tr key={i} className="border-b border-border hover:bg-muted/30">
                 <td className="py-2 px-3 font-medium">{m.metric}</td>
                 <td className="py-2 px-3 font-mono">{m.current}</td>
-                <td className="py-2 px-3"><span className={m.trend.startsWith('+') ? 'text-teal' : m.trend.startsWith('-') ? 'text-coral' : 'text-muted-foreground'}>{m.trend}</span></td>
-                <td className="py-2 px-3"><StatusBadge status={m.status === 'Normal' ? 'Active' : 'Warning'} /></td>
+                <td className="py-2 px-3">
+                  <span
+                    className={
+                      m.trend.startsWith("+")
+                        ? "text-teal"
+                        : m.trend.startsWith("-")
+                          ? "text-coral"
+                          : "text-muted-foreground"
+                    }
+                  >
+                    {m.trend}
+                  </span>
+                </td>
+                <td className="py-2 px-3">
+                  <StatusBadge status={m.status === "Normal" ? "Active" : "Warning"} />
+                </td>
               </tr>
             ))}
           </tbody>
@@ -372,22 +753,45 @@ function TelemetryPanel() {
       <div className="bg-card rounded-lg border border-border overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <h3 className="text-sm font-semibold">Export & SIEM Destinations</h3>
-          <button onClick={() => toast.info('Adding export destination')} className="text-[10px] px-3 py-1.5 rounded bg-teal text-primary-foreground hover:bg-teal-light flex items-center gap-1"><Plus className="w-3 h-3" /> Add Destination</button>
+          <button
+            onClick={() => toast.info("Adding export destination")}
+            className="text-[10px] px-3 py-1.5 rounded bg-teal text-primary-foreground hover:bg-teal-light flex items-center gap-1"
+          >
+            <Plus className="w-3 h-3" /> Add Destination
+          </button>
         </div>
         <table className="w-full text-xs">
-          <thead className="bg-muted/50"><tr className="border-b border-border">
-            {['Destination', 'Status', 'Protocol', 'Last Export', 'Actions'].map(h => <th key={h} className="text-left py-2 px-3 font-medium text-muted-foreground">{h}</th>)}
-          </tr></thead>
+          <thead className="bg-muted/50">
+            <tr className="border-b border-border">
+              {["Destination", "Status", "Protocol", "Last Export", "Actions"].map((h) => (
+                <th key={h} className="text-left py-2 px-3 font-medium text-muted-foreground">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
           <tbody>
             {exportTargets.map((e, i) => (
               <tr key={i} className="border-b border-border hover:bg-muted/30">
                 <td className="py-2 px-3 font-medium">{e.name}</td>
-                <td className="py-2 px-3"><StatusBadge status={e.status === 'Active' ? 'Active' : 'Inactive'} /></td>
+                <td className="py-2 px-3">
+                  <StatusBadge status={e.status === "Active" ? "Active" : "Inactive"} />
+                </td>
                 <td className="py-2 px-3 text-muted-foreground">{e.type}</td>
                 <td className="py-2 px-3 text-muted-foreground">{e.lastExport}</td>
                 <td className="py-2 px-3 flex gap-1">
-                  <button onClick={() => toast.success(`Test event sent to ${e.name}`)} className="text-[10px] px-2 py-1 rounded bg-teal/10 text-teal hover:bg-teal/20">Test</button>
-                  <button onClick={() => toast.info(`Configuring ${e.name}`)} className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80">Config</button>
+                  <button
+                    onClick={() => toast.success(`Test event sent to ${e.name}`)}
+                    className="text-[10px] px-2 py-1 rounded bg-teal/10 text-teal hover:bg-teal/20"
+                  >
+                    Test
+                  </button>
+                  <button
+                    onClick={() => toast.info(`Configuring ${e.name}`)}
+                    className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80"
+                  >
+                    Config
+                  </button>
                 </td>
               </tr>
             ))}
@@ -399,13 +803,29 @@ function TelemetryPanel() {
         <h4 className="text-xs font-semibold mb-3">Audit Log & Retention</h4>
         <div className="flex items-center justify-between">
           <div className="space-y-1 text-xs">
-            <p className="text-muted-foreground">Retention period: <span className="text-foreground font-medium">2 years</span></p>
-            <p className="text-muted-foreground">Total events stored: <span className="text-foreground font-medium">1.2B</span></p>
-            <p className="text-muted-foreground">Storage used: <span className="text-foreground font-medium">842 GB</span></p>
+            <p className="text-muted-foreground">
+              Retention period: <span className="text-foreground font-medium">2 years</span>
+            </p>
+            <p className="text-muted-foreground">
+              Total events stored: <span className="text-foreground font-medium">1.2B</span>
+            </p>
+            <p className="text-muted-foreground">
+              Storage used: <span className="text-foreground font-medium">842 GB</span>
+            </p>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => toast.info('Configuring retention policy')} className="text-[10px] px-3 py-1.5 rounded bg-muted hover:bg-muted/80">Configure Retention</button>
-            <button onClick={() => toast.success('Exporting audit log archive')} className="text-[10px] px-3 py-1.5 rounded bg-muted hover:bg-muted/80 flex items-center gap-1"><Upload className="w-3 h-3" /> Export Archive</button>
+            <button
+              onClick={() => toast.info("Configuring retention policy")}
+              className="text-[10px] px-3 py-1.5 rounded bg-muted hover:bg-muted/80"
+            >
+              Configure Retention
+            </button>
+            <button
+              onClick={() => toast.success("Exporting audit log archive")}
+              className="text-[10px] px-3 py-1.5 rounded bg-muted hover:bg-muted/80 flex items-center gap-1"
+            >
+              <Upload className="w-3 h-3" /> Export Archive
+            </button>
           </div>
         </div>
       </div>
@@ -415,66 +835,129 @@ function TelemetryPanel() {
 
 /* ─── USER MANAGEMENT / RBAC ─── */
 function UserManagement() {
-  const [subTab, setSubTab] = useState<'users' | 'roles' | 'sessions' | 'auth'>('users');
-
+  const [subTab, setSubTab] = useState<"users" | "roles" | "sessions" | "auth">("users");
 
   const sessions = [
-    { user: 'alice@acme.com', role: 'Platform Admin', ip: '10.0.1.42', started: '14:22 UTC', mfa: true, status: 'Active' },
-    { user: 'bob@acme.com', role: 'Security Admin', ip: '10.0.2.18', started: '13:45 UTC', mfa: true, status: 'Active' },
-    { user: 'carol@acme.com', role: 'PKI Engineer', ip: '172.16.5.100', started: '12:10 UTC', mfa: true, status: 'Active' },
-    { user: 'dave@partner.com', role: 'Application Owner', ip: '192.168.1.50', started: '11:30 UTC', mfa: false, status: 'Active' },
+    {
+      user: "alice@acme.com",
+      role: "Platform Admin",
+      ip: "10.0.1.42",
+      started: "14:22 UTC",
+      mfa: true,
+      status: "Active",
+    },
+    {
+      user: "bob@acme.com",
+      role: "Security Admin",
+      ip: "10.0.2.18",
+      started: "13:45 UTC",
+      mfa: true,
+      status: "Active",
+    },
+    {
+      user: "carol@acme.com",
+      role: "PKI Engineer",
+      ip: "172.16.5.100",
+      started: "12:10 UTC",
+      mfa: true,
+      status: "Active",
+    },
+    {
+      user: "dave@partner.com",
+      role: "Application Owner",
+      ip: "192.168.1.50",
+      started: "11:30 UTC",
+      mfa: false,
+      status: "Active",
+    },
   ];
 
   const authProviders = [
-    { name: 'SAML / SSO (Okta)', status: 'Active', users: 342, mfa: 'Enforced' },
-    { name: 'LDAP (Active Directory)', status: 'Active', users: 1205, mfa: 'Optional' },
-    { name: 'Local Authentication', status: 'Active', users: 28, mfa: 'Enforced' },
-    { name: 'API Key Auth', status: 'Active', users: 56, mfa: 'N/A' },
-    { name: 'mTLS Client Certs', status: 'Inactive', users: 0, mfa: 'N/A' },
+    { name: "SAML / SSO (Okta)", status: "Active", users: 342, mfa: "Enforced" },
+    { name: "LDAP (Active Directory)", status: "Active", users: 1205, mfa: "Optional" },
+    { name: "Local Authentication", status: "Active", users: 28, mfa: "Enforced" },
+    { name: "API Key Auth", status: "Active", users: 56, mfa: "N/A" },
+    { name: "mTLS Client Certs", status: "Inactive", users: 0, mfa: "N/A" },
   ];
 
   return (
     <div className="space-y-4">
       <div className="flex gap-2 flex-wrap">
         {[
-          { id: 'users' as const, label: 'Users', icon: Users },
-          { id: 'roles' as const, label: 'Roles & Permissions', icon: Shield },
-          { id: 'sessions' as const, label: 'Active Sessions', icon: Monitor },
-          { id: 'auth' as const, label: 'Auth Providers', icon: Fingerprint },
-        ].map(t => (
-          <button key={t.id} onClick={() => setSubTab(t.id)} className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-colors ${subTab === t.id ? 'bg-teal/10 text-teal border border-teal/30' : 'bg-muted/50 text-muted-foreground hover:bg-muted border border-transparent'}`}>
+          { id: "users" as const, label: "Users", icon: Users },
+          { id: "roles" as const, label: "Roles & Permissions", icon: Shield },
+          { id: "sessions" as const, label: "Active Sessions", icon: Monitor },
+          { id: "auth" as const, label: "Auth Providers", icon: Fingerprint },
+        ].map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setSubTab(t.id)}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-colors ${subTab === t.id ? "bg-teal/10 text-teal border border-teal/30" : "bg-muted/50 text-muted-foreground hover:bg-muted border border-transparent"}`}
+          >
             <t.icon className="w-3 h-3" /> {t.label}
           </button>
         ))}
       </div>
 
-      {subTab === 'users' && (
+      {subTab === "users" && (
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <p className="text-xs text-muted-foreground">{users.length} users</p>
             <div className="flex gap-2">
-              <button onClick={() => toast.info('Invite user modal opened')} className="flex items-center gap-1 px-3 py-1.5 rounded bg-teal text-primary-foreground text-xs hover:bg-teal-light"><Plus className="w-3 h-3" /> Invite User</button>
-              <button onClick={() => toast.info('Bulk import started')} className="flex items-center gap-1 px-3 py-1.5 rounded bg-muted text-xs hover:bg-muted/80"><Download className="w-3 h-3" /> Import CSV</button>
+              <button
+                onClick={() => toast.info("Invite user modal opened")}
+                className="flex items-center gap-1 px-3 py-1.5 rounded bg-teal text-primary-foreground text-xs hover:bg-teal-light"
+              >
+                <Plus className="w-3 h-3" /> Invite User
+              </button>
+              <button
+                onClick={() => toast.info("Bulk import started")}
+                className="flex items-center gap-1 px-3 py-1.5 rounded bg-muted text-xs hover:bg-muted/80"
+              >
+                <Download className="w-3 h-3" /> Import CSV
+              </button>
             </div>
           </div>
           <div className="bg-card rounded-lg border border-border overflow-hidden">
             <table className="w-full text-xs">
-              <thead className="bg-muted/50"><tr className="border-b border-border">
-                {['Name', 'Email', 'Role', 'Tenant', 'Last Login', 'MFA', 'Status', 'Actions'].map(h => <th key={h} className="text-left py-2 px-3 font-medium text-muted-foreground">{h}</th>)}
-              </tr></thead>
+              <thead className="bg-muted/50">
+                <tr className="border-b border-border">
+                  {["Name", "Email", "Role", "Tenant", "Last Login", "MFA", "Status", "Actions"].map((h) => (
+                    <th key={h} className="text-left py-2 px-3 font-medium text-muted-foreground">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
               <tbody>
                 {users.map((user, i) => (
                   <tr key={i} className="border-b border-border hover:bg-muted/30">
                     <td className="py-2 px-3 font-medium">{user.name}</td>
                     <td className="py-2 px-3 text-muted-foreground">{user.email}</td>
-                    <td className="py-2 px-3"><span className="px-2 py-0.5 rounded-full bg-teal/10 text-teal text-[10px]">{user.role}</span></td>
+                    <td className="py-2 px-3">
+                      <span className="px-2 py-0.5 rounded-full bg-teal/10 text-teal text-[10px]">{user.role}</span>
+                    </td>
                     <td className="py-2 px-3 text-muted-foreground text-[10px]">ACME Corp</td>
                     <td className="py-2 px-3 text-muted-foreground">{user.lastLogin}</td>
-                    <td className="py-2 px-3"><span className="text-teal text-[10px]">✓ Enabled</span></td>
-                    <td className="py-2 px-3"><StatusBadge status={user.status} /></td>
+                    <td className="py-2 px-3">
+                      <span className="text-teal text-[10px]">✓ Enabled</span>
+                    </td>
+                    <td className="py-2 px-3">
+                      <StatusBadge status={user.status} />
+                    </td>
                     <td className="py-2 px-3 flex gap-1">
-                      <button onClick={() => toast.info(`Editing ${user.name}`)} className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80">Edit</button>
-                      <button onClick={() => toast.info(`Disabling ${user.name}`)} className="text-[10px] px-2 py-1 rounded bg-coral/10 text-coral hover:bg-coral/20">Disable</button>
+                      <button
+                        onClick={() => toast.info(`Editing ${user.name}`)}
+                        className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => toast.info(`Disabling ${user.name}`)}
+                        className="text-[10px] px-2 py-1 rounded bg-coral/10 text-coral hover:bg-coral/20"
+                      >
+                        Disable
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -484,19 +967,30 @@ function UserManagement() {
         </div>
       )}
 
-      {subTab === 'roles' && <RbacSection />}
+      {subTab === "roles" && <RbacSection />}
 
-      {subTab === 'sessions' && (
+      {subTab === "sessions" && (
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <p className="text-xs text-muted-foreground">{sessions.length} active sessions</p>
-            <button onClick={() => toast.info('Terminating all sessions except yours')} className="flex items-center gap-1 px-3 py-1.5 rounded bg-coral/10 text-coral text-xs hover:bg-coral/20">Terminate All Others</button>
+            <button
+              onClick={() => toast.info("Terminating all sessions except yours")}
+              className="flex items-center gap-1 px-3 py-1.5 rounded bg-coral/10 text-coral text-xs hover:bg-coral/20"
+            >
+              Terminate All Others
+            </button>
           </div>
           <div className="bg-card rounded-lg border border-border overflow-hidden">
             <table className="w-full text-xs">
-              <thead className="bg-muted/50"><tr className="border-b border-border">
-                {['User', 'Role', 'IP Address', 'Started', 'MFA', 'Status', 'Actions'].map(h => <th key={h} className="text-left py-2 px-3 font-medium text-muted-foreground">{h}</th>)}
-              </tr></thead>
+              <thead className="bg-muted/50">
+                <tr className="border-b border-border">
+                  {["User", "Role", "IP Address", "Started", "MFA", "Status", "Actions"].map((h) => (
+                    <th key={h} className="text-left py-2 px-3 font-medium text-muted-foreground">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
               <tbody>
                 {sessions.map((s, i) => (
                   <tr key={i} className="border-b border-border hover:bg-muted/30">
@@ -504,10 +998,19 @@ function UserManagement() {
                     <td className="py-2 px-3 text-muted-foreground">{s.role}</td>
                     <td className="py-2 px-3 text-muted-foreground font-mono text-[10px]">{s.ip}</td>
                     <td className="py-2 px-3 text-muted-foreground">{s.started}</td>
-                    <td className="py-2 px-3">{s.mfa ? <span className="text-teal">✓</span> : <span className="text-coral">✗</span>}</td>
-                    <td className="py-2 px-3"><StatusBadge status="Active" /></td>
                     <td className="py-2 px-3">
-                      <button onClick={() => toast.info(`Terminating session for ${s.user}`)} className="text-[10px] px-2 py-1 rounded bg-coral/10 text-coral hover:bg-coral/20">Terminate</button>
+                      {s.mfa ? <span className="text-teal">✓</span> : <span className="text-coral">✗</span>}
+                    </td>
+                    <td className="py-2 px-3">
+                      <StatusBadge status="Active" />
+                    </td>
+                    <td className="py-2 px-3">
+                      <button
+                        onClick={() => toast.info(`Terminating session for ${s.user}`)}
+                        className="text-[10px] px-2 py-1 rounded bg-coral/10 text-coral hover:bg-coral/20"
+                      >
+                        Terminate
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -517,27 +1020,52 @@ function UserManagement() {
         </div>
       )}
 
-      {subTab === 'auth' && (
+      {subTab === "auth" && (
         <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <p className="text-xs text-muted-foreground">{authProviders.filter(a => a.status === 'Active').length} active providers</p>
-            <button onClick={() => toast.info('Adding auth provider')} className="flex items-center gap-1 px-3 py-1.5 rounded bg-teal text-primary-foreground text-xs hover:bg-teal-light"><Plus className="w-3 h-3" /> Add Provider</button>
+            <p className="text-xs text-muted-foreground">
+              {authProviders.filter((a) => a.status === "Active").length} active providers
+            </p>
+            <button
+              onClick={() => toast.info("Adding auth provider")}
+              className="flex items-center gap-1 px-3 py-1.5 rounded bg-teal text-primary-foreground text-xs hover:bg-teal-light"
+            >
+              <Plus className="w-3 h-3" /> Add Provider
+            </button>
           </div>
           <div className="bg-card rounded-lg border border-border overflow-hidden">
             <table className="w-full text-xs">
-              <thead className="bg-muted/50"><tr className="border-b border-border">
-                {['Provider', 'Status', 'Users', 'MFA', 'Actions'].map(h => <th key={h} className="text-left py-2 px-3 font-medium text-muted-foreground">{h}</th>)}
-              </tr></thead>
+              <thead className="bg-muted/50">
+                <tr className="border-b border-border">
+                  {["Provider", "Status", "Users", "MFA", "Actions"].map((h) => (
+                    <th key={h} className="text-left py-2 px-3 font-medium text-muted-foreground">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
               <tbody>
                 {authProviders.map((p, i) => (
                   <tr key={i} className="border-b border-border hover:bg-muted/30">
                     <td className="py-2 px-3 font-medium">{p.name}</td>
-                    <td className="py-2 px-3"><StatusBadge status={p.status === 'Active' ? 'Active' : 'Inactive'} /></td>
+                    <td className="py-2 px-3">
+                      <StatusBadge status={p.status === "Active" ? "Active" : "Inactive"} />
+                    </td>
                     <td className="py-2 px-3">{p.users.toLocaleString()}</td>
                     <td className="py-2 px-3 text-muted-foreground">{p.mfa}</td>
                     <td className="py-2 px-3 flex gap-1">
-                      <button onClick={() => toast.info(`Configuring ${p.name}`)} className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80">Configure</button>
-                      <button onClick={() => toast.success(`Test auth for ${p.name} passed`)} className="text-[10px] px-2 py-1 rounded bg-teal/10 text-teal hover:bg-teal/20">Test</button>
+                      <button
+                        onClick={() => toast.info(`Configuring ${p.name}`)}
+                        className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80"
+                      >
+                        Configure
+                      </button>
+                      <button
+                        onClick={() => toast.success(`Test auth for ${p.name} passed`)}
+                        className="text-[10px] px-2 py-1 rounded bg-teal/10 text-teal hover:bg-teal/20"
+                      >
+                        Test
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -553,54 +1081,180 @@ function UserManagement() {
 /* ─── INTEGRATIONS (OS, Apps, Core Infra) ─── */
 function InfraIntegrations() {
   const integrations = [
-    { name: 'Windows Server (AD CS)', category: 'OS', status: 'Active', instances: 12, lastSync: '5m ago', protocol: 'WinRM/DCOM' },
-    { name: 'Linux (OpenSSL/certbot)', category: 'OS', status: 'Active', instances: 248, lastSync: '3m ago', protocol: 'SSH/Agent' },
-    { name: 'macOS (Keychain)', category: 'OS', status: 'Active', instances: 85, lastSync: '10m ago', protocol: 'MDM/Agent' },
-    { name: 'Apache/Nginx', category: 'Web Server', status: 'Active', instances: 142, lastSync: '2m ago', protocol: 'Agent' },
-    { name: 'IIS', category: 'Web Server', status: 'Active', instances: 34, lastSync: '8m ago', protocol: 'WinRM' },
-    { name: 'F5 BIG-IP', category: 'Load Balancer', status: 'Active', instances: 8, lastSync: '1m ago', protocol: 'REST API' },
-    { name: 'Citrix ADC', category: 'Load Balancer', status: 'Active', instances: 4, lastSync: '6m ago', protocol: 'NITRO API' },
-    { name: 'Palo Alto Networks', category: 'Firewall', status: 'Active', instances: 6, lastSync: '4m ago', protocol: 'XML API' },
-    { name: 'Kubernetes (cert-manager)', category: 'Container', status: 'Active', instances: 14, lastSync: '30s ago', protocol: 'K8s API' },
-    { name: 'Docker / Swarm', category: 'Container', status: 'Active', instances: 22, lastSync: '2m ago', protocol: 'Docker API' },
-    { name: 'VMware vSphere', category: 'Virtualization', status: 'Active', instances: 3, lastSync: '15m ago', protocol: 'vSphere API' },
-    { name: 'AWS (ACM, IAM, KMS)', category: 'Cloud', status: 'Active', instances: 5, lastSync: '1m ago', protocol: 'AWS SDK' },
-    { name: 'Azure (Key Vault, App GW)', category: 'Cloud', status: 'Active', instances: 3, lastSync: '2m ago', protocol: 'Azure SDK' },
-    { name: 'GCP (CAS, Secret Mgr)', category: 'Cloud', status: 'Inactive', instances: 0, lastSync: '—', protocol: 'gcloud SDK' },
+    {
+      name: "Windows Server (AD CS)",
+      category: "OS",
+      status: "Active",
+      instances: 12,
+      lastSync: "5m ago",
+      protocol: "WinRM/DCOM",
+    },
+    {
+      name: "Linux (OpenSSL/certbot)",
+      category: "OS",
+      status: "Active",
+      instances: 248,
+      lastSync: "3m ago",
+      protocol: "SSH/Agent",
+    },
+    {
+      name: "macOS (Keychain)",
+      category: "OS",
+      status: "Active",
+      instances: 85,
+      lastSync: "10m ago",
+      protocol: "MDM/Agent",
+    },
+    {
+      name: "Apache/Nginx",
+      category: "Web Server",
+      status: "Active",
+      instances: 142,
+      lastSync: "2m ago",
+      protocol: "Agent",
+    },
+    { name: "IIS", category: "Web Server", status: "Active", instances: 34, lastSync: "8m ago", protocol: "WinRM" },
+    {
+      name: "F5 BIG-IP",
+      category: "Load Balancer",
+      status: "Active",
+      instances: 8,
+      lastSync: "1m ago",
+      protocol: "REST API",
+    },
+    {
+      name: "Citrix ADC",
+      category: "Load Balancer",
+      status: "Active",
+      instances: 4,
+      lastSync: "6m ago",
+      protocol: "NITRO API",
+    },
+    {
+      name: "Palo Alto Networks",
+      category: "Firewall",
+      status: "Active",
+      instances: 6,
+      lastSync: "4m ago",
+      protocol: "XML API",
+    },
+    {
+      name: "Kubernetes (cert-manager)",
+      category: "Container",
+      status: "Active",
+      instances: 14,
+      lastSync: "30s ago",
+      protocol: "K8s API",
+    },
+    {
+      name: "Docker / Swarm",
+      category: "Container",
+      status: "Active",
+      instances: 22,
+      lastSync: "2m ago",
+      protocol: "Docker API",
+    },
+    {
+      name: "VMware vSphere",
+      category: "Virtualization",
+      status: "Active",
+      instances: 3,
+      lastSync: "15m ago",
+      protocol: "vSphere API",
+    },
+    {
+      name: "AWS (ACM, IAM, KMS)",
+      category: "Cloud",
+      status: "Active",
+      instances: 5,
+      lastSync: "1m ago",
+      protocol: "AWS SDK",
+    },
+    {
+      name: "Azure (Key Vault, App GW)",
+      category: "Cloud",
+      status: "Active",
+      instances: 3,
+      lastSync: "2m ago",
+      protocol: "Azure SDK",
+    },
+    {
+      name: "GCP (CAS, Secret Mgr)",
+      category: "Cloud",
+      status: "Inactive",
+      instances: 0,
+      lastSync: "—",
+      protocol: "gcloud SDK",
+    },
   ];
 
-  const categories = [...new Set(integrations.map(i => i.category))];
+  const categories = [...new Set(integrations.map((i) => i.category))];
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-4 gap-3">
         <MetricCard label="Total Integrations" value={String(integrations.length)} icon={Plug} />
-        <MetricCard label="Active" value={String(integrations.filter(i => i.status === 'Active').length)} icon={CheckCircle} />
-        <MetricCard label="Managed Instances" value={integrations.reduce((a, i) => a + i.instances, 0).toLocaleString()} icon={Box} />
+        <MetricCard
+          label="Active"
+          value={String(integrations.filter((i) => i.status === "Active").length)}
+          icon={CheckCircle}
+        />
+        <MetricCard
+          label="Managed Instances"
+          value={integrations.reduce((a, i) => a + i.instances, 0).toLocaleString()}
+          icon={Box}
+        />
         <MetricCard label="Categories" value={String(categories.length)} icon={Layers} />
       </div>
 
       <div className="bg-card rounded-lg border border-border overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <h3 className="text-sm font-semibold">Platform Integrations — OS, Applications & Infrastructure</h3>
-          <button onClick={() => toast.info('Integration marketplace opening...')} className="text-[10px] px-3 py-1.5 rounded bg-teal text-primary-foreground hover:bg-teal-light flex items-center gap-1"><Plus className="w-3 h-3" /> Add Integration</button>
+          <button
+            onClick={() => toast.info("Integration marketplace opening...")}
+            className="text-[10px] px-3 py-1.5 rounded bg-teal text-primary-foreground hover:bg-teal-light flex items-center gap-1"
+          >
+            <Plus className="w-3 h-3" /> Add Integration
+          </button>
         </div>
         <table className="w-full text-xs">
-          <thead className="bg-muted/50"><tr className="border-b border-border">
-            {['Integration', 'Category', 'Status', 'Instances', 'Protocol', 'Last Sync', 'Actions'].map(h => <th key={h} className="text-left py-2 px-3 font-medium text-muted-foreground">{h}</th>)}
-          </tr></thead>
+          <thead className="bg-muted/50">
+            <tr className="border-b border-border">
+              {["Integration", "Category", "Status", "Instances", "Protocol", "Last Sync", "Actions"].map((h) => (
+                <th key={h} className="text-left py-2 px-3 font-medium text-muted-foreground">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
           <tbody>
             {integrations.map((ig, i) => (
               <tr key={i} className="border-b border-border hover:bg-muted/30">
                 <td className="py-2 px-3 font-medium">{ig.name}</td>
-                <td className="py-2 px-3"><span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px]">{ig.category}</span></td>
-                <td className="py-2 px-3"><StatusBadge status={ig.status === 'Active' ? 'Active' : 'Inactive'} /></td>
+                <td className="py-2 px-3">
+                  <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px]">
+                    {ig.category}
+                  </span>
+                </td>
+                <td className="py-2 px-3">
+                  <StatusBadge status={ig.status === "Active" ? "Active" : "Inactive"} />
+                </td>
                 <td className="py-2 px-3">{ig.instances}</td>
                 <td className="py-2 px-3 text-muted-foreground text-[10px]">{ig.protocol}</td>
                 <td className="py-2 px-3 text-muted-foreground text-[10px]">{ig.lastSync}</td>
                 <td className="py-2 px-3 flex gap-1">
-                  <button onClick={() => toast.info(`Syncing ${ig.name}`)} className="text-[10px] px-2 py-1 rounded bg-teal/10 text-teal hover:bg-teal/20"><RefreshCw className="w-3 h-3 inline" /> Sync</button>
-                  <button onClick={() => toast.info(`Configuring ${ig.name}`)} className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80">Config</button>
+                  <button
+                    onClick={() => toast.info(`Syncing ${ig.name}`)}
+                    className="text-[10px] px-2 py-1 rounded bg-teal/10 text-teal hover:bg-teal/20"
+                  >
+                    <RefreshCw className="w-3 h-3 inline" /> Sync
+                  </button>
+                  <button
+                    onClick={() => toast.info(`Configuring ${ig.name}`)}
+                    className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80"
+                  >
+                    Config
+                  </button>
                 </td>
               </tr>
             ))}
@@ -613,54 +1267,164 @@ function InfraIntegrations() {
 
 /* ─── INFRASTRUCTURE RESOURCE MANAGEMENT ─── */
 function InfrastructureResources() {
-  const [subTab, setSubTab] = useState<'overview' | 'backup' | 'scaling' | 'ha'>('overview');
+  const [subTab, setSubTab] = useState<"overview" | "backup" | "scaling" | "ha">("overview");
 
   const resources = [
-    { name: 'Primary DB Cluster', type: 'PostgreSQL', region: 'US-East', cpu: '8 vCPU', memory: '32 GB', storage: '2 TB', utilization: 68, status: 'Healthy' },
-    { name: 'Replica DB (DR)', type: 'PostgreSQL', region: 'EU-West', cpu: '8 vCPU', memory: '32 GB', storage: '2 TB', utilization: 12, status: 'Standby' },
-    { name: 'App Server Pool', type: 'K8s Cluster', region: 'US-East', cpu: '64 vCPU', memory: '256 GB', storage: '500 GB', utilization: 52, status: 'Healthy' },
-    { name: 'Cache Layer', type: 'Redis Cluster', region: 'US-East', cpu: '4 vCPU', memory: '64 GB', storage: '—', utilization: 41, status: 'Healthy' },
-    { name: 'Message Queue', type: 'Kafka', region: 'US-East', cpu: '16 vCPU', memory: '64 GB', storage: '4 TB', utilization: 73, status: 'Warning' },
-    { name: 'Object Storage', type: 'S3-compatible', region: 'Multi', cpu: '—', memory: '—', storage: '18 TB', utilization: 45, status: 'Healthy' },
+    {
+      name: "Primary DB Cluster",
+      type: "PostgreSQL",
+      region: "US-East",
+      cpu: "8 vCPU",
+      memory: "32 GB",
+      storage: "2 TB",
+      utilization: 68,
+      status: "Healthy",
+    },
+    {
+      name: "Replica DB (DR)",
+      type: "PostgreSQL",
+      region: "EU-West",
+      cpu: "8 vCPU",
+      memory: "32 GB",
+      storage: "2 TB",
+      utilization: 12,
+      status: "Standby",
+    },
+    {
+      name: "App Server Pool",
+      type: "K8s Cluster",
+      region: "US-East",
+      cpu: "64 vCPU",
+      memory: "256 GB",
+      storage: "500 GB",
+      utilization: 52,
+      status: "Healthy",
+    },
+    {
+      name: "Cache Layer",
+      type: "Redis Cluster",
+      region: "US-East",
+      cpu: "4 vCPU",
+      memory: "64 GB",
+      storage: "—",
+      utilization: 41,
+      status: "Healthy",
+    },
+    {
+      name: "Message Queue",
+      type: "Kafka",
+      region: "US-East",
+      cpu: "16 vCPU",
+      memory: "64 GB",
+      storage: "4 TB",
+      utilization: 73,
+      status: "Warning",
+    },
+    {
+      name: "Object Storage",
+      type: "S3-compatible",
+      region: "Multi",
+      cpu: "—",
+      memory: "—",
+      storage: "18 TB",
+      utilization: 45,
+      status: "Healthy",
+    },
   ];
 
   const backups = [
-    { name: 'Full DB Backup', schedule: 'Daily 02:00 UTC', lastRun: '2026-04-15 02:00', size: '845 GB', duration: '42 min', status: 'Success', retention: '30 days' },
-    { name: 'Incremental DB', schedule: 'Every 6h', lastRun: '2026-04-15 14:00', size: '12 GB', duration: '3 min', status: 'Success', retention: '7 days' },
-    { name: 'Config Backup', schedule: 'Daily 03:00 UTC', lastRun: '2026-04-15 03:00', size: '2.1 GB', duration: '1 min', status: 'Success', retention: '90 days' },
-    { name: 'Audit Log Archive', schedule: 'Weekly Sun 01:00', lastRun: '2026-04-13 01:00', size: '120 GB', duration: '18 min', status: 'Success', retention: '2 years' },
-    { name: 'HSM Key Backup', schedule: 'Daily 04:00 UTC', lastRun: '2026-04-15 04:00', size: '450 MB', duration: '<1 min', status: 'Success', retention: '365 days' },
+    {
+      name: "Full DB Backup",
+      schedule: "Daily 02:00 UTC",
+      lastRun: "2026-04-15 02:00",
+      size: "845 GB",
+      duration: "42 min",
+      status: "Success",
+      retention: "30 days",
+    },
+    {
+      name: "Incremental DB",
+      schedule: "Every 6h",
+      lastRun: "2026-04-15 14:00",
+      size: "12 GB",
+      duration: "3 min",
+      status: "Success",
+      retention: "7 days",
+    },
+    {
+      name: "Config Backup",
+      schedule: "Daily 03:00 UTC",
+      lastRun: "2026-04-15 03:00",
+      size: "2.1 GB",
+      duration: "1 min",
+      status: "Success",
+      retention: "90 days",
+    },
+    {
+      name: "Audit Log Archive",
+      schedule: "Weekly Sun 01:00",
+      lastRun: "2026-04-13 01:00",
+      size: "120 GB",
+      duration: "18 min",
+      status: "Success",
+      retention: "2 years",
+    },
+    {
+      name: "HSM Key Backup",
+      schedule: "Daily 04:00 UTC",
+      lastRun: "2026-04-15 04:00",
+      size: "450 MB",
+      duration: "<1 min",
+      status: "Success",
+      retention: "365 days",
+    },
   ];
 
   return (
     <div className="space-y-4">
       <div className="flex gap-2 flex-wrap">
         {[
-          { id: 'overview' as const, label: 'Resource Overview', icon: Cpu },
-          { id: 'backup' as const, label: 'Backup & Restore', icon: Archive },
-          { id: 'scaling' as const, label: 'Scaling & Allocation', icon: BarChart3 },
-          { id: 'ha' as const, label: 'HA & DR', icon: Shield },
-        ].map(t => (
-          <button key={t.id} onClick={() => setSubTab(t.id)} className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-colors ${subTab === t.id ? 'bg-teal/10 text-teal border border-teal/30' : 'bg-muted/50 text-muted-foreground hover:bg-muted border border-transparent'}`}>
+          { id: "overview" as const, label: "Resource Overview", icon: Cpu },
+          { id: "backup" as const, label: "Backup & Restore", icon: Archive },
+          { id: "scaling" as const, label: "Scaling & Allocation", icon: BarChart3 },
+          { id: "ha" as const, label: "HA & DR", icon: Shield },
+        ].map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setSubTab(t.id)}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-colors ${subTab === t.id ? "bg-teal/10 text-teal border border-teal/30" : "bg-muted/50 text-muted-foreground hover:bg-muted border border-transparent"}`}
+          >
             <t.icon className="w-3 h-3" /> {t.label}
           </button>
         ))}
       </div>
 
-      {subTab === 'overview' && (
+      {subTab === "overview" && (
         <div className="space-y-4">
           <div className="grid grid-cols-4 gap-3">
             <MetricCard label="Total Resources" value={String(resources.length)} icon={Server} />
-            <MetricCard label="Avg Utilization" value={`${Math.round(resources.reduce((a, r) => a + r.utilization, 0) / resources.length)}%`} icon={Activity} />
+            <MetricCard
+              label="Avg Utilization"
+              value={`${Math.round(resources.reduce((a, r) => a + r.utilization, 0) / resources.length)}%`}
+              icon={Activity}
+            />
             <MetricCard label="Storage Allocated" value="27 TB" icon={HardDrive} />
             <MetricCard label="Regions" value="3" icon={Globe} />
           </div>
 
           <div className="bg-card rounded-lg border border-border overflow-hidden">
             <table className="w-full text-xs">
-              <thead className="bg-muted/50"><tr className="border-b border-border">
-                {['Resource', 'Type', 'Region', 'CPU', 'Memory', 'Storage', 'Utilization', 'Status', 'Actions'].map(h => <th key={h} className="text-left py-2 px-3 font-medium text-muted-foreground">{h}</th>)}
-              </tr></thead>
+              <thead className="bg-muted/50">
+                <tr className="border-b border-border">
+                  {["Resource", "Type", "Region", "CPU", "Memory", "Storage", "Utilization", "Status", "Actions"].map(
+                    (h) => (
+                      <th key={h} className="text-left py-2 px-3 font-medium text-muted-foreground">
+                        {h}
+                      </th>
+                    ),
+                  )}
+                </tr>
+              </thead>
               <tbody>
                 {resources.map((r, i) => (
                   <tr key={i} className="border-b border-border hover:bg-muted/30">
@@ -672,14 +1436,33 @@ function InfrastructureResources() {
                     <td className="py-2 px-3 text-muted-foreground">{r.storage}</td>
                     <td className="py-2 px-3">
                       <div className="flex items-center gap-1 w-16">
-                        <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden"><div className={`h-full rounded-full ${r.utilization > 70 ? 'bg-amber' : 'bg-teal'}`} style={{ width: `${r.utilization}%` }} /></div>
+                        <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${r.utilization > 70 ? "bg-amber" : "bg-teal"}`}
+                            style={{ width: `${r.utilization}%` }}
+                          />
+                        </div>
                         <span className="text-[10px]">{r.utilization}%</span>
                       </div>
                     </td>
-                    <td className="py-2 px-3"><StatusBadge status={r.status === 'Healthy' ? 'Active' : r.status === 'Standby' ? 'Scheduled' : 'Warning'} /></td>
+                    <td className="py-2 px-3">
+                      <StatusBadge
+                        status={r.status === "Healthy" ? "Active" : r.status === "Standby" ? "Scheduled" : "Warning"}
+                      />
+                    </td>
                     <td className="py-2 px-3 flex gap-1">
-                      <button onClick={() => toast.info(`Scaling ${r.name}`)} className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80">Scale</button>
-                      <button onClick={() => toast.info(`Viewing ${r.name} metrics`)} className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80">Metrics</button>
+                      <button
+                        onClick={() => toast.info(`Scaling ${r.name}`)}
+                        className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80"
+                      >
+                        Scale
+                      </button>
+                      <button
+                        onClick={() => toast.info(`Viewing ${r.name} metrics`)}
+                        className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80"
+                      >
+                        Metrics
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -689,7 +1472,7 @@ function InfrastructureResources() {
         </div>
       )}
 
-      {subTab === 'backup' && (
+      {subTab === "backup" && (
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-3">
             <MetricCard label="Backup Jobs" value={String(backups.length)} icon={Archive} />
@@ -701,14 +1484,30 @@ function InfrastructureResources() {
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
               <h3 className="text-sm font-semibold">Backup Schedule</h3>
               <div className="flex gap-2">
-                <button onClick={() => toast.info('Triggering immediate full backup...')} className="text-[10px] px-3 py-1.5 rounded bg-teal text-primary-foreground hover:bg-teal-light">Run Backup Now</button>
-                <button onClick={() => toast.info('Opening restore wizard...')} className="text-[10px] px-3 py-1.5 rounded bg-amber/10 text-amber hover:bg-amber/20">Restore from Backup</button>
+                <button
+                  onClick={() => toast.info("Triggering immediate full backup...")}
+                  className="text-[10px] px-3 py-1.5 rounded bg-teal text-primary-foreground hover:bg-teal-light"
+                >
+                  Run Backup Now
+                </button>
+                <button
+                  onClick={() => toast.info("Opening restore wizard...")}
+                  className="text-[10px] px-3 py-1.5 rounded bg-amber/10 text-amber hover:bg-amber/20"
+                >
+                  Restore from Backup
+                </button>
               </div>
             </div>
             <table className="w-full text-xs">
-              <thead className="bg-muted/50"><tr className="border-b border-border">
-                {['Backup', 'Schedule', 'Last Run', 'Size', 'Duration', 'Retention', 'Status', 'Actions'].map(h => <th key={h} className="text-left py-2 px-3 font-medium text-muted-foreground">{h}</th>)}
-              </tr></thead>
+              <thead className="bg-muted/50">
+                <tr className="border-b border-border">
+                  {["Backup", "Schedule", "Last Run", "Size", "Duration", "Retention", "Status", "Actions"].map((h) => (
+                    <th key={h} className="text-left py-2 px-3 font-medium text-muted-foreground">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
               <tbody>
                 {backups.map((b, i) => (
                   <tr key={i} className="border-b border-border hover:bg-muted/30">
@@ -718,10 +1517,22 @@ function InfrastructureResources() {
                     <td className="py-2 px-3">{b.size}</td>
                     <td className="py-2 px-3 text-muted-foreground">{b.duration}</td>
                     <td className="py-2 px-3 text-muted-foreground">{b.retention}</td>
-                    <td className="py-2 px-3"><StatusBadge status="Active" /></td>
+                    <td className="py-2 px-3">
+                      <StatusBadge status="Active" />
+                    </td>
                     <td className="py-2 px-3 flex gap-1">
-                      <button onClick={() => toast.info(`Running ${b.name} now...`)} className="text-[10px] px-2 py-1 rounded bg-teal/10 text-teal hover:bg-teal/20">Run</button>
-                      <button onClick={() => toast.info(`Restoring from ${b.name}`)} className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80">Restore</button>
+                      <button
+                        onClick={() => toast.info(`Running ${b.name} now...`)}
+                        className="text-[10px] px-2 py-1 rounded bg-teal/10 text-teal hover:bg-teal/20"
+                      >
+                        Run
+                      </button>
+                      <button
+                        onClick={() => toast.info(`Restoring from ${b.name}`)}
+                        className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80"
+                      >
+                        Restore
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -731,45 +1542,88 @@ function InfrastructureResources() {
         </div>
       )}
 
-      {subTab === 'scaling' && (
+      {subTab === "scaling" && (
         <div className="space-y-4">
           <div className="bg-card rounded-lg border border-border p-4">
             <h3 className="text-sm font-semibold mb-4">Auto-Scaling Rules</h3>
             <div className="space-y-3">
               {[
-                { resource: 'App Server Pool', metric: 'CPU > 75%', action: 'Add 2 pods', cooldown: '5 min', status: 'Active' },
-                { resource: 'App Server Pool', metric: 'CPU < 30%', action: 'Remove 1 pod (min 3)', cooldown: '10 min', status: 'Active' },
-                { resource: 'Cache Layer', metric: 'Memory > 85%', action: 'Scale to next tier', cooldown: '15 min', status: 'Active' },
-                { resource: 'Message Queue', metric: 'Lag > 10K msgs', action: 'Add partition + consumer', cooldown: '5 min', status: 'Active' },
+                {
+                  resource: "App Server Pool",
+                  metric: "CPU > 75%",
+                  action: "Add 2 pods",
+                  cooldown: "5 min",
+                  status: "Active",
+                },
+                {
+                  resource: "App Server Pool",
+                  metric: "CPU < 30%",
+                  action: "Remove 1 pod (min 3)",
+                  cooldown: "10 min",
+                  status: "Active",
+                },
+                {
+                  resource: "Cache Layer",
+                  metric: "Memory > 85%",
+                  action: "Scale to next tier",
+                  cooldown: "15 min",
+                  status: "Active",
+                },
+                {
+                  resource: "Message Queue",
+                  metric: "Lag > 10K msgs",
+                  action: "Add partition + consumer",
+                  cooldown: "5 min",
+                  status: "Active",
+                },
               ].map((rule, i) => (
-                <div key={i} className="flex items-center justify-between py-2 border-b border-border last:border-0 text-xs">
+                <div
+                  key={i}
+                  className="flex items-center justify-between py-2 border-b border-border last:border-0 text-xs"
+                >
                   <div className="flex-1">
                     <span className="font-medium">{rule.resource}</span>
-                    <span className="text-muted-foreground ml-2">when {rule.metric} → {rule.action}</span>
+                    <span className="text-muted-foreground ml-2">
+                      when {rule.metric} → {rule.action}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] text-muted-foreground">Cooldown: {rule.cooldown}</span>
                     <StatusBadge status="Active" />
-                    <button onClick={() => toast.info(`Editing scaling rule for ${rule.resource}`)} className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80">Edit</button>
+                    <button
+                      onClick={() => toast.info(`Editing scaling rule for ${rule.resource}`)}
+                      className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80"
+                    >
+                      Edit
+                    </button>
                   </div>
                 </div>
               ))}
             </div>
-            <button onClick={() => toast.info('Creating scaling rule')} className="mt-3 flex items-center gap-1 px-3 py-1.5 rounded bg-teal text-primary-foreground text-xs hover:bg-teal-light"><Plus className="w-3 h-3" /> Add Rule</button>
+            <button
+              onClick={() => toast.info("Creating scaling rule")}
+              className="mt-3 flex items-center gap-1 px-3 py-1.5 rounded bg-teal text-primary-foreground text-xs hover:bg-teal-light"
+            >
+              <Plus className="w-3 h-3" /> Add Rule
+            </button>
           </div>
 
           <div className="bg-card rounded-lg border border-border p-4">
             <h3 className="text-sm font-semibold mb-3">Resource Allocation</h3>
             <div className="grid grid-cols-3 gap-4">
               {[
-                { label: 'CPU Allocated', used: '96 vCPU', total: '128 vCPU', pct: 75 },
-                { label: 'Memory Allocated', used: '384 GB', total: '512 GB', pct: 75 },
-                { label: 'Storage Allocated', used: '27 TB', total: '40 TB', pct: 68 },
+                { label: "CPU Allocated", used: "96 vCPU", total: "128 vCPU", pct: 75 },
+                { label: "Memory Allocated", used: "384 GB", total: "512 GB", pct: 75 },
+                { label: "Storage Allocated", used: "27 TB", total: "40 TB", pct: 68 },
               ].map((r, i) => (
                 <div key={i} className="space-y-1">
                   <p className="text-xs font-medium">{r.label}</p>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden"><div className="h-full bg-teal rounded-full" style={{ width: `${r.pct}%` }} /></div>
-                  <p className="text-[10px] text-muted-foreground">{r.used} / {r.total} ({r.pct}%)</p>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div className="h-full bg-teal rounded-full" style={{ width: `${r.pct}%` }} />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    {r.used} / {r.total} ({r.pct}%)
+                  </p>
                 </div>
               ))}
             </div>
@@ -777,7 +1631,7 @@ function InfrastructureResources() {
         </div>
       )}
 
-      {subTab === 'ha' && (
+      {subTab === "ha" && (
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-3">
             <MetricCard label="RPO Target" value="< 5 min" icon={Activity} />
@@ -789,10 +1643,38 @@ function InfrastructureResources() {
             <h3 className="text-sm font-semibold mb-4">High Availability Configuration</h3>
             <div className="space-y-3">
               {[
-                { component: 'Database', primary: 'US-East (Active)', secondary: 'EU-West (Standby)', replication: 'Sync', lag: '< 1s', failover: 'Automatic' },
-                { component: 'App Servers', primary: 'US-East (3 pods)', secondary: 'EU-West (2 pods)', replication: 'Active-Active', lag: 'N/A', failover: 'Load Balanced' },
-                { component: 'Cache', primary: 'US-East (Cluster)', secondary: 'EU-West (Replica)', replication: 'Async', lag: '< 5s', failover: 'Automatic' },
-                { component: 'Message Queue', primary: 'US-East (3 brokers)', secondary: 'EU-West (2 brokers)', replication: 'Mirror', lag: '< 2s', failover: 'Automatic' },
+                {
+                  component: "Database",
+                  primary: "US-East (Active)",
+                  secondary: "EU-West (Standby)",
+                  replication: "Sync",
+                  lag: "< 1s",
+                  failover: "Automatic",
+                },
+                {
+                  component: "App Servers",
+                  primary: "US-East (3 pods)",
+                  secondary: "EU-West (2 pods)",
+                  replication: "Active-Active",
+                  lag: "N/A",
+                  failover: "Load Balanced",
+                },
+                {
+                  component: "Cache",
+                  primary: "US-East (Cluster)",
+                  secondary: "EU-West (Replica)",
+                  replication: "Async",
+                  lag: "< 5s",
+                  failover: "Automatic",
+                },
+                {
+                  component: "Message Queue",
+                  primary: "US-East (3 brokers)",
+                  secondary: "EU-West (2 brokers)",
+                  replication: "Mirror",
+                  lag: "< 2s",
+                  failover: "Automatic",
+                },
               ].map((ha, i) => (
                 <div key={i} className="grid grid-cols-6 gap-2 py-2 border-b border-border last:border-0 text-xs">
                   <span className="font-medium">{ha.component}</span>
@@ -807,8 +1689,18 @@ function InfrastructureResources() {
           </div>
 
           <div className="flex gap-2">
-            <button onClick={() => toast.info('Initiating DR failover test...')} className="px-3 py-1.5 rounded bg-amber/10 text-amber text-xs hover:bg-amber/20 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Test Failover</button>
-            <button onClick={() => toast.info('Generating DR readiness report...')} className="px-3 py-1.5 rounded bg-muted text-xs hover:bg-muted/80 flex items-center gap-1"><Download className="w-3 h-3" /> DR Report</button>
+            <button
+              onClick={() => toast.info("Initiating DR failover test...")}
+              className="px-3 py-1.5 rounded bg-amber/10 text-amber text-xs hover:bg-amber/20 flex items-center gap-1"
+            >
+              <AlertTriangle className="w-3 h-3" /> Test Failover
+            </button>
+            <button
+              onClick={() => toast.info("Generating DR readiness report...")}
+              className="px-3 py-1.5 rounded bg-muted text-xs hover:bg-muted/80 flex items-center gap-1"
+            >
+              <Download className="w-3 h-3" /> DR Report
+            </button>
           </div>
         </div>
       )}
@@ -818,50 +1710,156 @@ function InfrastructureResources() {
 
 /* ─── MCP SERVER PANEL ─── */
 function MCPServerPanel() {
-  const [activeCategory, setActiveCategory] = useState('discovery');
-  
-  const categories: { id: string; label: string; tools: { name: string; params: string; desc: string; approval?: boolean }[] }[] = [
-    { id: 'discovery', label: 'Discovery & Inventory', tools: [
-      { name: 'trust_inventory_query', params: 'filter, fields, sort, page', desc: 'Query UCO inventory with full filter DSL — type, expiry, algorithm, owner, status' },
-      { name: 'trust_scan_trigger', params: 'scope, vectors, profile', desc: 'Trigger discovery scan across networks, clouds, or K8s namespaces' },
-      { name: 'trust_cert_detail', params: 'fingerprint | cn', desc: 'Return full UCO object for a specific credential' },
-      { name: 'trust_shadow_list', params: '()', desc: 'Return all shadow certs with deployment locations and CA origin gap' },
-    ]},
-    { id: 'policy', label: 'Policy & Compliance', tools: [
-      { name: 'trust_violations_list', params: 'severity, framework, limit', desc: 'List active policy violations with remediation context' },
-      { name: 'trust_policy_generate', params: 'description: string', desc: 'Natural language → Rego rule, validated and ready to deploy' },
-      { name: 'trust_compliance_report', params: 'framework', desc: 'Return compliance scorecard: passing/failing controls per framework' },
-      { name: 'trust_policy_simulate', params: 'rule_draft, sample_size', desc: 'Dry-run a new rule against live inventory — preview violations before activation' },
-    ]},
-    { id: 'lifecycle', label: 'Lifecycle Actions', tools: [
-      { name: 'trust_cert_renew', params: 'fingerprint, ca, approval?', desc: 'Renew via connected CA. approval=true triggers human-in-loop gate', approval: true },
-      { name: 'trust_key_rotate', params: 'ucoid, target_algo, approval?', desc: 'Rotate SSH key or encryption key to specified algorithm', approval: true },
-      { name: 'trust_bulk_renew', params: 'filter, ca, dry_run?', desc: 'Renew all certs matching filter. dry_run returns scope without executing', approval: true },
-      { name: 'trust_cert_revoke', params: 'fingerprint, reason', desc: 'Revoke cert via CA + push CRL update. Always requires approval.', approval: true },
-    ]},
-    { id: 'pqc', label: 'PQC & Posture', tools: [
-      { name: 'trust_posture_score', params: 'scope?, breakdown?', desc: 'Return current posture score — org-wide or scoped to team/env/cloud' },
-      { name: 'trust_posture_simulate', params: 'action_description', desc: "What-if posture simulation: 'rotate all RSA-2048 in payments' → new score" },
-      { name: 'trust_pqc_queue', params: 'limit, harvest_risk?', desc: 'Return QTH migration queue, ordered by AI-ranked priority' },
-      { name: 'trust_pqc_migrate', params: 'fingerprint, target_algo, approval?', desc: 'Execute QTH PQC migration. Hybrid cert issuance + CBOM update', approval: true },
-    ]},
-    { id: 'agents', label: 'Eos AI Agent Tools', tools: [
-      { name: 'trust_agent_register', params: 'name, type, scope, sponsor', desc: 'Register a new AI agent identity with scoped permissions' },
-      { name: 'trust_agent_list', params: 'filter?', desc: 'List all registered AI agents with trust scores' },
-      { name: 'trust_agent_suspend', params: 'agent_id, reason', desc: 'Suspend agent identity pending review', approval: true },
-      { name: 'trust_agent_audit', params: 'agent_id, range?', desc: 'Return audit trail for agent credential usage' },
-    ]},
+  const [activeCategory, setActiveCategory] = useState("discovery");
+
+  const categories: {
+    id: string;
+    label: string;
+    tools: { name: string; params: string; desc: string; approval?: boolean }[];
+  }[] = [
+    {
+      id: "discovery",
+      label: "Discovery & Inventory",
+      tools: [
+        {
+          name: "trust_inventory_query",
+          params: "filter, fields, sort, page",
+          desc: "Query UCO inventory with full filter DSL — type, expiry, algorithm, owner, status",
+        },
+        {
+          name: "trust_scan_trigger",
+          params: "scope, vectors, profile",
+          desc: "Trigger discovery scan across networks, clouds, or K8s namespaces",
+        },
+        {
+          name: "trust_cert_detail",
+          params: "fingerprint | cn",
+          desc: "Return full UCO object for a specific credential",
+        },
+        {
+          name: "trust_shadow_list",
+          params: "()",
+          desc: "Return all shadow certs with deployment locations and CA origin gap",
+        },
+      ],
+    },
+    {
+      id: "policy",
+      label: "Policy & Compliance",
+      tools: [
+        {
+          name: "trust_violations_list",
+          params: "severity, framework, limit",
+          desc: "List active policy violations with remediation context",
+        },
+        {
+          name: "trust_policy_generate",
+          params: "description: string",
+          desc: "Natural language → Rego rule, validated and ready to deploy",
+        },
+        {
+          name: "trust_compliance_report",
+          params: "framework",
+          desc: "Return compliance scorecard: passing/failing controls per framework",
+        },
+        {
+          name: "trust_policy_simulate",
+          params: "rule_draft, sample_size",
+          desc: "Dry-run a new rule against live inventory — preview violations before activation",
+        },
+      ],
+    },
+    {
+      id: "lifecycle",
+      label: "Lifecycle Actions",
+      tools: [
+        {
+          name: "trust_cert_renew",
+          params: "fingerprint, ca, approval?",
+          desc: "Renew via connected CA. approval=true triggers human-in-loop gate",
+          approval: true,
+        },
+        {
+          name: "trust_key_rotate",
+          params: "ucoid, target_algo, approval?",
+          desc: "Rotate SSH key or encryption key to specified algorithm",
+          approval: true,
+        },
+        {
+          name: "trust_bulk_renew",
+          params: "filter, ca, dry_run?",
+          desc: "Renew all certs matching filter. dry_run returns scope without executing",
+          approval: true,
+        },
+        {
+          name: "trust_cert_revoke",
+          params: "fingerprint, reason",
+          desc: "Revoke cert via CA + push CRL update. Always requires approval.",
+          approval: true,
+        },
+      ],
+    },
+    {
+      id: "pqc",
+      label: "PQC & Posture",
+      tools: [
+        {
+          name: "trust_posture_score",
+          params: "scope?, breakdown?",
+          desc: "Return current posture score — org-wide or scoped to team/env/cloud",
+        },
+        {
+          name: "trust_posture_simulate",
+          params: "action_description",
+          desc: "What-if posture simulation: 'rotate all RSA-2048 in payments' → new score",
+        },
+        {
+          name: "trust_pqc_queue",
+          params: "limit, harvest_risk?",
+          desc: "Return QTH migration queue, ordered by AI-ranked priority",
+        },
+        {
+          name: "trust_pqc_migrate",
+          params: "fingerprint, target_algo, approval?",
+          desc: "Execute QTH PQC migration. Hybrid cert issuance + CBOM update",
+          approval: true,
+        },
+      ],
+    },
+    {
+      id: "agents",
+      label: "Eos AI Agent Tools",
+      tools: [
+        {
+          name: "trust_agent_register",
+          params: "name, type, scope, sponsor",
+          desc: "Register a new AI agent identity with scoped permissions",
+        },
+        { name: "trust_agent_list", params: "filter?", desc: "List all registered AI agents with trust scores" },
+        {
+          name: "trust_agent_suspend",
+          params: "agent_id, reason",
+          desc: "Suspend agent identity pending review",
+          approval: true,
+        },
+        {
+          name: "trust_agent_audit",
+          params: "agent_id, range?",
+          desc: "Return audit trail for agent credential usage",
+        },
+      ],
+    },
   ];
 
-  const visibleCategories = categories.filter(c => FEATURES.AI_IDENTITY || c.id !== 'agents');
-  const activeCat = visibleCategories.find(c => c.id === activeCategory) ?? visibleCategories[0];
+  const visibleCategories = categories.filter((c) => FEATURES.AI_IDENTITY || c.id !== "agents");
+  const activeCat = visibleCategories.find((c) => c.id === activeCategory) ?? visibleCategories[0];
 
   const connectedAgents = [
-    { name: 'Claude (Anthropic)', status: 'Connected', calls: '12,847', lastCall: '2m ago' },
-    { name: 'SOC Analyst Copilot', status: 'Connected', calls: '8,420', lastCall: '5m ago' },
-    { name: 'CI/CD Pipeline Bot', status: 'Connected', calls: '24,180', lastCall: '30s ago' },
-    { name: 'Cursor Agent', status: 'Inactive', calls: '342', lastCall: '2d ago' },
-    { name: 'PQC Migration Agent', status: 'Connected', calls: '1,247', lastCall: '15m ago' },
+    { name: "Claude (Anthropic)", status: "Connected", calls: "12,847", lastCall: "2m ago" },
+    { name: "SOC Analyst Copilot", status: "Connected", calls: "8,420", lastCall: "5m ago" },
+    { name: "CI/CD Pipeline Bot", status: "Connected", calls: "24,180", lastCall: "30s ago" },
+    { name: "Cursor Agent", status: "Inactive", calls: "342", lastCall: "2d ago" },
+    { name: "PQC Migration Agent", status: "Connected", calls: "1,247", lastCall: "15m ago" },
   ];
 
   return (
@@ -878,17 +1876,18 @@ function MCPServerPanel() {
       <div className="bg-card rounded-lg border border-teal/30 p-4">
         <h3 className="text-sm font-semibold mb-2">Trust MCP Server — Agentic AI Integration</h3>
         <p className="text-xs text-muted-foreground leading-relaxed mb-3">
-          The entire Trust Control Platform exposed as a structured tool catalogue. Any MCP-compatible AI agent can govern machine identities via natural-language tool calls.
+          The entire Trust Control Platform exposed as a structured tool catalogue. Any MCP-compatible AI agent can
+          govern machine identities via natural-language tool calls.
         </p>
         <div className="grid grid-cols-6 gap-2 text-[10px]">
           {[
-            { label: 'Transport', value: 'JSON-RPC 2.0 / HTTPS (SSE)' },
-            { label: 'Auth', value: 'mTLS + OAuth2 Bearer' },
-            { label: 'Schema', value: 'JSON Schema Draft-07' },
-            { label: 'Audit', value: 'Immutable append-only' },
-            { label: 'Rate Limit', value: 'Per-agent token quota' },
-            { label: 'Human Gate', value: 'Configurable per tool' },
-          ].map(s => (
+            { label: "Transport", value: "JSON-RPC 2.0 / HTTPS (SSE)" },
+            { label: "Auth", value: "mTLS + OAuth2 Bearer" },
+            { label: "Schema", value: "JSON Schema Draft-07" },
+            { label: "Audit", value: "Immutable append-only" },
+            { label: "Rate Limit", value: "Per-agent token quota" },
+            { label: "Human Gate", value: "Configurable per tool" },
+          ].map((s) => (
             <div key={s.label} className="bg-secondary/50 rounded p-2">
               <p className="text-muted-foreground">{s.label}</p>
               <p className="font-medium text-foreground mt-0.5">{s.value}</p>
@@ -901,24 +1900,34 @@ function MCPServerPanel() {
       <div className="bg-card rounded-lg border border-border overflow-hidden">
         <div className="px-4 py-3 border-b border-border">
           <h3 className="text-sm font-semibold">Tool Catalogue — 40+ Named Tools</h3>
-          <p className="text-[10px] text-muted-foreground">Every platform capability as a structured tool. AI agents call by name; the platform handles auth, execution, and audit.</p>
+          <p className="text-[10px] text-muted-foreground">
+            Every platform capability as a structured tool. AI agents call by name; the platform handles auth,
+            execution, and audit.
+          </p>
         </div>
         <div className="flex">
           <div className="w-44 border-r border-border bg-secondary/30 py-1">
-            {visibleCategories.map(cat => (
-              <button key={cat.id} onClick={() => setActiveCategory(cat.id)}
-                className={`w-full text-left px-3 py-2 text-xs transition-colors ${activeCategory === cat.id ? 'bg-teal/10 text-teal font-medium border-r-2 border-teal' : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'}`}>
+            {visibleCategories.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
+                className={`w-full text-left px-3 py-2 text-xs transition-colors ${activeCategory === cat.id ? "bg-teal/10 text-teal font-medium border-r-2 border-teal" : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"}`}
+              >
                 {cat.label}
               </button>
             ))}
           </div>
           <div className="flex-1 p-3 space-y-2">
-            {activeCat.tools.map(tool => (
+            {activeCat.tools.map((tool) => (
               <div key={tool.name} className="bg-secondary/30 rounded-lg p-3 border border-border">
                 <div className="flex items-center gap-2 mb-1">
                   <code className="text-[11px] font-mono font-semibold text-teal">{tool.name}</code>
                   <span className="text-[9px] text-muted-foreground font-mono">({tool.params})</span>
-                  {tool.approval && <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-amber/10 text-amber font-medium">requires approval</span>}
+                  {tool.approval && (
+                    <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-amber/10 text-amber font-medium">
+                      requires approval
+                    </span>
+                  )}
                 </div>
                 <p className="text-[10px] text-muted-foreground">{tool.desc}</p>
               </div>
@@ -931,23 +1940,48 @@ function MCPServerPanel() {
       <div className="bg-card rounded-lg border border-border overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <h3 className="text-sm font-semibold">Connected AI Agents</h3>
-          <button onClick={() => toast.info('Agent registration flow opened')} className="text-[10px] px-3 py-1.5 rounded bg-teal text-primary-foreground hover:bg-teal-light flex items-center gap-1"><Plus className="w-3 h-3" /> Register Agent</button>
+          <button
+            onClick={() => toast.info("Agent registration flow opened")}
+            className="text-[10px] px-3 py-1.5 rounded bg-teal text-primary-foreground hover:bg-teal-light flex items-center gap-1"
+          >
+            <Plus className="w-3 h-3" /> Register Agent
+          </button>
         </div>
         <table className="w-full text-xs">
-          <thead className="bg-muted/50"><tr className="border-b border-border">
-            {['Agent', 'Status', 'Tool Calls', 'Last Call', 'Actions'].map(h => <th key={h} className="text-left py-2 px-3 font-medium text-muted-foreground">{h}</th>)}
-          </tr></thead>
+          <thead className="bg-muted/50">
+            <tr className="border-b border-border">
+              {["Agent", "Status", "Tool Calls", "Last Call", "Actions"].map((h) => (
+                <th key={h} className="text-left py-2 px-3 font-medium text-muted-foreground">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
           <tbody>
             {connectedAgents.map((a, i) => (
               <tr key={i} className="border-b border-border hover:bg-muted/30">
                 <td className="py-2 px-3 font-medium">{a.name}</td>
-                <td className="py-2 px-3"><StatusBadge status={a.status === 'Connected' ? 'Active' : 'Inactive'} /></td>
+                <td className="py-2 px-3">
+                  <StatusBadge status={a.status === "Connected" ? "Active" : "Inactive"} />
+                </td>
                 <td className="py-2 px-3 text-muted-foreground font-mono text-[10px]">{a.calls}</td>
                 <td className="py-2 px-3 text-muted-foreground">{a.lastCall}</td>
                 <td className="py-2 px-3">
                   <div className="flex gap-1">
-                    <button onClick={() => toast.info(`Viewing ${a.name} audit trail`)} className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80">Audit</button>
-                    {a.status === 'Connected' && <button onClick={() => toast.info(`Suspending ${a.name}`)} className="text-[10px] px-2 py-1 rounded bg-coral/10 text-coral hover:bg-coral/20">Suspend</button>}
+                    <button
+                      onClick={() => toast.info(`Viewing ${a.name} audit trail`)}
+                      className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80"
+                    >
+                      Audit
+                    </button>
+                    {a.status === "Connected" && (
+                      <button
+                        onClick={() => toast.info(`Suspending ${a.name}`)}
+                        className="text-[10px] px-2 py-1 rounded bg-coral/10 text-coral hover:bg-coral/20"
+                      >
+                        Suspend
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -961,14 +1995,33 @@ function MCPServerPanel() {
         <h3 className="text-sm font-semibold mb-3">Agentic Flow Examples</h3>
         <div className="grid grid-cols-3 gap-3">
           {[
-            { title: 'SOC Analyst Copilot', mode: 'INTERACTIVE', example: '"Which certs expire in 7 days with no owner?"', flow: 'trust_inventory_query → trust_cert_detail → User reviews → trust_cert_renew' },
-            { title: 'CI/CD Pipeline Bot', mode: 'AUTONOMOUS', example: 'On PR merge: validate cert compliance', flow: 'trust_policy_simulate → trust_violations_list → Block merge if violations' },
-            { title: 'PQC Migration Agent', mode: 'HUMAN-APPROVED', example: 'Migrate payment certs to ML-DSA-65', flow: 'trust_pqc_queue → trust_posture_simulate → Human approval → trust_pqc_migrate' },
-          ].map(f => (
+            {
+              title: "SOC Analyst Copilot",
+              mode: "INTERACTIVE",
+              example: '"Which certs expire in 7 days with no owner?"',
+              flow: "trust_inventory_query → trust_cert_detail → User reviews → trust_cert_renew",
+            },
+            {
+              title: "CI/CD Pipeline Bot",
+              mode: "AUTONOMOUS",
+              example: "On PR merge: validate cert compliance",
+              flow: "trust_policy_simulate → trust_violations_list → Block merge if violations",
+            },
+            {
+              title: "PQC Migration Agent",
+              mode: "HUMAN-APPROVED",
+              example: "Migrate payment certs to ML-DSA-65",
+              flow: "trust_pqc_queue → trust_posture_simulate → Human approval → trust_pqc_migrate",
+            },
+          ].map((f) => (
             <div key={f.title} className="bg-secondary/30 rounded-lg p-3 border border-border">
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-xs font-semibold text-foreground">{f.title}</span>
-                <span className={`text-[8px] px-1.5 py-0.5 rounded-full font-medium ${f.mode === 'AUTONOMOUS' ? 'bg-teal/10 text-teal' : f.mode === 'INTERACTIVE' ? 'bg-purple/10 text-purple' : 'bg-amber/10 text-amber'}`}>{f.mode}</span>
+                <span
+                  className={`text-[8px] px-1.5 py-0.5 rounded-full font-medium ${f.mode === "AUTONOMOUS" ? "bg-teal/10 text-teal" : f.mode === "INTERACTIVE" ? "bg-purple/10 text-purple" : "bg-amber/10 text-amber"}`}
+                >
+                  {f.mode}
+                </span>
               </div>
               <p className="text-[10px] text-muted-foreground italic mb-1">{f.example}</p>
               <p className="text-[9px] text-muted-foreground font-mono">{f.flow}</p>
@@ -980,15 +2033,24 @@ function MCPServerPanel() {
   );
 }
 
-
-function MetricCard({ label, value, icon: Icon, accent }: { label: string; value: string; icon: React.ElementType; accent?: boolean }) {
+function MetricCard({
+  label,
+  value,
+  icon: Icon,
+  accent,
+}: {
+  label: string;
+  value: string;
+  icon: React.ElementType;
+  accent?: boolean;
+}) {
   return (
     <div className="bg-card rounded-lg border border-border p-4">
       <div className="flex items-center gap-2 mb-1">
-        <Icon className={`w-4 h-4 ${accent ? 'text-amber' : 'text-teal'}`} />
+        <Icon className={`w-4 h-4 ${accent ? "text-amber" : "text-teal"}`} />
         <span className="text-[10px] text-muted-foreground">{label}</span>
       </div>
-      <p className={`text-lg font-bold ${accent ? 'text-amber' : ''}`}>{value}</p>
+      <p className={`text-lg font-bold ${accent ? "text-amber" : ""}`}>{value}</p>
     </div>
   );
 }
