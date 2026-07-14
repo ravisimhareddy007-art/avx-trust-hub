@@ -34,7 +34,7 @@ const POSTURE = {
     sensitiveSoftware: 7,
   },
   hsm: { total: 1240, extractable: 27, nonSensitive: 14, weakAlgo: 62, utimaco: 604, crypto4a: 412, fortanix: 224 },
-  sshCerts: { total: 4120, longLived: 690, unmanagedCA: 148, broadForward: 512 },
+  sshCerts: { total: 4120, validity: [2680, 750, 460, 230], longLived: 1440, unmanagedCA: 148, broadForward: 512 },
   secrets: { total: 6240, act: 3980, unrotated: 3210, orphaned: 512, noPolicy: 258 },
   // Estate-scale protocol and library figures. The crypto-stack inventory holds
   // the discovered sample; the dashboard reports estate totals. Drill-through
@@ -250,6 +250,32 @@ export default function CryptoPostureGrid() {
 
   // SSH certificates: CA-signed, meant to be short-lived and tightly scoped.
   const sc = POSTURE.sshCerts;
+  const sshCertValidityBars: Bar[] = [
+    {
+      label: "<24h",
+      count: sc.validity[0],
+      color: TEAL,
+      onClick: () => go({ tab: "identities", type: "SSH Certificate" }),
+    },
+    {
+      label: "1-7d",
+      count: sc.validity[1],
+      color: MUTED,
+      onClick: () => go({ tab: "identities", type: "SSH Certificate" }),
+    },
+    {
+      label: "7-30d",
+      count: sc.validity[2],
+      color: AMBER,
+      onClick: () => go({ tab: "identities", type: "SSH Certificate" }),
+    },
+    {
+      label: "30d+",
+      count: sc.validity[3],
+      color: REDDARK,
+      onClick: () => go({ tab: "identities", type: "SSH Certificate" }),
+    },
+  ];
   const sshCertRows: PostureRow[] = [
     {
       label: "Signed by an unmanaged CA",
@@ -409,7 +435,19 @@ export default function CryptoPostureGrid() {
           total={sc.total}
           caption={"CA-signed \u00b7 short-lived host & user certs"}
           hero={{ value: sc.longLived, caption: "long-lived (>24h)", role: "high" }}
-          distribution={{ type: "rows", rows: sshCertRows }}
+          views={[
+            {
+              label: "Validity",
+              hero: { value: sc.validity[0], caption: "short-lived (<24h)", role: "neutral" },
+              distribution: { type: "bars", bars: sshCertValidityBars, xLabel: "Time to expiry", yLabel: "SSH certs" },
+            },
+            {
+              label: "Posture",
+              hero: { value: sc.unmanagedCA, caption: "signed by an unmanaged CA", role: "critical" },
+              distribution: { type: "rows", rows: sshCertRows },
+            },
+          ]}
+          footerNote="Short-lived is healthy"
           onOpen={() => go({ tab: "identities", type: "SSH Certificate" })}
         />
 
