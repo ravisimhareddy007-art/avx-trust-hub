@@ -10,7 +10,6 @@ import CryptoPostureGrid from "./CryptoPostureGrid";
 import InfrastructurePostureStrip from "./InfrastructurePostureStrip";
 import MigrationReadinessStrip from "@/components/dashboards/quantum/MigrationReadinessStrip";
 
-
 export default function SecurityAdminDashboard() {
   const { notifications, markRead } = useNotifications();
   const { setCurrentPage } = useNav();
@@ -78,9 +77,8 @@ export default function SecurityAdminDashboard() {
                 </div>
               )}
 
-              <EnterpriseRiskScore />
               <MigrationReadinessStrip />
-
+              <EnterpriseRiskScore />
 
               <InfrastructurePostureStrip />
               <CryptoPostureGrid />
