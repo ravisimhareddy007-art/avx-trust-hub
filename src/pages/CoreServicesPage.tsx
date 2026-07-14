@@ -44,15 +44,7 @@ import { useLicensing, LicenseModule } from "@/context/LicensingContext";
 import { users, auditLog } from "@/data/mockData";
 import RbacSection from "@/components/core/RbacSection";
 
-type PillarTab =
-  | "license"
-  | "health"
-  | "multitenancy"
-  | "telemetry"
-  | "users"
-  | "infra-integrations"
-  | "infrastructure"
-  | "mcp";
+type PillarTab = "license" | "health" | "multitenancy" | "telemetry" | "users" | "mcp";
 
 export default function CoreServicesPage() {
   const [pillar, setPillar] = useState<PillarTab>("license");
@@ -63,8 +55,6 @@ export default function CoreServicesPage() {
     { id: "multitenancy", label: "Multi-Tenancy", icon: Building2 },
     { id: "telemetry", label: "Telemetry", icon: BarChart3 },
     { id: "users", label: "Users & RBAC", icon: Users },
-    { id: "infra-integrations", label: "Integrations", icon: Plug },
-    { id: "infrastructure", label: "Infrastructure", icon: Server },
     { id: "mcp", label: "MCP Server", icon: Globe },
   ];
 
@@ -88,8 +78,6 @@ export default function CoreServicesPage() {
       {pillar === "multitenancy" && <MultiTenancy />}
       {pillar === "telemetry" && <TelemetryPanel />}
       {pillar === "users" && <UserManagement />}
-      {pillar === "infra-integrations" && <InfraIntegrations />}
-      {pillar === "infrastructure" && <InfrastructureResources />}
       {pillar === "mcp" && <MCPServerPanel />}
     </div>
   );
@@ -112,9 +100,6 @@ function LicenseManagement() {
   const modules = [
     { name: "Certificate Lifecycle (CLM/PKI)", status: "Active", seats: "Unlimited", usage: 82, expiry: "2027-12-31" },
     { name: "SSH Key Management", status: "Active", seats: "500", usage: 67, expiry: "2027-12-31" },
-    { name: "Code Signing", status: "Active", seats: "100", usage: 23, expiry: "2027-12-31" },
-    { name: "Kubernetes TLS", status: "Active", seats: "Unlimited", usage: 45, expiry: "2027-12-31" },
-    { name: "Quantum Trust Hub", status: "Active", seats: "Unlimited", usage: 12, expiry: "2027-12-31" },
     { name: "Agentic AI Identity (Eos)", status: "Trial", seats: "50", usage: 8, expiry: "2026-06-30" },
     { name: "Secrets Management", status: "Inactive", seats: "—", usage: 0, expiry: "—" },
   ];
