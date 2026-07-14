@@ -1,20 +1,20 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
-// Runtime licensing / entitlements. The remediation capabilities are add-on
-// modules on top of the MVP (discovery, visibility, posture). They are OFF by
-// default, so the base product shows no Remediation menu. Enabling a module in
-// Platform Core -> License Management flips it on here, and the sidebar reveals
-// it live -- the land-and-expand story, in one prototype.
+// Runtime licensing / entitlements. Remediation capabilities and Quantum
+// Readiness are add-on modules on top of the MVP (discovery, visibility,
+// posture). All OFF by default. Enabling a module in Platform Core ->
+// License Management flips it on here and the sidebar reveals it live.
 
-export type LicenseModule = 'clm' | 'ssh' | 'secrets' | 'ai';
+export type LicenseModule = "clm" | "ssh" | "secrets" | "ai" | "quantum";
 
-const KEY = 'trustplatform.licensing.v1';
+const KEY = "trustplatform.licensing.v1";
 
 const DEFAULTS: Record<LicenseModule, boolean> = {
   clm: false,
   ssh: false,
   secrets: false,
   ai: false,
+  quantum: false,
 };
 
 function load(): Record<LicenseModule, boolean> {
@@ -53,11 +53,8 @@ export const LicensingProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [licensed]);
 
-  const setLicensed = (m: LicenseModule, on: boolean) =>
-    setLicensedState((prev) => ({ ...prev, [m]: on }));
-
+  const setLicensed = (m: LicenseModule, on: boolean) => setLicensedState((prev) => ({ ...prev, [m]: on }));
   const isLicensed = (m: LicenseModule) => !!licensed[m];
-
   const anyRemediation = licensed.clm || licensed.ssh || licensed.secrets || licensed.ai;
 
   return (
