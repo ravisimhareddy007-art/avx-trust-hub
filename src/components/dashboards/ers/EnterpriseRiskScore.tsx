@@ -6,10 +6,13 @@ import { ticketForObject } from "@/lib/ticketStore";
 import TicketTriageModal from "@/components/dashboards/TicketTriageModal";
 import { useNav } from "@/context/NavigationContext";
 import { mockAssets } from "@/data/mockData";
-import { VIOLATION_FILTERS } from "@/lib/filters/cryptoFilters";
+import { mockITAssets, type ITAsset } from "@/data/inventoryMockData";
+import { arsFor } from "@/lib/risk/ars";
+import { computeCRS } from "@/lib/risk/crs";
+import { toast } from "sonner";
 
-const REMEDIATION_ENABLED = false;
 const PAGE = 5;
+const ASSET_TOP = 5;
 
 const SEV_DOT: Record<string, string> = {
   Critical: "bg-coral",
@@ -23,6 +26,40 @@ const SEV_TEXT: Record<string, string> = {
   Medium: "text-amber",
   Low: "text-teal",
 };
+
+const bandOf = (s: number) => (s >= 80 ? "Critical" : s >= 60 ? "High" : s >= 30 ? "Medium" : "Low");
+
+// Remediation is per object-type, because different crypto objects share no fix,
+// no owning team, and no change window. Each type becomes its own ticket.
+function remediationFor(type: string): { action: string; team: string } {
+  const t = (type || "").toLowerCase();
+  if (t.includes("certificate")) return { action: "Renew / re-issue", team: "PKI / CA team" };
+  if (t.includes("ssh")) return { action: "Rotate or move to SSH CA", team: "Platform team" };
+  if (t.includes("kms") || t.includes("cloud")) return { action: "Rotate / tighten key policy", team: "Cloud team" };
+  if (t.includes("hsm")) return { action: "Review export / access policy", team: "Key management" };
+  if (t.includes("secret") || t.includes("token")) return { action: "Vault and assign an owner", team: "Owning team" };
+  if (t.includes("encryption") || t.includes("key")) return { action: "Rotate key material", team: "Data platform" };
+  return { action: "Review and remediate", team: "Asset owner" };
+}
+
+// Projection: recompute ARS as if the high/critical objects were fixed (CRS floored
+// to acceptable). Mirrors the ARS formula in the scoring spec so the number is real.
+function percentileAsc(sortedAsc: number[], p: number): number {
+  if (sortedAsc.length === 0) return 0;
+  const idx = Math.min(sortedAsc.length - 1, Math.floor((p / 100) * sortedAsc.length));
+  return sortedAsc[idx];
+}
+function arsFromCRS(crsList: number[], biMult: number): number {
+  if (crsList.length === 0) return 0;
+  const asc = [...crsList].sort((a, b) => a - b);
+  const max = Math.max(...crsList);
+  const p90 = percentileAsc(asc, 90);
+  const p75 = percentileAsc(asc, 75);
+  const crit = crsList.filter((c) => c >= 80).length;
+  const high = crsList.filter((c) => c >= 60 && c < 80).length;
+  const tech = 0.55 * max + 0.45 * (0.6 * p90 + 0.4 * p75) + Math.log(1 + crit) * 4 + Math.log(1 + high) * 2;
+  return Math.min(100, Math.round(tech * biMult));
+}
 
 function TrendChart({ points, hsl }: { points: { label: string; value: number }[]; hsl: string }) {
   const [hover, setHover] = useState<number | null>(null);
@@ -164,6 +201,7 @@ export default function EnterpriseRiskScore() {
   const { setCurrentPage, setFilters } = useNav();
   const [lens, setLens] = useState<"ers" | "qes">("ers");
   const [groupBy, setGroupBy] = useState<"violation" | "asset">("violation");
+  const [selectedAsset, setSelectedAsset] = useState<ITAsset | null>(null);
   const [triage, setTriage] = useState<{ type: string; violationId?: string } | null>(null);
   const [sort, setSort] = useState<SortKey>("impact");
   const [page, setPage] = useState(0);
@@ -198,55 +236,64 @@ export default function EnterpriseRiskScore() {
     return [...activeRows.sort(cmp), ...done];
   }, [active.driverBuckets, sort]);
 
-  // IT-asset view: pivot violations onto the assets they live on, ranked by count.
-  const assetRows = useMemo(() => {
-    const filters = Object.values(VIOLATION_FILTERS);
-    const byAsset = new Map<string, { objs: Set<string>; violObjs: Set<string>; violations: number }>();
-    for (const a of mockAssets) {
-      const asset = ((a as any).infrastructure || (a as any).application || "Unassigned") as string;
-      let e = byAsset.get(asset);
-      if (!e) {
-        e = { objs: new Set(), violObjs: new Set(), violations: 0 };
-        byAsset.set(asset, e);
-      }
-      e.objs.add(a.id);
-      let hits = 0;
-      for (const f of filters) {
-        try {
-          if (f.predicate(a)) hits++;
-        } catch {
-          /* type-specific filter, skip */
-        }
-      }
-      if (hits > 0) {
-        e.violObjs.add(a.id);
-        e.violations += hits;
-      }
-    }
-    const sevOf = (v: number) => (v >= 8 ? "Critical" : v >= 4 ? "High" : v >= 1 ? "Medium" : "Low");
-    return [...byAsset.entries()]
-      .filter(([, e]) => e.violations > 0)
-      .map(([asset, e]) => ({
-        id: `asset:${asset}`,
-        isAsset: true,
-        label: asset,
-        count: e.violations,
-        countLabel: `${e.violations} violations across ${e.violObjs.size} of ${e.objs.size} objects`,
-        pts: e.violations,
-        objectIds: [...e.violObjs],
-        severity: sevOf(e.violations),
-        urgencyScore: e.violations,
-        recencyLabel: "",
-        triageType: "",
-        ticketed: 0,
-        fullyTicketed: false,
-      }))
-      .sort((a, b) => b.count - a.count);
-  }, []);
+  const pageCount = Math.ceil(rows.length / PAGE);
+  const pageRows = rows.slice(page * PAGE, page * PAGE + PAGE);
 
-  const source = groupBy === "asset" ? (assetRows as any[]) : rows;
-  const pageCount = Math.ceil(source.length / PAGE);
-  const pageRows = source.slice(page * PAGE, page * PAGE + PAGE);
+  // IT-asset view: real ARS per asset (business-impact multiplier already applied),
+  // critical + high only, sorted by ARS. Ties fall to techARS silently.
+  const assetList = useMemo(() => {
+    return mockITAssets
+      .map((a) => {
+        const r = arsFor(a);
+        return { asset: a, ars: r.ars, tech: r.techARS };
+      })
+      .filter((x) => x.ars >= 60)
+      .sort((a, b) => b.ars - a.ars || b.tech - a.tech);
+  }, []);
+  const topAssets = assetList.slice(0, ASSET_TOP);
+  const moreCount = assetList.length - topAssets.length;
+
+  // Remediation drill for one asset: its high/critical objects, grouped by the fix
+  // they share, with a real projected ARS after the group is cleared.
+  const drill = useMemo(() => {
+    if (!selectedAsset) return null;
+    const a = arsFor(selectedAsset);
+    const objs = selectedAsset.cryptoObjectIds
+      .map((id) => mockAssets.find((o) => o.id === id))
+      .filter(Boolean) as any[];
+    const scored = objs.map((o) => ({ o, crs: computeCRS(o).crs }));
+    const needsFix = scored.filter((x) => x.crs >= 60);
+    const groups = new Map<string, { type: string; count: number; maxCrs: number; action: string; team: string }>();
+    for (const x of needsFix) {
+      const type = x.o.type || "Object";
+      const rem = remediationFor(type);
+      const g = groups.get(type) || { type, count: 0, maxCrs: 0, action: rem.action, team: rem.team };
+      g.count += 1;
+      g.maxCrs = Math.max(g.maxCrs, x.crs);
+      groups.set(type, g);
+    }
+    const groupList = [...groups.values()].sort((p, q) => q.maxCrs - p.maxCrs);
+    const biMult = a.techARS > 0 ? a.ars / a.techARS : 1;
+    const remaining = scored.map((x) => (x.crs >= 60 ? 30 : x.crs));
+    const projectedArs = arsFromCRS(remaining, biMult);
+    return { a, groupList, projectedArs, ticketCount: groupList.length, needsFixCount: needsFix.length };
+  }, [selectedAsset]);
+
+  const goAssets = () => {
+    setGroupBy("asset");
+    setSelectedAsset(null);
+    setPage(0);
+  };
+  const goViolations = () => {
+    setGroupBy("violation");
+    setSelectedAsset(null);
+    setPage(0);
+  };
+  const switchLens = (l: "ers" | "qes") => {
+    setLens(l);
+    setSelectedAsset(null);
+    setPage(0);
+  };
 
   return (
     <div className="bg-card rounded-2xl border border-border overflow-hidden">
@@ -255,19 +302,13 @@ export default function EnterpriseRiskScore() {
         <h2 className="text-sm font-semibold text-foreground">Enterprise Risk</h2>
         <div className="flex rounded-md border border-border overflow-hidden ml-1">
           <button
-            onClick={() => {
-              setLens("ers");
-              setPage(0);
-            }}
+            onClick={() => switchLens("ers")}
             className={`px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${lens === "ers" ? "bg-teal/15 text-teal" : "text-muted-foreground"}`}
           >
             ERS
           </button>
           <button
-            onClick={() => {
-              setLens("qes");
-              setPage(0);
-            }}
+            onClick={() => switchLens("qes")}
             className={`px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${lens === "qes" ? "bg-purple/15 text-purple-light" : "text-muted-foreground"}`}
           >
             QES
@@ -355,19 +396,13 @@ export default function EnterpriseRiskScore() {
             </span>
             <div className="inline-flex rounded-full border border-border-strong overflow-hidden">
               <button
-                onClick={() => {
-                  setGroupBy("violation");
-                  setPage(0);
-                }}
+                onClick={goViolations}
                 className={`text-[10px] px-2.5 py-0.5 transition-colors ${groupBy === "violation" ? "bg-teal text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
               >
                 By violation
               </button>
               <button
-                onClick={() => {
-                  setGroupBy("asset");
-                  setPage(0);
-                }}
+                onClick={goAssets}
                 className={`text-[10px] px-2.5 py-0.5 transition-colors ${groupBy === "asset" ? "bg-teal text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
               >
                 By asset
@@ -400,84 +435,203 @@ export default function EnterpriseRiskScore() {
             )}
           </div>
 
-          <div className="flex flex-col">
-            {pageRows.map((d) => (
-              <button
-                key={d.id}
-                onClick={() =>
-                  (d as any).isAsset
-                    ? (setFilters({ tab: "infrastructure", search: d.label }), setCurrentPage("inventory"))
-                    : setTriage({
+          {/* ---------------- BY VIOLATION ---------------- */}
+          {groupBy === "violation" && (
+            <>
+              <div className="flex flex-col">
+                {pageRows.map((d) => (
+                  <button
+                    key={d.id}
+                    onClick={() =>
+                      setTriage({
                         type: lens === "qes" ? "pqc" : (d as any).triageType,
                         violationId: d.id,
                       })
-                }
-                className={`group grid items-center gap-3 py-2.5 border-b border-border/40 text-left ${d.fullyTicketed ? "opacity-55" : ""} ${(d as any).blocker ? "bg-purple/5" : ""}`}
-                style={{ gridTemplateColumns: "84px minmax(0,1fr) 44px 16px" }}
-              >
-                <span className="flex items-center gap-1.5">
-                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${SEV_DOT[d.severity]}`} />
-                  <span className={`text-[9px] font-semibold uppercase tracking-wide ${SEV_TEXT[d.severity]}`}>
-                    {d.severity}
-                  </span>
-                </span>
-                <div className="min-w-0">
-                  <div
-                    className={`text-[12px] truncate ${(d as any).blocker ? "text-purple-light font-medium" : "text-foreground"}`}
+                    }
+                    className={`group grid items-center gap-3 py-2.5 border-b border-border/40 text-left ${d.fullyTicketed ? "opacity-55" : ""} ${(d as any).blocker ? "bg-purple/5" : ""}`}
+                    style={{ gridTemplateColumns: "84px minmax(0,1fr) 44px 16px" }}
                   >
-                    {d.label}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground truncate">
-                    {(d as any).countLabel ??
-                      `${d.count.toLocaleString()} objects · ${(d as any).recencyLabel ?? "seen this scan"}`}
-                  </div>
-                </div>
-                <div className="text-right">
-                  {d.fullyTicketed ? (
-                    <span className="inline-flex items-center gap-0.5 text-[9px] text-teal">
-                      <Ticket className="w-2.5 h-2.5" /> done
+                    <span className="flex items-center gap-1.5">
+                      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${SEV_DOT[d.severity]}`} />
+                      <span className={`text-[9px] font-semibold uppercase tracking-wide ${SEV_TEXT[d.severity]}`}>
+                        {d.severity}
+                      </span>
                     </span>
-                  ) : (
-                    <>
-                      <div className={`text-[13px] font-semibold tabular-nums leading-none ${SEV_TEXT[d.severity]}`}>
-                        {(d as any).isAsset ? d.count : `-${d.pts}`}
+                    <div className="min-w-0">
+                      <div
+                        className={`text-[12px] truncate ${(d as any).blocker ? "text-purple-light font-medium" : "text-foreground"}`}
+                      >
+                        {d.label}
                       </div>
-                      <div className="text-[8px] text-muted-foreground uppercase tracking-wide">
-                        {(d as any).isAsset ? "issues" : lens === "qes" ? "QES" : "ERS"}
+                      <div className="text-[10px] text-muted-foreground truncate">
+                        {d.count.toLocaleString()} objects · {(d as any).recencyLabel ?? "seen this scan"}
                       </div>
-                    </>
-                  )}
-                </div>
-                <ChevronRight className="w-3.5 h-3.5 text-muted-foreground group-hover:text-teal transition-colors" />
-              </button>
-            ))}
-          </div>
-
-          <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-border/40">
-            <span className="text-[10px] text-muted-foreground">
-              {rows.length === 0
-                ? "No active factors"
-                : `${page * PAGE + 1} to ${Math.min(rows.length, (page + 1) * PAGE)} of ${rows.length} factors`}
-            </span>
-            {pageCount > 1 && (
-              <div className="flex gap-1.5">
-                <button
-                  onClick={() => setPage((p) => Math.max(0, p - 1))}
-                  disabled={page === 0}
-                  className="w-6 h-6 rounded-md border border-border flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
-                  disabled={page >= pageCount - 1}
-                  className="w-6 h-6 rounded-md border border-border flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30"
-                >
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
+                    </div>
+                    <div className="text-right">
+                      {d.fullyTicketed ? (
+                        <span className="inline-flex items-center gap-0.5 text-[9px] text-teal">
+                          <Ticket className="w-2.5 h-2.5" /> done
+                        </span>
+                      ) : (
+                        <>
+                          <div
+                            className={`text-[13px] font-semibold tabular-nums leading-none ${SEV_TEXT[d.severity]}`}
+                          >
+                            -{d.pts}
+                          </div>
+                          <div className="text-[8px] text-muted-foreground uppercase tracking-wide">
+                            {lens === "qes" ? "QES" : "ERS"}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 text-muted-foreground group-hover:text-teal transition-colors" />
+                  </button>
+                ))}
               </div>
-            )}
-          </div>
+
+              <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-border/40">
+                <span className="text-[10px] text-muted-foreground">
+                  {rows.length === 0
+                    ? "No active factors"
+                    : `${page * PAGE + 1} to ${Math.min(rows.length, (page + 1) * PAGE)} of ${rows.length} factors`}
+                </span>
+                {pageCount > 1 && (
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={() => setPage((p) => Math.max(0, p - 1))}
+                      disabled={page === 0}
+                      className="w-6 h-6 rounded-md border border-border flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+                      disabled={page >= pageCount - 1}
+                      className="w-6 h-6 rounded-md border border-border flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30"
+                    >
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* ---------------- BY ASSET · list ---------------- */}
+          {groupBy === "asset" && !selectedAsset && (
+            <>
+              <div className="flex flex-col">
+                {topAssets.map(({ asset, ars }) => (
+                  <button
+                    key={asset.id}
+                    onClick={() => setSelectedAsset(asset)}
+                    className="group grid items-center gap-3 py-2.5 border-b border-border/40 text-left"
+                    style={{ gridTemplateColumns: "16px minmax(0,1fr) 44px 16px" }}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${SEV_DOT[bandOf(ars)]}`} />
+                    <div className="min-w-0">
+                      <div className="text-[12px] truncate text-foreground">{asset.name}</div>
+                      <div className="text-[10px] text-muted-foreground truncate">
+                        {asset.ownerTeam} · {asset.assetClass} · {asset.environment}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className={`text-[13px] font-semibold tabular-nums leading-none ${SEV_TEXT[bandOf(ars)]}`}>
+                        {ars}
+                      </div>
+                      <div className="text-[8px] text-muted-foreground uppercase tracking-wide">ARS</div>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 text-muted-foreground group-hover:text-teal transition-colors" />
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-border/40">
+                <span className="text-[10px] text-muted-foreground">Critical &amp; high assets · sorted by ARS</span>
+                {moreCount > 0 && (
+                  <button
+                    onClick={() => {
+                      setFilters({ tab: "infrastructure" });
+                      setCurrentPage("inventory");
+                    }}
+                    className="text-[10px] text-teal hover:underline"
+                  >
+                    + {moreCount} more
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* ---------------- BY ASSET · remediation drill ---------------- */}
+          {groupBy === "asset" && selectedAsset && drill && (
+            <>
+              <button
+                onClick={() => setSelectedAsset(null)}
+                className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground mb-2 w-fit"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" /> back to assets
+              </button>
+
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <span className="text-[13px] font-medium text-foreground truncate">{selectedAsset.name}</span>
+                <span
+                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${SEV_TEXT[bandOf(drill.a.ars)]} ${bandOf(drill.a.ars) === "Critical" || bandOf(drill.a.ars) === "High" ? "bg-coral/10" : "bg-amber/10"}`}
+                >
+                  ARS {drill.a.ars}
+                </span>
+              </div>
+              <div className="text-[10px] text-muted-foreground mb-2">
+                {selectedAsset.ownerTeam} · {drill.needsFixCount} objects to remediate, grouped by fix
+              </div>
+
+              {drill.groupList.length === 0 ? (
+                <div className="text-[11px] text-muted-foreground py-4">No critical or high objects on this asset.</div>
+              ) : (
+                <div className="flex flex-col">
+                  {drill.groupList.map((g) => (
+                    <div key={g.type} className="flex items-center gap-3 py-2.5 border-b border-border/40">
+                      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${SEV_DOT[bandOf(g.maxCrs)]}`} />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[12px] text-foreground truncate">
+                          {g.count} {g.type}
+                          {g.count > 1 ? "s" : ""}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground truncate">
+                          {g.action} · {g.team}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() =>
+                          toast.success(
+                            `Ticket drafted — ${g.count} ${g.type}${g.count > 1 ? "s" : ""} on ${selectedAsset.name}`,
+                          )
+                        }
+                        className="text-[10px] px-2.5 py-1 rounded-md border border-border text-foreground hover:bg-muted transition-colors flex-shrink-0"
+                      >
+                        Raise ticket
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {drill.groupList.length > 0 && (
+                <div className="flex items-center gap-2 pt-2.5 mt-2 border-t border-border/40">
+                  <span className="text-[10px] text-muted-foreground flex-1">
+                    Clear these {drill.ticketCount} → ARS {drill.a.ars} → {drill.projectedArs}
+                  </span>
+                  <button
+                    onClick={() => toast.success(`${drill.ticketCount} tickets drafted for ${selectedAsset.name}`)}
+                    className="text-[10px] px-2.5 py-1 rounded-md border border-teal text-teal hover:bg-teal/10 transition-colors flex-shrink-0"
+                  >
+                    Raise all {drill.ticketCount}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
 
