@@ -461,10 +461,12 @@ export default function TicketTriageModal({
   onClose,
   initialType = "All",
   initialViolationId,
+  initialAssetId,
 }: {
   onClose: () => void;
   initialType?: TabKey;
   initialViolationId?: string;
+  initialAssetId?: string;
 }) {
   const { setCurrentPage } = useNav();
   // A dashboard PQC/QES driver passes a driver id (e.g. "qes-drv-0", "qes-drv-blocked")
@@ -479,7 +481,14 @@ export default function TicketTriageModal({
       : rawType === "pqc" || rawType === "PQC"
         ? "pqc-1"
         : undefined;
-  const scoped = !!violationId;
+  const violationScoped = !!violationId;
+  const assetScoped = !violationId && !!initialAssetId;
+  const scoped = violationScoped || assetScoped;
+  const assetObjs = useMemo(
+    () => (initialAssetId ? POOL.filter((o) => o.itAsset?.id === initialAssetId) : []),
+    [initialAssetId],
+  );
+  const assetName = assetScoped ? (assetObjs[0]?.itAsset?.name ?? initialAssetId ?? "") : "";
   const initialTab: TabKey = TABS.some((t) => t.key === initialType) ? (initialType as TabKey) : "All";
   const [tab, setTab] = useState<TabKey>(initialTab);
   const [teamFilter, setTeamFilter] = useState<string>("all");
@@ -490,11 +499,13 @@ export default function TicketTriageModal({
       ? new Set(
           POOL.filter((o) => VIOLATION_CATALOG[violationId].match(o.asset) && !ticketForObject(o.id)).map((o) => o.id),
         )
-      : new Set(),
+      : initialAssetId
+        ? new Set(POOL.filter((o) => o.itAsset?.id === initialAssetId && !ticketForObject(o.id)).map((o) => o.id))
+        : new Set(),
   );
 
-  const violationFor = (o: PoolObj) => (scoped ? violationId! : o.violationId);
-  const withIssue = (o: PoolObj) => (scoped ? { ...o, issue: issueFor(o.asset, violationId!) } : o);
+  const violationFor = (o: PoolObj) => (violationScoped ? violationId! : o.violationId);
+  const withIssue = (o: PoolObj) => (violationScoped ? { ...o, issue: issueFor(o.asset, violationId!) } : o);
 
   const tabCounts = useMemo(() => {
     const c: Record<TabKey, number> = {
@@ -514,9 +525,10 @@ export default function TicketTriageModal({
   }, []);
 
   const baseVisible = useMemo(() => {
-    if (scoped) return POOL.filter((o) => VIOLATION_CATALOG[violationId!].match(o.asset));
+    if (violationScoped) return POOL.filter((o) => VIOLATION_CATALOG[violationId!].match(o.asset));
+    if (assetScoped) return POOL.filter((o) => o.itAsset?.id === initialAssetId);
     return tab === "All" ? POOL : POOL.filter((o) => o.category === tab);
-  }, [tab, scoped, violationId]);
+  }, [tab, violationScoped, assetScoped, violationId, initialAssetId]);
 
   const teamsPresent = useMemo(() => {
     const s = new Set<string>();
@@ -623,7 +635,11 @@ export default function TicketTriageModal({
     });
   };
 
-  const scopedTotal = scoped ? VIOLATION_CATALOG[violationId!].total : POOL.length;
+  const scopedTotal = violationScoped
+    ? VIOLATION_CATALOG[violationId!].total
+    : assetScoped
+      ? assetObjs.length
+      : POOL.length;
   const count = selectedObjs.length;
   const COLS = "30px minmax(0,2.4fr) 46px 1.5fr 58px 1.8fr 24px";
 
@@ -645,9 +661,11 @@ export default function TicketTriageModal({
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-semibold text-foreground">Remediation triage</h2>
               <span className="text-[11px] text-muted-foreground">
-                {scoped
+                {violationScoped
                   ? `${VIOLATION_CATALOG[violationId!].short} · showing ${visible.length} of ${fmt(scopedTotal)}, ranked by CRS`
-                  : "One ticket per crypto object, ranked by CRS. Select, review inline, then create."}
+                  : assetScoped
+                    ? `${assetName} · ${visible.length} objects to remediate, ranked by CRS`
+                    : "One ticket per crypto object, ranked by CRS. Select, review inline, then create."}
               </span>
             </div>
           </div>
@@ -793,7 +811,7 @@ export default function TicketTriageModal({
                         <>
                           {vShort}{" "}
                           <span className="text-muted-foreground/60">
-                            · {scoped ? issueFor(o.asset, violationId!) : o.issue}
+                            · {violationScoped ? issueFor(o.asset, violationId!) : o.issue}
                           </span>
                         </>
                       )}
