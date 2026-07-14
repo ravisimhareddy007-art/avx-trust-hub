@@ -9,7 +9,6 @@ import { mockAssets } from "@/data/mockData";
 import { mockITAssets, type ITAsset } from "@/data/inventoryMockData";
 import { arsFor } from "@/lib/risk/ars";
 import { computeCRS } from "@/lib/risk/crs";
-import { toast } from "sonner";
 
 const PAGE = 5;
 const ASSET_TOP = 5;
@@ -202,7 +201,7 @@ export default function EnterpriseRiskScore() {
   const [lens, setLens] = useState<"ers" | "qes">("ers");
   const [groupBy, setGroupBy] = useState<"violation" | "asset">("violation");
   const [selectedAsset, setSelectedAsset] = useState<ITAsset | null>(null);
-  const [triage, setTriage] = useState<{ type: string; violationId?: string } | null>(null);
+  const [triage, setTriage] = useState<{ type?: string; violationId?: string; assetId?: string } | null>(null);
   const [sort, setSort] = useState<SortKey>("impact");
   const [page, setPage] = useState(0);
 
@@ -603,11 +602,7 @@ export default function EnterpriseRiskScore() {
                         </div>
                       </div>
                       <button
-                        onClick={() =>
-                          toast.success(
-                            `Ticket drafted — ${g.count} ${g.type}${g.count > 1 ? "s" : ""} on ${selectedAsset.name}`,
-                          )
-                        }
+                        onClick={() => setTriage({ assetId: selectedAsset.id })}
                         className="text-[10px] px-2.5 py-1 rounded-md border border-border text-foreground hover:bg-muted transition-colors flex-shrink-0"
                       >
                         Raise ticket
@@ -623,7 +618,7 @@ export default function EnterpriseRiskScore() {
                     Clear these {drill.ticketCount} → ARS {drill.a.ars} → {drill.projectedArs}
                   </span>
                   <button
-                    onClick={() => toast.success(`${drill.ticketCount} tickets drafted for ${selectedAsset.name}`)}
+                    onClick={() => setTriage({ assetId: selectedAsset.id })}
                     className="text-[10px] px-2.5 py-1 rounded-md border border-teal text-teal hover:bg-teal/10 transition-colors flex-shrink-0"
                   >
                     Raise all {drill.ticketCount}
@@ -639,6 +634,7 @@ export default function EnterpriseRiskScore() {
         <TicketTriageModal
           initialType={triage.type as never}
           initialViolationId={triage.violationId}
+          initialAssetId={triage.assetId}
           onClose={() => setTriage(null)}
         />
       )}
