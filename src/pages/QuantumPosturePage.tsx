@@ -24,7 +24,6 @@ import {
 } from "@/lib/risk/qes";
 import TicketDraftModal from "@/components/inventory/TicketDraftModal";
 import MigrationReadinessStrip from "@/components/dashboards/quantum/MigrationReadinessStrip";
-import PQCMigrationPanel from "@/components/dashboards/readiness/PQCMigrationPanel";
 
 const PAGE = 15;
 
@@ -133,9 +132,6 @@ export default function QuantumPosturePage() {
       </div>
 
       <MigrationReadinessStrip />
-
-      {/* 5-stage migration pipeline: discover -> assess -> plan -> in-flight -> migrated */}
-      <PQCMigrationPanel />
 
       {/* EXPOSURE — score with ERS/QES toggle + two real drills */}
       <section className="space-y-3">
@@ -332,9 +328,7 @@ export default function QuantumPosturePage() {
                     {b.name} {b.version} &rarr; {b.latestSafe}
                   </td>
                   <td className="py-2 px-3 text-right tabular-nums font-semibold">{b.assetsAffected.length}</td>
-                  <td
-                    className={`py-2 px-3 text-[10px] ${b.eolStatus === "End-of-Life" ? "text-coral" : "text-amber"}`}
-                  >
+                  <td className={`py-2 px-3 text-[10px] ${b.eolStatus === "End-of-Life" ? "text-coral" : "text-amber"}`}>
                     {b.eolStatus === "End-of-Life" ? "Hard blocker" : "Soft blocker"}
                   </td>
                 </tr>
