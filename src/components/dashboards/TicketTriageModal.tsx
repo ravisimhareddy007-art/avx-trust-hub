@@ -291,8 +291,12 @@ export interface AssetRemediationGroup {
   team: string;
 }
 
-export function assetRemediationGroups(itAssetId: string): AssetRemediationGroup[] {
-  const objs = POOL.filter((o) => o.itAsset?.id === itAssetId && !ticketForObject(o.id));
+export function assetRemediationGroups(itAssetId: string, lens: "ers" | "qes" = "ers"): AssetRemediationGroup[] {
+  const objs = POOL.filter((o) => {
+    if (o.itAsset?.id !== itAssetId || ticketForObject(o.id)) return false;
+    // ERS is operational/classical risk; quantum-vulnerable (PQC) objects belong to QES only.
+    return lens === "qes" ? o.category === "PQC" : o.category !== "PQC";
+  });
   const m = new Map<string, AssetRemediationGroup>();
   for (const o of objs) {
     const meta = REMEDIATION_BY_CATEGORY[o.category] ?? {
