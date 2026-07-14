@@ -17,6 +17,7 @@ import {
   Wrench,
   Ticket,
   Cpu,
+  Atom,
 } from "lucide-react";
 
 interface NavChild {
@@ -92,6 +93,7 @@ export default function AppSidebar() {
 
   const navItems: NavItem[] = [
     { id: "dashboard", label: "DASHBOARD", icon: LayoutDashboard, page: "dashboards" },
+    ...(licensed.quantum ? [{ id: "quantum", label: "QUANTUM READINESS", icon: Atom, page: "quantum-posture" }] : []),
     { id: "discovery", label: "DISCOVERY", icon: Search, page: "discovery" },
     { id: "inventory", label: "INVENTORY", icon: Package, page: "inventory" },
     {
