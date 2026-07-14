@@ -1,6 +1,6 @@
 import React from "react";
 import { useNav } from "@/context/NavigationContext";
-import { FileBadge, FileKey, Key, Server, Lock, Network, Package } from "lucide-react";
+import { FileBadge, FileKey, Key, Server, Lock, Network, Package, BadgeCheck } from "lucide-react";
 import PostureTile, { PostureRow, DonutSlice, Bar } from "./PostureTile";
 
 const CORAL = "hsl(var(--coral))",
@@ -34,6 +34,7 @@ const POSTURE = {
     sensitiveSoftware: 7,
   },
   hsm: { total: 1240, extractable: 27, nonSensitive: 14, weakAlgo: 62, utimaco: 604, crypto4a: 412, fortanix: 224 },
+  sshCerts: { total: 4120, longLived: 690, unmanagedCA: 148, broadForward: 512 },
   secrets: { total: 6240, act: 3980, unrotated: 3210, orphaned: 512, noPolicy: 258 },
   // Estate-scale protocol and library figures. The crypto-stack inventory holds
   // the discovered sample; the dashboard reports estate totals. Drill-through
@@ -247,6 +248,29 @@ export default function CryptoPostureGrid() {
     },
   ];
 
+  // SSH certificates: CA-signed, meant to be short-lived and tightly scoped.
+  const sc = POSTURE.sshCerts;
+  const sshCertRows: PostureRow[] = [
+    {
+      label: "Signed by an unmanaged CA",
+      count: sc.unmanagedCA,
+      role: "critical",
+      onClick: () => go({ tab: "identities", type: "SSH Certificate" }),
+    },
+    {
+      label: "Long-lived (validity over 24h)",
+      count: sc.longLived,
+      role: "high",
+      onClick: () => go({ tab: "identities", type: "SSH Certificate" }),
+    },
+    {
+      label: "Broad forwarding / agent permitted",
+      count: sc.broadForward,
+      role: "high",
+      onClick: () => go({ tab: "identities", type: "SSH Certificate" }),
+    },
+  ];
+
   // Protocols + libraries: estate-scale figures for the dashboard; drill-through
   // routes to the live crypto-stack views (which show the discovered sample).
   const pp = POSTURE.protocols;
@@ -332,7 +356,7 @@ export default function CryptoPostureGrid() {
             Every number is a count. Click to drill into inventory with filters pre-applied.
           </p>
         </div>
-        <span className="text-[10px] text-muted-foreground">7 categories</span>
+        <span className="text-[10px] text-muted-foreground">8 categories</span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -377,6 +401,16 @@ export default function CryptoPostureGrid() {
           ]}
           footerNote="Key age report"
           onOpen={() => go({ tab: "identities", type: "SSH Key" })}
+        />
+
+        <PostureTile
+          icon={BadgeCheck}
+          label="SSH Certificates"
+          total={sc.total}
+          caption={"CA-signed \u00b7 short-lived host & user certs"}
+          hero={{ value: sc.longLived, caption: "long-lived (>24h)", role: "high" }}
+          distribution={{ type: "rows", rows: sshCertRows }}
+          onOpen={() => go({ tab: "identities", type: "SSH Certificate" })}
         />
 
         <PostureTile
