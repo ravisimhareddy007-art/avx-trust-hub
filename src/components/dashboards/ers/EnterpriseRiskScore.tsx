@@ -254,7 +254,8 @@ export default function EnterpriseRiskScore() {
     if (!selectedAsset) return null;
     const a = arsFor(selectedAsset);
     // Same pool the modal renders, grouped by category, ticketed objects excluded.
-    const groups = assetRemediationGroups(selectedAsset.id);
+    // Lens-aware: ERS shows classical/operational groups, QES shows quantum.
+    const groups = assetRemediationGroups(selectedAsset.id, lens);
     const allIds = groups.flatMap((g) => g.objectIds);
     const remediatedIds = new Set(allIds);
     const biMult = a.techARS > 0 ? a.ars / a.techARS : 1;
@@ -269,7 +270,7 @@ export default function EnterpriseRiskScore() {
     const projectedArs = arsFromCRS(crsList, biMult);
     const total = groups.reduce((s, g) => s + g.count, 0);
     return { a, groups, projectedArs, total, allIds };
-  }, [selectedAsset]);
+  }, [selectedAsset, lens]);
 
   const goAssets = () => {
     setGroupBy("asset");
