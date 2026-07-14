@@ -3,7 +3,7 @@ import { Sparkles, Info, ChevronRight, ChevronLeft, TrendingDown, TrendingUp, Ti
 import { useRisk } from "@/context/RiskContext";
 import { severityHsl } from "@/lib/risk/types";
 import { ticketForObject } from "@/lib/ticketStore";
-import TicketTriageModal from "@/components/dashboards/TicketTriageModal";
+import TicketTriageModal, { assetRemediationGroups } from "@/components/dashboards/TicketTriageModal";
 import { useNav } from "@/context/NavigationContext";
 import { mockAssets } from "@/data/mockData";
 import { mockITAssets, type ITAsset } from "@/data/inventoryMockData";
@@ -27,19 +27,9 @@ const SEV_TEXT: Record<string, string> = {
 };
 
 const bandOf = (s: number) => (s >= 80 ? "Critical" : s >= 60 ? "High" : s >= 30 ? "Medium" : "Low");
-
-// Remediation is per object-type, because different crypto objects share no fix,
-// no owning team, and no change window. Each type becomes its own ticket.
-function remediationFor(type: string): { action: string; team: string } {
-  const t = (type || "").toLowerCase();
-  if (t.includes("certificate")) return { action: "Renew / re-issue", team: "PKI / CA team" };
-  if (t.includes("ssh")) return { action: "Rotate or move to SSH CA", team: "Platform team" };
-  if (t.includes("kms") || t.includes("cloud")) return { action: "Rotate / tighten key policy", team: "Cloud team" };
-  if (t.includes("hsm")) return { action: "Review export / access policy", team: "Key management" };
-  if (t.includes("secret") || t.includes("token")) return { action: "Vault and assign an owner", team: "Owning team" };
-  if (t.includes("encryption") || t.includes("key")) return { action: "Rotate key material", team: "Data platform" };
-  return { action: "Review and remediate", team: "Asset owner" };
-}
+const sing = (label: string) =>
+  label.endsWith("ies") ? label.slice(0, -3) + "y" : label.endsWith("s") ? label.slice(0, -1) : label;
+const grpLabel = (count: number, label: string) => `${count} ${count === 1 ? sing(label) : label}`;
 
 // Projection: recompute ARS as if the high/critical objects were fixed (CRS floored
 // to acceptable). Mirrors the ARS formula in the scoring spec so the number is real.
@@ -201,7 +191,13 @@ export default function EnterpriseRiskScore() {
   const [lens, setLens] = useState<"ers" | "qes">("ers");
   const [groupBy, setGroupBy] = useState<"violation" | "asset">("violation");
   const [selectedAsset, setSelectedAsset] = useState<ITAsset | null>(null);
-  const [triage, setTriage] = useState<{ type?: string; violationId?: string; assetId?: string } | null>(null);
+  const [triage, setTriage] = useState<{
+    type?: string;
+    violationId?: string;
+    assetId?: string;
+    objectIds?: string[];
+    scopeLabel?: string;
+  } | null>(null);
   const [sort, setSort] = useState<SortKey>("impact");
   const [page, setPage] = useState(0);
 
@@ -257,25 +253,22 @@ export default function EnterpriseRiskScore() {
   const drill = useMemo(() => {
     if (!selectedAsset) return null;
     const a = arsFor(selectedAsset);
-    const objs = selectedAsset.cryptoObjectIds
-      .map((id) => mockAssets.find((o) => o.id === id))
-      .filter(Boolean) as any[];
-    const scored = objs.map((o) => ({ o, crs: computeCRS(o).crs }));
-    const needsFix = scored.filter((x) => x.crs >= 60);
-    const groups = new Map<string, { type: string; count: number; maxCrs: number; action: string; team: string }>();
-    for (const x of needsFix) {
-      const type = x.o.type || "Object";
-      const rem = remediationFor(type);
-      const g = groups.get(type) || { type, count: 0, maxCrs: 0, action: rem.action, team: rem.team };
-      g.count += 1;
-      g.maxCrs = Math.max(g.maxCrs, x.crs);
-      groups.set(type, g);
-    }
-    const groupList = [...groups.values()].sort((p, q) => q.maxCrs - p.maxCrs);
+    // Same pool the modal renders, grouped by category, ticketed objects excluded.
+    const groups = assetRemediationGroups(selectedAsset.id);
+    const allIds = groups.flatMap((g) => g.objectIds);
+    const remediatedIds = new Set(allIds);
     const biMult = a.techARS > 0 ? a.ars / a.techARS : 1;
-    const remaining = scored.map((x) => (x.crs >= 60 ? 30 : x.crs));
-    const projectedArs = arsFromCRS(remaining, biMult);
-    return { a, groupList, projectedArs, ticketCount: groupList.length, needsFixCount: needsFix.length };
+    // Projection: recompute ARS with the remediated objects floored to acceptable.
+    const crsList = selectedAsset.cryptoObjectIds
+      .map((id) => {
+        const o = mockAssets.find((x) => x.id === id);
+        if (!o) return null;
+        return remediatedIds.has(id) ? 30 : computeCRS(o).crs;
+      })
+      .filter((v): v is number => v !== null);
+    const projectedArs = arsFromCRS(crsList, biMult);
+    const total = groups.reduce((s, g) => s + g.count, 0);
+    return { a, groups, projectedArs, total, allIds };
   }, [selectedAsset]);
 
   const goAssets = () => {
@@ -582,27 +575,29 @@ export default function EnterpriseRiskScore() {
                 </span>
               </div>
               <div className="text-[10px] text-muted-foreground mb-2">
-                {selectedAsset.ownerTeam} · {drill.needsFixCount} objects to remediate, grouped by fix
+                {selectedAsset.ownerTeam} · {drill.total} objects to remediate, grouped by fix
               </div>
 
-              {drill.groupList.length === 0 ? (
-                <div className="text-[11px] text-muted-foreground py-4">No critical or high objects on this asset.</div>
+              {drill.groups.length === 0 ? (
+                <div className="text-[11px] text-muted-foreground py-4">No open remediation items on this asset.</div>
               ) : (
                 <div className="flex flex-col">
-                  {drill.groupList.map((g) => (
-                    <div key={g.type} className="flex items-center gap-3 py-2.5 border-b border-border/40">
+                  {drill.groups.map((g) => (
+                    <div key={g.category} className="flex items-center gap-3 py-2.5 border-b border-border/40">
                       <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${SEV_DOT[bandOf(g.maxCrs)]}`} />
                       <div className="min-w-0 flex-1">
-                        <div className="text-[12px] text-foreground truncate">
-                          {g.count} {g.type}
-                          {g.count > 1 ? "s" : ""}
-                        </div>
+                        <div className="text-[12px] text-foreground truncate">{grpLabel(g.count, g.label)}</div>
                         <div className="text-[10px] text-muted-foreground truncate">
                           {g.action} · {g.team}
                         </div>
                       </div>
                       <button
-                        onClick={() => setTriage({ assetId: selectedAsset.id })}
+                        onClick={() =>
+                          setTriage({
+                            objectIds: g.objectIds,
+                            scopeLabel: `${selectedAsset.name} · ${grpLabel(g.count, g.label)}`,
+                          })
+                        }
                         className="text-[10px] px-2.5 py-1 rounded-md border border-border text-foreground hover:bg-muted transition-colors flex-shrink-0"
                       >
                         Raise ticket
@@ -612,16 +607,21 @@ export default function EnterpriseRiskScore() {
                 </div>
               )}
 
-              {drill.groupList.length > 0 && (
+              {drill.groups.length > 0 && (
                 <div className="flex items-center gap-2 pt-2.5 mt-2 border-t border-border/40">
                   <span className="text-[10px] text-muted-foreground flex-1">
-                    Clear these {drill.ticketCount} → ARS {drill.a.ars} → {drill.projectedArs}
+                    Clear these {drill.groups.length} → ARS {drill.a.ars} → {drill.projectedArs}
                   </span>
                   <button
-                    onClick={() => setTriage({ assetId: selectedAsset.id })}
+                    onClick={() =>
+                      setTriage({
+                        objectIds: drill.allIds,
+                        scopeLabel: `${selectedAsset.name} · ${drill.total} objects`,
+                      })
+                    }
                     className="text-[10px] px-2.5 py-1 rounded-md border border-teal text-teal hover:bg-teal/10 transition-colors flex-shrink-0"
                   >
-                    Raise all {drill.ticketCount}
+                    Raise all {drill.groups.length}
                   </button>
                 </div>
               )}
@@ -635,6 +635,8 @@ export default function EnterpriseRiskScore() {
           initialType={triage.type as never}
           initialViolationId={triage.violationId}
           initialAssetId={triage.assetId}
+          initialObjectIds={triage.objectIds}
+          initialScopeLabel={triage.scopeLabel}
           onClose={() => setTriage(null)}
         />
       )}
