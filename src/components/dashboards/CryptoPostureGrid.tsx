@@ -392,10 +392,7 @@ export default function CryptoPostureGrid() {
   const aiRiskRows: PostureRow[] = [
     { label: "Over-privileged agents", count: ag.overPrivileged, role: "critical", onClick: goAI },
     { label: "Admin rights, autonomous", count: ag.adminAutonomous, role: "critical", onClick: goAI },
-    { label: "Quantum-vulnerable signature", count: ag.quantumSig, role: "high", onClick: goAI },
-    { label: "Long-lived / not rotated", count: ag.longLived, role: "high", onClick: goAI },
     { label: "Unbounded MCP tool access", count: ag.unboundedMcp, role: "high", onClick: goAI },
-    { label: "Orphaned / no owner", count: ag.orphaned, role: "high", onClick: goAI },
   ];
   const AUTO_VIOLET = "#8b7bd8", COPILOT_BLUE = "#5b8def", BOT_TEAL = "#2fb3a0";
   const aiTypeSlices: DonutSlice[] = [

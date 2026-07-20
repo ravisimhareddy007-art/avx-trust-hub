@@ -1196,7 +1196,7 @@ export default function PolicyBuilderPage() {
   };
 
   const filteredPolicies = policyRules
-    .filter((p) => FEATURES.AI_IDENTITY || !/\bAI\b|agent/i.test(`${p.name} ${p.description}`))
+    .filter((p) => FEATURES.AI_IDENTITY || (p as { type?: string }).type === "AI Agent Token" || !/\bAI\b|agent/i.test(`${p.name} ${p.description}`))
     .filter(
       (p) =>
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -1259,7 +1259,7 @@ export default function PolicyBuilderPage() {
       {tab === "policies" &&
         (() => {
           const builtinRows = policyRules
-            .filter((p) => FEATURES.AI_IDENTITY || !/\bAI\b|agent/i.test(`${p.name} ${p.description}`))
+            .filter((p) => FEATURES.AI_IDENTITY || (p as { type?: string }).type === "AI Agent Token" || !/\bAI\b|agent/i.test(`${p.name} ${p.description}`))
             .map((p) => ({
               source: "Built-in" as const,
               id: p.id,
@@ -1293,6 +1293,7 @@ export default function PolicyBuilderPage() {
             "SSH Key",
             "SSH Certificate",
             "Secrets & Tokens",
+            "AI Agent Token",
             "Encryption Keys",
             "Protocol & Cipher",
             "Library",
