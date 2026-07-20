@@ -1,3 +1,4 @@
+import { aiAgentTokens } from "./aiAgentTokens";
 import { mockGroups } from "./inventoryMockData";
 import { objectViolatesPolicy, type EvalGroup } from "@/lib/policyEval";
 
@@ -219,6 +220,7 @@ export const ESTATE_SUMMARY = {
 } as const;
 
 export const mockAssets: CryptoAsset[] = [
+  ...aiAgentTokens,
   {
     id: "cert-001",
     name: "*.payments.acmecorp.com",
