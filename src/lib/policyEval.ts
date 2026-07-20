@@ -119,6 +119,27 @@ function deriveFieldValue(obj: EvaluableObject, field: string): string | number 
       return cipherEncList(obj);
     case "cipher_mac_list":
       return cipherMacList(obj);
+    case "permission_risk":
+      return (obj as any).agentMeta?.permissionRisk;
+    case "rotation_frequency":
+      return obj.rotationFrequency;
+    case "token_status":
+      return (obj as any).status;
+    case "owner":
+      return (obj as any).owner;
+    case "agent_type":
+      return (obj as any).agentMeta?.agentType;
+    case "signature_algo":
+      return obj.algorithm;
+    case "permissions":
+      return ((obj as any).agentMeta?.permissions || []).join(" ");
+    case "mcp_scope":
+      return [
+        ...(((obj as any).agentMeta?.permissions) || []),
+        ...(((obj as any).agentMeta?.mcpTools) || []),
+      ].join(" ");
+    case "actions_per_day":
+      return (obj as any).agentMeta?.actionsPerDay;
     default:
       return undefined;
   }
