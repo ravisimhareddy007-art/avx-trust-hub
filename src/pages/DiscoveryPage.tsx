@@ -18,7 +18,7 @@ import {
 // FINALIZED DISCOVERY METHODS (Unified Discovery Framework, MVP scope)
 // One scan method per category. Content matches the locked PLT requirements.
 // ============================================================================
-type ConfigKey = 'network' | 'sshauth' | 'ca' | 'cloud' | 'secrets' | 'thirdparty';
+type ConfigKey = 'network' | 'sshauth' | 'ca' | 'cloud' | 'secrets' | 'thirdparty' | 'agent';
 
 interface ScanType { value: string; description: string; config: ConfigKey; discovers: string[]; }
 interface ScanCategory { category: string; icon: React.ComponentType<{ className?: string }>; description: string; types: ScanType[]; }
@@ -77,7 +77,7 @@ const scanCategories: ScanCategory[] = [
     category: 'AI & Agent Identity', icon: Bot,
     description: 'Enumerate AI agent identities, tokens and MCP servers from agent identity providers and NHI platforms',
     types: [{
-      value: 'AI Agent Identity Discovery', config: 'secrets',
+      value: 'AI Agent Identity Discovery', config: 'agent',
       description: 'Metadata-only enumeration of AI agent tokens, non-human identities and MCP server credentials from agent identity providers (Okta, Entra), MCP registries and NHI security platforms.',
       discovers: ['AI Agent Tokens', 'MCP Server Identities', 'Non-Human Identities', 'Agent Permissions'],
     }],
@@ -350,7 +350,7 @@ function deterministicPlan(raw: string): DiscoveryPlan {
   }
 
   // Single-method intents (still carry expert defaults, just one card).
-  const scores: Record<ConfigKey, number> = { network: 0, sshauth: 0, ca: 0, cloud: 0, secrets: 0, thirdparty: 0 };
+  const scores: Record<ConfigKey, number> = { network: 0, sshauth: 0, ca: 0, cloud: 0, secrets: 0, thirdparty: 0, agent: 0 };
   if (/\b(tls|ssl|certificate|cert|endpoint|https|cipher)/.test(t)) scores.network += 1;
   if (/\b(network|subnet|cidr|ip range|ip address|internal network|probe|on the wire)\b/.test(t)) scores.network += 2;
   if (/\b(ssh|host key|user key|authorized key)\b/.test(t)) scores.sshauth += 3;
@@ -1027,6 +1027,7 @@ function ConfigPanel({ configKey, prefill, prefillNonce, secretsProps }: { confi
     case 'cloud':      return <CloudConfig prefill={prefill?.kind === 'cloud' ? prefill : null} nonce={prefillNonce} />;
     case 'secrets':    return <SecretsConfig {...secretsProps} />;
     case 'thirdparty': return <ThirdPartyConfig prefill={prefill?.kind === 'thirdparty' ? prefill : null} nonce={prefillNonce} />;
+    case 'agent':      return <AgentConfig />;
     default: return null;
   }
 }
@@ -1396,6 +1397,67 @@ function CloudConfig({ prefill, nonce }: { prefill: PrefillCloud | null; nonce: 
         </div>
       )}
       {broad && <div className="ml-44 max-w-md"><Advisory>With no region filter, every enabled region for the selected connection is enumerated and can be slow.</Advisory></div>}
+    </div>
+  );
+}
+
+function AgentConfig() {
+  const { setCurrentPage } = useNav();
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ label: string; ok: boolean }[] | null>(null);
+  const [connection, setConnection] = useState('');
+  const [enumerate, setEnumerate] = useState<string[]>(['AI Agent Tokens', 'MCP Server Identities', 'Agent Permissions']);
+
+  const AGENT_CONNECTIONS = [
+    { name: 'Okta AI Agent Identity - Prod', type: 'Okta AI Agent Identity' },
+    { name: 'Astrix Security - Prod', type: 'Astrix Security' },
+  ];
+  const ENUM_OPTIONS = ['AI Agent Tokens', 'MCP Server Identities', 'Non-Human Identities', 'Agent Permissions'];
+  const selected = AGENT_CONNECTIONS.find(c => c.name === connection);
+
+  const runTest = () => {
+    if (!selected) { toast.error('Please select a connection before testing.'); return; }
+    setTesting(true); setTestResult(null);
+    setTimeout(() => { setTesting(false); setTestResult(enumerate.map((t, i) => ({ label: t, ok: i !== 2 }))); }, 1300);
+  };
+
+  return (
+    <div className="space-y-3">
+      <FormRow label="Connection" required info="The configured AI agent identity source to enumerate. Each connection carries its provider, endpoint and credentials. Manage connections under Integrations.">
+        <div className="flex-1 max-w-md space-y-1">
+          <select value={connection} onChange={e => { setConnection(e.target.value); setTestResult(null); }} className={selectCls.replace('max-w-md', 'w-full')}>
+            <option value="">Select a connection…</option>
+            <optgroup label="Agent identity providers">{AGENT_CONNECTIONS.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}</optgroup>
+          </select>
+          <button type="button" onClick={() => setCurrentPage('integrations')} className="text-[10px] text-teal hover:underline">Manage connections in Integrations →</button>
+        </div>
+      </FormRow>
+      {selected && (
+        <FormRow label="Enumerate" info="Which agent-identity object classes to enumerate. Metadata only; token secrets are never extracted. Covers agent tokens, MCP server identities, the non-human identities agents authenticate as, and their granted permissions.">
+          <CheckGroup options={ENUM_OPTIONS} value={enumerate} onChange={setEnumerate} />
+        </FormRow>
+      )}
+      {selected && (
+        <FormRow label="Scope" info="Optional. Restricts enumeration to agents in the given namespace, cluster or owning team.">
+          <input placeholder="k8s-ai-cluster / team (optional)" className={inputCls} />
+        </FormRow>
+      )}
+      <FormRow label="">
+        <button onClick={runTest} disabled={testing || !selected} className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-secondary disabled:opacity-60">
+          {testing ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Testing…</> : <><Check className="w-3.5 h-3.5" /> Test connection</>}
+        </button>
+      </FormRow>
+      {testResult && (
+        <div className="ml-44 max-w-md space-y-1">
+          <p className="text-[10.5px] text-muted-foreground">Accessible object types for this connection:</p>
+          {testResult.map(r => (
+            <div key={r.label} className="flex items-center gap-2 text-[11.5px]">
+              {r.ok ? <Check className="w-3.5 h-3.5 text-teal" /> : <X className="w-3.5 h-3.5 text-amber" />}
+              <span className={r.ok ? 'text-foreground' : 'text-amber'}>{r.label}{!r.ok && ' — not accessible (partial visibility)'}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
