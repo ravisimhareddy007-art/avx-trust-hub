@@ -1,3 +1,4 @@
+import { aiAgentITAssets } from "./aiAgentTokens";
 import type { CryptoAsset } from "./mockData";
 // ─── IT Asset Model ──────────────────────────────────────────────────────────
 export interface ITAsset {
@@ -27,6 +28,7 @@ export interface ITAsset {
 }
 
 export const mockITAssets: ITAsset[] = [
+  ...aiAgentITAssets,
   {
     id: "it-pay-01",
     name: "payments-api.acmecorp.com",
