@@ -544,7 +544,7 @@ export default function CryptoPostureGrid() {
           views={[
             {
               label: "Top risks",
-              hero: { value: ag.overPrivileged, caption: "over-privileged (NHI5)", role: "critical" },
+              hero: { value: ag.overPrivileged, caption: "over-privileged", role: "critical" },
               distribution: { type: "rows", rows: aiRiskRows },
             },
             {
