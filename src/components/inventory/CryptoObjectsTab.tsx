@@ -753,6 +753,8 @@ function CellValue({ col, co }: { col: ColDef; co: CryptoAsset }) {
     }
     // ── All Identities adaptive Key Attribute ──
     case "keyAttribute": {
+      if (co.type === "AI Agent Token")
+        return <span className="text-muted-foreground text-[10px]">Active {co.agentMeta?.lastActivity ?? "—"}</span>;
       if (co.type === "API Key / Secret")
         return <span className="text-muted-foreground text-[10px]">Used {co.secret?.lastUsed ?? co.lastRotated}</span>;
       if (co.type === "SSH Key")
@@ -2496,7 +2498,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
       <div className="flex-1 min-h-0 flex flex-col p-3 gap-3 overflow-hidden">
         {/* Type tabs */}
         <div className="flex items-center gap-1 border-b border-border pb-2 flex-shrink-0 overflow-x-auto">
-          {TYPE_FILTERS.filter((t) => FEATURES.AI_IDENTITY || t.key !== "AI Agent Token").map((t) => {
+          {TYPE_FILTERS.map((t) => {
             const cnt = t.key === "All" ? allAssets.length : allAssets.filter((a) => a.type === t.key).length;
             return (
               <button
@@ -2764,7 +2766,14 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
       </div>
 
       {/* Detail side panel */}
-      {detailAsset && (
+      {detailAsset && (detailAsset.type === "AI Agent Token" ? (
+        <AgentDetailPanel
+          agent={detailAsset}
+          onClose={() => setDetailAsset(null)}
+          onCreateTicket={() => openTicket(detailAsset, "Rotate & right-size token")}
+          licensed={true}
+        />
+      ) : (
         <DetailPanel
           co={detailAsset}
           onClose={() => setDetailAsset(null)}
@@ -2775,7 +2784,7 @@ export default function CryptoObjectsTab({ onCreateTicket }: Props) {
           setFilters={setFilters}
           setCurrentPage={setCurrentPage}
         />
-      )}
+      ))}
 
       {/* Ticket draft modal */}
       {ticketAsset && (
