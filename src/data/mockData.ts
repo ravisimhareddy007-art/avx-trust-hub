@@ -32,7 +32,8 @@ export interface CryptoAsset {
     | "Encryption Key"
     | "API Key / Secret"
     | "Cloud KMS Key"
-    | "HSM Key";
+    | "HSM Key"
+    | "AI Agent Token";
   commonName: string;
   caIssuer: string;
   algorithm: string;
