@@ -16,6 +16,9 @@ const INTEGRATIONS: {
   connected: boolean;
   fields: { label: string; placeholder: string; secret?: boolean }[];
 }[] = [
+  // AI Agent Identity
+  { id: 'okta-agent', name: 'Okta AI Agent Identity', category: 'AI Agent Identity', description: 'Enumerate AI agent and non-human identities, OAuth token grants and scopes from Okta Identity Governance.', connected: true, fields: [{ label: 'Okta Domain', placeholder: 'acmecorp.okta.com' }, { label: 'API Token', placeholder: 'SSWS ...', secret: true }] },
+  { id: 'astrix', name: 'Astrix Security', category: 'AI & Agent Identity', description: 'Discover AI agent tokens, MCP server identities and their permissions and access paths across cloud, SaaS and MCP registries.', connected: true, fields: [{ label: 'Tenant URL', placeholder: 'https://app.astrix.security' }, { label: 'API Key', placeholder: '••••••••', secret: true }] },
   // Certificate Authority (Discovery MVP: GlobalSign Atlas only)
   { id: 'globalsign', name: 'GlobalSign Atlas', category: 'Certificate Authorities', description: 'Pulls issued certificate inventory, revocation status and chain of trust from GlobalSign Atlas.', connected: true, fields: [{ label: 'API Key', placeholder: 'gs-api-...', secret: true }, { label: 'API Secret', placeholder: '••••••••', secret: true }, { label: 'Account ID', placeholder: 'acct-...' }] },
   // Cloud Providers (Discovery MVP: AWS and Azure)
@@ -36,7 +39,7 @@ const INTEGRATIONS: {
 ];
 const CATEGORIES = [
   'Certificate Authorities', 'Cloud Providers', 'Secrets & Vaults', 'HSM',
-  'ITSM & ChatOps', 'Vulnerability Management',
+  'ITSM & ChatOps', 'Vulnerability Management', 'AI Agent Identity',
 ];
 const LAST_SYNC: Record<string, string> = {
   globalsign: '15 min ago', aws: '5 min ago', azure: '12 min ago',
@@ -44,6 +47,8 @@ const LAST_SYNC: Record<string, string> = {
 };
 // ─── Mock instances ──────────────────────────────────────────────────────────
 const MOCK_INSTANCES = [
+  { id: 'inst-ai-1', name: 'Okta AI Agent Identity - Prod', subtitle: 'acmecorp.okta.com', integration: 'Okta AI Agent Identity', category: 'AI & Agent Identity', status: 'connected' as const, discoveredAssets: 16, lastSync: '2 min ago', error: null },
+  { id: 'inst-ai-2', name: 'Astrix Security - Prod', subtitle: 'app.astrix.security', integration: 'Astrix Security', category: 'AI & Agent Identity', status: 'connected' as const, discoveredAssets: 16, lastSync: '5 min ago', error: null },
   { id: 'inst-1', name: 'AWS Prod - Org Account', subtitle: 'sts.us-east-1.amazonaws.com', integration: 'Amazon Web Services', category: 'Cloud Providers', status: 'connected' as const, discoveredAssets: 179, lastSync: '4 min ago', error: null },
   { id: 'inst-2', name: 'Azure Prod - Tenant', subtitle: 'management.azure.com', integration: 'Microsoft Azure', category: 'Cloud Providers', status: 'connected' as const, discoveredAssets: 64, lastSync: '9 min ago', error: null },
   { id: 'inst-3', name: 'GlobalSign Atlas - Prod', subtitle: 'emea.api.globalsign.com', integration: 'GlobalSign Atlas', category: 'Certificate Authorities', status: 'error' as const, discoveredAssets: 0, lastSync: '1 hour ago', error: 'Authentication failed: API key expired or revoked. Update credentials to restore sync.' },
