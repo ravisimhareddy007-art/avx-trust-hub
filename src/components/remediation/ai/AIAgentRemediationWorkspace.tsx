@@ -1432,12 +1432,6 @@ export default function AIAgentRemediationWorkspace() {
         />
       )}
 
-      <EosGuardianFloat
-        wsTab={wsTab}
-        selectedAgent={selectedAgent}
-        pendingHITL={pendingHITL}
-        unsanctionedMCP={unsanctionedMCP}
-      />
     </div>
   );
 }

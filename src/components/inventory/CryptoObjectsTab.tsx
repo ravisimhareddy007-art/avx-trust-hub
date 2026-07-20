@@ -909,6 +909,12 @@ function CellValue({ col, co }: { col: ColDef; co: CryptoAsset }) {
       );
     case "caIssuer":
       return <span className="text-[10px] text-muted-foreground truncate">{co.caIssuer}</span>;
+    case "type":
+      return (
+        <span className="text-muted-foreground truncate">
+          {co.type === "AI Agent Token" ? (co.agentMeta?.agentType ?? co.type) : co.type}
+        </span>
+      );
     default:
       return <span className="text-muted-foreground truncate">{val != null && val !== "" ? String(val) : "—"}</span>;
   }
