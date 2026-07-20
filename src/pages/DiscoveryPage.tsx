@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import {
   Search, RefreshCw, Plus, Play, Database, Radar, ShieldCheck, Cloud, Lock,
   Activity, Copy, Edit, Calendar, Filter, X, Check, AlertCircle, AlertTriangle, ArrowLeft, Info, Sparkles,
+  Bot,
 } from 'lucide-react';
 
 // ============================================================================
@@ -70,6 +71,15 @@ const scanCategories: ScanCategory[] = [
       value: 'Third-Party Data Ingestion', config: 'thirdparty',
       description: 'Imports vulnerability scanner findings (Qualys, Tenable) and CBOM inventory (CycloneDX 1.6, including QTH).',
       discovers: ['Vulnerability Findings', 'CBOM Components'],
+    }],
+  },
+  {
+    category: 'AI & Agent Identity', icon: Bot,
+    description: 'Enumerate AI agent identities, tokens and MCP servers from agent identity providers and NHI platforms',
+    types: [{
+      value: 'AI Agent Identity Discovery', config: 'secrets',
+      description: 'Metadata-only enumeration of AI agent tokens, non-human identities and MCP server credentials from agent identity providers (Okta, Entra), MCP registries and NHI security platforms.',
+      discovers: ['AI Agent Tokens', 'MCP Server Identities', 'Non-Human Identities', 'Agent Permissions'],
     }],
   },
 ];
