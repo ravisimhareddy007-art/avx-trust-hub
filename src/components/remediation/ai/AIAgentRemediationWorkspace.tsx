@@ -53,7 +53,9 @@ type Finding = {
   action: string;
 };
 
-const AI_AGENTS: (typeof mockAssets[number] & { crs: number })[] = [];
+const AI_AGENTS: (typeof mockAssets[number] & { crs: number })[] = mockAssets
+  .filter((a) => a.type === "AI Agent Token" && a.policyViolations > 0)
+  .map((a) => ({ ...a, crs: computeCRS(a).crs }));
 
 
 const HITL_QUEUE: HitlItem[] = [
