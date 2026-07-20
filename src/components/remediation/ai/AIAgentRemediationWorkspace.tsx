@@ -276,31 +276,6 @@ function buildAgentInitialMsg(agent: CryptoAsset) {
   return `${agent.name} posture is acceptable. CRS: ${crs}/100. Monitor for scope creep as usage scales.`;
 }
 
-function buildGuardianInitialMsg(wsTab: WTab, selectedAgent: CryptoAsset | null, pendingHITL: number, unsanctionedMCP: number) {
-  if (wsTab === 'agents') {
-    return selectedAgent
-      ? buildAgentInitialMsg(selectedAgent)
-      : 'Select an agent and I’ll explain its CRS, connected services, and the most urgent remediation path.';
-  }
-  if (wsTab === 'hitl') {
-    return pendingHITL > 0
-      ? `${pendingHITL} high-risk action${pendingHITL === 1 ? '' : 's'} currently require human approval. I can summarise the queue or highlight the most critical requests first.`
-      : 'The HITL queue is clear. I can still summarise recent denied and approved requests if you want an audit recap.';
-  }
-  return unsanctionedMCP > 0
-    ? `${unsanctionedMCP} MCP server${unsanctionedMCP === 1 ? '' : 's'} remain outside the Eos MCP Proxy. I can point out the highest-risk servers to protect first.`
-    : 'All visible MCP servers are protected behind the gateway. I can explain what controls the proxy is enforcing.';
-}
-
-function guardianChips(wsTab: WTab, selectedAgent: CryptoAsset | null) {
-  if (wsTab === 'agents') {
-    return selectedAgent
-      ? ['show findings', 'create ticket', 'rotate credential', 'right-size']
-      : ['how to use this', 'what is crs', 'show critical agents'];
-  }
-  if (wsTab === 'hitl') return ['show pending', 'summarize critical', 'approve safe', 'slack approvers'];
-  return ['show unsanctioned', 'protect all', 'explain gateway', 'reduce blast radius'];
-}
 
 function RiskGauge({ score }: { score: number }) {
   const radius = 42;
