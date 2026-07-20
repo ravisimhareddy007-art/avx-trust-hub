@@ -40,6 +40,17 @@ export const OPERATORS: OperatorDef[] = [
 
 // Policy type label -> available fields. Labels match the create-policy selector.
 export const FIELDS_BY_POLICY_TYPE: Record<string, FieldDef[]> = {
+  "AI Agent Token": [
+    { id: "permission_risk", label: "Permission Risk", kind: "enum", options: ["Over-privileged", "Right-sized", "Minimal"], computed: true },
+    { id: "rotation_frequency", label: "Rotation Frequency", kind: "enum", options: ["Never", "30 days", "90 days", "180 days"] },
+    { id: "token_status", label: "Token Status", kind: "enum", options: ["Active", "Expiring", "Expired", "Orphaned"], computed: true },
+    { id: "owner", label: "Owner", kind: "text" },
+    { id: "agent_type", label: "Agent Type", kind: "enum", options: ["Autonomous Agent", "Copilot", "Service Bot", "MCP Server", "Orchestrator", "Pipeline Agent"] },
+    { id: "signature_algo", label: "Signature Algorithm", kind: "enum", options: ["RSA-2048", "ECC P-256", "ECC P-384", "Ed25519", "HMAC-SHA256"], derived: true },
+    { id: "permissions", label: "Permissions (grant string)", kind: "text" },
+    { id: "mcp_scope", label: "MCP Tool Scope", kind: "text" },
+    { id: "actions_per_day", label: "Actions per Day", kind: "number", computed: true },
+  ],
   "Certificate Policy": [
     { id: "expiry_days", label: "Expiry Days Remaining", kind: "number", unit: "days", computed: true },
     {
