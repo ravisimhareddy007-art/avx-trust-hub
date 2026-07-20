@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { usePersona, Persona } from "@/context/PersonaContext";
 import { remediationPages, policyPages, useNav } from "@/context/NavigationContext";
 import { useLicensing } from "@/context/LicensingContext";
+import { mockAssets } from "@/data/mockData";
 import {
   LayoutDashboard,
   Search,
@@ -79,12 +80,14 @@ export default function AppSidebar() {
 
   // Remediation is a licensed add-on. Each object-type module appears only when
   // its license is enabled (Platform Core -> License Management).
+  const aiRemediationCount = mockAssets.filter((a) => a.type === "AI Agent Token" && a.policyViolations > 0).length;
+
   const remediationChildren = [
     ...(licensed.clm
       ? [{ id: "remediation-clm", label: "Certificates (CLM)", page: "remediation-clm", count: 40 }]
       : []),
     ...(licensed.ssh ? [{ id: "remediation-ssh", label: "SSH Keys & Certs", page: "remediation-ssh", count: 7 }] : []),
-    ...(licensed.ai ? [{ id: "remediation-ai", label: "AI Agent Tokens", page: "remediation-ai", count: 7 }] : []),
+    ...(licensed.ai ? [{ id: "remediation-ai", label: "AI Agent Tokens", page: "remediation-ai", count: aiRemediationCount }] : []),
     ...(licensed.secrets
       ? [{ id: "remediation-secrets", label: "Secrets", page: "remediation-secrets", count: 3, icon: Lock }]
       : []),
