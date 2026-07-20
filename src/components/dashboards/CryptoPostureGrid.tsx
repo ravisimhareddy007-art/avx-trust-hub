@@ -1,6 +1,6 @@
 import React from "react";
 import { useNav } from "@/context/NavigationContext";
-import { FileBadge, FileKey, Key, Server, Lock, Network, Package, BadgeCheck } from "lucide-react";
+import { FileBadge, FileKey, Key, Server, Lock, Network, Package, BadgeCheck, Bot } from "lucide-react";
 import PostureTile, { PostureRow, DonutSlice, Bar } from "./PostureTile";
 
 const CORAL = "hsl(var(--coral))",
@@ -36,6 +36,19 @@ const POSTURE = {
   hsm: { total: 1240, extractable: 27, nonSensitive: 14, weakAlgo: 62, utimaco: 604, crypto4a: 412, fortanix: 224 },
   sshCerts: { total: 4120, validity: [2680, 750, 460, 230], longLived: 1440, unmanagedCA: 148, broadForward: 512 },
   secrets: { total: 6240, act: 3980, unrotated: 3210, orphaned: 512, noPolicy: 258 },
+  // AI agent identities are non-human identities. Posture mirrors the OWASP NHI
+  // Top 10 (2025) plus OWASP Agentic/LLM06 and the PQC lens, the same framing
+  // Astrix / Orca / Saviynt use for agent + NHI posture reporting.
+  ai: {
+    total: 3216,
+    overPrivileged: 1184, // OWASP NHI5 Overprivileged NHI
+    adminAutonomous: 208, // OWASP LLM06 Excessive Agency | MITRE ATLAS
+    quantumSig: 1020, // NIST PQC (FIPS 203/204/205)
+    longLived: 472, // OWASP NHI7 Long-Lived Secrets
+    unboundedMcp: 88, // OWASP Agentic AI
+    orphaned: 152, // OWASP NHI1 Improper Offboarding
+    byType: { autonomous: 940, copilot: 720, serviceBot: 640, mcpServer: 410, orchestrator: 306, pipeline: 200 },
+  },
   // Estate-scale protocol and library figures. The crypto-stack inventory holds
   // the discovered sample; the dashboard reports estate totals. Drill-through
   // still routes to the live crypto-stack views.
@@ -373,6 +386,27 @@ export default function CryptoPostureGrid() {
     },
   ];
 
+  // AI agent identities (NHI): top violations, OWASP NHI Top 10 + Agentic lens.
+  const ag = POSTURE.ai;
+  const goAI = () => go({ tab: "identities", type: "AI Agent Token" });
+  const aiRiskRows: PostureRow[] = [
+    { label: "Over-privileged agents", count: ag.overPrivileged, role: "critical", onClick: goAI },
+    { label: "Admin rights, autonomous", count: ag.adminAutonomous, role: "critical", onClick: goAI },
+    { label: "Quantum-vulnerable signature", count: ag.quantumSig, role: "high", onClick: goAI },
+    { label: "Long-lived / not rotated", count: ag.longLived, role: "high", onClick: goAI },
+    { label: "Unbounded MCP tool access", count: ag.unboundedMcp, role: "high", onClick: goAI },
+    { label: "Orphaned / no owner", count: ag.orphaned, role: "high", onClick: goAI },
+  ];
+  const AUTO_VIOLET = "#8b7bd8", COPILOT_BLUE = "#5b8def", BOT_TEAL = "#2fb3a0";
+  const aiTypeSlices: DonutSlice[] = [
+    { label: "Autonomous", count: ag.byType.autonomous, stroke: AUTO_VIOLET, text: "text-muted-foreground", onClick: goAI },
+    { label: "Copilot", count: ag.byType.copilot, stroke: COPILOT_BLUE, text: "text-muted-foreground", onClick: goAI },
+    { label: "Service Bot", count: ag.byType.serviceBot, stroke: BOT_TEAL, text: "text-teal", onClick: goAI },
+    { label: "MCP Server", count: ag.byType.mcpServer, stroke: AMBER, text: "text-amber", onClick: goAI },
+    { label: "Orchestrator", count: ag.byType.orchestrator, stroke: CORAL, text: "text-coral", onClick: goAI },
+    { label: "Pipeline", count: ag.byType.pipeline, stroke: MUTED, text: "text-muted-foreground", onClick: goAI },
+  ];
+
   return (
     <div className="bg-card rounded-xl border border-border p-5">
       <div className="flex items-center justify-between mb-3">
@@ -382,7 +416,7 @@ export default function CryptoPostureGrid() {
             Every number is a count. Click to drill into inventory with filters pre-applied.
           </p>
         </div>
-        <span className="text-[10px] text-muted-foreground">8 categories</span>
+        <span className="text-[10px] text-muted-foreground">9 categories</span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -502,6 +536,34 @@ export default function CryptoPostureGrid() {
           hero={{ value: s.act, caption: "need action", role: "critical" }}
           distribution={{ type: "rows", rows: secretRows }}
           onOpen={() => go({ tab: "identities", type: "API Key / Secret" })}
+        />
+
+        <PostureTile
+          icon={Bot}
+          label="AI Agent Identities"
+          total={ag.total}
+          caption={"Non-human identities \u00b7 OWASP NHI Top 10 lens"}
+          hero={{ value: ag.overPrivileged, caption: "over-privileged", role: "critical" }}
+          views={[
+            {
+              label: "Top risks",
+              hero: { value: ag.overPrivileged, caption: "over-privileged (NHI5)", role: "critical" },
+              distribution: { type: "rows", rows: aiRiskRows },
+            },
+            {
+              label: "By type",
+              hero: { value: ag.byType.mcpServer, caption: "MCP servers", role: "neutral" },
+              distribution: {
+                type: "donut",
+                centerValue: ag.total.toLocaleString(),
+                centerLabel: "agents",
+                centerClass: "text-foreground",
+                slices: aiTypeSlices,
+              },
+            },
+          ]}
+          footerNote="Mapped to OWASP NHI Top 10 & Agentic AI"
+          onOpen={goAI}
         />
 
         <PostureTile
