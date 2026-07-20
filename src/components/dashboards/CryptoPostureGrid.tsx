@@ -549,7 +549,7 @@ export default function CryptoPostureGrid() {
             },
             {
               label: "By type",
-              hero: { value: ag.byType.mcpServer, caption: "MCP servers", role: "neutral" },
+              
               distribution: {
                 type: "donut",
                 centerValue: ag.total.toLocaleString(),
@@ -559,7 +559,7 @@ export default function CryptoPostureGrid() {
               },
             },
           ]}
-          footerNote="Mapped to OWASP NHI Top 10 & Agentic AI"
+          
           onOpen={goAI}
         />
 
