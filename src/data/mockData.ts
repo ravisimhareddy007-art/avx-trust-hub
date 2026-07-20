@@ -19363,8 +19363,10 @@ for (const a of mockAssets) {
 
 // ── Applicability: policy type → asset type ──
 function policyTypeMatchesAsset(polType: string, aType: CryptoAsset["type"]): boolean {
+  const t = (polType || "").toLowerCase();
+  if (aType === "AI Agent Token") return t.startsWith("ai agent");
+  if (t.startsWith("ai agent")) return false;
   if (!polType) return true;
-  const t = polType.toLowerCase();
   if (t.startsWith("ssh certificate")) return aType === "SSH Certificate";
   if (t.startsWith("ssh")) return aType === "SSH Key";
   if (t.startsWith("encryption")) return aType === "Encryption Key";
