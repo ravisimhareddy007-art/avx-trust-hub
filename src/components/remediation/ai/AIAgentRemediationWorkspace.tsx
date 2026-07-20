@@ -12,21 +12,13 @@ import {
   ChevronUp,
   CheckCircle2,
   Lock,
-  Minus,
   MoreVertical,
   Search,
-  Send,
   Server,
   X,
-  Zap,
 } from 'lucide-react';
 
 type WTab = 'agents' | 'hitl' | 'mcp';
-
-type ChatMessage = {
-  role: 'guardian' | 'user';
-  text: string;
-};
 
 type HitlItem = {
   id: string;
