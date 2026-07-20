@@ -16,6 +16,9 @@ const INTEGRATIONS: {
   connected: boolean;
   fields: { label: string; placeholder: string; secret?: boolean }[];
 }[] = [
+  // AI Agent Identity
+  { id: 'okta-agent', name: 'Okta AI Agent Identity', category: 'AI Agent Identity', description: 'Enumerate AI agent and non-human identities, OAuth token grants and scopes from Okta Identity Governance.', connected: true, fields: [{ label: 'Okta Domain', placeholder: 'acmecorp.okta.com' }, { label: 'API Token', placeholder: 'SSWS ...', secret: true }] },
+  { id: 'astrix', name: 'Astrix Security', category: 'AI & Agent Identity', description: 'Discover AI agent tokens, MCP server identities and their permissions and access paths across cloud, SaaS and MCP registries.', connected: true, fields: [{ label: 'Tenant URL', placeholder: 'https://app.astrix.security' }, { label: 'API Key', placeholder: '••••••••', secret: true }] },
   // Certificate Authority (Discovery MVP: GlobalSign Atlas only)
   { id: 'globalsign', name: 'GlobalSign Atlas', category: 'Certificate Authorities', description: 'Pulls issued certificate inventory, revocation status and chain of trust from GlobalSign Atlas.', connected: true, fields: [{ label: 'API Key', placeholder: 'gs-api-...', secret: true }, { label: 'API Secret', placeholder: '••••••••', secret: true }, { label: 'Account ID', placeholder: 'acct-...' }] },
   // Cloud Providers (Discovery MVP: AWS and Azure)
