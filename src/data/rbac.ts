@@ -188,6 +188,34 @@ export const TAXONOMY: DomainDef[] = [
         actions: ["read", "create", "update"],
         note: "MVP remediates nothing directly. It raises a ticket in the customer ITSM.",
       },
+      {
+        resource: "certificate",
+        label: "Certificate Remediation",
+        actions: ["read", "execute"],
+        sensitive: ["execute"],
+        note: "Execute covers renew, reissue and push on a certificate. Non-destructive: it never invalidates a trusted object.",
+      },
+      {
+        resource: "revocation",
+        label: "Certificate Revocation",
+        actions: ["read", "execute", "approve"],
+        sensitive: ["execute", "approve"],
+        note: "Execute initiates a revocation. Approve authorises a pending one. Maker and checker of a destructive action; they must never share a role.",
+      },
+      {
+        resource: "key",
+        label: "Key Remediation",
+        actions: ["read", "execute"],
+        sensitive: ["execute"],
+        note: "Execute covers rotate and push for cloud KMS, HSM and SSH keys.",
+      },
+      {
+        resource: "secret",
+        label: "Secret Remediation",
+        actions: ["read", "execute"],
+        sensitive: ["execute"],
+        note: "Execute covers rotate for vaulted secrets.",
+      },
     ],
   },
   {
@@ -329,6 +357,11 @@ export const TOXIC_PAIRS: ToxicPair[] = [
     a: "platform.api_key:create",
     b: "platform.role:grant",
     reason: "Mint a service account and grant it a role. Unattributable backdoor",
+  },
+  {
+    a: "remediation.revocation:execute",
+    b: "remediation.revocation:approve",
+    reason: "Initiate a certificate revocation and approve it yourself",
   },
 ];
 
@@ -498,9 +531,18 @@ export interface Principal {
   source?: string;
 }
 
+export type Environment = "production" | "non_production";
+
+export const ENVIRONMENTS: { id: Environment; label: string }[] = [
+  { id: "production", label: "Production" },
+  { id: "non_production", label: "Non-production" },
+];
+
 export interface Scope {
   tenantId: string;
   businessUnitIds: string[]; // empty = every business unit in the tenant
+  environments?: Environment[]; // empty/undefined = every environment
+  assetGroupIds?: string[]; // empty/undefined = every asset in scope; else scoped to these inventory asset groups
 }
 
 export interface Binding {
@@ -735,10 +777,292 @@ export const describeScope = (scope: Scope): string => {
   const bu = scope.businessUnitIds.length
     ? scope.businessUnitIds.map((id) => BUSINESS_UNITS.find((b) => b.id === id)?.name ?? id).join(", ")
     : "All business units";
-  return `${t} / ${bu}`;
+  const parts = [`${t} / ${bu}`];
+  if (scope.assetGroupIds?.length) {
+    parts.push(scope.assetGroupIds.map((id) => ASSET_GROUPS.find((g) => g.id === id)?.name ?? id).join(", "));
+  }
+  if (scope.environments?.length && scope.environments.length < ENVIRONMENTS.length) {
+    parts.push(scope.environments.map((e) => ENVIRONMENTS.find((x) => x.id === e)?.label ?? e).join(" + "));
+  }
+  return parts.join(" · ");
 };
 
 export const scopedObjectCount = (scope: Scope): number => {
   const ids = scope.businessUnitIds.length ? scope.businessUnitIds : Object.keys(CRYPTO_OBJECT_COUNTS);
   return ids.reduce((sum, id) => sum + (CRYPTO_OBJECT_COUNTS[id] ?? 0), 0);
+};
+
+/* ------------------------------------------------------------------ */
+/* Inventory asset groups (Model B: dynamic groups over IT assets)     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Groups are defined over IT ASSETS, with membership driven by object-level
+ * conditions. Remediation is scoped to a group; the verbs then act on the
+ * crypto objects associated with the assets in that group. Scope is asset-level,
+ * action is object-level, authority flows asset -> object.
+ */
+export interface AssetGroup {
+  id: string;
+  name: string;
+  /** Human-readable form of the object-level condition that defines membership. */
+  condition: string;
+  environment: Environment;
+  businessUnitId: string;
+  assetCount: number; // IT assets currently matching the condition
+  objectCount: number; // crypto objects associated with those assets
+  /** Of objectCount, the objects also associated with assets OUTSIDE this group (multi-homed). */
+  sharedObjectCount: number;
+}
+
+export const ASSET_GROUPS: AssetGroup[] = [
+  {
+    id: "ag_pay_nonprod",
+    name: "Payments · Non-production",
+    condition: "app = payments AND env = non-prod",
+    environment: "non_production",
+    businessUnitId: "bu_amer",
+    assetCount: 214,
+    objectCount: 1863,
+    sharedObjectCount: 41,
+  },
+  {
+    id: "ag_pay_prod",
+    name: "Payments · Production",
+    condition: "app = payments AND env = prod",
+    environment: "production",
+    businessUnitId: "bu_amer",
+    assetCount: 168,
+    objectCount: 2410,
+    sharedObjectCount: 137,
+  },
+  {
+    id: "ag_edge_lb_prod",
+    name: "Edge load balancers · Production",
+    condition: "role = load-balancer AND env = prod",
+    environment: "production",
+    businessUnitId: "bu_emea",
+    assetCount: 92,
+    objectCount: 1547,
+    sharedObjectCount: 268, // wildcard certs fronting many hosts
+  },
+  {
+    id: "ag_k8s_dev",
+    name: "Kubernetes clusters · Dev/Test",
+    condition: "platform = kubernetes AND env = non-prod",
+    environment: "non_production",
+    businessUnitId: "bu_apac",
+    assetCount: 340,
+    objectCount: 2201,
+    sharedObjectCount: 22,
+  },
+  {
+    id: "ag_legacy_ca",
+    name: "Assets on legacy CA · All environments",
+    condition: "object.tls_certificate.issuer IN (legacy-root-g1, legacy-root-g2)",
+    environment: "production",
+    businessUnitId: "bu_corp",
+    assetCount: 611,
+    objectCount: 894,
+    sharedObjectCount: 73,
+  },
+];
+
+/** How a remediation verb resolves for an object that spans the scope boundary. */
+export type MultiHomedPolicy = "permissive" | "strict" | "warn";
+/** Non-prod-scoped authority must not silently reach into prod via a shared object. */
+export const MULTI_HOMED_POLICY: MultiHomedPolicy = "warn";
+
+/** Resolve a binding scope down to the crypto objects it actually covers. */
+export const resolveScopeObjects = (
+  scope: Scope,
+): { assetCount: number; objectCount: number; sharedObjectCount: number } => {
+  let groups = ASSET_GROUPS;
+  if (scope.assetGroupIds?.length) groups = groups.filter((g) => scope.assetGroupIds!.includes(g.id));
+  if (scope.businessUnitIds.length) groups = groups.filter((g) => scope.businessUnitIds.includes(g.businessUnitId));
+  if (scope.environments?.length) groups = groups.filter((g) => scope.environments!.includes(g.environment));
+  return groups.reduce(
+    (acc, g) => ({
+      assetCount: acc.assetCount + g.assetCount,
+      objectCount: acc.objectCount + g.objectCount,
+      sharedObjectCount: acc.sharedObjectCount + g.sharedObjectCount,
+    }),
+    { assetCount: 0, objectCount: 0, sharedObjectCount: 0 },
+  );
+};
+
+/** Membership sizes, so a group binding can report how many people it actually moves. */
+export const GROUP_MEMBERSHIP: Record<string, number> = {
+  grp_pki_ops: 47,
+  grp_grc: 12,
+  grp_internal_audit: 6,
+};
+
+/** How many end users a binding to this principal actually affects. */
+export const principalReach = (principalId: string): number => {
+  const p = PRINCIPALS.find((x) => x.id === principalId);
+  if (!p) return 0;
+  if (p.type === "group") return GROUP_MEMBERSHIP[principalId] ?? 1;
+  return 1;
+};
+
+/* ------------------------------------------------------------------ */
+/* Intent-based access                                                 */
+/* ------------------------------------------------------------------ */
+/**
+ * The admin states an outcome in one sentence:
+ *   <group> can <capabilities> on <object types> in <asset group + environment>.
+ * compileIntent() expands that to concrete atoms against the SAME taxonomy the
+ * matrix uses, resolves the object set, and checks SoD. Intent compiles TO atoms;
+ * it does not replace them. The matrix stays the ground truth for auditors.
+ */
+
+/** Object types that carry a remediation lifecycle. */
+export const REMEDIABLE_CERTS = ["tls_certificate", "ssh_certificate", "code_signing_certificate", "k8s_certificate"];
+export const REMEDIABLE_KEYS = ["ssh_key", "kms_key", "hsm_key"];
+export const REMEDIABLE_SECRETS = ["secret"];
+export const REMEDIABLE_RESOURCES = [...REMEDIABLE_CERTS, ...REMEDIABLE_KEYS, ...REMEDIABLE_SECRETS];
+
+const remediationFamily = (resource: string): string | null => {
+  if (REMEDIABLE_CERTS.includes(resource)) return "certificate";
+  if (REMEDIABLE_KEYS.includes(resource)) return "key";
+  if (REMEDIABLE_SECRETS.includes(resource)) return "secret";
+  return null;
+};
+
+export interface Capability {
+  id: string;
+  label: string;
+  /** Reads as a verb phrase inside the intent sentence. */
+  phrase: string;
+  hint: string;
+  destructive?: boolean;
+  /** True for the checker half of a maker-checker pair. */
+  isApprover?: boolean;
+  /** Atoms this capability grants for the chosen object types. */
+  atoms: (resources: string[]) => string[];
+}
+
+const uniq = (xs: string[]) => [...new Set(xs)];
+
+export const CAPABILITIES: Capability[] = [
+  {
+    id: "cap_view",
+    label: "View",
+    phrase: "view",
+    hint: "See the objects and their posture. No mutation.",
+    atoms: (rs) => rs.map((r) => `inventory.${r}:read`),
+  },
+  {
+    id: "cap_remediate",
+    label: "Remediate",
+    phrase: "remediate",
+    hint: "Renew, reissue, rotate and push. Non-destructive lifecycle repair.",
+    atoms: (rs) =>
+      uniq(
+        rs
+          .map(remediationFamily)
+          .filter((f): f is string => !!f)
+          .map((f) => `remediation.${f}:execute`),
+      ),
+  },
+  {
+    id: "cap_revoke",
+    label: "Revoke (initiate)",
+    phrase: "initiate revocation of",
+    hint: "Destructive. Invalidates a trusted certificate. Requires a separate approver.",
+    destructive: true,
+    atoms: (rs) => (rs.some((r) => REMEDIABLE_CERTS.includes(r)) ? ["remediation.revocation:execute"] : []),
+  },
+  {
+    id: "cap_approve_revoke",
+    label: "Approve revocations",
+    phrase: "approve revocations of",
+    hint: "The checker. Authorises a pending revocation someone else initiated.",
+    isApprover: true,
+    atoms: () => ["remediation.revocation:approve"],
+  },
+  {
+    id: "cap_manage_lifecycle",
+    label: "Manage lifecycle",
+    phrase: "manage the lifecycle of",
+    hint: "Create, update and delete inventory records for these object types.",
+    atoms: (rs) => uniq(rs.flatMap((r) => [`inventory.${r}:create`, `inventory.${r}:update`, `inventory.${r}:delete`])),
+  },
+  {
+    id: "cap_request_ticket",
+    label: "Request via ticket",
+    phrase: "raise remediation tickets for",
+    hint: "No direct action. Opens a change ticket in the customer ITSM.",
+    atoms: () => ["remediation.ticket:read", "remediation.ticket:create"],
+  },
+];
+
+export interface IntentDraft {
+  principalId?: string;
+  capabilityIds: string[];
+  resourceTypes: string[]; // subset of REMEDIABLE_RESOURCES
+  scope: Scope;
+}
+
+export interface CompiledIntent {
+  atoms: string[];
+  roleName: string;
+  assetCount: number;
+  objectCount: number;
+  sharedObjectCount: number;
+  usersAffected: number;
+  sod: ToxicPair[];
+  warnings: string[];
+  ok: boolean;
+}
+
+/** Compile an intent sentence into atoms + a resolved, checked grant. */
+export const compileIntent = (draft: IntentDraft): CompiledIntent => {
+  const caps = CAPABILITIES.filter((c) => draft.capabilityIds.includes(c.id));
+  const atoms = expandImplied(uniq(caps.flatMap((c) => c.atoms(draft.resourceTypes))));
+  const { assetCount, objectCount, sharedObjectCount } = resolveScopeObjects(draft.scope);
+  const usersAffected = draft.principalId ? principalReach(draft.principalId) : 0;
+  const sod = sodViolations(atoms);
+
+  const inProd = !draft.scope.environments?.length || draft.scope.environments.includes("production");
+  const destructive = caps.some((c) => c.destructive);
+  const hasApprover = caps.some((c) => c.isApprover);
+
+  const warnings: string[] = [];
+  if (destructive && inProd) {
+    warnings.push(
+      "Destructive remediation reaches Production. Scope to Non-production for execute-only, request-only in prod.",
+    );
+  }
+  if (destructive && !hasApprover) {
+    warnings.push(
+      "Revocation is maker-only here. A separate group must hold Approve revocations, or every revocation stalls.",
+    );
+  }
+  if (destructive && sharedObjectCount > 0 && MULTI_HOMED_POLICY !== "permissive") {
+    warnings.push(
+      `${sharedObjectCount} object${sharedObjectCount === 1 ? " is" : "s are"} multi-homed (shared with assets outside this group). Revoking them affects assets beyond the scope.`,
+    );
+  }
+  sod.forEach((p) => warnings.push(`Separation of duties: ${p.reason}.`));
+
+  const capLabel = caps.map((c) => c.label).join(" + ") || "Access";
+  const groupName =
+    draft.scope.assetGroupIds?.length === 1
+      ? ASSET_GROUPS.find((g) => g.id === draft.scope.assetGroupIds![0])?.name
+      : undefined;
+  const roleName = `${capLabel}${groupName ? ` · ${groupName}` : ""}`;
+
+  return {
+    atoms,
+    roleName,
+    assetCount,
+    objectCount,
+    sharedObjectCount,
+    usersAffected,
+    sod,
+    warnings,
+    ok: !!draft.principalId && atoms.length > 0 && draft.resourceTypes.length > 0 && sod.length === 0,
+  };
 };
