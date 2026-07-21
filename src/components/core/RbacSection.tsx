@@ -834,9 +834,9 @@ export default function RbacSection() {
       {modal.kind === "compose" && (
         <IntentAccessComposer
           onClose={() => setModal({ kind: "none" })}
-          onGrant={(role, binding) => {
+          onGrant={(role, newBindings) => {
             setRoles((rs) => [...rs, role]);
-            setBindings((bs) => [...bs, binding]);
+            setBindings((bs) => [...bs, ...newBindings]);
             setModal({ kind: "none" });
           }}
         />
