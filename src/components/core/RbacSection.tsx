@@ -22,6 +22,7 @@ import {
   Users2,
   Bot,
   Ban,
+  Zap,
 } from "lucide-react";
 import {
   TAXONOMY,
@@ -53,6 +54,7 @@ import {
   type Principal,
   type PrincipalType,
 } from "@/data/rbac";
+import IntentAccessComposer from "./IntentAccessComposer";
 
 /**
  * Separation-of-duties warnings. Shown only while authoring a CUSTOM role,
@@ -539,7 +541,8 @@ type Modal =
   | { kind: "assign"; role: Role }
   | { kind: "delete"; role: Role }
   | { kind: "effective"; principalId?: string }
-  | { kind: "reverse" };
+  | { kind: "reverse" }
+  | { kind: "compose" };
 
 /** The signed-in actor. In production this arrives in the token introspection payload. */
 const ACTOR = "usr_alice";
@@ -605,13 +608,23 @@ export default function RbacSection() {
             Members.
           </p>
         </div>
-        <button
-          onClick={() => openEditor("create")}
-          disabled={!actorPermissions.has("platform.role:create")}
-          className="flex items-center gap-1 px-3 py-1.5 rounded bg-teal text-primary-foreground text-xs hover:bg-teal-light disabled:opacity-40 shrink-0"
-        >
-          <Plus className="w-3 h-3" /> Create Role
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => openEditor("create")}
+            disabled={!actorPermissions.has("platform.role:create")}
+            className="flex items-center gap-1 px-3 py-1.5 rounded border border-border text-xs text-muted-foreground hover:text-foreground hover:border-teal disabled:opacity-40"
+          >
+            <Plus className="w-3 h-3" /> Create Role
+          </button>
+          <button
+            onClick={() => setModal({ kind: "compose" })}
+            disabled={!actorPermissions.has("platform.role:grant")}
+            title="Grant access to a group by describing the outcome"
+            className="flex items-center gap-1 px-3 py-1.5 rounded bg-teal text-primary-foreground text-xs hover:bg-teal-light disabled:opacity-40"
+          >
+            <Zap className="w-3 h-3" /> Grant access
+          </button>
+        </div>
       </div>
 
       {/* Toolbar */}
@@ -816,6 +829,17 @@ export default function RbacSection() {
 
       {modal.kind === "reverse" && (
         <ReverseDrawer bindings={bindings} roles={roles} onClose={() => setModal({ kind: "none" })} />
+      )}
+
+      {modal.kind === "compose" && (
+        <IntentAccessComposer
+          onClose={() => setModal({ kind: "none" })}
+          onGrant={(role, binding) => {
+            setRoles((rs) => [...rs, role]);
+            setBindings((bs) => [...bs, binding]);
+            setModal({ kind: "none" });
+          }}
+        />
       )}
     </div>
   );
