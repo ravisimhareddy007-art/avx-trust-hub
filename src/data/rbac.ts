@@ -1040,7 +1040,7 @@ export const compileIntent = (draft: IntentDraft): CompiledIntent => {
       "Revocation is maker-only here. A separate group must hold Approve revocations, or every revocation stalls.",
     );
   }
-  if (destructive && sharedObjectCount > 0 && (MULTI_HOMED_POLICY as MultiHomedPolicy) !== "permissive") {
+  if (destructive && sharedObjectCount > 0 && MULTI_HOMED_POLICY !== "permissive") {
     warnings.push(
       `${sharedObjectCount} object${sharedObjectCount === 1 ? " is" : "s are"} multi-homed (shared with assets outside this group). Revoking them affects assets beyond the scope.`,
     );
@@ -1064,5 +1064,141 @@ export const compileIntent = (draft: IntentDraft): CompiledIntent => {
     sod,
     warnings,
     ok: !!draft.principalId && atoms.length > 0 && draft.resourceTypes.length > 0 && sod.length === 0,
+  };
+};
+
+/* ------------------------------------------------------------------ */
+/* Access patterns (recommended reference roles, jobs-to-be-done)      */
+/* ------------------------------------------------------------------ */
+/**
+ * The admin does not start from atoms or capabilities. They start from a job:
+ * "set up cert remediation for the payments team". These patterns are the small,
+ * curated shortlist we recommend. Each pre-fills capabilities, object types and a
+ * sensible environment default. The granular knobs live behind Advanced.
+ */
+
+export interface AccessPattern {
+  id: string;
+  name: string;
+  purpose: string; // one-line job-to-be-done
+  recommendedFor: string; // who typically holds this
+  capabilityIds: string[];
+  resourceTypes: string[];
+  defaultEnvironment: Environment[];
+  common?: boolean; // surfaced as a top recommendation
+  pairsWith?: string; // complementary pattern (maker <-> checker)
+}
+
+export const ACCESS_PATTERNS: AccessPattern[] = [
+  {
+    id: "pat_remediation_operator",
+    name: "Certificate Remediation Operator",
+    purpose: "Keep certificates and keys healthy. Renew, reissue, rotate, push.",
+    recommendedFor: "SRE and PKI operations teams",
+    capabilityIds: ["cap_view", "cap_remediate"],
+    resourceTypes: [...REMEDIABLE_CERTS, ...REMEDIABLE_KEYS],
+    defaultEnvironment: ["non_production"],
+    common: true,
+  },
+  {
+    id: "pat_revocation_approver",
+    name: "Revocation Approver",
+    purpose: "Authorise pending certificate revocations. The checker half of maker-checker.",
+    recommendedFor: "Security leads and change approvers",
+    capabilityIds: ["cap_view", "cap_approve_revoke"],
+    resourceTypes: [...REMEDIABLE_CERTS],
+    defaultEnvironment: ["production", "non_production"],
+    common: true,
+    pairsWith: "pat_full_remediation",
+  },
+  {
+    id: "pat_estate_viewer",
+    name: "Estate Viewer",
+    purpose: "Read-only visibility into a team's crypto estate. No changes.",
+    recommendedFor: "Application owners and auditors",
+    capabilityIds: ["cap_view"],
+    resourceTypes: [...REMEDIABLE_RESOURCES],
+    defaultEnvironment: ["production", "non_production"],
+    common: true,
+  },
+  {
+    id: "pat_full_remediation",
+    name: "Full Remediation (with revoke)",
+    purpose: "Everything, including initiating revocation. Pairs with a Revocation Approver group.",
+    recommendedFor: "Senior PKI operators",
+    capabilityIds: ["cap_view", "cap_remediate", "cap_revoke"],
+    resourceTypes: [...REMEDIABLE_CERTS, ...REMEDIABLE_KEYS],
+    defaultEnvironment: ["non_production"],
+    pairsWith: "pat_revocation_approver",
+  },
+  {
+    id: "pat_ticket_requestor",
+    name: "Ticket-only Requestor",
+    purpose: "Request changes through the ITSM. No direct action on objects.",
+    recommendedFor: "App teams in regulated environments",
+    capabilityIds: ["cap_view", "cap_request_ticket"],
+    resourceTypes: [...REMEDIABLE_RESOURCES],
+    defaultEnvironment: ["production", "non_production"],
+  },
+];
+
+/** Compile the chosen capabilities into atoms for the chosen object types. */
+export const atomsForCapabilities = (capabilityIds: string[], resourceTypes: string[]): string[] =>
+  expandImplied([
+    ...new Set(CAPABILITIES.filter((c) => capabilityIds.includes(c.id)).flatMap((c) => c.atoms(resourceTypes))),
+  ]);
+
+export interface GrantEvaluation {
+  atoms: string[];
+  assetCount: number;
+  objectCount: number;
+  sharedObjectCount: number;
+  usersAffected: number;
+  sod: ToxicPair[];
+  warnings: string[];
+  destructive: boolean;
+  hasApprover: boolean;
+  ok: boolean;
+}
+
+/**
+ * Mode-agnostic grant evaluator. Works whether the atoms came from a pattern,
+ * from hand-picked capabilities, or from an existing reference role. Destructive
+ * and approver status are derived from the atoms themselves, not from UI flags.
+ */
+export const evaluateGrant = (atoms: string[], scope: Scope, principalIds: string[]): GrantEvaluation => {
+  const { assetCount, objectCount, sharedObjectCount } = resolveScopeObjects(scope);
+  const usersAffected = principalIds.reduce((s, id) => s + principalReach(id), 0);
+  const sod = sodViolations(atoms);
+  const destructive = atoms.includes("remediation.revocation:execute");
+  const hasApprover = atoms.includes("remediation.revocation:approve");
+  const inProd = !scope.environments?.length || scope.environments.includes("production");
+
+  const warnings: string[] = [];
+  if (destructive && inProd)
+    warnings.push(
+      "Destructive remediation reaches Production. Scope to Non-production for execute-only, request-only in prod.",
+    );
+  if (destructive && !hasApprover)
+    warnings.push(
+      "Revocation is maker-only here. A separate group must hold Approve revocations, or every revocation stalls.",
+    );
+  if (destructive && sharedObjectCount > 0 && MULTI_HOMED_POLICY !== "permissive")
+    warnings.push(
+      `${sharedObjectCount} object(s) are multi-homed (shared with assets outside this group). Revoking them affects assets beyond the scope.`,
+    );
+  sod.forEach((p) => warnings.push(`Separation of duties: ${p.reason}.`));
+
+  return {
+    atoms,
+    assetCount,
+    objectCount,
+    sharedObjectCount,
+    usersAffected,
+    sod,
+    warnings,
+    destructive,
+    hasApprover,
+    ok: principalIds.length > 0 && atoms.length > 0 && sod.length === 0,
   };
 };
