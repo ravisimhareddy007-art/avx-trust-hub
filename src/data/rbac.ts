@@ -1040,7 +1040,7 @@ export const compileIntent = (draft: IntentDraft): CompiledIntent => {
       "Revocation is maker-only here. A separate group must hold Approve revocations, or every revocation stalls.",
     );
   }
-  if (destructive && sharedObjectCount > 0 && MULTI_HOMED_POLICY !== "permissive") {
+  if (destructive && sharedObjectCount > 0 && (MULTI_HOMED_POLICY as MultiHomedPolicy) !== "permissive") {
     warnings.push(
       `${sharedObjectCount} object${sharedObjectCount === 1 ? " is" : "s are"} multi-homed (shared with assets outside this group). Revoking them affects assets beyond the scope.`,
     );
