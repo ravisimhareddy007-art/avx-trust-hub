@@ -169,8 +169,7 @@ export default function AppSidebar() {
         </div>
         {!collapsed && (
           <div className="flex flex-col whitespace-nowrap flex-1 min-w-0">
-            <span className="text-primary-foreground font-bold text-sm leading-tight">Trust</span>
-            <span className="text-[9px] text-muted-foreground leading-tight tracking-wide">CONTROL PLANE</span>
+            <span className="text-primary-foreground font-bold text-sm leading-tight">AppViewX</span>
           </div>
         )}
         <button
