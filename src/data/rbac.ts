@@ -871,7 +871,7 @@ export const ASSET_GROUPS: AssetGroup[] = [
 /** How a remediation verb resolves for an object that spans the scope boundary. */
 export type MultiHomedPolicy = "permissive" | "strict" | "warn";
 /** Non-prod-scoped authority must not silently reach into prod via a shared object. */
-export const MULTI_HOMED_POLICY: MultiHomedPolicy = "warn";
+export const MULTI_HOMED_POLICY = "warn" as MultiHomedPolicy;
 
 /** Resolve a binding scope down to the crypto objects it actually covers. */
 export const resolveScopeObjects = (
